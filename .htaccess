@@ -1,0 +1,23 @@
+Options -MultiViews
+RewriteEngine On
+
+# IMPORTANTE: Cambia esto si la carpeta de tu proyecto se llama diferente
+RewriteBase /ProyectoMantenimientos/
+
+# Evitar listar directorios (seguridad básica)
+Options -Indexes
+
+# 1. Regla para URLs con dos parámetros (ej. /orden/crear)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^/]+)/([^/]+)/?$ index.php?pagina=$1&accion=$2 [L,QSA]
+
+# 2. Regla para URLs con un parámetro (ej. /inicio)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^/]+)/?$ index.php?pagina=$1&accion=index [L,QSA]
+
+# 3. Todo lo demás al index
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+)$ index.php [L,QSA]
