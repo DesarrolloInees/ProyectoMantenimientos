@@ -24,6 +24,16 @@
     .select2-search__field {
         outline: none !important;
     }
+
+    /* CORRECCIÓN VITAL PARA SELECT2 EN MODALES */
+    .select2-container--open {
+        z-index: 99999999 !important; /* Por encima de todo */
+    }
+    
+    /* Ajuste para que el input del buscador sea visible y accesible */
+    .select2-search__field {
+        z-index: 99999999 !important;
+    }
 </style>
 
 <div class="w-full bg-white shadow-xl rounded-lg p-2 md:p-6">
@@ -40,19 +50,19 @@
 
             <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
                 <!-- Badge con contador -->
-                    <div class="bg-blue-600 text-white text-xs font-bold py-1 px-3 rounded-full shadow-lg">
-                        <span id="contadorFilasDisplay">0</span> Servicios agregados
-                    </div>
+                <div class="bg-blue-600 text-white text-xs font-bold py-1 px-3 rounded-full shadow-lg">
+                    <span id="contadorFilasDisplay">0</span> Servicios agregados
+                </div>
 
-                    <button type="button" onclick="agregarFila()" 
-                        class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-full shadow-2xl transition transform hover:scale-110 flex items-center gap-2">
-                        <i class="fas fa-plus text-xl"></i> 
-                        <span class="font-bold">Agregar Servicio</span>
-                    </button>
-                    
+                <button type="button" onclick="agregarFila()"
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-full shadow-2xl transition transform hover:scale-110 flex items-center gap-2">
+                    <i class="fas fa-plus text-xl"></i>
+                    <span class="font-bold">Agregar Servicio</span>
+                </button>
+
             </div>
         </div>
-            
+
 
         <div class="overflow-x-auto shadow-inner rounded-lg border border-gray-200" style="max-height: 60vh; overflow-y: auto;">
             <table class="min-w-max text-xs w-full">
@@ -99,37 +109,40 @@
 
         <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between">
             <span>🛠️ Gestión de Repuestos</span>
-            <button onclick="cerrarModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="cerrarModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
         </h3>
 
         <input type="hidden" id="modal_fila_actual">
 
         <div class="space-y-4">
-            <div class="flex gap-2">
-                <div class="flex-grow">
-                    <select id="select_repuesto_id" class="w-full border rounded p-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500">
+            <div class="flex gap-2 items-center">
+                
+                <div class="flex-grow w-2/3">
+                    <select id="select_repuesto_modal" class="w-full border rounded p-2 text-sm">
                         <option value="">- Buscar Repuesto -</option>
+                        </select>
+                </div>
+
+                <div class="w-1/3">
+                    <select id="select_origen_modal" class="w-full border rounded p-2 text-xs bg-gray-100 font-bold text-gray-700 h-[38px]">
+                        <option value="INEES">INEES</option>
+                        <option value="PROSEGUR">PROSEGUR</option>
                     </select>
                 </div>
 
-                <select id="select_origen" class="border rounded p-2 text-sm bg-gray-100 font-bold text-gray-700">
-                    <option value="INEES">INEES</option>
-                    <option value="PROSEGUR">PROSEGUR</option>
-                </select>
-
-                <button onclick="agregarRepuestoAlGrid()" class="bg-blue-600 text-white px-4 rounded hover:bg-blue-700 shadow transition">
+                <button type="button" onclick="agregarRepuestoALista()" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow transition h-[38px]">
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
 
-            <ul id="lista_repuestos_modal" class="border rounded p-2 h-40 overflow-y-auto bg-gray-50 text-sm">
-                <li class="text-gray-400 text-center italic mt-10">No hay repuestos agregados aún.</li>
+            <ul id="lista_repuestos_visual" class="border rounded p-2 h-48 overflow-y-auto bg-gray-50 text-sm">
+                <li class="text-gray-400 text-center italic mt-10">No hay repuestos seleccionados.</li>
             </ul>
         </div>
 
-        <div class="mt-6 text-right">
-            <button onclick="guardarRepuestosModal()" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 shadow-lg transform hover:scale-105 transition">
-                Confirmar y Cerrar
+        <div class="mt-6 text-right border-t pt-4">
+            <button type="button" onclick="guardarCambiosModal()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 shadow-lg transform hover:scale-105 transition">
+                <i class="fas fa-check mr-2"></i> Confirmar Cambios
             </button>
         </div>
     </div>
@@ -235,7 +248,7 @@
         </td>
 
         <td class="px-2">
-            <select name="filas[${id}][tecnico_asignado]" onchange="tecnicoAsignado(${id})" class="w-full border rounded p-1 font-semibold">                
+            <select name="filas[${id}][id_tecnico]" class="w-full border rounded p-1 font-semibold">                
                 ${optTec}
             </select>
         </td>
@@ -299,16 +312,16 @@
         </td>
     </tr>`;
 
-    // NUEVO: Actualizar display del contador
-    document.getElementById('contadorFilasDisplay').innerText = contadorFilas;
+        // NUEVO: Actualizar display del contador
+        document.getElementById('contadorFilasDisplay').innerText = contadorFilas;
 
-    // NUEVO: Auto-scroll a la nueva fila
-    setTimeout(() => {
-        document.getElementById(`fila_${id}`).scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-        });
-    }, 100);
+        // NUEVO: Auto-scroll a la nueva fila
+        setTimeout(() => {
+            document.getElementById(`fila_${id}`).scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }, 100);
 
         const contenedor = document.getElementById('contenedorFilas');
         if (contenedor) {
@@ -323,18 +336,18 @@
     }
 
     // También actualizar al eliminar
-function eliminarFila(id) {
-    const fila = document.getElementById(`fila_${id}`);
-    if (fila) {
-        fila.remove();
-        delete almacenRepuestos[id];
-        console.log('Fila eliminada:', id);
-        
-        // NUEVO: Actualizar contador
-        const filasActuales = document.querySelectorAll('#contenedorFilas tr').length;
-        document.getElementById('contadorFilasDisplay').innerText = filasActuales;
+    function eliminarFila(id) {
+        const fila = document.getElementById(`fila_${id}`);
+        if (fila) {
+            fila.remove();
+            delete almacenRepuestos[id];
+            console.log('Fila eliminada:', id);
+
+            // NUEVO: Actualizar contador
+            const filasActuales = document.querySelectorAll('#contenedorFilas tr').length;
+            document.getElementById('contadorFilasDisplay').innerText = filasActuales;
+        }
     }
-}
 
     // --- FUNCIONES AJAX PARA CARGAR DATOS ---
     async function enviarAjax(accion, datos) {
@@ -539,109 +552,160 @@ function eliminarFila(id) {
         }
     }
 
-    // --- FUNCIONES DEL MODAL DE REPUESTOS ---
-    function abrirModalRepuestos(id) {
-        console.log('Abriendo modal para fila:', id);
-        document.getElementById('modalRepuestos').classList.remove('hidden');
-        document.getElementById('modalRepuestos').classList.add('flex');
-        document.getElementById('modal_fila_actual').value = id;
-        renderizarListaModal(id);
-    }
+    // ==========================================
+// 🛠️ LÓGICA DE REPUESTOS (CON SELECT2 Y FILTRO)
+// ==========================================
 
-    function cerrarModal() {
-        document.getElementById('modalRepuestos').classList.add('hidden');
-        document.getElementById('modalRepuestos').classList.remove('flex');
-    }
+// Variable global para almacenar repuestos por ID de fila
+// Estructura: { '1': [{id:1, nombre:'...', origen:'INEES'}], '2': [] }
 
-    // Actualizar función agregar
-    function agregarRepuestoAlGrid() {
-        const idFila = document.getElementById('modal_fila_actual').value;
 
-        const selectRep = document.getElementById('select_repuesto_id');
-        const idRepuesto = selectRep.value;
-        const nombreRepuesto = selectRep.options[selectRep.selectedIndex].text;
-
-        const origen = document.getElementById('select_origen').value;
-
-        if (!idRepuesto) {
-            alert('Por favor seleccione un repuesto de la lista');
-            return;
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Inicializar Select2 EN EL MODAL
+    $('#select_repuesto_modal').select2({
+        width: '100%',
+        dropdownParent: $('#modalRepuestos'), // 🔥 CLAVE PARA QUE FUNCIONE EN MODAL
+        placeholder: "- Escriba para buscar -",
+        allowClear: true,
+        language: {
+            noResults: () => "No se encontró el repuesto"
         }
+    });
 
-        if (!almacenRepuestos[idFila]) almacenRepuestos[idFila] = [];
+    // 2. Llenar el Select una sola vez al inicio para no recargar el DOM
+    const select = document.getElementById('select_repuesto_modal');
+    // listaRepuestosBD viene de tu PHP
+    listaRepuestosBD.forEach(r => {
+        const option = new Option(r.nombre_repuesto, r.id_repuesto, false, false);
+        select.add(option);
+    });
+});
 
-        // Guardamos ID, Nombre y Origen
-        almacenRepuestos[idFila].push({
-            id: idRepuesto,
-            nombre: nombreRepuesto,
-            origen: origen
-        });
+function abrirModalRepuestos(idFila) {
+    // 1. Guardar qué fila estamos editando
+    document.getElementById('modal_fila_actual').value = idFila;
 
-        // Resetear select
-        selectRep.value = "";
-        renderizarListaModal(idFila);
-    }
-
-    function renderizarListaModal(id) {
-        const lista = almacenRepuestos[id] || [];
-        const ul = document.getElementById('lista_repuestos_modal');
-
-        if (!ul) {
-            console.error('No se encontró la lista de repuestos');
-            return;
-        }
-
-        ul.innerHTML = '';
-
-        if (lista.length === 0) {
-            ul.innerHTML = '<li class="text-gray-400 text-center italic mt-10">No hay repuestos agregados aún.</li>';
-            return;
-        }
-
-        lista.forEach((item, index) => {
-            ul.innerHTML += `
-        <li class="flex justify-between items-center bg-white p-2 mb-1 border rounded shadow-sm">
-            <span>
-                <b class="text-xs ${item.origen === 'INEES' ? 'text-blue-600' : 'text-orange-600'}">[${item.origen}]</b> 
-                ${item.nombre}
-            </span>
-            <button onclick="borrarRepuesto(${id}, ${index})" class="text-red-500 hover:text-red-700">
-                <i class="fas fa-times"></i>
-            </button>
-        </li>`;
-        });
-    }
-
-    function borrarRepuesto(idFila, index) {
-        if (almacenRepuestos[idFila]) {
-            almacenRepuestos[idFila].splice(index, 1);
-            renderizarListaModal(idFila);
+    // 2. Asegurar que el array para esta fila existe
+    if (!almacenRepuestos[idFila]) {
+        // Intentar leer del input hidden si venimos de un borrador restaurado
+        const hiddenInput = document.getElementById(`json_rep_${idFila}`);
+        if(hiddenInput && hiddenInput.value && hiddenInput.value !== '[]') {
+            try {
+                almacenRepuestos[idFila] = JSON.parse(hiddenInput.value);
+            } catch(e) { almacenRepuestos[idFila] = []; }
+        } else {
+            almacenRepuestos[idFila] = [];
         }
     }
 
-    function guardarRepuestosModal() {
-        const id = document.getElementById('modal_fila_actual').value;
-        const lista = almacenRepuestos[id] || [];
+    // 3. Limpiar selección del Select2
+    $('#select_repuesto_modal').val(null).trigger('change');
 
-        // Actualizar botón en el grid
-        const btn = document.getElementById(`count_rep_${id}`);
-        if (btn) {
-            btn.innerText = `${lista.length} Items`;
-            if (lista.length > 0) {
-                btn.parentElement.classList.add('bg-blue-100', 'border-blue-300');
-            } else {
-                btn.parentElement.classList.remove('bg-blue-100', 'border-blue-300');
-            }
-        }
+    // 4. Renderizar lista
+    renderizarListaVisual(idFila);
 
-        // Guardar JSON en input oculto
-        const jsonInput = document.getElementById(`json_rep_${id}`);
-        if (jsonInput) {
-            jsonInput.value = JSON.stringify(lista);
-        }
+    // 5. Mostrar Modal
+    document.getElementById('modalRepuestos').classList.remove('hidden');
+    document.getElementById('modalRepuestos').classList.add('flex');
+}
 
-        cerrarModal();
+function cerrarModal() {
+    document.getElementById('modalRepuestos').classList.add('hidden');
+    document.getElementById('modalRepuestos').classList.remove('flex');
+}
+
+function agregarRepuestoALista() {
+    const idFila = document.getElementById('modal_fila_actual').value;
+    
+    // Obtener datos del Select2 (jQuery)
+    const idRepuesto = $('#select_repuesto_modal').val();
+    const dataSelect = $('#select_repuesto_modal').select2('data');
+    const nombreRepuesto = dataSelect[0]?.text;
+    
+    const origen = document.getElementById('select_origen_modal').value;
+
+    if (!idRepuesto) {
+        alert("⚠️ Por favor busque y seleccione un repuesto.");
+        return;
     }
+
+    // Agregar al array global
+    if (!almacenRepuestos[idFila]) almacenRepuestos[idFila] = [];
+
+    almacenRepuestos[idFila].push({
+        id: idRepuesto,
+        nombre: nombreRepuesto,
+        origen: origen
+    });
+
+    // Limpiar buscador y re-renderizar
+    $('#select_repuesto_modal').val(null).trigger('change');
+    renderizarListaVisual(idFila);
+}
+
+function borrarRepuestoTemporal(idFila, index) {
+    if (almacenRepuestos[idFila]) {
+        almacenRepuestos[idFila].splice(index, 1);
+        renderizarListaVisual(idFila);
+    }
+}
+
+function renderizarListaVisual(idFila) {
+    const ul = document.getElementById('lista_repuestos_visual');
+    ul.innerHTML = '';
+
+    const lista = almacenRepuestos[idFila] || [];
+
+    if (lista.length === 0) {
+        ul.innerHTML = '<li class="text-gray-400 text-center italic mt-10 flex flex-col items-center"><i class="fas fa-box-open text-2xl mb-2"></i><span>No hay repuestos agregados.</span></li>';
+        return;
+    }
+
+    lista.forEach((item, index) => {
+        const bgBadge = item.origen === 'INEES' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800';
+        
+        ul.innerHTML += `
+            <li class="flex justify-between items-center bg-gray-50 p-2 mb-2 border rounded shadow-sm hover:bg-white transition">
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bgBadge}">${item.origen}</span>
+                    <span class="text-xs text-gray-700 truncate font-medium" title="${item.nombre}">${item.nombre}</span>
+                </div>
+                <button type="button" onclick="borrarRepuestoTemporal('${idFila}', ${index})" class="text-red-400 hover:text-red-600 px-2">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </li>
+        `;
+    });
+}
+
+function guardarCambiosModal() {
+    const idFila = document.getElementById('modal_fila_actual').value;
+    const lista = almacenRepuestos[idFila] || [];
+
+    // 1. Actualizar Input Oculto en la tabla (para que se envíe al backend)
+    const jsonInput = document.getElementById(`json_rep_${idFila}`);
+    if (jsonInput) {
+        jsonInput.value = JSON.stringify(lista);
+    }
+
+    // 2. Actualizar Botón Visual en la tabla
+    const btnTexto = document.getElementById(`count_rep_${idFila}`);
+    if (btnTexto) {
+        btnTexto.innerText = `${lista.length} Items`;
+        
+        // Cambiar color del botón si tiene items
+        const btnPadre = btnTexto.parentElement; // El botón <button>
+        if (lista.length > 0) {
+            btnPadre.classList.remove('bg-gray-200', 'text-gray-700');
+            btnPadre.classList.add('bg-blue-600', 'text-white', 'border-blue-700');
+        } else {
+            btnPadre.classList.add('bg-gray-200', 'text-gray-700');
+            btnPadre.classList.remove('bg-blue-600', 'text-white', 'border-blue-700');
+        }
+    }
+
+    cerrarModal();
+}
 
 
     // Función para convertir un Select normal en uno con Buscador
@@ -656,16 +720,197 @@ function eliminarFila(id) {
         });
     }
 
-    // --- INICIALIZACIÓN ---
-    document.addEventListener("DOMContentLoaded", function() {
-        console.log('DOM cargado, inicializando filas...');
-        // Agregar 3 filas iniciales
-        for (let i = 0; i < 3; i++) {
-            agregarFila();
-        }
-        const selRep = document.getElementById('select_repuesto_id');
+    // --- INICIALIZACIÓN COMPLETA ---
+document.addEventListener("DOMContentLoaded", function() {
+    console.log('DOM cargado. Iniciando sistema...');
+
+    // 1. CARGAR OPCIONES DEL SELECT DE REPUESTOS (Tu código original)
+    const selRep = document.getElementById('select_repuesto_id');
+    if (selRep) {
         listaRepuestosBD.forEach(r => {
             selRep.innerHTML += `<option value="${r.id_repuesto}">${r.nombre_repuesto}</option>`;
         });
+    }
+
+    // 2. ACTIVAR EL BUSCADOR SELECT2 EN EL MODAL (¡Nuevo!)
+    // Esto habilita la búsqueda por texto en los repuestos
+    $('#select_repuesto_id').select2({
+        width: '100%',
+        dropdownParent: $('#modalRepuestos'), // CRÍTICO: Sin esto, el buscador no funciona en el modal
+        placeholder: "- Buscar Repuesto -",
+        language: { noResults: () => "No se encontró el repuesto" }
     });
+
+    // 3. LÓGICA DE INICIO INTELIGENTE (Auto-Guardado vs Filas Nuevas)
+    const hayBorrador = localStorage.getItem(CLAVE_GUARDADO);
+
+    if (hayBorrador) {
+        // Si hay algo guardado, llamamos a la función de restaurar
+        // (Ella se encarga de preguntar y limpiar si es necesario)
+        verificarYRestaurar(); 
+    } else {
+        // Si NO hay nada guardado, iniciamos con las 3 filas vacías por defecto
+        console.log("No hay borrador, iniciando filas vacías.");
+        for (let i = 0; i < 3; i++) {
+            agregarFila();
+        }
+    }
+
+    // 4. ACTIVAR EL TIMER DE AUTO-GUARDADO
+    // Guardará cambios cada 5 segundos
+    setInterval(guardarProgresoLocal, 5000);
+
+    // 5. LIMPIAR BORRADOR AL ENVIAR FORMULARIO
+    // Si guarda exitosamente, ya no necesitamos el borrador
+    const form = document.getElementById('formServicios');
+    if (form) {
+        form.addEventListener('submit', function() {
+            localStorage.removeItem(CLAVE_GUARDADO);
+        });
+    }
+});
+
+
+
+    // ==========================================
+// 🛡️ MÓDULO DE AUTO-GUARDADO (SALVAVIDAS)
+// ==========================================
+
+const CLAVE_GUARDADO = 'borrador_orden_servicios';
+
+// 1. FUNCIÓN PARA GUARDAR (Se ejecuta cada 5 segundos si hubo cambios)
+function guardarProgresoLocal() {
+    const filas = [];
+    const filasHTML = document.querySelectorAll('#contenedorFilas tr');
+
+    filasHTML.forEach(tr => {
+        const idFila = tr.id.replace('fila_', '');
+        
+        // Obtenemos los valores de esa fila
+        const filaData = {
+            id: idFila,
+            remision: tr.querySelector(`input[name="filas[${idFila}][remision]"]`)?.value || '',
+            id_cliente: $(`#select_cliente_${idFila}`).val(), // Select2 usa jQuery val()
+            id_punto: $(`#select_punto_${idFila}`).val(),
+            id_maquina: $(`#select_maquina_${idFila}`).val(), // OJO: Esto guarda el ID de la máquina
+            modalidad: document.getElementById(`select_modalidad_${idFila}`)?.value,
+            id_tecnico: tr.querySelector(`select[name="filas[${idFila}][id_tecnico]"]`)?.value,
+            tipo_servicio: tr.querySelector(`select[name="filas[${idFila}][tipo_servicio]"]`)?.value,
+            hora_in: document.getElementById(`in_${idFila}`)?.value,
+            hora_out: document.getElementById(`out_${idFila}`)?.value,
+            valor: tr.querySelector(`input[name="filas[${idFila}][valor]"]`)?.value,
+            estado: tr.querySelector(`select[name="filas[${idFila}][estado]"]`)?.value,
+            calif: tr.querySelector(`select[name="filas[${idFila}][calif]"]`)?.value,
+            obs: tr.querySelector(`textarea[name="filas[${idFila}][obs]"]`)?.value
+        };
+        filas.push(filaData);
+    });
+
+    const datosGlobales = {
+        fecha: new Date().getTime(), // Para saber cuándo se guardó
+        filas: filas,
+        repuestos: almacenRepuestos // Guardamos también los repuestos
+    };
+
+    localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(datosGlobales));
+    
+    // Feedback visual discreto en la consola
+    // console.log("Borrador auto-guardado", new Date().toLocaleTimeString());
+}
+
+// 2. FUNCIÓN PARA RESTAURAR
+async function verificarYRestaurar() {
+    const borrador = localStorage.getItem(CLAVE_GUARDADO);
+    
+    if (borrador) {
+        const datos = JSON.parse(borrador);
+        // Si el borrador es de hace más de 24 horas, mejor lo ignoramos (opcional)
+        // Pero aquí preguntaremos siempre.
+        
+        if(datos.filas.length > 0 && confirm(`⚠️ Hemos encontrado un borrador con ${datos.filas.length} servicios no guardados. \n\n¿Deseas recuperarlos?`)) {
+            
+            // A. Limpiar tabla actual
+            document.getElementById('contenedorFilas').innerHTML = '';
+            contadorFilas = 0;
+            almacenRepuestos = datos.repuestos || {};
+
+            // B. Reconstruir filas (Una por una y esperando las cargas AJAX)
+            // Usamos un bucle for..of para poder usar await
+            for (const fila of datos.filas) {
+                // 1. Crear estructura visual
+                agregarFila(); 
+                const idActual = contadorFilas; // El ID que acaba de generar agregarFila()
+
+                // 2. Llenar datos simples
+                document.querySelector(`input[name="filas[${idActual}][remision]"]`).value = fila.remision;
+                
+                // Cliente
+                $(`#select_cliente_${idActual}`).val(fila.id_cliente).trigger('change');
+                
+                // 3. Esperar a que carguen los puntos (CRÍTICO)
+                if (fila.id_cliente) {
+                    await cargarPuntos(idActual, fila.id_cliente); // Esperamos a AJAX
+                    $(`#select_punto_${idActual}`).val(fila.id_punto).trigger('change');
+                }
+
+                // 4. Esperar a que carguen las máquinas
+                if (fila.id_punto) {
+                    await cargarMaquinas(idActual, fila.id_punto); // Esperamos a AJAX
+                    // Selección manual de la máquina guardada
+                    const selMaq = document.getElementById(`select_maquina_${idActual}`);
+                    selMaq.value = fila.id_maquina;
+                    // Forzar relleno de Device ID y Precio
+                    rellenarDeviceId(idActual, fila.id_maquina);
+                }
+
+                // 5. Resto de campos
+                document.getElementById(`select_modalidad_${idActual}`).value = fila.modalidad;
+                document.querySelector(`select[name="filas[${idActual}][id_tecnico]"]`).value = fila.id_tecnico;
+                document.querySelector(`select[name="filas[${idActual}][tipo_servicio]"]`).value = fila.tipo_servicio;
+                document.getElementById(`in_${idActual}`).value = fila.hora_in;
+                document.getElementById(`out_${idActual}`).value = fila.hora_out;
+                calcTiempo(idActual); // Recalcular duración visual
+                
+                document.querySelector(`input[name="filas[${idActual}][valor]"]`).value = fila.valor;
+                document.querySelector(`select[name="filas[${idActual}][estado]"]`).value = fila.estado;
+                document.querySelector(`select[name="filas[${idActual}][calif]"]`).value = fila.calif;
+                document.querySelector(`textarea[name="filas[${idActual}][obs]"]`).value = fila.obs;
+
+                // Actualizar botón de repuestos visualmente
+                const btnRep = document.getElementById(`count_rep_${idActual}`);
+                const numRep = almacenRepuestos[idActual] ? almacenRepuestos[idActual].length : 0;
+                btnRep.innerText = `${numRep} Items`;
+                if(numRep > 0) btnRep.parentElement.classList.add('bg-blue-100', 'border-blue-300');
+
+                // IMPORTANTE: Actualizar el input oculto de repuestos para que se envíe al guardar
+                const jsonInput = document.getElementById(`json_rep_${idActual}`);
+                if (jsonInput && almacenRepuestos[idActual]) {
+                    jsonInput.value = JSON.stringify(almacenRepuestos[idActual]);
+                }
+            }
+            alert("✅ Información recuperada con éxito.");
+        } else {
+            // Si dice que no, borramos el borrador viejo
+            localStorage.removeItem(CLAVE_GUARDADO);
+        }
+    }
+}
+
+// 3. INICIAR SISTEMA
+document.addEventListener("DOMContentLoaded", function() {
+    // Intentar restaurar al cargar la página
+    // Ponemos un pequeño timeout para asegurar que Select2 y todo esté listo
+    setTimeout(verificarYRestaurar, 500);
+
+    // Activar guardado automático cada 5 segundos
+    setInterval(guardarProgresoLocal, 5000);
+
+    // Limpiar borrador al enviar el formulario EXITOSAMENTE
+    const form = document.getElementById('formServicios');
+    form.addEventListener('submit', function() {
+        // Solo limpiamos si el submit es válido (esto es optimista)
+        // Lo ideal es limpiarlo en el PHP cuando redirecciona, pero aquí funciona bien
+        localStorage.removeItem(CLAVE_GUARDADO);
+    });
+});
 </script>

@@ -20,10 +20,14 @@ class ordenDetalleControlador
             if ($_POST['accion'] === 'ajaxObtenerMaquinas') {
                 $this->ajaxObtenerMaquinas();
             }
-            
-            // --- NUEVO: OBTENER DELEGACIÓN ---
+
             if ($_POST['accion'] === 'ajaxObtenerDelegacion') {
                 $this->ajaxObtenerDelegacion();
+            }
+
+            // ⭐ NUEVO: AJAX para obtener precio dinámico
+            if ($_POST['accion'] === 'ajaxObtenerPrecio') {
+                $this->ajaxObtenerPrecio();
             }
         }
     }
@@ -31,15 +35,18 @@ class ordenDetalleControlador
     // ==========================================
     // 1. CARGA LA VISTA NORMAL
     // ==========================================
-    public function cargarVista() {
+    public function cargarVista()
+    {
         $fecha = $_GET['fecha'] ?? date('Y-m-d');
-        
+
         $servicios = $this->modelo->obtenerServiciosPorFecha($fecha);
         $listaClientes = $this->modelo->obtenerTodosLosClientes();
         $listaTecnicos = $this->modelo->obtenerTodosLosTecnicos();
         $listaMantos   = $this->modelo->obtenerTiposMantenimiento();
+        $listaRepuestos = $this->modelo->obtenerListaRepuestos();
         $listaEstados  = $this->modelo->obtenerEstados();
         $listaCalifs   = $this->modelo->obtenerCalificaciones();
+        $listaModalidades = $this->modelo->obtenerModalidades(); // ⭐ NUEVO
 
         $titulo = "Edición Total: " . $fecha;
         $vistaContenido = "app/views/orden/ordenDetalleVista.php";
@@ -49,8 +56,9 @@ class ordenDetalleControlador
     // ==========================================
     // 2. AJAX METHODS
     // ==========================================
-    public function ajaxObtenerPuntos() {
-        ob_clean(); 
+    public function ajaxObtenerPuntos()
+    {
+        ob_clean();
         $id_cliente = $_POST['id_cliente'] ?? 0;
         $puntos = $this->modelo->obtenerPuntosPorCliente($id_cliente);
         header('Content-Type: application/json');
@@ -58,7 +66,8 @@ class ordenDetalleControlador
         exit;
     }
 
-    public function ajaxObtenerMaquinas() {
+    public function ajaxObtenerMaquinas()
+    {
         ob_clean();
         $id_punto = $_POST['id_punto'] ?? 0;
         $maquinas = $this->modelo->obtenerMaquinasPorPunto($id_punto);
@@ -67,41 +76,33 @@ class ordenDetalleControlador
         exit;
     }
 
-    // --- NUEVO: AJAX PARA TRAER LA DELEGACIÓN DEL PUNTO ---
-    public function ajaxObtenerDelegacion() {
+    public function ajaxObtenerDelegacion()
+    {
         ob_clean();
         $id_punto = $_POST['id_punto'] ?? 0;
-        
-        // NOTA: Debes agregar este pequeño método en tu MODELO
-        // Si no quieres tocar el modelo, aquí hacemos una "trampa" rápida usando la conexión del modelo
-        // pero lo ideal es tenerlo en ordenDetalleModelo.
-        $delegacion = "Sin Asignar";
-        
-        // Usamos una consulta directa rápida aprovechando la conexión existente
-        // IMPORTANTE: Asegúrate de que tu usuario de BD tenga permisos
-        try {
-            // Accedemos a la conexión pública si es posible, o instanciamos una nueva si es privada
-            // Para no complicarte, asumo que agregaste la función al modelo.
-            // Si no, usa este bloque:
-                $db = new Database();
-                $conn = $db->getConnection();
-                $stmt = $conn->prepare("SELECT d.nombre_delegacion 
-                                        FROM punto p 
-                                        JOIN delegacion d ON p.id_delegacion = d.id_delegacion 
-                                        WHERE p.id_punto = ?");
-                $stmt->execute([$id_punto]);
-                $delegacion = $stmt->fetchColumn() ?: "Sin Asignar";
-        } catch (Exception $e) {
-            $delegacion = "Error";
-        }
-
+        $delegacion = $this->modelo->obtenerDelegacionPorPunto($id_punto);
         header('Content-Type: application/json');
         echo json_encode(['delegacion' => $delegacion]);
         exit;
     }
 
+    // ⭐ NUEVO: Obtener precio dinámico
+    public function ajaxObtenerPrecio()
+    {
+        ob_clean();
+        $id_tipo_maquina = $_POST['id_tipo_maquina'] ?? 0;
+        $id_tipo_mantenimiento = $_POST['id_tipo_mantenimiento'] ?? 0;
+        $id_modalidad = $_POST['id_modalidad'] ?? 1;
+
+        $precio = $this->modelo->obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad);
+
+        header('Content-Type: application/json');
+        echo json_encode(['precio' => $precio]);
+        exit;
+    }
+
     // ==========================================
-    // 3. GUARDAR CAMBIOS (CORREGIDO)
+    // 3. GUARDAR CAMBIOS
     // ==========================================
     public function guardarCambios()
     {
@@ -119,17 +120,15 @@ class ordenDetalleControlador
                     $tiempoCalc = $d1->diff($d2)->format('%H:%I');
                 }
 
-                // --- CORRECCIÓN PRECIO ---
-                // 1. Quitamos los puntos de miles (150.000 -> 150000)
-                // 2. Cambiamos la coma decimal por punto (150000,50 -> 150000.50)
-                $valorLimpio = str_replace('.', '', $datos['valor']); // Quita miles
-                $valorLimpio = str_replace(',', '.', $valorLimpio);   // Cambia decimal
+                // Limpiar precio
+                $valorLimpio = str_replace('.', '', $datos['valor']);
+                $valorLimpio = str_replace(',', '.', $valorLimpio);
 
-                // Guardar TODO
                 $this->modelo->actualizarOrdenFull($id, [
-                    'id_cliente' => $datos['id_cliente'], // <--- AGREGADO: Guardamos Cliente
-                    'id_punto'   => $datos['id_punto'],   // <--- AGREGADO: Guardamos Punto
+                    'id_cliente' => $datos['id_cliente'],
+                    'id_punto'   => $datos['id_punto'],
                     'id_maquina' => $datos['id_maquina'],
+                    'id_modalidad' => $datos['id_modalidad'],
                     'remision'   => $datos['remision'],
                     'id_tecnico' => $datos['id_tecnico'],
                     'id_manto'   => $datos['id_manto'],
@@ -140,12 +139,16 @@ class ordenDetalleControlador
                     'tiempo'     => $tiempoCalc,
                     'valor'      => $valorLimpio,
                     'obs'        => $datos['obs'],
-                    'fecha_individual' => $datos['fecha_individual']
+                    'fecha_individual' => $datos['fecha_individual'],
+                    
+                    // 👇 ¡ESTA ES LA LÍNEA QUE FALTABA! 👇
+                    // Sin esto, el modelo recibía NULL y no guardaba nada
+                    'json_repuestos' => $datos['json_repuestos'] ?? '[]'
                 ]);
             }
 
             echo "<script>
-                alert('¡Todo actualizado! Precios y ubicaciones guardados correctamente.');
+                alert('¡Todo actualizado correctamente! Repuestos guardados.');
                 window.location.href = 'index.php?pagina=ordenDetalle&fecha=$fechaOrigen';
             </script>";
         }
