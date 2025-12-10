@@ -5,19 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= isset($titulo) ? $titulo . ' - INEES' : 'INEES Mantenimientos' ?></title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- SheetJS para exportar Excel con múltiples hojas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
+
     <!-- jQuery (necesario para Select2) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    
+
     <!-- Select2 CSS y JS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -30,11 +30,13 @@
             border-color: #d1d5db !important;
             border-radius: 0.25rem !important;
         }
+
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             top: 0 !important;
             bottom: 0 !important;
             height: 100% !important;
         }
+
         .select2-search__field {
             outline: none !important;
         }
@@ -44,6 +46,7 @@
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
         }
+
         #sidebar.active {
             transform: translateX(0);
         }
@@ -52,6 +55,7 @@
         #overlay {
             display: none;
         }
+
         #overlay.active {
             display: block;
         }
@@ -82,8 +86,7 @@
         <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30" onclick="toggleSidebar()"></div>
 
         <!-- SIDEBAR (SIEMPRE OCULTO) -->
-        <aside id="sidebar" class="fixed w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col z-40 h-full shadow-2xl">
-            <!-- Header del Sidebar -->
+        <aside id="sidebar" class="fixed w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col z-[100001] h-full shadow-2xl"> <!-- Header del Sidebar -->
             <div class="p-6 text-center font-bold text-2xl tracking-wider border-b border-gray-700 flex justify-between items-center">
                 <span>INEES APP</span>
                 <button class="text-white hover:text-red-400 transition" onclick="toggleSidebar()">
@@ -93,25 +96,25 @@
 
             <!-- Navegación -->
             <nav class="flex-1 overflow-y-auto py-4">
-                <a href="index.php?pagina=inicio" 
+                <a href="index.php?pagina=inicio"
                     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition">
                     <i class="fas fa-home mr-3"></i> Inicio
                 </a>
 
                 <p class="px-6 py-2 text-xs text-gray-500 uppercase font-bold mt-4">Gestión de Servicios</p>
 
-                <a href="index.php?pagina=ordenCrear" 
+                <a href="index.php?pagina=ordenCrear"
                     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-green-500 transition">
                     <i class="fas fa-plus-circle mr-3"></i> Nueva Orden
                 </a>
-                <a href="index.php?pagina=ordenVer" 
+                <a href="index.php?pagina=ordenVer"
                     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition">
                     <i class="fas fa-list-alt mr-3"></i> Historial
                 </a>
 
                 <p class="px-6 py-2 text-xs text-gray-500 uppercase font-bold mt-4">Reportes</p>
 
-                <a href="index.php?pagina=reportes" 
+                <a href="index.php?pagina=reportes"
                     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition">
                     <i class="fas fa-chart-bar mr-3"></i> Reportes
                 </a>
@@ -125,7 +128,7 @@
 
         <!-- CONTENIDO PRINCIPAL (AHORA OCUPA TODO EL ANCHO) -->
         <div class="flex-1 flex flex-col overflow-hidden w-full">
-            
+
             <!-- HEADER -->
             <header class="bg-white shadow-sm flex justify-between items-center p-4 z-20">
                 <!-- Botón hamburguesa (SIEMPRE VISIBLE) -->
@@ -169,7 +172,7 @@
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
-            
+
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
         }
@@ -194,4 +197,5 @@
     </script>
 
 </body>
+
 </html>

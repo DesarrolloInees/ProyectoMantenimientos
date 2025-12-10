@@ -139,6 +139,7 @@ class ordenDetalleControlador
                     'tiempo'     => $tiempoCalc,
                     'valor'      => $valorLimpio,
                     'obs'        => $datos['obs'],
+                    'tiene_novedad' => $datos['tiene_novedad'] ?? 0,
                     'fecha_individual' => $datos['fecha_individual'],
                     
                     // 👇 ¡ESTA ES LA LÍNEA QUE FALTABA! 👇

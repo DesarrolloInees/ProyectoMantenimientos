@@ -1,12 +1,80 @@
+<!-- En el head de tu plantilla principal -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <style>
-    /* Asegura que las opciones del Select2 salgan ENCIMA del modal */
+    /* Asegura que el modal esté por encima de todo */
+    #modalRepuestos {
+        z-index: 9999;
+    }
+
+    /* Asegura que Select2 funcione dentro del modal */
+    .select2-container {
+        z-index: 99999 !important;
+    }
+
+    /* Estilo para el botón de cerrar */
+    #modalRepuestos .fixed {
+        position: fixed;
+    }
+
+    /* Asegura visibilidad del modal */
+    .hidden {
+        display: none !important;
+    }
+
+    .flex {
+        display: flex !important;
+    }
+
+
+    /* 1. Ajustar el contenedor principal del Select2 */
+    .select2-container--default .select2-selection--single {
+        height: 30px !important;
+        /* Altura fija más compacta */
+        min-height: 30px !important;
+        padding: 0px !important;
+        border: 1px solid #d1d5db !important;
+        /* Borde gris suave */
+        border-radius: 0.375rem !important;
+        /* Redondeado Tailwind (rounded-md) */
+        display: flex !important;
+        align-items: center !important;
+        background-color: #ffffff !important;
+    }
+
+    /* 2. Ajustar el texto interno para que no se corte */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 28px !important;
+        /* Centrado vertical */
+        padding-left: 8px !important;
+        padding-right: 20px !important;
+        /* Espacio para la flecha */
+        color: #374151 !important;
+        /* Texto gris oscuro */
+        font-size: 11px !important;
+        /* Letra pequeña acorde a la tabla */
+        font-weight: 600 !important;
+        /* Un poco de negrita */
+    }
+
+    /* 3. Ajustar la flechita de la derecha */
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 28px !important;
+        top: 1px !important;
+        right: 1px !important;
+    }
+
+    /* 4. Asegurar que el desplegable (la lista de opciones) tenga prioridad alta pero no tape el sidebar si este tiene z-index correcto */
     .select2-container--open {
         z-index: 9999999 !important;
     }
 
-    /* Ajuste para que el modal no corte contenido */
-    #modalRepuestos {
-        z-index: 50;
+    /* 5. Ajustar el buscador interno del Select2 */
+    .select2-search__field {
+        font-size: 12px !important;
+        padding: 4px !important;
     }
 </style>
 
@@ -43,7 +111,13 @@
             <a href="index.php?pagina=ordenVer" class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
+
+            <button type="button" onclick="exportarExcelNovedades()" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700 shadow ml-2">
+            <i class="fas fa-file-contract mr-2"></i> Reporte Novedades
+        </button>
         </div>
+
+        
     </div>
 
     <form action="index.php?pagina=ordenDetalle&accion=guardarCambios" method="POST">
@@ -63,6 +137,7 @@
                         <th class="p-2 border bg-blue-700 w-20 text-yellow-300 font-bold">6. Zona</th>
                         <th class="p-2 border bg-blue-700 w-32 text-yellow-300 font-bold">7. Máquina</th>
                         <th class="p-2 border bg-blue-700 w-64 text-yellow-300 font-bold border-yellow-500 border-r-4">8. ¿Qué se hizo?</th>
+                        <th class="p-2 border bg-red-900 text-white w-10 text-center" title="Marcar Novedad">⚠️</th>
 
                         <th class="p-2 border bg-green-800 w-24 text-white">9. Valor</th>
                         <th class="p-2 border bg-gray-700 text-gray-300">10. Rem</th>
@@ -73,6 +148,7 @@
 
                         <th class="p-2 border bg-gray-700">13. Repuestos</th>
                         <th class="p-2 border bg-gray-700">14. Est/Calif</th>
+                        
                     </tr>
                 </thead>
 
@@ -94,8 +170,7 @@
                                 <td class="p-1">
                                     <select name="servicios[<?= $idFila ?>][id_cliente]"
                                         onchange="cargarPuntos(<?= $idFila ?>, this.value)"
-                                        class="w-full border rounded p-1 text-[10px]">
-                                        <?php foreach ($listaClientes as $c): ?>
+                                        class="select2-cliente w-full border rounded p-1 text-[10px]"> <?php foreach ($listaClientes as $c): ?>
                                             <option value="<?= $c['id_cliente'] ?>"
                                                 data-full="<?= $c['nombre_cliente'] ?>"
                                                 <?= $c['id_cliente'] == $s['id_cliente'] ? 'selected' : '' ?>>
@@ -108,9 +183,10 @@
 
                                 <!-- 2. PUNTO -->
                                 <td class="p-1">
-                                    <select id="sel_punto_<?= $idFila ?>" name="servicios[<?= $idFila ?>][id_punto]"
+                                    <select id="sel_punto_<?= $idFila ?>"
+                                        name="servicios[<?= $idFila ?>][id_punto]"
                                         onchange="cargarMaquinas(<?= $idFila ?>, this.value)"
-                                        class="w-full border rounded p-1 text-[10px]">
+                                        class="select2-punto w-full border rounded p-1 text-[10px]">
                                         <option value="<?= $s['id_punto'] ?? '' ?>"
                                             data-full="<?= $s['nombre_punto'] ?>" selected>
                                             <?= substr($s['nombre_punto'], 0, 20) ?>...
@@ -182,6 +258,21 @@
                                     <textarea name="servicios[<?= $idFila ?>][obs]" rows="3" class="w-full border rounded text-xs p-1 shadow-inner focus:bg-white transition"><?= $s['que_se_hizo'] ?></textarea>
                                 </td>
 
+                                <td class="p-1 text-center bg-gray-50">
+                                    <input type="hidden"
+                                        name="servicios[<?= $idFila ?>][tiene_novedad]"
+                                        id="input_novedad_<?= $idFila ?>"
+                                        value="<?= $s['tiene_novedad'] ?>">
+
+                                    <button type="button"
+                                        onclick="toggleNovedad(<?= $idFila ?>)"
+                                        id="btn_novedad_<?= $idFila ?>"
+                                        class="w-full h-8 rounded border shadow-sm transition-colors duration-300 flex items-center justify-center <?= $s['tiene_novedad'] == 1 ? 'bg-red-500 border-red-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-300 hover:bg-gray-200' ?>">
+
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </button>
+                                </td>
+
                                 <!-- 9. VALOR -->
                                 <td class="p-1 bg-green-50">
                                     <input type="text" name="servicios[<?= $idFila ?>][valor]"
@@ -219,62 +310,37 @@
                                 <!-- 14. REPUESTOS -->
                                 <td class="p-1 bg-gray-50 text-center align-middle">
                                     <?php
-                                    $jsonParaModal = '[]';
-                                    $textoBD = $s['repuestos_usados'] ?? '';
-                                    $arrayTemp = [];
+                                    // Los repuestos ahora vienen en DOS formatos:
+                                    // 1. $s['repuestos_texto'] → "Batería, Cable USB (PROSEGUR)"
+                                    // 2. $s['repuestos_json'] → '[{"id":"123","nombre":"Batería","origen":"INEES"},...]'
 
-                                    // PALABRAS QUE SIGNIFICAN "VACÍO" (Para que no cree items falsos)
-                                    $palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO'];
+                                    $jsonRepuestos = $s['repuestos_json'] ?? '[]';
+                                    $textoRepuestos = $s['repuestos_texto'] ?? '';
 
-                                    if (!empty($textoBD)) {
-                                        $items = explode(',', $textoBD);
-
-                                        foreach ($items as $item) {
-                                            $itemLimpio = trim($item);
-
-                                            // 1. Si está vacío o es una palabra de la lista negra, SALTÁTELO
-                                            if (empty($itemLimpio) || in_array(strtoupper($itemLimpio), $palabrasIgnorar)) {
-                                                continue;
-                                            }
-
-                                            // 2. Detectar origen (INEES o PROSEGUR)
-                                            $origen = 'INEES';
-                                            if (strpos(strtoupper($itemLimpio), '(PROSEGUR)') !== false) {
-                                                $origen = 'PROSEGUR';
-                                                $nombre = str_ireplace('(PROSEGUR)', '', $itemLimpio);
-                                            } elseif (strpos(strtoupper($itemLimpio), '(INEES)') !== false) {
-                                                $origen = 'INEES';
-                                                $nombre = str_ireplace('(INEES)', '', $itemLimpio);
-                                            } else {
-                                                $nombre = $itemLimpio;
-                                            }
-
-                                            // 3. Agregar solo si quedó un nombre válido
-                                            if (!empty(trim($nombre))) {
-                                                $arrayTemp[] = [
-                                                    'id' => '',
-                                                    'nombre' => trim($nombre),
-                                                    'origen' => $origen
-                                                ];
-                                            }
-                                        }
-                                        $jsonParaModal = json_encode($arrayTemp, JSON_UNESCAPED_UNICODE);
-                                    }
+                                    // Contar repuestos
+                                    $arrayRepuestos = json_decode($jsonRepuestos, true) ?: [];
+                                    $cantidadRepuestos = count($arrayRepuestos);
                                     ?>
 
-                                    <button type="button"
-                                        onclick="abrirModalRepuestos(<?= $idFila ?>)"
+                                    <!-- 👇 BOTÓN CORREGIDO (quita los ... y pon clases completas) 👇 -->
+                                    <button type="button" onclick="abrirModalRepuestos(<?= $idFila ?>)"
                                         class="bg-white border border-gray-300 hover:bg-blue-50 text-gray-700 text-[10px] px-2 py-1 rounded w-full shadow-sm transition flex items-center justify-center gap-1">
                                         <i class="fas fa-tools text-blue-500"></i>
                                         <span id="btn_texto_<?= $idFila ?>">
-                                            <?= !empty($arrayTemp) ? count($arrayTemp) . ' Items' : 'Gest. Repuestos' ?>
+                                            <?= $cantidadRepuestos > 0 ? $cantidadRepuestos . ' Items' : 'Gest. Repuestos' ?>
                                         </span>
                                     </button>
 
+                                    <!-- JSON para el modal -->
                                     <input type="hidden"
                                         name="servicios[<?= $idFila ?>][json_repuestos]"
                                         id="input_json_<?= $idFila ?>"
-                                        value='<?= $jsonParaModal ?>'>
+                                        value='<?= htmlspecialchars($jsonRepuestos, ENT_QUOTES, 'UTF-8') ?>'>
+
+                                    <!-- Texto para compatibilidad -->
+                                    <input type="hidden"
+                                        id="input_db_<?= $idFila ?>"
+                                        value='<?= htmlspecialchars($textoRepuestos, ENT_QUOTES, 'UTF-8') ?>'>
                                 </td>
 
                                 <!-- 15. ESTADO/CALIFICACIÓN -->
@@ -291,6 +357,8 @@
                                     </select>
                                 </td>
 
+                                
+
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -298,11 +366,13 @@
             </table>
         </div>
 
-        <div class="mt-4 text-center pb-8 sticky bottom-0 bg-white border-t p-2 z-20">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-800 text-white font-bold py-3 px-10 rounded-full shadow-xl">
-                <i class="fas fa-save mr-2"></i> GUARDAR TODO
+        <div class="fixed bottom-6 right-6 z-40">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-800 text-white font-bold py-4 px-6 rounded-full shadow-2xl flex items-center gap-2 transform hover:scale-105 transition duration-300 border-2 border-white">
+                <i class="fas fa-save text-xl"></i>
+                <span class="text-lg">GUARDAR CAMBIOS</span>
             </button>
         </div>
+
     </form>
 </div>
 
@@ -368,60 +438,230 @@
 
 
 <script>
-    // 1. CARGAMOS LA LISTA MAESTRA DE REPUESTOS DESDE PHP
-    // (Asegúrate de que $listaRepuestos esté disponible en tu vista PHP)
-    const catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
-    // Variable temporal para manipular los repuestos en el modal
-    let repuestosTemporales = [];
+    // ==========================================
+    // 1. CONFIGURACIÓN E INICIALIZACIÓN MAESTRA
+    // ==========================================
 
-    document.addEventListener("DOMContentLoaded", function() {
-        // Inicializar Select2 en el modal
-        $('#select_repuesto_modal').select2({
+    // Lista maestra de repuestos (desde PHP)
+    const catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
+    let repuestosTemporales = []; // Variable global para el modal
+
+    $(document).ready(function() {
+        console.log("Iniciando Sistema Completo...");
+
+        // ---------------------------------------------
+        // A. INICIALIZAR BUSCADOR DE CLIENTES (TABLA)
+        // ---------------------------------------------
+        $('.select2-cliente').select2({
             width: '100%',
-            dropdownParent: $('#modalRepuestos'), // CRÍTICO para modales
-            placeholder: "Buscar repuesto...",
             language: {
                 noResults: () => "No encontrado"
             }
         });
 
-        // Llenar el select del modal una sola vez
-        const select = document.getElementById('select_repuesto_modal');
-        let html = '<option value="">- Buscar Repuesto -</option>';
-        catalogoRepuestos.forEach(r => {
-            html += `<option value="${r.id_repuesto}">${r.nombre_repuesto}</option>`;
+        // ---------------------------------------------
+        // B. INICIALIZAR BUSCADOR DE PUNTOS (TABLA)
+        // ---------------------------------------------
+        $('.select2-punto').select2({
+            width: '100%',
+            language: {
+                noResults: () => "No encontrado"
+            }
         });
-        select.innerHTML = html;
+
+        // ---------------------------------------------
+        // C. LÓGICA MÁGICA: CARGA AUTOMÁTICA DE PUNTOS
+        // ---------------------------------------------
+        // Esto detecta cuando intentas abrir el select de puntos
+        $(document).on('select2:opening', '.select2-punto', function(e) {
+            let select = $(this);
+            let idFila = select.attr('id').replace('sel_punto_', '');
+
+            // Si ya cargamos los datos (data-loaded="true"), dejamos que se abra normal
+            if (select.attr('data-loaded') === 'true') {
+                return;
+            }
+
+            // Si NO están cargados:
+            // 1. Detenemos la apertura para que no muestre "Cargando..." o una lista vacía
+            e.preventDefault();
+
+            // 2. Buscamos el cliente seleccionado en esa misma fila
+            // Usamos .closest('tr') para encontrar la fila y luego buscar el cliente ahí
+            let filaTR = select.closest('tr');
+            let selectCliente = filaTR.find('.select2-cliente');
+            let idCliente = selectCliente.val();
+
+            if (idCliente) {
+                // 3. Llamamos a la función de carga
+                cargarPuntos(idFila, idCliente, true, function() {
+                    // Callback: Cuando termine de cargar, abrimos el select automáticamente
+                    select.select2('open');
+                });
+            } else {
+                alert("⚠️ Por favor seleccione primero un cliente.");
+            }
+        });
+
+        // ---------------------------------------------
+        // D. INICIALIZAR MODAL DE REPUESTOS
+        // ---------------------------------------------
+        // Destruir instancia previa si existe
+        if ($('#select_repuesto_modal').data('select2')) {
+            $('#select_repuesto_modal').select2('destroy');
+        }
+
+        $('#select_repuesto_modal').select2({
+            width: '100%',
+            dropdownParent: $('#modalRepuestos'), // CRUCIAL PARA MODALES
+            placeholder: "- Buscar Repuesto -",
+            allowClear: true,
+            language: {
+                noResults: () => "No se encontró el repuesto"
+            }
+        });
+
+        // Llenar el select del modal de repuestos
+        const selectRep = document.getElementById('select_repuesto_modal');
+        if (selectRep) {
+            let html = '<option value="">- Buscar Repuesto -</option>';
+            catalogoRepuestos.forEach(r => {
+                html += `<option value="${r.id_repuesto}">${r.nombre_repuesto}</option>`;
+            });
+            selectRep.innerHTML = html;
+        }
+
+        // Corrección Z-Index para Select2
+        $('head').append('<style>.select2-container--open { z-index: 99999999 !important; }</style>');
+
+        // Ejecutar cálculos iniciales
+        calcularDesplazamientos();
+        iniciarPaginacion();
     });
 
-    // ==========================================
-    // LÓGICA DEL MODAL
-    // ==========================================
+    // Función para verificar si una cadena está vacía (reemplaza empty() de PHP)
+    function isEmpty(str) {
+        return (!str || str.trim() === '');
+    }
+
+    // Función para convertir texto plano a array de repuestos
+    function convertirTextoARepuestos(texto) {
+        const arrayTemp = [];
+        if (isEmpty(texto)) return arrayTemp;
+
+        const items = texto.split(',');
+        const palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO'];
+
+        items.forEach(item => {
+            const itemLimpio = item.trim();
+            if (isEmpty(itemLimpio) || palabrasIgnorar.includes(itemLimpio.toUpperCase())) return;
+
+            let origen = 'INEES';
+            let nombre = itemLimpio;
+
+            if (itemLimpio.toUpperCase().includes('(PROSEGUR)')) {
+                origen = 'PROSEGUR';
+                nombre = itemLimpio.replace(/\(PROSEGUR\)/gi, '').trim();
+            } else if (itemLimpio.toUpperCase().includes('(INEES)')) {
+                origen = 'INEES';
+                nombre = itemLimpio.replace(/\(INEES\)/gi, '').trim();
+            }
+
+            // Buscar si el repuesto existe en el catálogo
+            const repuestoEnCatalogo = catalogoRepuestos.find(r =>
+                r.nombre_repuesto.toLowerCase() === nombre.toLowerCase() ||
+                r.nombre_repuesto.toLowerCase().includes(nombre.toLowerCase())
+            );
+
+            arrayTemp.push({
+                id: repuestoEnCatalogo ? repuestoEnCatalogo.id_repuesto : '',
+                nombre: nombre,
+                origen: origen
+            });
+        });
+
+        return arrayTemp;
+    }
+
+    // Función para combinar arrays sin duplicados
+    function combinarRepuestos(existentes, nuevos) {
+        const combinados = [...existentes];
+
+        nuevos.forEach(nuevo => {
+            // Evitar duplicados por nombre
+            const existe = combinados.some(existente =>
+                existente.nombre.toLowerCase() === nuevo.nombre.toLowerCase() &&
+                existente.origen === nuevo.origen
+            );
+
+            if (!existe) {
+                combinados.push(nuevo);
+            }
+        });
+
+        return combinados;
+    }
 
     function abrirModalRepuestos(idFila) {
+        console.log("Abriendo modal para fila:", idFila);
+
         // 1. Guardar qué fila estamos editando
         document.getElementById('modal_fila_actual').value = idFila;
 
-        // 2. Recuperar lo que ya tenga esa fila (del input oculto)
+        // 2. Recuperar de DOS FUENTES:
         const inputJson = document.getElementById(`input_json_${idFila}`);
-        const valorActual = inputJson.value;
+        const inputDb = document.getElementById(`input_db_${idFila}`);
 
+        let repuestosExistentes = [];
+        let repuestosNuevos = [];
+
+        // A. Cargar repuestos del JSON del modal
         try {
-            repuestosTemporales = valorActual ? JSON.parse(valorActual) : [];
+            repuestosNuevos = inputJson && inputJson.value ? JSON.parse(inputJson.value) : [];
         } catch (e) {
-            console.error("Error parseando JSON existente", e);
-            repuestosTemporales = [];
+            console.error("Error parseando JSON del modal", e);
+            repuestosNuevos = [];
         }
+
+        // B. Cargar repuestos de la BD (texto plano)
+        const textoBD = inputDb ? inputDb.value : '';
+        if (textoBD && textoBD.trim() !== '') {
+            try {
+                // Intentar parsear como JSON primero
+                repuestosExistentes = JSON.parse(textoBD);
+            } catch (e) {
+                // Si no es JSON válido, es texto plano
+                repuestosExistentes = convertirTextoARepuestos(textoBD);
+            }
+        }
+
+        // C. COMBINAR ambos arrays
+        repuestosTemporales = combinarRepuestos(repuestosExistentes, repuestosNuevos);
+
+        console.log("Repuestos combinados:", repuestosTemporales);
 
         // 3. Renderizar y Mostrar
         renderizarListaVisual();
-        document.getElementById('modalRepuestos').classList.remove('hidden');
-        document.getElementById('modalRepuestos').classList.add('flex');
+        const modal = document.getElementById('modalRepuestos');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+
+    function borrarRepuestoTemporal(index) {
+        if (confirm("¿Seguro que quieres eliminar este repuesto?")) {
+            repuestosTemporales.splice(index, 1);
+            renderizarListaVisual();
+        }
     }
 
     function cerrarModal() {
-        document.getElementById('modalRepuestos').classList.add('hidden');
-        document.getElementById('modalRepuestos').classList.remove('flex');
+        const modal = document.getElementById('modalRepuestos');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
         // Limpiar selección
         $('#select_repuesto_modal').val(null).trigger('change');
     }
@@ -450,13 +690,10 @@
         renderizarListaVisual();
     }
 
-    function borrarRepuestoTemporal(index) {
-        repuestosTemporales.splice(index, 1);
-        renderizarListaVisual();
-    }
-
     function renderizarListaVisual() {
         const ul = document.getElementById('lista_repuestos_visual');
+        if (!ul) return;
+
         ul.innerHTML = '';
 
         if (repuestosTemporales.length === 0) {
@@ -467,37 +704,54 @@
         repuestosTemporales.forEach((item, index) => {
             const colorOrigen = item.origen === 'INEES' ? 'text-blue-600' : 'text-orange-600';
             ul.innerHTML += `
-                <li class="flex justify-between items-center bg-white p-2 mb-1 border rounded shadow-sm">
-                    <span class="text-xs">
-                        <b class="${colorOrigen}">[${item.origen}]</b> ${item.nombre}
-                    </span>
-                    <button type="button" onclick="borrarRepuestoTemporal(${index})" class="text-red-500 hover:text-red-700">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </li>
-            `;
+            <li class="flex justify-between items-center bg-white p-2 mb-1 border rounded shadow-sm">
+                <span class="text-xs">
+                    <b class="${colorOrigen}">[${item.origen}]</b> ${item.nombre}
+                </span>
+                <button type="button" onclick="borrarRepuestoTemporal(${index})" class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </li>
+        `;
         });
     }
 
     function guardarCambiosModal() {
         const idFila = document.getElementById('modal_fila_actual').value;
-
-        // 1. Guardar JSON en el input oculto de la fila
         const inputJson = document.getElementById(`input_json_${idFila}`);
-        inputJson.value = JSON.stringify(repuestosTemporales);
-
-        // 2. Actualizar el texto del botón visualmente para dar feedback
+        const inputDb = document.getElementById(`input_db_${idFila}`);
         const btnTexto = document.getElementById(`btn_texto_${idFila}`);
-        const cantidad = repuestosTemporales.length;
 
-        if (cantidad > 0) {
-            btnTexto.innerText = `${cantidad} Items`;
-            btnTexto.parentElement.classList.add('bg-blue-100', 'border-blue-400');
-        } else {
-            btnTexto.innerText = "Gest. Repuestos";
-            btnTexto.parentElement.classList.remove('bg-blue-100', 'border-blue-400');
+        if (!inputJson || !inputDb || !btnTexto) {
+            console.error("Elementos no encontrados para fila:", idFila);
+            return;
         }
 
+        // 1. Guardar el JSON actualizado
+        inputJson.value = JSON.stringify(repuestosTemporales);
+
+        // 2. También actualizar el input de texto para la BD
+        const textoParaBD = repuestosTemporales.map(item => {
+            if (item.origen === 'PROSEGUR') {
+                return `${item.nombre} (PROSEGUR)`;
+            } else {
+                return item.nombre;
+            }
+        }).join(', ');
+
+        inputDb.value = textoParaBD;
+
+        // 3. Actualizar botón visual
+        const button = btnTexto.parentElement;
+        if (repuestosTemporales.length > 0) {
+            btnTexto.innerText = `${repuestosTemporales.length} Items`;
+            button.classList.add('bg-blue-100', 'border-blue-400');
+        } else {
+            btnTexto.innerText = "Gest. Repuestos";
+            button.classList.remove('bg-blue-100', 'border-blue-400');
+        }
+
+        console.log("Guardados cambios para fila:", idFila, repuestosTemporales);
         cerrarModal();
     }
     // ==========================================
@@ -653,14 +907,22 @@
     }
 
     // ==========================================
-    // 4. FUNCIONES AJAX DE CARGA
+    // 4. FUNCIÓN CARGAR PUNTOS MEJORADA (Compatible con Select2)
     // ==========================================
-    function cargarPuntos(idFila, idCliente) {
-        let selPunto = document.getElementById(`sel_punto_${idFila}`);
+    // ==========================================
+    // 2. FUNCIÓN CARGAR PUNTOS (ARREGLADA)
+    // ==========================================
+    function cargarPuntos(idFila, idCliente, mantenerValorActual = false, callback = null) {
+        let selPunto = $(`#sel_punto_${idFila}`); // Usamos jQuery para Select2
         let selMaq = document.getElementById(`sel_maq_${idFila}`);
 
-        selPunto.innerHTML = '<option>Cargando...</option>';
-        selMaq.innerHTML = '<option>Esperando punto...</option>';
+        let valorPrevio = selPunto.val();
+
+        // Si es cambio de cliente (no mantener), limpiamos visualmente
+        if (!mantenerValorActual) {
+            selPunto.html('<option>Cargando...</option>');
+            selMaq.innerHTML = '<option>Esperando punto...</option>';
+        }
 
         let fd = new FormData();
         fd.append('accion', 'ajaxObtenerPuntos');
@@ -672,16 +934,50 @@
             })
             .then(res => res.json())
             .then(data => {
-                selPunto.innerHTML = '<option value="">- Seleccione -</option>';
+                let options = '<option value="">- Seleccione -</option>';
                 data.forEach(p => {
-                    selPunto.innerHTML += `<option value="${p.id_punto}" data-full="${p.nombre_punto}">${p.nombre_punto}</option>`;
+                    options += `<option value="${p.id_punto}" data-full="${p.nombre_punto}">${p.nombre_punto}</option>`;
                 });
 
-                if (data.length > 0) {
-                    selPunto.value = data[0].id_punto;
+                // 1. Actualizamos el HTML del select original
+                selPunto.html(options);
+
+                // 2. Lógica de selección
+                if (mantenerValorActual && valorPrevio) {
+                    selPunto.val(valorPrevio); // Restaurar valor en el HTML
+                    selPunto.attr('data-loaded', 'true'); // IMPORTANTE: Marcar como cargado para que el evento no se repita
+                } else if (data.length > 0) {
+                    // Si es cambio de cliente, seleccionar el primero
+                    selPunto.val(data[0].id_punto);
                     cargarMaquinas(idFila, data[0].id_punto);
                 }
-            });
+
+                // 3. AVISAR A SELECT2 QUE EL CONTENIDO CAMBIÓ (CRUCIAL)
+                selPunto.trigger('change.select2');
+
+                // 4. Ejecutar callback (abrir el menú)
+                if (callback) callback();
+            })
+            .catch(error => console.error("Error cargando puntos:", error));
+    }
+
+    // --- AGREGA ESTA NUEVA FUNCIÓN JUSTO DEBAJO ---
+    function verificarCargaPuntos(idFila) {
+        let selPunto = document.getElementById(`sel_punto_${idFila}`);
+
+        // Si ya tiene el atributo data-loaded, no hacemos nada (ya cargó)
+        if (selPunto.getAttribute('data-loaded') === 'true') return;
+
+        // Obtenemos el cliente seleccionado en esa fila
+        // Nota: Buscamos el select de cliente por su atributo name
+        let selCliente = document.querySelector(`select[name="servicios[${idFila}][id_cliente]"]`);
+        let idCliente = selCliente ? selCliente.value : null;
+
+        if (idCliente) {
+            console.log("Cargando puntos completos para fila " + idFila);
+            // Llamamos a cargarPuntos indicando TRUE para mantener el valor actual
+            cargarPuntos(idFila, idCliente, true);
+        }
     }
 
     function cargarMaquinas(idFila, idPunto) {
@@ -736,148 +1032,228 @@
     }
 
     // ==========================================
-// 5. EXCEL LIMPIO (CORREGIDO)
-// ==========================================
-function exportarExcelLimpio() {
-    if (typeof XLSX === 'undefined') {
-        alert("Error: Librería SheetJS no cargada.");
-        return;
-    }
-
-    let tabla = document.getElementById("tablaEdicion");
-    let filas = Array.from(tabla.querySelectorAll('tbody tr'));
-    let serviciosPorDelegacion = {};
-
-    filas.forEach((fila, index) => {
-        let celdas = fila.querySelectorAll('td');
-
-        // Si la fila es de "No hay datos", ignorar
-        if (celdas.length < 14) return;
-
-        // ... (Lógica de extracción de textos igual que antes) ...
-        let delegacionTxt = obtenerTextoDeDiv(celdas[1]);
-        let tipoMaqTxt = obtenerTextoDeDiv(celdas[6]);
-
-        // Lógica Preventivo/Correctivo
-        let txtServicio = obtenerTexto(celdas[4]).toLowerCase();
-        let esPrevBasico = txtServicio.includes('basico') || txtServicio.includes('básico');
-        let esPrevProfundo = txtServicio.includes('profundo') || txtServicio.includes('completo');
-        let esCorrectivo = txtServicio.includes('correctivo') || txtServicio.includes('reparacion');
-        if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes('preventivo')) esPrevBasico = true;
-
-        // Duración y Repuestos
-        let entrada = obtenerValorInput(celdas[10]);
-        let salida = obtenerValorInput(celdas[11]);
-        let duracionCalc = calcularDuracion(entrada, salida);
-
-        // ⭐ CAPTURAR DESPLAZAMIENTO (Está en la columna índice 12)
-        let desplazamientoTxt = celdas[12].innerText.trim();
-
-        // ⭐ NUEVO: Limpiar "Err H." en Desplazamiento
-        if (desplazamientoTxt.includes("Err H.")) {
-            desplazamientoTxt = "";
+    // 5. EXCEL LIMPIO (CORREGIDO - VERSIÓN CON REPUESTOS REALES)
+    // ==========================================
+    function exportarExcelLimpio() {
+        if (typeof XLSX === 'undefined') {
+            alert("Error: Librería SheetJS no cargada.");
+            return;
         }
 
-        let txtRepuestos = "";
-        if (celdas[13]) {
-            txtRepuestos = celdas[13].getAttribute('data-full') || celdas[13].innerText.trim();
-        }
+        let tabla = document.getElementById("tablaEdicion");
+        let filas = Array.from(tabla.querySelectorAll('tbody tr'));
+        let serviciosPorDelegacion = {};
 
-        // ⭐ NUEVO: Limpiar "Gest. Repuestos"
-        if (txtRepuestos.includes("Gest. Repuestos")) {
-            txtRepuestos = "";
-        }
+        filas.forEach((fila, index) => {
+            let celdas = fila.querySelectorAll('td');
 
-        // Limpieza estándar (sin, no, ningun, n/a)
-        if (txtRepuestos.match(/(sin|no|ningun|n\/a)/i)) txtRepuestos = "";
+            // Si la fila es de "No hay datos", ignorar
+            if (celdas.length < 14) return;
 
-        let datos = {
-            device_id: obtenerTextoSelect(celdas[6]),
-            remision: obtenerValorInput(celdas[9]),
-            cliente: obtenerTextoSelect(celdas[0]),
-            punto: obtenerTextoSelect(celdas[1]),
-            esPrevBasico: esPrevBasico ? "X" : "",
-            esPrevProfundo: esPrevProfundo ? "X" : "",
-            esCorrectivo: esCorrectivo ? "X" : "",
-            valor: obtenerValorInput(celdas[8]),
-            obs: obtenerValorTextArea(celdas[7]),
-            delegacion: delegacionTxt || "SIN ASIGNAR",
-            fecha: obtenerValorInput(celdas[2]),
-            tecnico: obtenerTextoSelect(celdas[3]),
-            tipoMaquina: tipoMaqTxt,
-            servicio: obtenerTextoSelect(celdas[4]),
-            horaEntrada: entrada,
-            horaSalida: salida,
-            duracion: duracionCalc,
-            desplazamiento: desplazamientoTxt, // Ya viene limpio si tenía Err H.
-            repuestos: txtRepuestos,           // Ya viene limpio si tenía Gest. Repuestos
-            estado: obtenerTextoSelect(celdas[14], 0),
-            calificacion: obtenerTextoSelect(celdas[14], 1),
-            modalidad: obtenerTextoSelect(celdas[5])
-        };
+            // ... (Lógica de extracción de textos igual que antes) ...
+            let delegacionTxt = obtenerTextoDeDiv(celdas[1]);
+            let tipoMaqTxt = obtenerTextoDeDiv(celdas[6]);
 
-        let keyDel = datos.delegacion;
-        if (!serviciosPorDelegacion[keyDel]) {
-            serviciosPorDelegacion[keyDel] = [];
-        }
-        serviciosPorDelegacion[keyDel].push(datos);
-    });
+            // Lógica Preventivo/Correctivo
+            let txtServicio = obtenerTexto(celdas[4]).toLowerCase();
+            let esPrevBasico = txtServicio.includes('basico') || txtServicio.includes('básico');
+            let esPrevProfundo = txtServicio.includes('profundo') || txtServicio.includes('completo');
+            let esCorrectivo = txtServicio.includes('correctivo') || txtServicio.includes('reparacion');
+            if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes('preventivo')) esPrevBasico = true;
 
-    // CREAR EXCEL
-    let workbook = XLSX.utils.book_new();
-    let hayDatos = Object.keys(serviciosPorDelegacion).length > 0;
+            // Duración y Repuestos
+            let entrada = obtenerValorInput(celdas[10]);
+            let salida = obtenerValorInput(celdas[11]);
+            let duracionCalc = calcularDuracion(entrada, salida);
 
-    if (!hayDatos) {
-        alert("No hay datos válidos para exportar.");
-        return;
-    }
+            // ⭐ CAPTURAR DESPLAZAMIENTO (Está en la columna índice 12)
+            let desplazamientoTxt = celdas[12].innerText.trim();
 
-    for (let delegacion in serviciosPorDelegacion) {
-        let lista = serviciosPorDelegacion[delegacion];
+            // ⭐ NUEVO: Limpiar "Err H." en Desplazamiento
+            if (desplazamientoTxt.includes("Err H.")) {
+                desplazamientoTxt = "";
+            }
 
-        // ⭐ AGREGAMOS LA COLUMNA 'Desplazamiento' EN LA MATRIZ
-        let matriz = [
-            [
-                'Device_id', 'Número de Remisión', 'Cliente', 'Nombre Punto',
-                'Preventivo Básico', 'Preventivo Profundo', 'Correctivo',
-                'Tarifa', 'Observaciones', 'Delegación', 'Fecha', 'Técnico',
-                'Tipo de Máquina', 'Tipo de Servicio', 'Hora Entrada', 'Hora Salida',
-                'Duración', 'Desplazamiento', 'Repuestos', 'Estado de la Máquina',
-                'Calificación del Servicio', 'Modalidad Operativa'
-            ]
-        ];
+            // ⭐⭐⭐ CRÍTICO: OBTENER REPUESTOS REALES DE LOS INPUTS OCULTOS ⭐⭐⭐
+            let txtRepuestos = "";
+            if (celdas[13]) {
+                // 1. Buscar el input oculto con el texto real de repuestos
+                const idFila = fila.id.replace('fila_', '');
+                const inputDb = document.getElementById(`input_db_${idFila}`);
 
-        lista.forEach(d => {
-            matriz.push([
-                d.device_id, d.remision, d.cliente, d.punto,
-                d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
-                d.valor, d.obs, d.delegacion, d.fecha, d.tecnico,
-                d.tipoMaquina, d.servicio, d.horaEntrada, d.horaSalida,
-                d.duracion, d.desplazamiento, d.repuestos, d.estado,
-                d.calificacion, d.modalidad
-            ]);
+                if (inputDb && inputDb.value) {
+                    // Este input tiene el texto real: "Batería, Cable USB (PROSEGUR)"
+                    txtRepuestos = inputDb.value;
+                } else {
+                    // Fallback: intentar obtener del botón o texto visible
+                    txtRepuestos = celdas[13].innerText.trim();
+                }
+            }
+
+            // ⭐ NUEVO: Limpiar "Gest. Repuestos" y "X Items"
+            // También limpiamos "4 Items", "3 Items", etc.
+            if (txtRepuestos.includes("Gest. Repuestos") ||
+                txtRepuestos.includes(" Items") ||
+                txtRepuestos.match(/\d+\s+Items/)) {
+                txtRepuestos = "";
+            }
+
+            // Limpieza estándar (sin, no, ningun, n/a)
+            if (txtRepuestos.match(/(sin|no|ningun|n\/a)/i)) txtRepuestos = "";
+
+            // --- ⭐ LÓGICA TARIFA (PUNTO A COMA) ⭐ ---
+            let valorRaw = obtenerValorInput(celdas[8]);
+            let valorConComa = "";
+            if (valorRaw) {
+                // Convierte a string y fuerza el cambio de punto a coma
+                valorConComa = valorRaw.toString().replace(/\./g, ',');
+            }
+
+            let datos = {
+                device_id: obtenerTextoSelect(celdas[6]),
+                remision: obtenerValorInput(celdas[9]),
+                cliente: obtenerTextoSelect(celdas[0]),
+                punto: obtenerTextoSelect(celdas[1]),
+                esPrevBasico: esPrevBasico ? "X" : "",
+                esPrevProfundo: esPrevProfundo ? "X" : "",
+                esCorrectivo: esCorrectivo ? "X" : "",
+                valor: valorConComa, // ✅ Usa la variable formateada                
+                obs: obtenerValorTextArea(celdas[7]),
+                delegacion: delegacionTxt || "SIN ASIGNAR",
+                fecha: obtenerValorInput(celdas[2]),
+                tecnico: obtenerTextoSelect(celdas[3]),
+                tipoMaquina: tipoMaqTxt,
+                servicio: obtenerTextoSelect(celdas[4]),
+                horaEntrada: entrada,
+                horaSalida: salida,
+                duracion: duracionCalc,
+                desplazamiento: desplazamientoTxt,
+                repuestos: txtRepuestos, // ✅ Ahora trae los repuestos reales
+                estado: obtenerTextoSelect(celdas[14], 0),
+                calificacion: obtenerTextoSelect(celdas[14], 1),
+                modalidad: obtenerTextoSelect(celdas[5])
+            };
+
+            let keyDel = datos.delegacion;
+            if (!serviciosPorDelegacion[keyDel]) {
+                serviciosPorDelegacion[keyDel] = [];
+            }
+            serviciosPorDelegacion[keyDel].push(datos);
         });
 
-        let ws = XLSX.utils.aoa_to_sheet(matriz);
-        
-        // Ajustamos anchos de columna
-        ws['!cols'] = [
-            { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 },
-            { wch: 8 },  { wch: 8 },  { wch: 8 },  { wch: 12 },
-            { wch: 35 }, { wch: 15 }, { wch: 12 }, { wch: 20 },
-            { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
-            { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, 
-            { wch: 15 }, { wch: 15 }
-        ];
+        // CREAR EXCEL
+        let workbook = XLSX.utils.book_new();
+        let hayDatos = Object.keys(serviciosPorDelegacion).length > 0;
 
-        let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Hoja1";
-        XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
+        if (!hayDatos) {
+            alert("No hay datos válidos para exportar.");
+            return;
+        }
+
+        for (let delegacion in serviciosPorDelegacion) {
+            let lista = serviciosPorDelegacion[delegacion];
+
+            let matriz = [
+                [
+                    'Device_id', 'Número de Remisión', 'Cliente', 'Nombre Punto',
+                    'Preventivo Básico', 'Preventivo Profundo', 'Correctivo',
+                    'Tarifa', 'Observaciones', 'Delegación', 'Fecha', 'Técnico',
+                    'Tipo de Máquina', 'Tipo de Servicio', 'Hora Entrada', 'Hora Salida',
+                    'Duración', 'Desplazamiento', 'Repuestos', 'Estado de la Máquina',
+                    'Calificación del Servicio', 'Modalidad Operativa'
+                ]
+            ];
+
+            lista.forEach(d => {
+                matriz.push([
+                    d.device_id, d.remision, d.cliente, d.punto,
+                    d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
+                    d.valor, d.obs, d.delegacion, d.fecha, d.tecnico,
+                    d.tipoMaquina, d.servicio, d.horaEntrada, d.horaSalida,
+                    d.duracion, d.desplazamiento, d.repuestos, d.estado,
+                    d.calificacion, d.modalidad
+                ]);
+            });
+
+            let ws = XLSX.utils.aoa_to_sheet(matriz);
+
+            // Ajustamos anchos de columna (la columna de Repuestos más ancha)
+            ws['!cols'] = [{
+                    wch: 15
+                }, // Device_id
+                {
+                    wch: 12
+                }, // Número de Remisión
+                {
+                    wch: 25
+                }, // Cliente
+                {
+                    wch: 25
+                }, // Nombre Punto
+                {
+                    wch: 8
+                }, // Preventivo Básico
+                {
+                    wch: 8
+                }, // Preventivo Profundo
+                {
+                    wch: 8
+                }, // Correctivo
+                {
+                    wch: 12
+                }, // Tarifa
+                {
+                    wch: 35
+                }, // Observaciones
+                {
+                    wch: 15
+                }, // Delegación
+                {
+                    wch: 12
+                }, // Fecha
+                {
+                    wch: 20
+                }, // Técnico
+                {
+                    wch: 15
+                }, // Tipo de Máquina
+                {
+                    wch: 20
+                }, // Tipo de Servicio
+                {
+                    wch: 10
+                }, // Hora Entrada
+                {
+                    wch: 10
+                }, // Hora Salida
+                {
+                    wch: 10
+                }, // Duración
+                {
+                    wch: 12
+                }, // Desplazamiento
+                {
+                    wch: 40
+                }, // ⭐ REPUESTOS (MÁS ANCHO PARA QUE QUEPAN TODOS) ⭐
+                {
+                    wch: 15
+                }, // Estado de la Máquina
+                {
+                    wch: 15
+                }, // Calificación del Servicio
+                {
+                    wch: 15
+                } // Modalidad Operativa
+            ];
+
+            let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Hoja1";
+            XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
+        }
+
+        // DESCARGAR EL ARCHIVO
+        let fecha = "<?= $_GET['fecha'] ?>";
+        XLSX.writeFile(workbook, `${fecha}.xlsx`);
     }
-
-    // 5. DESCARGAR EL ARCHIVO
-    let fecha = "<?= $_GET['fecha'] ?>";
-    XLSX.writeFile(workbook, `${fecha}.xlsx`);
-}
     // ==========================================
     // 6. UTILIDADES BLINDADAS (Anti-Error)
     // ==========================================
@@ -975,5 +1351,137 @@ function exportarExcelLimpio() {
         document.getElementById('indicadorPagina').innerText = `${pag} / ${totalPaginas}`;
         let finM = fin > totalFilas ? totalFilas : fin;
         document.getElementById('infoPagina').innerText = `${inicio + 1} - ${finM} de ${totalFilas}`;
+    }
+
+    // ==========================================
+    // 8. GESTIÓN DE NOVEDADES
+    // ==========================================
+
+    // Función para cambiar el estado visual y del input oculto
+    function toggleNovedad(idFila) {
+        let input = document.getElementById(`input_novedad_${idFila}`);
+        let btn = document.getElementById(`btn_novedad_${idFila}`);
+
+        // Convertimos a entero para verificar (por si viene como string "0")
+        let estadoActual = parseInt(input.value);
+
+        if (estadoActual === 0) {
+            // ACTIVAR NOVEDAD
+            input.value = 1;
+            btn.classList.remove('bg-gray-100', 'border-gray-300', 'text-gray-300', 'hover:bg-gray-200');
+            btn.classList.add('bg-red-500', 'border-red-700', 'text-white', 'animate-pulse'); // animate-pulse es opcional para efecto visual
+            setTimeout(() => btn.classList.remove('animate-pulse'), 500); // Quitar pulso
+        } else {
+            // DESACTIVAR NOVEDAD
+            input.value = 0;
+            btn.classList.remove('bg-red-500', 'border-red-700', 'text-white');
+            btn.classList.add('bg-gray-100', 'border-gray-300', 'text-gray-300', 'hover:bg-gray-200');
+        }
+    }
+
+    // ==========================================
+    // 9. EXCEL DE NOVEDADES (VERSIÓN PRO - BLINDADA)
+    // ==========================================
+    function exportarExcelNovedades() {
+        if (typeof XLSX === 'undefined') {
+            alert("Librería SheetJS no cargada.");
+            return;
+        }
+
+        let tabla = document.getElementById("tablaEdicion");
+        let filas = Array.from(tabla.querySelectorAll('tbody tr'));
+        let listaNovedades = [];
+
+        filas.forEach((fila) => {
+            // 1. Verificar si hay novedad buscando el INPUT por su ID parcial
+            // Esto encuentra el input sin importar en qué columna esté
+            let inputNovedad = fila.querySelector('input[id^="input_novedad_"]');
+
+            // ⭐ FILTRO: Si no existe el input o no es "1", saltamos
+            if (!inputNovedad || inputNovedad.value != "1") return;
+
+            // --- EXTRACCIÓN INTELIGENTE (POR SELECTORES, NO POR POSICIÓN) ---
+
+            // A. REMISIÓN: Buscamos el input que tenga 'remision' en su nombre
+            let inputRem = fila.querySelector('input[name*="[remision]"]');
+            let remisionTxt = inputRem ? inputRem.value : "";
+
+            // B. OBSERVACIÓN: Buscamos el textarea que tenga 'obs' en su nombre
+            let txtObs = fila.querySelector('textarea[name*="[obs]"]');
+            let observacionTxt = txtObs ? txtObs.value : "";
+
+            // C. MÁQUINA Y TIPO: Buscamos el select de máquina y su div hermano
+            let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
+            let deviceIdTxt = "";
+            let tipoMaqTxt = "";
+            
+            if (selMaq && selMaq.selectedIndex >= 0) {
+                // Device ID (Texto del select)
+                let opt = selMaq.options[selMaq.selectedIndex];
+                deviceIdTxt = opt.text.trim().split(' ')[0]; // Tomamos lo que esté antes del espacio si quieres solo el ID
+                // O usa: deviceIdTxt = opt.innerText.trim(); si quieres todo el texto
+
+                // Tipo Máquina (Busca el div que está en la misma celda)
+                let celdaMaq = selMaq.closest('td');
+                let divTipo = celdaMaq.querySelector('div');
+                tipoMaqTxt = divTipo ? divTipo.innerText.trim() : "";
+            }
+
+            // D. CLIENTE, PUNTO, TECNICO (Misma lógica segura)
+            let selCli = fila.querySelector('select[name*="[id_cliente]"]');
+            let clienteTxt = selCli ? (selCli.options[selCli.selectedIndex].getAttribute('data-full') || selCli.options[selCli.selectedIndex].text) : "";
+
+            let selPunto = fila.querySelector('select[name*="[id_punto]"]');
+            let puntoTxt = selPunto ? (selPunto.options[selPunto.selectedIndex].getAttribute('data-full') || selPunto.options[selPunto.selectedIndex].text) : "";
+
+            let selTec = fila.querySelector('select[name*="[id_tecnico]"]');
+            let tecnicoTxt = selTec ? selTec.options[selTec.selectedIndex].text.trim() : "";
+            
+            // E. DELEGACIÓN (Está en un div oculto en la misma celda del punto)
+            let delegacionTxt = "";
+            if (selPunto) {
+                let celdaPunto = selPunto.closest('td');
+                let divDel = celdaPunto.querySelector('div[id^="td_delegacion_"]');
+                delegacionTxt = divDel ? divDel.innerText.trim() : "SIN ASIGNAR";
+            }
+
+            // --- CONSTRUIR FILA ---
+            listaNovedades.push({
+                "Delegación": delegacionTxt,
+                "Cliente": clienteTxt,
+                "Punto": puntoTxt,
+                "Device ID": deviceIdTxt,      // ✅ Ahora sí trae el ID
+                "Tipo Máquina": tipoMaqTxt,    // ✅ Ahora sí trae el Tipo
+                "Remisión": remisionTxt,       // ✅ Solucionado: Trae la remisión, no la hora
+                "Técnico": tecnicoTxt,
+                "Observación": observacionTxt, // ✅ Solucionado: Trae el texto real
+                "Fecha": "<?= $_GET['fecha'] ?>"
+            });
+        });
+
+        if (listaNovedades.length === 0) {
+            alert("¡Excelente! No hay novedades marcadas para generar reporte.");
+            return;
+        }
+
+        // GENERAR EXCEL
+        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.json_to_sheet(listaNovedades);
+
+        // Ajustar anchos
+        ws['!cols'] = [
+            { wch: 15 }, // Delegación
+            { wch: 25 }, // Cliente
+            { wch: 25 }, // Punto
+            { wch: 15 }, // Device ID
+            { wch: 15 }, // Tipo
+            { wch: 12 }, // Remisión
+            { wch: 20 }, // Técnico
+            { wch: 50 }, // Observación
+            { wch: 12 }  // Fecha
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Novedades");
+        XLSX.writeFile(wb, `Novedades_${"<?= $_GET['fecha'] ?>"}.xlsx`);
     }
 </script>
