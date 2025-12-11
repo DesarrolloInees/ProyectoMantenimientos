@@ -2,19 +2,20 @@
     <div class="flex justify-between items-center mb-6">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">📅 Servicios Agrupados por Día</h2>
-            <p class="text-gray-500 text-sm">Resumen financiero y operativo</p>
+            <p class="text-gray-500 text-sm">Resumen financiero y operativo por delegación</p>
         </div>
         <a href="index.php?pagina=ordenCrear" class="bg-indigo-600 hover:bg-indigo-800 text-white font-bold py-2 px-4 rounded shadow transition">
             <i class="fas fa-plus mr-2"></i> Nuevo Reporte
         </a>
     </div>
-    
+
     <table id="tablaDias" class="min-w-full text-sm display stripe hover" style="width:100%">
         <thead class="bg-gray-800 text-white">
             <tr>
-                <th class="py-3 px-4">Fecha del Servicio</th>
-                <th class="py-3 px-4 text-center">Cant. Servicios</th>
-                <th class="py-3 px-4 text-right">$$ Total del Día</th>
+                <th class="py-3 px-4">Fecha</th>
+                <th class="py-3 px-4 w-1/3">Desglose por Delegación</th>
+                <th class="py-3 px-4 text-center">Total Serv.</th>
+                <th class="py-3 px-4 text-right">$$ Total Día</th>
                 <th class="py-3 px-4 text-center">Acciones</th>
             </tr>
         </thead>
@@ -32,41 +33,51 @@
                 "url": "index.php?pagina=ordenVer&accion=ajaxListar",
                 "type": "POST"
             },
-            "columns": [
-                { 
+            "columns": [{
                     "data": "fecha_visita",
                     "render": function(data) {
-                        return `<span class="font-bold text-lg text-gray-700">${data}</span>`;
+                        return `<div class="font-bold text-lg text-gray-700 text-center border p-2 rounded bg-gray-50">${data}</div>`;
                     }
                 },
-                { 
-                    "data": "cantidad_servicios",
-                    "className": "text-center",
-                    "render": function(data) { 
-                        return `<span class="bg-blue-100 text-blue-800 py-1 px-3 rounded-full font-bold">${data}</span>`; 
+                // NUEVA COLUMNA: Renderizamos el HTML que armamos en PHP
+                {
+                    "data": "html_detalle",
+                    "render": function(data) {
+                        return data;
                     }
                 },
-                { 
-                    "data": "valor_total",
-                    "className": "text-right font-bold text-green-700",
-                    "render": function(data) { 
-                        return new Intl.NumberFormat('es-CO', {style:'currency', currency:'COP'}).format(data); 
+                {
+                    "data": "cantidad_total", // Cambio de nombre según el nuevo modelo
+                    "className": "text-center align-middle",
+                    "render": function(data) {
+                        return `<span class="bg-blue-100 text-blue-800 text-base py-1 px-3 rounded-full font-bold">${data}</span>`;
+                    }
+                },
+                {
+                    "data": "valor_total_dia", // Cambio de nombre según el nuevo modelo
+                    "className": "text-right font-bold text-green-700 align-middle text-base",
+                    "render": function(data) {
+                        return new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP'
+                        }).format(data);
                     }
                 },
                 {
                     "data": null,
-                    "className": "text-center",
+                    "className": "text-center align-middle",
                     "render": function(data, type, row) {
-                        // Botón "Ver / Editar" que lleva al detalle
                         return `
-                        <a href="index.php?pagina=ordenDetalle&fecha=${row.fecha_visita}" 
+                        <a href="<?= BASE_URL ?>ordenDetalle/${row.fecha_visita}" 
                             class="bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded shadow transition hover:scale-105">
                             <i class="fas fa-eye mr-2"></i> Ver Detalle
                         </a>`;
                     }
                 }
             ],
-            "order": [[0, "desc"]], // Ordenar por fecha, lo más reciente primero
+            "order": [
+                [0, "desc"]
+            ],
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
             }

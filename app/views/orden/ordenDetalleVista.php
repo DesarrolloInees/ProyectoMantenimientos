@@ -4,77 +4,104 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <style>
-    /* Asegura que el modal esté por encima de todo */
+    /* =========================================
+       1. ARQUITECTURA DE CAPAS (Z-INDEX)
+       ========================================= */
+
+    /* Z-INDEX MAPA DEL SITIO:
+       - Tabla Header (Sticky): 10
+       - Select2 (Tabla):       40  <-- (Lo bajamos para que quede DEBAJO del menú)
+       - Sidebar (Plantilla):   50  <-- (Este es el jefe de la UI principal)
+       - Modal (Overlay):       60  <-- (Debe tapar el menú)
+       - Select2 (Modal):       9999 <-- (Debe verse encima del modal)
+    */
+
+    /* Regla para los Select2 de la TABLA (Hijos del body) */
+    body>.select2-container--open {
+        z-index: 40 !important;
+        /* Menor que el Sidebar (50) */
+    }
+
+    /* Regla para los Select2 del MODAL (Hijos de #modalRepuestos) */
+    #modalRepuestos .select2-container--open {
+        z-index: 9999 !important;
+        /* Altísimo para ganar al Modal */
+    }
+
+    /* El Modal en sí mismo */
     #modalRepuestos {
-        z-index: 9999;
+        z-index: 60 !important;
+        /* Mayor que el Sidebar */
     }
 
-    /* Asegura que Select2 funcione dentro del modal */
+    /* Asegurar que Select2 funcione dentro del modal */
     .select2-container {
-        z-index: 99999 !important;
+        z-index: auto;
+        /* Dejar que el contexto decida, excepto cuando abre */
     }
 
-    /* Estilo para el botón de cerrar */
-    #modalRepuestos .fixed {
-        position: fixed;
+    
+
+    /* Ajuste específico para Select2 (Cliente y Punto) para que coincida con los nativos */
+    .select2-container--default .select2-selection--single {
+        height: 28px !important;
+        /* Misma altura exacta */
+        min-height: 28px !important;
+        padding: 0px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 4px !important;
+        display: flex !important;
+        align-items: center !important;
+        background-color: #ffffff !important;
     }
 
-    /* Asegura visibilidad del modal */
+    /* Texto interno de Select2 */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 26px !important;
+        padding-left: 6px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: #374151 !important;
+    }
+
+    /* Flecha de Select2 */
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 26px !important;
+        top: 1px !important;
+    }
+
+    /* 4. Colores para diferenciar columnas visualmente */
+    #tablaEdicion select[name*="[id_tecnico]"] {
+        color: #4338ca !important;
+        font-weight: bold;
+        background-color: #eef2ff !important;
+    }
+
+    #tablaEdicion select[name*="[id_manto]"] {
+        color: #1e40af !important;
+        font-weight: bold;
+        background-color: #eff6ff !important;
+    }
+
+    #tablaEdicion select[name*="[id_maquina]"] {
+        color: #0369a1 !important;
+        font-family: monospace;
+        font-weight: bold;
+    }
+
+    #tablaEdicion input[name*="[valor]"] {
+        color: #15803d !important;
+        font-weight: bold;
+        background-color: #f0fdf4 !important;
+    }
+
+    /* Estilos generales */
     .hidden {
         display: none !important;
     }
 
     .flex {
         display: flex !important;
-    }
-
-
-    /* 1. Ajustar el contenedor principal del Select2 */
-    .select2-container--default .select2-selection--single {
-        height: 30px !important;
-        /* Altura fija más compacta */
-        min-height: 30px !important;
-        padding: 0px !important;
-        border: 1px solid #d1d5db !important;
-        /* Borde gris suave */
-        border-radius: 0.375rem !important;
-        /* Redondeado Tailwind (rounded-md) */
-        display: flex !important;
-        align-items: center !important;
-        background-color: #ffffff !important;
-    }
-
-    /* 2. Ajustar el texto interno para que no se corte */
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 28px !important;
-        /* Centrado vertical */
-        padding-left: 8px !important;
-        padding-right: 20px !important;
-        /* Espacio para la flecha */
-        color: #374151 !important;
-        /* Texto gris oscuro */
-        font-size: 11px !important;
-        /* Letra pequeña acorde a la tabla */
-        font-weight: 600 !important;
-        /* Un poco de negrita */
-    }
-
-    /* 3. Ajustar la flechita de la derecha */
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 28px !important;
-        top: 1px !important;
-        right: 1px !important;
-    }
-
-    /* 4. Asegurar que el desplegable (la lista de opciones) tenga prioridad alta pero no tape el sidebar si este tiene z-index correcto */
-    .select2-container--open {
-        z-index: 9999999 !important;
-    }
-
-    /* 5. Ajustar el buscador interno del Select2 */
-    .select2-search__field {
-        font-size: 12px !important;
-        padding: 4px !important;
     }
 </style>
 
@@ -101,27 +128,31 @@
     <div class="flex flex-wrap justify-between items-center mb-4">
         <div>
             <h2 class="text-xl font-bold text-gray-800">🛠️ Edición Maestra de Servicios</h2>
-            <p class="text-sm text-blue-600 font-bold">Fecha Lote: <?= $_GET['fecha'] ?></p>
+            <p class="text-sm text-blue-600 font-bold">Fecha Lote: <?= $fecha ?></p>
         </div>
 
         <div class="space-x-2">
             <button type="button" onclick="exportarExcelLimpio()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow">
                 <i class="fas fa-file-excel mr-2"></i> Excel Limpio
             </button>
-            <a href="index.php?pagina=ordenVer" class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600">
+
+            <a href="<?= BASE_URL ?>inicio" class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
 
             <button type="button" onclick="exportarExcelNovedades()" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700 shadow ml-2">
-            <i class="fas fa-file-contract mr-2"></i> Reporte Novedades
-        </button>
+                <i class="fas fa-file-contract mr-2"></i> Reporte Novedades
+            </button>
         </div>
 
-        
+
     </div>
 
-    <form action="index.php?pagina=ordenDetalle&accion=guardarCambios" method="POST">
-        <input type="hidden" name="fecha_origen" value="<?= $_GET['fecha'] ?>">
+    <form action="<?= BASE_URL ?>ordenDetalle" method="POST">
+
+        <input type="hidden" name="accion" value="guardarCambios">
+
+        <input type="hidden" name="fecha_origen" value="<?= $fecha ?>">
 
         <div class="overflow-x-auto shadow-inner border rounded" style="max-height: 80vh;">
             <table class="min-w-max text-xs bg-white border-collapse" id="tablaEdicion">
@@ -140,15 +171,16 @@
                         <th class="p-2 border bg-red-900 text-white w-10 text-center" title="Marcar Novedad">⚠️</th>
 
                         <th class="p-2 border bg-green-800 w-24 text-white">9. Valor</th>
-                        <th class="p-2 border bg-gray-700 text-gray-300">10. Rem</th>
+                        <th class="p-2 border bg-gray-700">10. Repuestos</th>
+                        <th class="p-2 border bg-gray-700 text-gray-300">11. Rem</th>
 
-                        <th class="p-2 border">11. Entra</th>
-                        <th class="p-2 border">12. Sale</th>
+                        <th class="p-2 border">12. Entra</th>
+                        <th class="p-2 border">13. Sale</th>
                         <th class="p-2 border bg-orange-600 text-white w-20" title="Tiempo desde servicio anterior">🔁 Desplaz.</th>
 
-                        <th class="p-2 border bg-gray-700">13. Repuestos</th>
+
                         <th class="p-2 border bg-gray-700">14. Est/Calif</th>
-                        
+
                     </tr>
                 </thead>
 
@@ -280,33 +312,6 @@
                                         value="<?= number_format($s['valor_servicio'], 0, ',', '.') ?>"
                                         class="w-full border rounded text-right font-bold text-green-700 text-sm">
                                 </td>
-
-                                <!-- 10. REMISIÓN -->
-                                <td class="p-1"><input type="text" name="servicios[<?= $idFila ?>][remision]" value="<?= $s['numero_remision'] ?>" class="w-16 border rounded text-center text-[10px]"></td>
-
-                                <!-- 11. ENTRADA -->
-                                <td class="p-1">
-                                    <input type="time" name="servicios[<?= $idFila ?>][entrada]"
-                                        id="hora_entrada_<?= $idFila ?>"
-                                        value="<?= $s['hora_entrada'] ?>"
-                                        onchange="calcularDesplazamientos()"
-                                        class="w-full border rounded text-xs">
-                                </td>
-
-                                <!-- 12. SALIDA -->
-                                <td class="p-1">
-                                    <input type="time" name="servicios[<?= $idFila ?>][salida]"
-                                        id="hora_salida_<?= $idFila ?>"
-                                        value="<?= $s['hora_salida'] ?>"
-                                        onchange="calcularDesplazamientos()"
-                                        class="w-full border rounded text-xs">
-                                </td>
-
-                                <!-- 13. DESPLAZAMIENTO (MOVIDO AQUÍ) ⭐ -->
-                                <td class="p-1 bg-orange-50 text-center align-middle">
-                                    <span id="desplazamiento_<?= $idFila ?>" class="text-[10px] font-bold text-gray-400">-</span>
-                                </td>
-
                                 <!-- 14. REPUESTOS -->
                                 <td class="p-1 bg-gray-50 text-center align-middle">
                                     <?php
@@ -343,6 +348,34 @@
                                         value='<?= htmlspecialchars($textoRepuestos, ENT_QUOTES, 'UTF-8') ?>'>
                                 </td>
 
+                                <!-- 10. REMISIÓN -->
+                                <td class="p-1"><input type="text" name="servicios[<?= $idFila ?>][remision]" value="<?= $s['numero_remision'] ?>" class="w-16 border rounded text-center text-[10px]"></td>
+
+                                <!-- 11. ENTRADA -->
+                                <td class="p-1">
+                                    <input type="time" name="servicios[<?= $idFila ?>][entrada]"
+                                        id="hora_entrada_<?= $idFila ?>"
+                                        value="<?= $s['hora_entrada'] ?>"
+                                        onchange="calcularDesplazamientos()"
+                                        class="w-full border rounded text-xs">
+                                </td>
+
+                                <!-- 12. SALIDA -->
+                                <td class="p-1">
+                                    <input type="time" name="servicios[<?= $idFila ?>][salida]"
+                                        id="hora_salida_<?= $idFila ?>"
+                                        value="<?= $s['hora_salida'] ?>"
+                                        onchange="calcularDesplazamientos()"
+                                        class="w-full border rounded text-xs">
+                                </td>
+
+                                <!-- 13. DESPLAZAMIENTO (MOVIDO AQUÍ) ⭐ -->
+                                <td class="p-1 bg-orange-50 text-center align-middle">
+                                    <span id="desplazamiento_<?= $idFila ?>" class="text-[10px] font-bold text-gray-400">-</span>
+                                </td>
+
+
+
                                 <!-- 15. ESTADO/CALIFICACIÓN -->
                                 <td class="p-1">
                                     <select name="servicios[<?= $idFila ?>][id_estado]" class="w-full text-[9px] border mb-1">
@@ -357,7 +390,7 @@
                                     </select>
                                 </td>
 
-                                
+
 
                             </tr>
                         <?php endforeach; ?>
@@ -1032,228 +1065,191 @@
     }
 
     // ==========================================
-    // 5. EXCEL LIMPIO (CORREGIDO - VERSIÓN CON REPUESTOS REALES)
-    // ==========================================
-    function exportarExcelLimpio() {
-        if (typeof XLSX === 'undefined') {
-            alert("Error: Librería SheetJS no cargada.");
-            return;
+// 5. EXCEL LIMPIO (CORREGIDO: VALOR CON COMAS)
+// ==========================================
+function exportarExcelLimpio() {
+    if (typeof XLSX === 'undefined') {
+        alert("Error: Librería SheetJS no cargada.");
+        return;
+    }
+
+    let tabla = document.getElementById("tablaEdicion");
+    let filas = Array.from(tabla.querySelectorAll('tbody tr'));
+    let serviciosPorDelegacion = {};
+
+    filas.forEach((fila, index) => {
+        // Ignorar filas sin ID (como la de "No hay datos")
+        if (!fila.id.startsWith('fila_')) return;
+
+        let idFila = fila.id.replace('fila_', '');
+
+        // --- EXTRACCIÓN SEGURA POR SELECTORES (NO POR POSICIÓN) ---
+
+        // 1. Identificadores y Textos Simples
+        let inputRemision = fila.querySelector('input[name*="[remision]"]');
+        let txtRemision = inputRemision ? inputRemision.value : "";
+
+        let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
+        let txtFecha = inputFecha ? inputFecha.value : "";
+
+        let txtObs = fila.querySelector('textarea[name*="[obs]"]');
+        let obs = txtObs ? txtObs.value : "";
+
+        // 2. Selects (Helper para sacar texto limpio)
+        const getSelectText = (partialName) => {
+            let sel = fila.querySelector(`select[name*="${partialName}"]`);
+            if (!sel || sel.selectedIndex < 0) return "";
+            // Preferir data-full si existe, sino el texto visible
+            return sel.options[sel.selectedIndex].getAttribute('data-full') || sel.options[sel.selectedIndex].text.trim();
+        };
+
+        let cliente     = getSelectText('[id_cliente]');
+        let punto       = getSelectText('[id_punto]');
+        let tecnico     = getSelectText('[id_tecnico]');
+        let servicio    = getSelectText('[id_manto]');
+        let modalidad   = getSelectText('[id_modalidad]');
+        let estado      = getSelectText('[id_estado]');
+        let calif       = getSelectText('[id_calif]');
+
+        // 3. Máquina (Limpieza de ID)
+        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
+        let device_id = "";
+        let tipoMaquinatxt = "";
+
+        if (selMaq && selMaq.selectedIndex >= 0) {
+            let rawText = selMaq.options[selMaq.selectedIndex].text.trim();
+            // Separar por paréntesis para obtener solo el ID: "12345 (Modelo)" -> "12345"
+            device_id = rawText.split('(')[0].trim();
+        }
+        
+        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
+        tipoMaquinatxt = divTipo ? divTipo.innerText : "";
+
+        // 4. Delegación
+        let divDelegacion = document.getElementById(`td_delegacion_${idFila}`);
+        let delegacion = divDelegacion ? divDelegacion.innerText : "SIN ASIGNAR";
+
+        // 5. Checkbox Preventivo/Correctivo
+        let txtServicio = servicio.toLowerCase();
+        let esPrevBasico   = txtServicio.includes('basico') || txtServicio.includes('básico') ? "X" : "";
+        let esPrevProfundo = txtServicio.includes('profundo') || txtServicio.includes('completo') ? "X" : "";
+        let esCorrectivo   = txtServicio.includes('correctivo') || txtServicio.includes('reparacion') ? "X" : "";
+        
+        if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes('preventivo')) esPrevBasico = "X";
+
+        // 6. Valor (RESTAURADO: PUNTOS A COMAS) ⭐⭐⭐
+        let inputValor = fila.querySelector('input[name*="[valor]"]');
+        let valorRaw = inputValor ? inputValor.value : "0";
+        let valorExcel = "";
+        
+        if (valorRaw) {
+            // Aquí está la lógica que pediste restaurar: 
+            // Reemplaza todos los puntos (.) por comas (,)
+            valorExcel = valorRaw.toString().replace(/\./g, ','); 
         }
 
-        let tabla = document.getElementById("tablaEdicion");
-        let filas = Array.from(tabla.querySelectorAll('tbody tr'));
-        let serviciosPorDelegacion = {};
+        // 7. Horas y Desplazamiento
+        let inputEntrada = fila.querySelector('input[name*="[entrada]"]');
+        let inputSalida  = fila.querySelector('input[name*="[salida]"]');
+        let horaEntrada  = inputEntrada ? inputEntrada.value : "";
+        let horaSalida   = inputSalida ? inputSalida.value : "";
+        let duracion     = calcularDuracion(horaEntrada, horaSalida); 
 
-        filas.forEach((fila, index) => {
-            let celdas = fila.querySelectorAll('td');
+        let spanDesplaz = document.getElementById(`desplazamiento_${idFila}`);
+        let desplazamiento = spanDesplaz ? spanDesplaz.innerText.replace('Err H.', '') : "";
 
-            // Si la fila es de "No hay datos", ignorar
-            if (celdas.length < 14) return;
+        // 8. Repuestos
+        let inputRepDB = document.getElementById(`input_db_${idFila}`);
+        let repuestos = inputRepDB ? inputRepDB.value : "";
+        
+        // Limpieza de textos basura en repuestos
+        if (repuestos.match(/Gest\. Repuestos|Items|sin repuestos|ninguno|n\/a|vacío/i)) {
+            repuestos = "";
+        }
 
-            // ... (Lógica de extracción de textos igual que antes) ...
-            let delegacionTxt = obtenerTextoDeDiv(celdas[1]);
-            let tipoMaqTxt = obtenerTextoDeDiv(celdas[6]);
+        // --- OBJETO DE DATOS ---
+        let datos = {
+            device_id: device_id,
+            remision: txtRemision,
+            cliente: cliente,
+            punto: punto,
+            esPrevBasico: esPrevBasico,
+            esPrevProfundo: esPrevProfundo,
+            esCorrectivo: esCorrectivo,
+            valor: valorExcel, // ✅ Valor con comas
+            obs: obs,
+            delegacion: delegacion,
+            fecha: txtFecha,
+            tecnico: tecnico,
+            tipoMaquina: tipoMaquinatxt,
+            servicio: servicio,
+            horaEntrada: horaEntrada,
+            horaSalida: horaSalida,
+            duracion: duracion,
+            desplazamiento: desplazamiento,
+            repuestos: repuestos,
+            estado: estado,
+            calificacion: calif,
+            modalidad: modalidad
+        };
 
-            // Lógica Preventivo/Correctivo
-            let txtServicio = obtenerTexto(celdas[4]).toLowerCase();
-            let esPrevBasico = txtServicio.includes('basico') || txtServicio.includes('básico');
-            let esPrevProfundo = txtServicio.includes('profundo') || txtServicio.includes('completo');
-            let esCorrectivo = txtServicio.includes('correctivo') || txtServicio.includes('reparacion');
-            if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes('preventivo')) esPrevBasico = true;
+        // Agrupar
+        if (!serviciosPorDelegacion[delegacion]) {
+            serviciosPorDelegacion[delegacion] = [];
+        }
+        serviciosPorDelegacion[delegacion].push(datos);
+    });
 
-            // Duración y Repuestos
-            let entrada = obtenerValorInput(celdas[10]);
-            let salida = obtenerValorInput(celdas[11]);
-            let duracionCalc = calcularDuracion(entrada, salida);
+    // --- GENERAR EXCEL ---
+    let workbook = XLSX.utils.book_new();
+    let hayDatos = Object.keys(serviciosPorDelegacion).length > 0;
 
-            // ⭐ CAPTURAR DESPLAZAMIENTO (Está en la columna índice 12)
-            let desplazamientoTxt = celdas[12].innerText.trim();
+    if (!hayDatos) {
+        alert("No hay datos válidos para exportar.");
+        return;
+    }
 
-            // ⭐ NUEVO: Limpiar "Err H." en Desplazamiento
-            if (desplazamientoTxt.includes("Err H.")) {
-                desplazamientoTxt = "";
-            }
+    for (let delegacion in serviciosPorDelegacion) {
+        let lista = serviciosPorDelegacion[delegacion];
+        let matriz = [
+            [
+                'Device_id', 'Número de Remisión', 'Cliente', 'Nombre Punto',
+                'Preventivo Básico', 'Preventivo Profundo', 'Correctivo',
+                'Tarifa', 'Observaciones', 'Delegación', 'Fecha', 'Técnico',
+                'Tipo de Máquina', 'Tipo de Servicio', 'Hora Entrada', 'Hora Salida',
+                'Duración', 'Desplazamiento', 'Repuestos', 'Estado de la Máquina',
+                'Calificación del Servicio', 'Modalidad Operativa'
+            ]
+        ];
 
-            // ⭐⭐⭐ CRÍTICO: OBTENER REPUESTOS REALES DE LOS INPUTS OCULTOS ⭐⭐⭐
-            let txtRepuestos = "";
-            if (celdas[13]) {
-                // 1. Buscar el input oculto con el texto real de repuestos
-                const idFila = fila.id.replace('fila_', '');
-                const inputDb = document.getElementById(`input_db_${idFila}`);
-
-                if (inputDb && inputDb.value) {
-                    // Este input tiene el texto real: "Batería, Cable USB (PROSEGUR)"
-                    txtRepuestos = inputDb.value;
-                } else {
-                    // Fallback: intentar obtener del botón o texto visible
-                    txtRepuestos = celdas[13].innerText.trim();
-                }
-            }
-
-            // ⭐ NUEVO: Limpiar "Gest. Repuestos" y "X Items"
-            // También limpiamos "4 Items", "3 Items", etc.
-            if (txtRepuestos.includes("Gest. Repuestos") ||
-                txtRepuestos.includes(" Items") ||
-                txtRepuestos.match(/\d+\s+Items/)) {
-                txtRepuestos = "";
-            }
-
-            // Limpieza estándar (sin, no, ningun, n/a)
-            if (txtRepuestos.match(/(sin|no|ningun|n\/a)/i)) txtRepuestos = "";
-
-            // --- ⭐ LÓGICA TARIFA (PUNTO A COMA) ⭐ ---
-            let valorRaw = obtenerValorInput(celdas[8]);
-            let valorConComa = "";
-            if (valorRaw) {
-                // Convierte a string y fuerza el cambio de punto a coma
-                valorConComa = valorRaw.toString().replace(/\./g, ',');
-            }
-
-            let datos = {
-                device_id: obtenerTextoSelect(celdas[6]),
-                remision: obtenerValorInput(celdas[9]),
-                cliente: obtenerTextoSelect(celdas[0]),
-                punto: obtenerTextoSelect(celdas[1]),
-                esPrevBasico: esPrevBasico ? "X" : "",
-                esPrevProfundo: esPrevProfundo ? "X" : "",
-                esCorrectivo: esCorrectivo ? "X" : "",
-                valor: valorConComa, // ✅ Usa la variable formateada                
-                obs: obtenerValorTextArea(celdas[7]),
-                delegacion: delegacionTxt || "SIN ASIGNAR",
-                fecha: obtenerValorInput(celdas[2]),
-                tecnico: obtenerTextoSelect(celdas[3]),
-                tipoMaquina: tipoMaqTxt,
-                servicio: obtenerTextoSelect(celdas[4]),
-                horaEntrada: entrada,
-                horaSalida: salida,
-                duracion: duracionCalc,
-                desplazamiento: desplazamientoTxt,
-                repuestos: txtRepuestos, // ✅ Ahora trae los repuestos reales
-                estado: obtenerTextoSelect(celdas[14], 0),
-                calificacion: obtenerTextoSelect(celdas[14], 1),
-                modalidad: obtenerTextoSelect(celdas[5])
-            };
-
-            let keyDel = datos.delegacion;
-            if (!serviciosPorDelegacion[keyDel]) {
-                serviciosPorDelegacion[keyDel] = [];
-            }
-            serviciosPorDelegacion[keyDel].push(datos);
+        lista.forEach(d => {
+            matriz.push([
+                d.device_id, d.remision, d.cliente, d.punto,
+                d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
+                d.valor, d.obs, d.delegacion, d.fecha, d.tecnico,
+                d.tipoMaquina, d.servicio, d.horaEntrada, d.horaSalida,
+                d.duracion, d.desplazamiento, d.repuestos, d.estado,
+                d.calificacion, d.modalidad
+            ]);
         });
 
-        // CREAR EXCEL
-        let workbook = XLSX.utils.book_new();
-        let hayDatos = Object.keys(serviciosPorDelegacion).length > 0;
+        let ws = XLSX.utils.aoa_to_sheet(matriz);
+        ws['!cols'] = [
+            { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 },
+            { wch: 8 }, { wch: 8 }, { wch: 8 },
+            { wch: 12 }, { wch: 35 }, { wch: 15 }, { wch: 12 }, { wch: 20 },
+            { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
+            { wch: 10 }, { wch: 12 }, { wch: 40 }, { wch: 15 },
+            { wch: 15 }, { wch: 15 }
+        ];
 
-        if (!hayDatos) {
-            alert("No hay datos válidos para exportar.");
-            return;
-        }
-
-        for (let delegacion in serviciosPorDelegacion) {
-            let lista = serviciosPorDelegacion[delegacion];
-
-            let matriz = [
-                [
-                    'Device_id', 'Número de Remisión', 'Cliente', 'Nombre Punto',
-                    'Preventivo Básico', 'Preventivo Profundo', 'Correctivo',
-                    'Tarifa', 'Observaciones', 'Delegación', 'Fecha', 'Técnico',
-                    'Tipo de Máquina', 'Tipo de Servicio', 'Hora Entrada', 'Hora Salida',
-                    'Duración', 'Desplazamiento', 'Repuestos', 'Estado de la Máquina',
-                    'Calificación del Servicio', 'Modalidad Operativa'
-                ]
-            ];
-
-            lista.forEach(d => {
-                matriz.push([
-                    d.device_id, d.remision, d.cliente, d.punto,
-                    d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
-                    d.valor, d.obs, d.delegacion, d.fecha, d.tecnico,
-                    d.tipoMaquina, d.servicio, d.horaEntrada, d.horaSalida,
-                    d.duracion, d.desplazamiento, d.repuestos, d.estado,
-                    d.calificacion, d.modalidad
-                ]);
-            });
-
-            let ws = XLSX.utils.aoa_to_sheet(matriz);
-
-            // Ajustamos anchos de columna (la columna de Repuestos más ancha)
-            ws['!cols'] = [{
-                    wch: 15
-                }, // Device_id
-                {
-                    wch: 12
-                }, // Número de Remisión
-                {
-                    wch: 25
-                }, // Cliente
-                {
-                    wch: 25
-                }, // Nombre Punto
-                {
-                    wch: 8
-                }, // Preventivo Básico
-                {
-                    wch: 8
-                }, // Preventivo Profundo
-                {
-                    wch: 8
-                }, // Correctivo
-                {
-                    wch: 12
-                }, // Tarifa
-                {
-                    wch: 35
-                }, // Observaciones
-                {
-                    wch: 15
-                }, // Delegación
-                {
-                    wch: 12
-                }, // Fecha
-                {
-                    wch: 20
-                }, // Técnico
-                {
-                    wch: 15
-                }, // Tipo de Máquina
-                {
-                    wch: 20
-                }, // Tipo de Servicio
-                {
-                    wch: 10
-                }, // Hora Entrada
-                {
-                    wch: 10
-                }, // Hora Salida
-                {
-                    wch: 10
-                }, // Duración
-                {
-                    wch: 12
-                }, // Desplazamiento
-                {
-                    wch: 40
-                }, // ⭐ REPUESTOS (MÁS ANCHO PARA QUE QUEPAN TODOS) ⭐
-                {
-                    wch: 15
-                }, // Estado de la Máquina
-                {
-                    wch: 15
-                }, // Calificación del Servicio
-                {
-                    wch: 15
-                } // Modalidad Operativa
-            ];
-
-            let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Hoja1";
-            XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
-        }
-
-        // DESCARGAR EL ARCHIVO
-        let fecha = "<?= $_GET['fecha'] ?>";
-        XLSX.writeFile(workbook, `${fecha}.xlsx`);
+        let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "General";
+        XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
     }
+
+    let fecha = "<?= $_GET['fecha'] ?>";
+    XLSX.writeFile(workbook, `${fecha}.xlsx`);
+}
     // ==========================================
     // 6. UTILIDADES BLINDADAS (Anti-Error)
     // ==========================================
@@ -1380,108 +1376,105 @@
     }
 
     // ==========================================
-    // 9. EXCEL DE NOVEDADES (VERSIÓN PRO - BLINDADA)
-    // ==========================================
-    function exportarExcelNovedades() {
-        if (typeof XLSX === 'undefined') {
-            alert("Librería SheetJS no cargada.");
-            return;
-        }
-
-        let tabla = document.getElementById("tablaEdicion");
-        let filas = Array.from(tabla.querySelectorAll('tbody tr'));
-        let listaNovedades = [];
-
-        filas.forEach((fila) => {
-            // 1. Verificar si hay novedad buscando el INPUT por su ID parcial
-            // Esto encuentra el input sin importar en qué columna esté
-            let inputNovedad = fila.querySelector('input[id^="input_novedad_"]');
-
-            // ⭐ FILTRO: Si no existe el input o no es "1", saltamos
-            if (!inputNovedad || inputNovedad.value != "1") return;
-
-            // --- EXTRACCIÓN INTELIGENTE (POR SELECTORES, NO POR POSICIÓN) ---
-
-            // A. REMISIÓN: Buscamos el input que tenga 'remision' en su nombre
-            let inputRem = fila.querySelector('input[name*="[remision]"]');
-            let remisionTxt = inputRem ? inputRem.value : "";
-
-            // B. OBSERVACIÓN: Buscamos el textarea que tenga 'obs' en su nombre
-            let txtObs = fila.querySelector('textarea[name*="[obs]"]');
-            let observacionTxt = txtObs ? txtObs.value : "";
-
-            // C. MÁQUINA Y TIPO: Buscamos el select de máquina y su div hermano
-            let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
-            let deviceIdTxt = "";
-            let tipoMaqTxt = "";
-            
-            if (selMaq && selMaq.selectedIndex >= 0) {
-                // Device ID (Texto del select)
-                let opt = selMaq.options[selMaq.selectedIndex];
-                deviceIdTxt = opt.text.trim().split(' ')[0]; // Tomamos lo que esté antes del espacio si quieres solo el ID
-                // O usa: deviceIdTxt = opt.innerText.trim(); si quieres todo el texto
-
-                // Tipo Máquina (Busca el div que está en la misma celda)
-                let celdaMaq = selMaq.closest('td');
-                let divTipo = celdaMaq.querySelector('div');
-                tipoMaqTxt = divTipo ? divTipo.innerText.trim() : "";
-            }
-
-            // D. CLIENTE, PUNTO, TECNICO (Misma lógica segura)
-            let selCli = fila.querySelector('select[name*="[id_cliente]"]');
-            let clienteTxt = selCli ? (selCli.options[selCli.selectedIndex].getAttribute('data-full') || selCli.options[selCli.selectedIndex].text) : "";
-
-            let selPunto = fila.querySelector('select[name*="[id_punto]"]');
-            let puntoTxt = selPunto ? (selPunto.options[selPunto.selectedIndex].getAttribute('data-full') || selPunto.options[selPunto.selectedIndex].text) : "";
-
-            let selTec = fila.querySelector('select[name*="[id_tecnico]"]');
-            let tecnicoTxt = selTec ? selTec.options[selTec.selectedIndex].text.trim() : "";
-            
-            // E. DELEGACIÓN (Está en un div oculto en la misma celda del punto)
-            let delegacionTxt = "";
-            if (selPunto) {
-                let celdaPunto = selPunto.closest('td');
-                let divDel = celdaPunto.querySelector('div[id^="td_delegacion_"]');
-                delegacionTxt = divDel ? divDel.innerText.trim() : "SIN ASIGNAR";
-            }
-
-            // --- CONSTRUIR FILA ---
-            listaNovedades.push({
-                "Delegación": delegacionTxt,
-                "Cliente": clienteTxt,
-                "Punto": puntoTxt,
-                "Device ID": deviceIdTxt,      // ✅ Ahora sí trae el ID
-                "Tipo Máquina": tipoMaqTxt,    // ✅ Ahora sí trae el Tipo
-                "Remisión": remisionTxt,       // ✅ Solucionado: Trae la remisión, no la hora
-                "Técnico": tecnicoTxt,
-                "Observación": observacionTxt, // ✅ Solucionado: Trae el texto real
-                "Fecha": "<?= $_GET['fecha'] ?>"
-            });
-        });
-
-        if (listaNovedades.length === 0) {
-            alert("¡Excelente! No hay novedades marcadas para generar reporte.");
-            return;
-        }
-
-        // GENERAR EXCEL
-        let wb = XLSX.utils.book_new();
-        let ws = XLSX.utils.json_to_sheet(listaNovedades);
-
-        // Ajustar anchos
-        ws['!cols'] = [
-            { wch: 15 }, // Delegación
-            { wch: 25 }, // Cliente
-            { wch: 25 }, // Punto
-            { wch: 15 }, // Device ID
-            { wch: 15 }, // Tipo
-            { wch: 12 }, // Remisión
-            { wch: 20 }, // Técnico
-            { wch: 50 }, // Observación
-            { wch: 12 }  // Fecha
-        ];
-
-        XLSX.utils.book_append_sheet(wb, ws, "Novedades");
-        XLSX.writeFile(wb, `Novedades_${"<?= $_GET['fecha'] ?>"}.xlsx`);
+// 9. EXCEL DE NOVEDADES (REPARADO)
+// ==========================================
+function exportarExcelNovedades() {
+    if (typeof XLSX === 'undefined') {
+        alert("Librería SheetJS no cargada.");
+        return;
     }
+
+    let tabla = document.getElementById("tablaEdicion");
+    let filas = Array.from(tabla.querySelectorAll('tbody tr'));
+    let listaNovedades = [];
+
+    filas.forEach((fila) => {
+        // Ignorar filas que no sean de datos
+        if (!fila.id.startsWith('fila_')) return;
+        
+        let idFila = fila.id.replace('fila_', '');
+
+        // 1. Verificar si tiene el flag de Novedad activo (input hidden value="1")
+        // Buscamos el input por su ID específico para ser precisos
+        let inputNovedad = document.getElementById(`input_novedad_${idFila}`);
+        if (!inputNovedad || inputNovedad.value != "1") return;
+
+        // --- EXTRACCIÓN DE DATOS ---
+        
+        // Delegación
+        let divDel = document.getElementById(`td_delegacion_${idFila}`);
+        let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
+
+        // Cliente
+        let selCli = fila.querySelector('select[name*="[id_cliente]"]');
+        let cliente = selCli ? (selCli.options[selCli.selectedIndex].getAttribute('data-full') || selCli.options[selCli.selectedIndex].text) : "";
+
+        // Punto
+        let selPunto = fila.querySelector('select[name*="[id_punto]"]');
+        let punto = selPunto ? (selPunto.options[selPunto.selectedIndex].getAttribute('data-full') || selPunto.options[selPunto.selectedIndex].text) : "";
+
+        // Máquina (ID y Tipo)
+        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
+        let deviceID = "";
+        if(selMaq && selMaq.selectedIndex >= 0) {
+            deviceID = selMaq.options[selMaq.selectedIndex].text.split('(')[0].trim();
+        }
+        
+        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
+        let tipoMaq = divTipo ? divTipo.innerText : "";
+
+        // Remisión (Aquí estaba el error frecuente, ahora busca por name parcial)
+        let inputRem = fila.querySelector('input[name*="[remision]"]');
+        let remision = inputRem ? inputRem.value : "";
+
+        // Técnico
+        let selTec = fila.querySelector('select[name*="[id_tecnico]"]');
+        let tecnico = selTec ? selTec.options[selTec.selectedIndex].text : "";
+
+        // Observación
+        let txtObs = fila.querySelector('textarea[name*="[obs]"]');
+        let obs = txtObs ? txtObs.value : "";
+        
+        // Fecha Individual
+        let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
+        let fecha = inputFecha ? inputFecha.value : "";
+
+        listaNovedades.push({
+            "Delegación": delegacion,
+            "Cliente": cliente,
+            "Punto": punto,
+            "Device ID": deviceID,
+            "Tipo Máquina": tipoMaq,
+            "Remisión": remision,
+            "Técnico": tecnico,
+            "Observación": obs,
+            "Fecha": fecha
+        });
+    });
+
+    if (listaNovedades.length === 0) {
+        alert("¡Excelente! No hay novedades marcadas para generar reporte.");
+        return;
+    }
+
+    // GENERAR EXCEL
+    let wb = XLSX.utils.book_new();
+    let ws = XLSX.utils.json_to_sheet(listaNovedades);
+
+    // Ajustar anchos
+    ws['!cols'] = [
+        { wch: 15 }, // Delegación
+        { wch: 25 }, // Cliente
+        { wch: 25 }, // Punto
+        { wch: 15 }, // Device ID
+        { wch: 15 }, // Tipo
+        { wch: 12 }, // Remisión
+        { wch: 20 }, // Técnico
+        { wch: 50 }, // Observación
+        { wch: 12 }  // Fecha
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Novedades");
+        XLSX.writeFile(wb, `Novedades_${"<?= $_GET['fecha'] ?>"}.xlsx`);
+}
 </script>

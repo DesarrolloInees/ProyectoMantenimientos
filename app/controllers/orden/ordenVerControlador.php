@@ -1,10 +1,22 @@
 <?php
+
+if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+
+// 1. IMPORTAR ARCHIVOS NECESARIOS (Sin esto, PHP no encuentra las clases)
+require_once __DIR__ . '/../../config/conexion.php';
+require_once __DIR__ . '/../../models/orden/ordenVerModelo.php';
 class ordenVerControlador {
     private $modelo;
+    private $db;
 
-    public function __construct() {
-        $database = new Database();
-        $this->modelo = new ordenVerModelo($database->getConnection());
+    public function __construct()
+    {
+        // 2. CORRECCIÓN: Usamos la clase 'Conexion' (no 'db')
+        $conexionObj = new Conexion();
+        $this->db = $conexionObj->getConexion();
+
+        // 3. Instanciamos el modelo pasándole la conexión activa
+        $this->modelo = new ordenVerModelo($this->db);
     }
 
     // AGREGA ESTA FUNCIÓN AQUÍ 👇

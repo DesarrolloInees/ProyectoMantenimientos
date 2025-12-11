@@ -1,23 +1,28 @@
 Options -MultiViews
+Options -Indexes
 RewriteEngine On
 
-# IMPORTANTE: Cambia esto si la carpeta de tu proyecto se llama diferente
+# ==============================================================
+# 🎯 CAMBIO CLAVE: Apuntamos a la carpeta del NUEVO proyecto
+# ==============================================================
 RewriteBase /ProyectoMantenimientos/
 
-# Evitar listar directorios (seguridad básica)
-Options -Indexes
+# --- Reglas de reescritura (Adaptadas del Proyecto Antiguo) ---
 
-# 1. Regla para URLs con dos parámetros (ej. /orden/crear)
+# 1. Regla para URLs con ID o Parámetro (ej. /ordenDetalle/5)
+# Esto permite que hagas $_GET['id'] en tu PHP igual que antes
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^([^/]+)/([^/]+)/?$ index.php?pagina=$1&accion=$2 [L,QSA]
+RewriteRule ^([^/]+)/([^/]+)/?$ index.php?pagina=$1&id=$2 [L,QSA]
 
-# 2. Regla para URLs con un parámetro (ej. /inicio)
+# 2. Regla para URLs con dos parámetros extra (ej. /tabla/filtro/asc)
+# Esto permite $_GET['valor'] y $_GET['orden']
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^([^/]+)/?$ index.php?pagina=$1&accion=index [L,QSA]
+RewriteRule ^([^/]+)/([^/]+)/([^/]+)/?$ index.php?pagina=$1&valor=$2&orden=$3 [L,QSA]
 
-# 3. Todo lo demás al index
+# 3. Regla para URLs simples (ej. /login, /inicio, /logout)
+# Esto es lo que querías: URL limpia sin parámetros extraños
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.+)$ index.php [L,QSA]
+RewriteRule ^([^/]*)$ index.php?pagina=$1 [L,QSA]

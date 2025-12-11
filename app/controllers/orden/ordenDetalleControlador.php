@@ -1,14 +1,30 @@
 <?php
+// app/controllers/orden/ordenDetalleControlador.php
+
+if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+
+// 1. IMPORTAR ARCHIVOS NECESARIOS (Sin esto, PHP no encuentra las clases)
+require_once __DIR__ . '/../../config/conexion.php';
+require_once __DIR__ . '/../../models/orden/ordenDetalleModelo.php';
+
 class ordenDetalleControlador
 {
     private $modelo;
+    private $db;
 
     public function __construct()
     {
-        $database = new Database();
-        $this->modelo = new ordenDetalleModelo($database->getConnection());
+        // 2. CORRECCIÓN: Usamos la clase 'Conexion' (no 'db')
+        $conexionObj = new Conexion();
+        $this->db = $conexionObj->getConexion();
+
+        // 3. Instanciamos el modelo pasándole la conexión activa
+        $this->modelo = new ordenDetalleModelo($this->db);
     }
 
+    // ==========================================
+    // 0. PROCESAR AJAX (Ruteo interno)
+    // ==========================================
     public function procesarAjax()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
@@ -25,7 +41,6 @@ class ordenDetalleControlador
                 $this->ajaxObtenerDelegacion();
             }
 
-            // ⭐ NUEVO: AJAX para obtener precio dinámico
             if ($_POST['accion'] === 'ajaxObtenerPrecio') {
                 $this->ajaxObtenerPrecio();
             }
@@ -37,8 +52,15 @@ class ordenDetalleControlador
     // ==========================================
     public function cargarVista()
     {
+        // Verificar sesión (Doble seguridad)
+        if (!isset($_SESSION['usuario_id'])) {
+            header('Location: ' . BASE_URL . 'login');
+            exit;
+        }
+
         $fecha = $_GET['fecha'] ?? date('Y-m-d');
 
+        // Datos para la vista
         $servicios = $this->modelo->obtenerServiciosPorFecha($fecha);
         $listaClientes = $this->modelo->obtenerTodosLosClientes();
         $listaTecnicos = $this->modelo->obtenerTodosLosTecnicos();
@@ -46,11 +68,16 @@ class ordenDetalleControlador
         $listaRepuestos = $this->modelo->obtenerListaRepuestos();
         $listaEstados  = $this->modelo->obtenerEstados();
         $listaCalifs   = $this->modelo->obtenerCalificaciones();
-        $listaModalidades = $this->modelo->obtenerModalidades(); // ⭐ NUEVO
+        $listaModalidades = $this->modelo->obtenerModalidades();
 
         $titulo = "Edición Total: " . $fecha;
+
+        // Rutas relativas desde index.php
         $vistaContenido = "app/views/orden/ordenDetalleVista.php";
-        include "app/views/plantillaVista.php";
+
+        // Incluimos la plantilla maestra
+        // Salimos de 'orden' (..), salimos de 'controllers' (..), entramos a 'views'
+        require_once __DIR__ . '/../../views/plantillaVista.php';
     }
 
     // ==========================================
@@ -86,7 +113,6 @@ class ordenDetalleControlador
         exit;
     }
 
-    // ⭐ NUEVO: Obtener precio dinámico
     public function ajaxObtenerPrecio()
     {
         ob_clean();
@@ -141,16 +167,14 @@ class ordenDetalleControlador
                     'obs'        => $datos['obs'],
                     'tiene_novedad' => $datos['tiene_novedad'] ?? 0,
                     'fecha_individual' => $datos['fecha_individual'],
-                    
-                    // 👇 ¡ESTA ES LA LÍNEA QUE FALTABA! 👇
-                    // Sin esto, el modelo recibía NULL y no guardaba nada
                     'json_repuestos' => $datos['json_repuestos'] ?? '[]'
                 ]);
             }
 
+            // Usamos JS para redirigir porque esto suele venir de un submit normal o AJAX
             echo "<script>
-                alert('¡Todo actualizado correctamente! Repuestos guardados.');
-                window.location.href = 'index.php?pagina=ordenDetalle&fecha=$fechaOrigen';
+                alert('¡Todo actualizado correctamente!');
+                window.location.href = '" . BASE_URL . "ordenDetalle/$fechaOrigen';
             </script>";
         }
     }
