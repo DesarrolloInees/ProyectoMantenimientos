@@ -19,6 +19,17 @@
     <i class="fas fa-list-alt mr-3 w-6 text-center"></i> Gestión Órdenes
 </a>
 
+
+<a href="<?= BASE_URL ?>reporteTecnico"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">
+    <i class="fa-solid fa-book-open-reader mr-3 w-6 text-center"></i> Reporte Tecnicos
+</a>
+
+<a href="<?= BASE_URL ?>reporteRepuesto"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">
+    <i class="fa-solid fa-screwdriver-wrench mr-3 w-6 text-center"></i> Reporte Repuestos
+</a>
+
 <p class="px-6 py-2 text-xs text-gray-500 uppercase font-bold mt-4">Configuración</p>
 
 <a href="<?= BASE_URL ?>usuarioVer"
@@ -84,6 +95,11 @@
 <a href="<?= BASE_URL ?>puntoVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
     <i class="fa-solid fa-city mr-3 w-6 text-center"></i>  Administrar Puntos
+</a>
+
+<a href="<?= BASE_URL ?>maquinaVer"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
+    <i class="fa-solid fa-cash-register mr-3 w-6 text-center"></i>  Administrar Máquinas
 </a>
 
 

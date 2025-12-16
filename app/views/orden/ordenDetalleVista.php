@@ -40,7 +40,7 @@
         /* Dejar que el contexto decida, excepto cuando abre */
     }
 
-    
+
 
     /* Ajuste específico para Select2 (Cliente y Punto) para que coincida con los nativos */
     .select2-container--default .select2-selection--single {
@@ -315,16 +315,18 @@
                                 <!-- 14. REPUESTOS -->
                                 <td class="p-1 bg-gray-50 text-center align-middle">
                                     <?php
-                                    // Los repuestos ahora vienen en DOS formatos:
-                                    // 1. $s['repuestos_texto'] → "Batería, Cable USB (PROSEGUR)"
-                                    // 2. $s['repuestos_json'] → '[{"id":"123","nombre":"Batería","origen":"INEES"},...]'
-
                                     $jsonRepuestos = $s['repuestos_json'] ?? '[]';
                                     $textoRepuestos = $s['repuestos_texto'] ?? '';
 
-                                    // Contar repuestos
+                                    // Decodificar JSON
                                     $arrayRepuestos = json_decode($jsonRepuestos, true) ?: [];
-                                    $cantidadRepuestos = count($arrayRepuestos);
+
+                                    // ⭐⭐ SUMAR CANTIDADES REALES (NO SOLO TIPOS) ⭐⭐
+                                    $cantidadRepuestos = 0;
+                                    foreach ($arrayRepuestos as $rep) {
+                                        $cant = isset($rep['cantidad']) ? intval($rep['cantidad']) : 1;
+                                        $cantidadRepuestos += $cant;
+                                    }
                                     ?>
 
                                     <!-- 👇 BOTÓN CORREGIDO (quita los ... y pon clases completas) 👇 -->
@@ -444,6 +446,9 @@
                         </select>
                     </div>
 
+                    <input type="number" id="cantidad_repuesto_modal" value="1" min="1"
+                        class="border rounded p-2 w-16 text-center text-sm font-bold bg-gray-50" placeholder="Cant.">
+
                     <select id="select_origen_modal" class="border rounded p-2 text-sm bg-gray-100 font-bold text-gray-700">
                         <option value="INEES">INEES</option>
                         <option value="PROSEGUR">PROSEGUR</option>
@@ -467,6 +472,8 @@
         </div>
     </div>
 </div>
+
+
 
 
 
@@ -578,6 +585,9 @@
     }
 
     // Función para convertir texto plano a array de repuestos
+    // ==========================================
+    // PARSEO AVANZADO DE TEXTO (Para leer "Bateria (x2)")
+    // ==========================================
     function convertirTextoARepuestos(texto) {
         const arrayTemp = [];
         if (isEmpty(texto)) return arrayTemp;
@@ -586,12 +596,21 @@
         const palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO'];
 
         items.forEach(item => {
-            const itemLimpio = item.trim();
+            let itemLimpio = item.trim();
             if (isEmpty(itemLimpio) || palabrasIgnorar.includes(itemLimpio.toUpperCase())) return;
 
             let origen = 'INEES';
-            let nombre = itemLimpio;
+            let cantidad = 1;
 
+            // 1. Detectar (xN) al final
+            const matchCantidad = itemLimpio.match(/\(x(\d+)\)$/i);
+            if (matchCantidad) {
+                cantidad = parseInt(matchCantidad[1]);
+                itemLimpio = itemLimpio.replace(/\(x\d+\)$/i, '').trim(); // Quitar (xN) para procesar nombre
+            }
+
+            // 2. Detectar Origen
+            let nombre = itemLimpio;
             if (itemLimpio.toUpperCase().includes('(PROSEGUR)')) {
                 origen = 'PROSEGUR';
                 nombre = itemLimpio.replace(/\(PROSEGUR\)/gi, '').trim();
@@ -600,7 +619,7 @@
                 nombre = itemLimpio.replace(/\(INEES\)/gi, '').trim();
             }
 
-            // Buscar si el repuesto existe en el catálogo
+            // 3. Buscar ID
             const repuestoEnCatalogo = catalogoRepuestos.find(r =>
                 r.nombre_repuesto.toLowerCase() === nombre.toLowerCase() ||
                 r.nombre_repuesto.toLowerCase().includes(nombre.toLowerCase())
@@ -609,7 +628,8 @@
             arrayTemp.push({
                 id: repuestoEnCatalogo ? repuestoEnCatalogo.id_repuesto : '',
                 nombre: nombre,
-                origen: origen
+                origen: origen,
+                cantidad: cantidad
             });
         });
 
@@ -635,51 +655,44 @@
         return combinados;
     }
 
+    // ==========================================
+    // ABRIR MODAL (Prioridad JSON > Texto)
+    // ==========================================
     function abrirModalRepuestos(idFila) {
-        console.log("Abriendo modal para fila:", idFila);
-
-        // 1. Guardar qué fila estamos editando
         document.getElementById('modal_fila_actual').value = idFila;
-
-        // 2. Recuperar de DOS FUENTES:
         const inputJson = document.getElementById(`input_json_${idFila}`);
         const inputDb = document.getElementById(`input_db_${idFila}`);
 
-        let repuestosExistentes = [];
-        let repuestosNuevos = [];
+        let repuestosFinales = [];
+        let jsonValido = false;
 
-        // A. Cargar repuestos del JSON del modal
-        try {
-            repuestosNuevos = inputJson && inputJson.value ? JSON.parse(inputJson.value) : [];
-        } catch (e) {
-            console.error("Error parseando JSON del modal", e);
-            repuestosNuevos = [];
-        }
-
-        // B. Cargar repuestos de la BD (texto plano)
-        const textoBD = inputDb ? inputDb.value : '';
-        if (textoBD && textoBD.trim() !== '') {
+        // Intentar leer JSON primero (Aquí viene la cantidad correcta de la BD)
+        if (inputJson && inputJson.value && inputJson.value.trim() !== '[]') {
             try {
-                // Intentar parsear como JSON primero
-                repuestosExistentes = JSON.parse(textoBD);
+                repuestosFinales = JSON.parse(inputJson.value);
+                // Convertir cantidad a entero por seguridad
+                repuestosFinales = repuestosFinales.map(r => ({
+                    ...r,
+                    cantidad: parseInt(r.cantidad) || 1
+                }));
+                jsonValido = true;
             } catch (e) {
-                // Si no es JSON válido, es texto plano
-                repuestosExistentes = convertirTextoARepuestos(textoBD);
+                console.error(e);
             }
         }
 
-        // C. COMBINAR ambos arrays
-        repuestosTemporales = combinarRepuestos(repuestosExistentes, repuestosNuevos);
-
-        console.log("Repuestos combinados:", repuestosTemporales);
-
-        // 3. Renderizar y Mostrar
-        renderizarListaVisual();
-        const modal = document.getElementById('modalRepuestos');
-        if (modal) {
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        // Si falló el JSON, leer Texto
+        if (!jsonValido) {
+            const textoBD = inputDb ? inputDb.value : '';
+            if (textoBD) repuestosFinales = convertirTextoARepuestos(textoBD);
         }
+
+        repuestosTemporales = repuestosFinales;
+        renderizarListaVisual();
+
+        const modal = document.getElementById('modalRepuestos');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
     }
 
     function borrarRepuestoTemporal(index) {
@@ -706,20 +719,44 @@
         const nombreRepuesto = dataSelect[0]?.text;
         const origen = document.getElementById('select_origen_modal').value;
 
+        // Obtener cantidad y asegurar que sea entero
+        let cantidadInput = document.getElementById('cantidad_repuesto_modal').value;
+        let cantidad = cantidadInput ? parseInt(cantidadInput) : 1;
+
         if (!idRepuesto) {
             alert("Por favor seleccione un repuesto");
             return;
         }
 
-        // Agregar al array temporal
-        repuestosTemporales.push({
-            id: idRepuesto,
-            nombre: nombreRepuesto,
-            origen: origen
-        });
+        if (cantidad < 1) {
+            alert("La cantidad debe ser al menos 1");
+            return;
+        }
+
+        // --- CORRECCIÓN: BUSCAR SI YA EXISTE PARA SUMAR ---
+        // Buscamos si ya existe ese ID con ese ORIGEN en el array temporal
+        const indiceExistente = repuestosTemporales.findIndex(item =>
+            item.id === idRepuesto && item.origen === origen
+        );
+
+        if (indiceExistente !== -1) {
+            // Si existe, le sumamos la cantidad nueva a la que ya tenía
+            repuestosTemporales[indiceExistente].cantidad =
+                (parseInt(repuestosTemporales[indiceExistente].cantidad) || 1) + cantidad;
+        } else {
+            // Si no existe, lo agregamos nuevo
+            repuestosTemporales.push({
+                id: idRepuesto,
+                nombre: nombreRepuesto,
+                origen: origen,
+                cantidad: cantidad
+            });
+        }
+        // --------------------------------------------------
 
         // Limpiar y renderizar
         $('#select_repuesto_modal').val(null).trigger('change');
+        document.getElementById('cantidad_repuesto_modal').value = "1"; // Reset input visual
         renderizarListaVisual();
     }
 
@@ -736,55 +773,65 @@
 
         repuestosTemporales.forEach((item, index) => {
             const colorOrigen = item.origen === 'INEES' ? 'text-blue-600' : 'text-orange-600';
+
+            // --- CORRECCIÓN: MOSTRAR CANTIDAD VISUALMENTE ---
+            // Si la cantidad es mayor a 1, mostramos (xCant), si no, nada.
+            const cant = parseInt(item.cantidad) || 1;
+            const textoCantidad = cant > 1 ? ` <span class="font-bold text-gray-800 bg-gray-200 px-1 rounded text-[10px] ml-1">x${cant}</span>` : '';
+            // -----------------------------------------------
+
             ul.innerHTML += `
-            <li class="flex justify-between items-center bg-white p-2 mb-1 border rounded shadow-sm">
-                <span class="text-xs">
-                    <b class="${colorOrigen}">[${item.origen}]</b> ${item.nombre}
-                </span>
-                <button type="button" onclick="borrarRepuestoTemporal(${index})" class="text-red-500 hover:text-red-700">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </li>
-        `;
+        <li class="flex justify-between items-center bg-white p-2 mb-1 border rounded shadow-sm">
+            <span class="text-xs">
+                <b class="${colorOrigen}">[${item.origen}]</b> ${item.nombre}${textoCantidad}
+            </span>
+            <button type="button" onclick="borrarRepuestoTemporal(${index})" class="text-red-500 hover:text-red-700">
+                <i class="fas fa-trash"></i>
+            </button>
+        </li>
+    `;
         });
     }
 
+    // ==========================================
+    // GUARDAR CAMBIOS (Escribe (x2) en el texto para Excel)
+    // ==========================================
     function guardarCambiosModal() {
         const idFila = document.getElementById('modal_fila_actual').value;
         const inputJson = document.getElementById(`input_json_${idFila}`);
         const inputDb = document.getElementById(`input_db_${idFila}`);
         const btnTexto = document.getElementById(`btn_texto_${idFila}`);
 
-        if (!inputJson || !inputDb || !btnTexto) {
-            console.error("Elementos no encontrados para fila:", idFila);
-            return;
-        }
+        if (!inputJson) return;
 
-        // 1. Guardar el JSON actualizado
+        // 1. Guardar JSON exacto
         inputJson.value = JSON.stringify(repuestosTemporales);
 
-        // 2. También actualizar el input de texto para la BD
+        // 2. Generar Texto visual para Excel (con lógica xN)
         const textoParaBD = repuestosTemporales.map(item => {
-            if (item.origen === 'PROSEGUR') {
-                return `${item.nombre} (PROSEGUR)`;
-            } else {
-                return item.nombre;
-            }
+            let txt = item.nombre;
+            const cant = parseInt(item.cantidad) || 1;
+
+            if (item.origen === 'PROSEGUR') txt += " (PROSEGUR)";
+            else if (item.origen === 'INEES') txt += " (INEES)"; // Forzar etiqueta INEES para consistencia
+
+            if (cant > 1) txt += ` (x${cant})`; // AGREGAR CANTIDAD VISUAL
+
+            return txt;
         }).join(', ');
 
         inputDb.value = textoParaBD;
 
-        // 3. Actualizar botón visual
-        const button = btnTexto.parentElement;
-        if (repuestosTemporales.length > 0) {
-            btnTexto.innerText = `${repuestosTemporales.length} Items`;
-            button.classList.add('bg-blue-100', 'border-blue-400');
+        // 3. Actualizar Botón
+        const totalItems = repuestosTemporales.reduce((acc, it) => acc + (parseInt(it.cantidad) || 1), 0);
+        if (totalItems > 0) {
+            btnTexto.innerText = `${totalItems} Items`;
+            btnTexto.parentElement.classList.add('bg-blue-100', 'border-blue-400');
         } else {
             btnTexto.innerText = "Gest. Repuestos";
-            button.classList.remove('bg-blue-100', 'border-blue-400');
+            btnTexto.parentElement.classList.remove('bg-blue-100', 'border-blue-400');
         }
 
-        console.log("Guardados cambios para fila:", idFila, repuestosTemporales);
         cerrarModal();
     }
     // ==========================================
@@ -1065,191 +1112,234 @@
     }
 
     // ==========================================
-// 5. EXCEL LIMPIO (CORREGIDO: VALOR CON COMAS)
-// ==========================================
-function exportarExcelLimpio() {
-    if (typeof XLSX === 'undefined') {
-        alert("Error: Librería SheetJS no cargada.");
-        return;
-    }
-
-    let tabla = document.getElementById("tablaEdicion");
-    let filas = Array.from(tabla.querySelectorAll('tbody tr'));
-    let serviciosPorDelegacion = {};
-
-    filas.forEach((fila, index) => {
-        // Ignorar filas sin ID (como la de "No hay datos")
-        if (!fila.id.startsWith('fila_')) return;
-
-        let idFila = fila.id.replace('fila_', '');
-
-        // --- EXTRACCIÓN SEGURA POR SELECTORES (NO POR POSICIÓN) ---
-
-        // 1. Identificadores y Textos Simples
-        let inputRemision = fila.querySelector('input[name*="[remision]"]');
-        let txtRemision = inputRemision ? inputRemision.value : "";
-
-        let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
-        let txtFecha = inputFecha ? inputFecha.value : "";
-
-        let txtObs = fila.querySelector('textarea[name*="[obs]"]');
-        let obs = txtObs ? txtObs.value : "";
-
-        // 2. Selects (Helper para sacar texto limpio)
-        const getSelectText = (partialName) => {
-            let sel = fila.querySelector(`select[name*="${partialName}"]`);
-            if (!sel || sel.selectedIndex < 0) return "";
-            // Preferir data-full si existe, sino el texto visible
-            return sel.options[sel.selectedIndex].getAttribute('data-full') || sel.options[sel.selectedIndex].text.trim();
-        };
-
-        let cliente     = getSelectText('[id_cliente]');
-        let punto       = getSelectText('[id_punto]');
-        let tecnico     = getSelectText('[id_tecnico]');
-        let servicio    = getSelectText('[id_manto]');
-        let modalidad   = getSelectText('[id_modalidad]');
-        let estado      = getSelectText('[id_estado]');
-        let calif       = getSelectText('[id_calif]');
-
-        // 3. Máquina (Limpieza de ID)
-        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
-        let device_id = "";
-        let tipoMaquinatxt = "";
-
-        if (selMaq && selMaq.selectedIndex >= 0) {
-            let rawText = selMaq.options[selMaq.selectedIndex].text.trim();
-            // Separar por paréntesis para obtener solo el ID: "12345 (Modelo)" -> "12345"
-            device_id = rawText.split('(')[0].trim();
-        }
-        
-        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
-        tipoMaquinatxt = divTipo ? divTipo.innerText : "";
-
-        // 4. Delegación
-        let divDelegacion = document.getElementById(`td_delegacion_${idFila}`);
-        let delegacion = divDelegacion ? divDelegacion.innerText : "SIN ASIGNAR";
-
-        // 5. Checkbox Preventivo/Correctivo
-        let txtServicio = servicio.toLowerCase();
-        let esPrevBasico   = txtServicio.includes('basico') || txtServicio.includes('básico') ? "X" : "";
-        let esPrevProfundo = txtServicio.includes('profundo') || txtServicio.includes('completo') ? "X" : "";
-        let esCorrectivo   = txtServicio.includes('correctivo') || txtServicio.includes('reparacion') ? "X" : "";
-        
-        if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes('preventivo')) esPrevBasico = "X";
-
-        // 6. Valor (RESTAURADO: PUNTOS A COMAS) ⭐⭐⭐
-        let inputValor = fila.querySelector('input[name*="[valor]"]');
-        let valorRaw = inputValor ? inputValor.value : "0";
-        let valorExcel = "";
-        
-        if (valorRaw) {
-            // Aquí está la lógica que pediste restaurar: 
-            // Reemplaza todos los puntos (.) por comas (,)
-            valorExcel = valorRaw.toString().replace(/\./g, ','); 
+    // 5. EXCEL LIMPIO (CORREGIDO: VALOR CON COMAS)
+    // ==========================================
+    function exportarExcelLimpio() {
+        if (typeof XLSX === 'undefined') {
+            alert("Error: Librería SheetJS no cargada.");
+            return;
         }
 
-        // 7. Horas y Desplazamiento
-        let inputEntrada = fila.querySelector('input[name*="[entrada]"]');
-        let inputSalida  = fila.querySelector('input[name*="[salida]"]');
-        let horaEntrada  = inputEntrada ? inputEntrada.value : "";
-        let horaSalida   = inputSalida ? inputSalida.value : "";
-        let duracion     = calcularDuracion(horaEntrada, horaSalida); 
+        let tabla = document.getElementById("tablaEdicion");
+        let filas = Array.from(tabla.querySelectorAll('tbody tr'));
+        let serviciosPorDelegacion = {};
 
-        let spanDesplaz = document.getElementById(`desplazamiento_${idFila}`);
-        let desplazamiento = spanDesplaz ? spanDesplaz.innerText.replace('Err H.', '') : "";
+        filas.forEach((fila, index) => {
+            // Ignorar filas sin ID (como la de "No hay datos")
+            if (!fila.id.startsWith('fila_')) return;
 
-        // 8. Repuestos
-        let inputRepDB = document.getElementById(`input_db_${idFila}`);
-        let repuestos = inputRepDB ? inputRepDB.value : "";
-        
-        // Limpieza de textos basura en repuestos
-        if (repuestos.match(/Gest\. Repuestos|Items|sin repuestos|ninguno|n\/a|vacío/i)) {
-            repuestos = "";
-        }
+            let idFila = fila.id.replace('fila_', '');
 
-        // --- OBJETO DE DATOS ---
-        let datos = {
-            device_id: device_id,
-            remision: txtRemision,
-            cliente: cliente,
-            punto: punto,
-            esPrevBasico: esPrevBasico,
-            esPrevProfundo: esPrevProfundo,
-            esCorrectivo: esCorrectivo,
-            valor: valorExcel, // ✅ Valor con comas
-            obs: obs,
-            delegacion: delegacion,
-            fecha: txtFecha,
-            tecnico: tecnico,
-            tipoMaquina: tipoMaquinatxt,
-            servicio: servicio,
-            horaEntrada: horaEntrada,
-            horaSalida: horaSalida,
-            duracion: duracion,
-            desplazamiento: desplazamiento,
-            repuestos: repuestos,
-            estado: estado,
-            calificacion: calif,
-            modalidad: modalidad
-        };
+            // --- EXTRACCIÓN SEGURA POR SELECTORES (NO POR POSICIÓN) ---
 
-        // Agrupar
-        if (!serviciosPorDelegacion[delegacion]) {
-            serviciosPorDelegacion[delegacion] = [];
-        }
-        serviciosPorDelegacion[delegacion].push(datos);
-    });
+            // 1. Identificadores y Textos Simples
+            let inputRemision = fila.querySelector('input[name*="[remision]"]');
+            let txtRemision = inputRemision ? inputRemision.value : "";
 
-    // --- GENERAR EXCEL ---
-    let workbook = XLSX.utils.book_new();
-    let hayDatos = Object.keys(serviciosPorDelegacion).length > 0;
+            let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
+            let txtFecha = inputFecha ? inputFecha.value : "";
 
-    if (!hayDatos) {
-        alert("No hay datos válidos para exportar.");
-        return;
-    }
+            let txtObs = fila.querySelector('textarea[name*="[obs]"]');
+            let obs = txtObs ? txtObs.value : "";
 
-    for (let delegacion in serviciosPorDelegacion) {
-        let lista = serviciosPorDelegacion[delegacion];
-        let matriz = [
-            [
-                'Device_id', 'Número de Remisión', 'Cliente', 'Nombre Punto',
-                'Preventivo Básico', 'Preventivo Profundo', 'Correctivo',
-                'Tarifa', 'Observaciones', 'Delegación', 'Fecha', 'Técnico',
-                'Tipo de Máquina', 'Tipo de Servicio', 'Hora Entrada', 'Hora Salida',
-                'Duración', 'Desplazamiento', 'Repuestos', 'Estado de la Máquina',
-                'Calificación del Servicio', 'Modalidad Operativa'
-            ]
-        ];
+            // 2. Selects (Helper para sacar texto limpio)
+            const getSelectText = (partialName) => {
+                let sel = fila.querySelector(`select[name*="${partialName}"]`);
+                if (!sel || sel.selectedIndex < 0) return "";
+                // Preferir data-full si existe, sino el texto visible
+                return sel.options[sel.selectedIndex].getAttribute('data-full') || sel.options[sel.selectedIndex].text.trim();
+            };
 
-        lista.forEach(d => {
-            matriz.push([
-                d.device_id, d.remision, d.cliente, d.punto,
-                d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
-                d.valor, d.obs, d.delegacion, d.fecha, d.tecnico,
-                d.tipoMaquina, d.servicio, d.horaEntrada, d.horaSalida,
-                d.duracion, d.desplazamiento, d.repuestos, d.estado,
-                d.calificacion, d.modalidad
-            ]);
+            let cliente = getSelectText('[id_cliente]');
+            let punto = getSelectText('[id_punto]');
+            let tecnico = getSelectText('[id_tecnico]');
+            let servicio = getSelectText('[id_manto]');
+            let modalidad = getSelectText('[id_modalidad]');
+            let estado = getSelectText('[id_estado]');
+            let calif = getSelectText('[id_calif]');
+
+            // 3. Máquina (Limpieza de ID)
+            let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
+            let device_id = "";
+            let tipoMaquinatxt = "";
+
+            if (selMaq && selMaq.selectedIndex >= 0) {
+                let rawText = selMaq.options[selMaq.selectedIndex].text.trim();
+                // Separar por paréntesis para obtener solo el ID: "12345 (Modelo)" -> "12345"
+                device_id = rawText.split('(')[0].trim();
+            }
+
+            let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
+            tipoMaquinatxt = divTipo ? divTipo.innerText : "";
+
+            // 4. Delegación
+            let divDelegacion = document.getElementById(`td_delegacion_${idFila}`);
+            let delegacion = divDelegacion ? divDelegacion.innerText : "SIN ASIGNAR";
+
+            // 5. Checkbox Preventivo/Correctivo
+            let txtServicio = servicio.toLowerCase();
+            let esPrevBasico = txtServicio.includes('basico') || txtServicio.includes('básico') ? "X" : "";
+            let esPrevProfundo = txtServicio.includes('profundo') || txtServicio.includes('completo') ? "X" : "";
+            let esCorrectivo = txtServicio.includes('correctivo') || txtServicio.includes('reparacion') ? "X" : "";
+
+            if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes('preventivo')) esPrevBasico = "X";
+
+            // 6. Valor (RESTAURADO: PUNTOS A COMAS) ⭐⭐⭐
+            let inputValor = fila.querySelector('input[name*="[valor]"]');
+            let valorRaw = inputValor ? inputValor.value : "0";
+            let valorExcel = "";
+
+            if (valorRaw) {
+                // Aquí está la lógica que pediste restaurar: 
+                // Reemplaza todos los puntos (.) por comas (,)
+                valorExcel = valorRaw.toString().replace(/\./g, ',');
+            }
+
+            // 7. Horas y Desplazamiento
+            let inputEntrada = fila.querySelector('input[name*="[entrada]"]');
+            let inputSalida = fila.querySelector('input[name*="[salida]"]');
+            let horaEntrada = inputEntrada ? inputEntrada.value : "";
+            let horaSalida = inputSalida ? inputSalida.value : "";
+            let duracion = calcularDuracion(horaEntrada, horaSalida);
+
+            let spanDesplaz = document.getElementById(`desplazamiento_${idFila}`);
+            let desplazamiento = spanDesplaz ? spanDesplaz.innerText.replace('Err H.', '') : "";
+
+            // 8. Repuestos
+            let inputRepDB = document.getElementById(`input_db_${idFila}`);
+            let repuestos = inputRepDB ? inputRepDB.value : "";
+
+            // Limpieza de textos basura en repuestos
+            if (repuestos.match(/Gest\. Repuestos|Items|sin repuestos|ninguno|n\/a|vacío/i)) {
+                repuestos = "";
+            }
+
+            // --- OBJETO DE DATOS ---
+            let datos = {
+                device_id: device_id,
+                remision: txtRemision,
+                cliente: cliente,
+                punto: punto,
+                esPrevBasico: esPrevBasico,
+                esPrevProfundo: esPrevProfundo,
+                esCorrectivo: esCorrectivo,
+                valor: valorExcel, // ✅ Valor con comas
+                obs: obs,
+                delegacion: delegacion,
+                fecha: txtFecha,
+                tecnico: tecnico,
+                tipoMaquina: tipoMaquinatxt,
+                servicio: servicio,
+                horaEntrada: horaEntrada,
+                horaSalida: horaSalida,
+                duracion: duracion,
+                desplazamiento: desplazamiento,
+                repuestos: repuestos,
+                estado: estado,
+                calificacion: calif,
+                modalidad: modalidad
+            };
+
+            // Agrupar
+            if (!serviciosPorDelegacion[delegacion]) {
+                serviciosPorDelegacion[delegacion] = [];
+            }
+            serviciosPorDelegacion[delegacion].push(datos);
         });
 
-        let ws = XLSX.utils.aoa_to_sheet(matriz);
-        ws['!cols'] = [
-            { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 },
-            { wch: 8 }, { wch: 8 }, { wch: 8 },
-            { wch: 12 }, { wch: 35 }, { wch: 15 }, { wch: 12 }, { wch: 20 },
-            { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
-            { wch: 10 }, { wch: 12 }, { wch: 40 }, { wch: 15 },
-            { wch: 15 }, { wch: 15 }
-        ];
+        // --- GENERAR EXCEL ---
+        let workbook = XLSX.utils.book_new();
+        let hayDatos = Object.keys(serviciosPorDelegacion).length > 0;
 
-        let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "General";
-        XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
+        if (!hayDatos) {
+            alert("No hay datos válidos para exportar.");
+            return;
+        }
+
+        for (let delegacion in serviciosPorDelegacion) {
+            let lista = serviciosPorDelegacion[delegacion];
+            let matriz = [
+                [
+                    'Device_id', 'Número de Remisión', 'Cliente', 'Nombre Punto',
+                    'Preventivo Básico', 'Preventivo Profundo', 'Correctivo',
+                    'Tarifa', 'Observaciones', 'Delegación', 'Fecha', 'Técnico',
+                    'Tipo de Máquina', 'Tipo de Servicio', 'Hora Entrada', 'Hora Salida',
+                    'Duración', 'Desplazamiento', 'Repuestos', 'Estado de la Máquina',
+                    'Calificación del Servicio', 'Modalidad Operativa'
+                ]
+            ];
+
+            lista.forEach(d => {
+                matriz.push([
+                    d.device_id, d.remision, d.cliente, d.punto,
+                    d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
+                    d.valor, d.obs, d.delegacion, d.fecha, d.tecnico,
+                    d.tipoMaquina, d.servicio, d.horaEntrada, d.horaSalida,
+                    d.duracion, d.desplazamiento, d.repuestos, d.estado,
+                    d.calificacion, d.modalidad
+                ]);
+            });
+
+            let ws = XLSX.utils.aoa_to_sheet(matriz);
+            ws['!cols'] = [{
+                    wch: 15
+                }, {
+                    wch: 12
+                }, {
+                    wch: 25
+                }, {
+                    wch: 25
+                },
+                {
+                    wch: 8
+                }, {
+                    wch: 8
+                }, {
+                    wch: 8
+                },
+                {
+                    wch: 12
+                }, {
+                    wch: 35
+                }, {
+                    wch: 15
+                }, {
+                    wch: 12
+                }, {
+                    wch: 20
+                },
+                {
+                    wch: 15
+                }, {
+                    wch: 20
+                }, {
+                    wch: 10
+                }, {
+                    wch: 10
+                },
+                {
+                    wch: 10
+                }, {
+                    wch: 12
+                }, {
+                    wch: 40
+                }, {
+                    wch: 15
+                },
+                {
+                    wch: 15
+                }, {
+                    wch: 15
+                }
+            ];
+
+            let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "General";
+            XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
+        }
+
+        let fecha = "<?= $_GET['fecha'] ?>";
+        XLSX.writeFile(workbook, `${fecha}.xlsx`);
     }
-
-    let fecha = "<?= $_GET['fecha'] ?>";
-    XLSX.writeFile(workbook, `${fecha}.xlsx`);
-}
     // ==========================================
     // 6. UTILIDADES BLINDADAS (Anti-Error)
     // ==========================================
@@ -1376,105 +1466,122 @@ function exportarExcelLimpio() {
     }
 
     // ==========================================
-// 9. EXCEL DE NOVEDADES (REPARADO)
-// ==========================================
-function exportarExcelNovedades() {
-    if (typeof XLSX === 'undefined') {
-        alert("Librería SheetJS no cargada.");
-        return;
-    }
-
-    let tabla = document.getElementById("tablaEdicion");
-    let filas = Array.from(tabla.querySelectorAll('tbody tr'));
-    let listaNovedades = [];
-
-    filas.forEach((fila) => {
-        // Ignorar filas que no sean de datos
-        if (!fila.id.startsWith('fila_')) return;
-        
-        let idFila = fila.id.replace('fila_', '');
-
-        // 1. Verificar si tiene el flag de Novedad activo (input hidden value="1")
-        // Buscamos el input por su ID específico para ser precisos
-        let inputNovedad = document.getElementById(`input_novedad_${idFila}`);
-        if (!inputNovedad || inputNovedad.value != "1") return;
-
-        // --- EXTRACCIÓN DE DATOS ---
-        
-        // Delegación
-        let divDel = document.getElementById(`td_delegacion_${idFila}`);
-        let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
-
-        // Cliente
-        let selCli = fila.querySelector('select[name*="[id_cliente]"]');
-        let cliente = selCli ? (selCli.options[selCli.selectedIndex].getAttribute('data-full') || selCli.options[selCli.selectedIndex].text) : "";
-
-        // Punto
-        let selPunto = fila.querySelector('select[name*="[id_punto]"]');
-        let punto = selPunto ? (selPunto.options[selPunto.selectedIndex].getAttribute('data-full') || selPunto.options[selPunto.selectedIndex].text) : "";
-
-        // Máquina (ID y Tipo)
-        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
-        let deviceID = "";
-        if(selMaq && selMaq.selectedIndex >= 0) {
-            deviceID = selMaq.options[selMaq.selectedIndex].text.split('(')[0].trim();
+    // 9. EXCEL DE NOVEDADES (REPARADO)
+    // ==========================================
+    function exportarExcelNovedades() {
+        if (typeof XLSX === 'undefined') {
+            alert("Librería SheetJS no cargada.");
+            return;
         }
-        
-        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
-        let tipoMaq = divTipo ? divTipo.innerText : "";
 
-        // Remisión (Aquí estaba el error frecuente, ahora busca por name parcial)
-        let inputRem = fila.querySelector('input[name*="[remision]"]');
-        let remision = inputRem ? inputRem.value : "";
+        let tabla = document.getElementById("tablaEdicion");
+        let filas = Array.from(tabla.querySelectorAll('tbody tr'));
+        let listaNovedades = [];
 
-        // Técnico
-        let selTec = fila.querySelector('select[name*="[id_tecnico]"]');
-        let tecnico = selTec ? selTec.options[selTec.selectedIndex].text : "";
+        filas.forEach((fila) => {
+            // Ignorar filas que no sean de datos
+            if (!fila.id.startsWith('fila_')) return;
 
-        // Observación
-        let txtObs = fila.querySelector('textarea[name*="[obs]"]');
-        let obs = txtObs ? txtObs.value : "";
-        
-        // Fecha Individual
-        let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
-        let fecha = inputFecha ? inputFecha.value : "";
+            let idFila = fila.id.replace('fila_', '');
 
-        listaNovedades.push({
-            "Delegación": delegacion,
-            "Cliente": cliente,
-            "Punto": punto,
-            "Device ID": deviceID,
-            "Tipo Máquina": tipoMaq,
-            "Remisión": remision,
-            "Técnico": tecnico,
-            "Observación": obs,
-            "Fecha": fecha
+            // 1. Verificar si tiene el flag de Novedad activo (input hidden value="1")
+            // Buscamos el input por su ID específico para ser precisos
+            let inputNovedad = document.getElementById(`input_novedad_${idFila}`);
+            if (!inputNovedad || inputNovedad.value != "1") return;
+
+            // --- EXTRACCIÓN DE DATOS ---
+
+            // Delegación
+            let divDel = document.getElementById(`td_delegacion_${idFila}`);
+            let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
+
+            // Cliente
+            let selCli = fila.querySelector('select[name*="[id_cliente]"]');
+            let cliente = selCli ? (selCli.options[selCli.selectedIndex].getAttribute('data-full') || selCli.options[selCli.selectedIndex].text) : "";
+
+            // Punto
+            let selPunto = fila.querySelector('select[name*="[id_punto]"]');
+            let punto = selPunto ? (selPunto.options[selPunto.selectedIndex].getAttribute('data-full') || selPunto.options[selPunto.selectedIndex].text) : "";
+
+            // Máquina (ID y Tipo)
+            let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
+            let deviceID = "";
+            if (selMaq && selMaq.selectedIndex >= 0) {
+                deviceID = selMaq.options[selMaq.selectedIndex].text.split('(')[0].trim();
+            }
+
+            let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
+            let tipoMaq = divTipo ? divTipo.innerText : "";
+
+            // Remisión (Aquí estaba el error frecuente, ahora busca por name parcial)
+            let inputRem = fila.querySelector('input[name*="[remision]"]');
+            let remision = inputRem ? inputRem.value : "";
+
+            // Técnico
+            let selTec = fila.querySelector('select[name*="[id_tecnico]"]');
+            let tecnico = selTec ? selTec.options[selTec.selectedIndex].text : "";
+
+            // Observación
+            let txtObs = fila.querySelector('textarea[name*="[obs]"]');
+            let obs = txtObs ? txtObs.value : "";
+
+            // Fecha Individual
+            let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
+            let fecha = inputFecha ? inputFecha.value : "";
+
+            listaNovedades.push({
+                "Delegación": delegacion,
+                "Cliente": cliente,
+                "Punto": punto,
+                "Device ID": deviceID,
+                "Tipo Máquina": tipoMaq,
+                "Remisión": remision,
+                "Técnico": tecnico,
+                "Observación": obs,
+                "Fecha": fecha
+            });
         });
-    });
 
-    if (listaNovedades.length === 0) {
-        alert("¡Excelente! No hay novedades marcadas para generar reporte.");
-        return;
-    }
+        if (listaNovedades.length === 0) {
+            alert("¡Excelente! No hay novedades marcadas para generar reporte.");
+            return;
+        }
 
-    // GENERAR EXCEL
-    let wb = XLSX.utils.book_new();
-    let ws = XLSX.utils.json_to_sheet(listaNovedades);
+        // GENERAR EXCEL
+        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.json_to_sheet(listaNovedades);
 
-    // Ajustar anchos
-    ws['!cols'] = [
-        { wch: 15 }, // Delegación
-        { wch: 25 }, // Cliente
-        { wch: 25 }, // Punto
-        { wch: 15 }, // Device ID
-        { wch: 15 }, // Tipo
-        { wch: 12 }, // Remisión
-        { wch: 20 }, // Técnico
-        { wch: 50 }, // Observación
-        { wch: 12 }  // Fecha
-    ];
+        // Ajustar anchos
+        ws['!cols'] = [{
+                wch: 15
+            }, // Delegación
+            {
+                wch: 25
+            }, // Cliente
+            {
+                wch: 25
+            }, // Punto
+            {
+                wch: 15
+            }, // Device ID
+            {
+                wch: 15
+            }, // Tipo
+            {
+                wch: 12
+            }, // Remisión
+            {
+                wch: 20
+            }, // Técnico
+            {
+                wch: 50
+            }, // Observación
+            {
+                wch: 12
+            } // Fecha
+        ];
 
-    XLSX.utils.book_append_sheet(wb, ws, "Novedades");
+        XLSX.utils.book_append_sheet(wb, ws, "Novedades");
         XLSX.writeFile(wb, `Novedades_${"<?= $_GET['fecha'] ?>"}.xlsx`);
-}
+    }
 </script>

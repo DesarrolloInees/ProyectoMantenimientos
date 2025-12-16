@@ -57,25 +57,32 @@ class ordenDetalleModelo
                 o.id_estado_maquina as id_estado, em.nombre_estado as estado_maquina,
                 o.id_calificacion as id_calif, cal.nombre_calificacion,
 
-                -- ⭐⭐ REPUESTOS COMO TEXTO PLANO (COMPATIBLE CON MySQL 5.7) ⭐⭐
-                -- ⭐⭐ REPUESTOS CORREGIDOS PARA MOSTRAR SIEMPRE EL ORIGEN ⭐⭐
-                IFNULL(
-                    (SELECT GROUP_CONCAT(
-                        CASE 
-                            WHEN osr.origen = 'PROSEGUR' THEN CONCAT(r.nombre_repuesto, ' (PROSEGUR)')
-                            -- AGREGAMOS ESTA LÍNEA PARA QUE INEES TAMBIÉN SALGA:
-                            WHEN osr.origen = 'INEES' THEN CONCAT(r.nombre_repuesto, ' (INEES)')
-                            -- EL ELSE QUEDA POR SEGURIDAD
-                            ELSE CONCAT(r.nombre_repuesto, ' (', osr.origen, ')')
-                        END
-                        ORDER BY r.nombre_repuesto
+                -- ⭐⭐ CORRECCIÓN CRÍTICA: AGREGAR CANTIDAD AL TEXTO GENERADO POR SQL ⭐⭐
+                    IFNULL(
+                        (SELECT GROUP_CONCAT(
+                        CONCAT(
+                            r.nombre_repuesto, 
+            
+                -- 1. Agregar el Origen
+                    CASE 
+                        WHEN osr.origen = 'PROSEGUR' THEN ' (PROSEGUR)'
+                        WHEN osr.origen = 'INEES' THEN ' (INEES)'
+                        ELSE CONCAT(' (', osr.origen, ')')
+                    END,
+
+                -- 2. Agregar la Cantidad SOLO si es mayor a 1
+                    CASE 
+                        WHEN osr.cantidad > 1 THEN CONCAT(' (x', osr.cantidad, ')')
+                        ELSE ''
+                    END
+                    )
+                    ORDER BY r.nombre_repuesto
                         SEPARATOR ', ')
                     FROM orden_servicio_repuesto osr
                     JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
                     WHERE osr.id_orden_servicio = o.id_ordenes_servicio)
-                , '') as repuestos_texto
-
-            FROM ordenes_servicio o
+                    , '') as repuestos_texto
+                    FROM ordenes_servicio o
             
             LEFT JOIN maquina m ON o.id_maquina = m.id_maquina
             LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
@@ -99,10 +106,28 @@ class ordenDetalleModelo
         $stmt->execute([$fecha]);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 🔧 PROCESAR LOS RESULTADOS: Convertir texto a JSON para el frontend
+        // 🔧 PROCESAR LOS RESULTADOS
         foreach ($resultados as &$row) {
-            // Convertir el texto plano a JSON estructurado
-            $row['repuestos_json'] = $this->convertirTextoAJSON($row['repuestos_texto']);
+            // YA NO convertimos texto a JSON. 
+            // Hacemos una consulta REAL para obtener ID, Cantidad y Origen correctamente.
+
+            $idOrden = $row['id_ordenes_servicio'];
+
+            $sqlRep = "SELECT 
+                r.id_repuesto as id, 
+                r.nombre_repuesto as nombre, 
+                osr.origen, 
+                osr.cantidad 
+                FROM orden_servicio_repuesto osr
+                JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                WHERE osr.id_orden_servicio = ?";
+
+            $stmtRep = $this->conn->prepare($sqlRep);
+            $stmtRep->execute([$idOrden]);
+            $listaRepuestos = $stmtRep->fetchAll(PDO::FETCH_ASSOC);
+
+            // Guardamos el JSON estructura real
+            $row['repuestos_json'] = json_encode($listaRepuestos);
         }
 
         return $resultados;
@@ -110,60 +135,64 @@ class ordenDetalleModelo
 
     // ⭐⭐ FUNCIÓN PARA CONVERTIR TEXTO A JSON (MÁS ROBUSTA) ⭐⭐
     private function convertirTextoAJSON($texto)
-    {
-        $arrayRepuestos = [];
+{
+    $arrayRepuestos = [];
 
-        if (empty($texto) || trim($texto) === '') {
-            return '[]';
-        }
-
-        // Lista de palabras a ignorar (sin repuestos)
-        $palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO', ''];
-
-        // Separar por comas, pero teniendo en cuenta los paréntesis
-        // Primero, reemplazar ', ' por un marcador temporal para no dividir dentro de (PROSEGUR)
-        $textoTemp = str_replace(' (PROSEGUR)', '_(PROSEGUR)', $texto);
-        $textoTemp = str_replace(' (INEES)', '_(INEES)', $textoTemp);
-
-        // Ahora dividir por comas
-        $items = explode(',', $textoTemp);
-
-        foreach ($items as $item) {
-            // Restaurar los espacios antes de los paréntesis
-            $item = str_replace('_(PROSEGUR)', ' (PROSEGUR)', $item);
-            $item = str_replace('_(INEES)', ' (INEES)', $item);
-
-            $itemLimpio = trim($item);
-
-            // Ignorar si está vacío o en la lista de ignorados
-            if (empty($itemLimpio) || in_array(strtoupper($itemLimpio), $palabrasIgnorar)) {
-                continue;
-            }
-
-            $origen = 'INEES'; // Default
-            $nombre = $itemLimpio;
-
-            // Detectar etiquetas de origen
-            if (strpos(strtoupper($itemLimpio), '(PROSEGUR)') !== false) {
-                $origen = 'PROSEGUR';
-                $nombre = trim(str_ireplace('(PROSEGUR)', '', $itemLimpio));
-            } elseif (strpos(strtoupper($itemLimpio), '(INEES)') !== false) {
-                $origen = 'INEES';
-                $nombre = trim(str_ireplace('(INEES)', '', $itemLimpio));
-            }
-
-            // Buscar el ID del repuesto en la base de datos
-            $idRepuesto = $this->buscarIdRepuestoPorNombre($nombre);
-
-            $arrayRepuestos[] = [
-                'id' => $idRepuesto,
-                'nombre' => $nombre,
-                'origen' => $origen
-            ];
-        }
-
-        return json_encode($arrayRepuestos, JSON_UNESCAPED_UNICODE);
+    if (empty($texto) || trim($texto) === '') {
+        return '[]';
     }
+
+    $palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO', ''];
+
+    // Truco para proteger los paréntesis de origen
+    $textoTemp = str_replace(' (PROSEGUR)', '_(PROSEGUR)', $texto);
+    $textoTemp = str_replace(' (INEES)', '_(INEES)', $textoTemp);
+
+    $items = explode(',', $textoTemp);
+
+    foreach ($items as $item) {
+        // Restaurar origen
+        $item = str_replace('_(PROSEGUR)', ' (PROSEGUR)', $item);
+        $item = str_replace('_(INEES)', ' (INEES)', $item);
+        $itemLimpio = trim($item);
+
+        if (empty($itemLimpio) || in_array(strtoupper($itemLimpio), $palabrasIgnorar)) {
+            continue;
+        }
+
+        $cantidad = 1; // Default
+
+        // 1. DETECTAR CANTIDAD (xN)
+        if (preg_match('/\(x(\d+)\)$/i', $itemLimpio, $matches)) {
+            $cantidad = intval($matches[1]);
+            // Quitamos el (x3) del nombre para buscar limpio el ID
+            $itemLimpio = trim(preg_replace('/\(x\d+\)$/i', '', $itemLimpio));
+        }
+
+        $origen = 'INEES';
+        $nombre = $itemLimpio;
+
+        // 2. DETECTAR ORIGEN
+        if (stripos($itemLimpio, '(PROSEGUR)') !== false) {
+            $origen = 'PROSEGUR';
+            $nombre = trim(str_ireplace('(PROSEGUR)', '', $itemLimpio));
+        } elseif (stripos($itemLimpio, '(INEES)') !== false) {
+            $origen = 'INEES';
+            $nombre = trim(str_ireplace('(INEES)', '', $itemLimpio));
+        }
+
+        $idRepuesto = $this->buscarIdRepuestoPorNombre($nombre);
+
+        $arrayRepuestos[] = [
+            'id' => $idRepuesto,
+            'nombre' => $nombre,
+            'origen' => $origen,
+            'cantidad' => $cantidad // Guardamos la cantidad
+        ];
+    }
+
+    return json_encode($arrayRepuestos, JSON_UNESCAPED_UNICODE);
+}
 
     // ⭐⭐ BUSCAR ID DE REPUESTO POR NOMBRE ⭐⭐
     private function buscarIdRepuestoPorNombre($nombre)
@@ -347,21 +376,32 @@ class ordenDetalleModelo
                 $repuestos = json_decode($datos['json_repuestos'], true);
 
                 if (is_array($repuestos) && count($repuestos) > 0) {
-                    $sqlIns = "INSERT INTO orden_servicio_repuesto (id_orden_servicio, id_repuesto, origen, cantidad) VALUES (?, ?, ?, 1)";
+                    // AGREGAMOS 'cantidad' AL INSERT
+                    $sqlIns = "INSERT INTO orden_servicio_repuesto (id_orden_servicio, id_repuesto, origen, cantidad) VALUES (?, ?, ?, ?)";
                     $stmtIns = $this->conn->prepare($sqlIns);
 
                     foreach ($repuestos as $rep) {
-                        // Verificamos que traiga ID válido
                         if (!empty($rep['id'])) {
+                            // Validamos que exista cantidad, si no, por defecto 1
+                            $cantidad = !empty($rep['cantidad']) ? $rep['cantidad'] : 1;
+
                             $stmtIns->execute([
                                 $id,
                                 $rep['id'],
-                                $rep['origen']
+                                $rep['origen'],
+                                $cantidad // <--- Aquí guardamos el valor
                             ]);
                         }
                     }
                 }
             }
+            // =================================================================================
+            // 3. ACTUALIZAR EL PUNTO AUTOMÁTICAMENTE (LÓGICA INTELIGENTE)
+            // =================================================================================
+            // Esto asegura que la tabla 'punto' siempre tenga la fecha y servicio más reciente,
+            // sin importar si estás editando una orden vieja o nueva.
+            $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
+            // =================================================================================
 
             // Si todo salió bien, confirmamos los cambios
             $this->conn->commit();
@@ -373,5 +413,34 @@ class ordenDetalleModelo
             return false;
         }
     }
-}
 
+    // --- 4. FUNCIÓN AUXILIAR PARA ACTUALIZAR INFO EN PUNTO ---
+    private function actualizarInfoMantenimientoPunto($idPunto)
+    {
+        try {
+            // Busca la orden más reciente (por fecha y ID) de este punto
+            // y actualiza la tabla 'punto' con esa información.
+            $sql = "UPDATE punto p
+                    JOIN (
+                        SELECT id_punto, fecha_visita, id_tipo_mantenimiento
+                        FROM ordenes_servicio
+                        WHERE id_punto = :id_punto_b
+                        ORDER BY fecha_visita DESC, id_ordenes_servicio DESC
+                        LIMIT 1
+                    ) AS ultima_real ON p.id_punto = ultima_real.id_punto
+                    SET p.fecha_ultima_visita = ultima_real.fecha_visita,
+                        p.id_ultimo_tipo_mantenimiento = ultima_real.id_tipo_mantenimiento
+                    WHERE p.id_punto = :id_punto_a";
+            
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([
+                ':id_punto_b' => $idPunto, // Para el subquery
+                ':id_punto_a' => $idPunto  // Para el where principal
+            ]);
+            return true;
+        } catch (PDOException $e) {
+            error_log("Error actualizando info mantenimiento punto (Smart): " . $e->getMessage());
+            return false;
+        }
+    }
+}

@@ -41,7 +41,8 @@ class ordenCrearModels
     }
 
     // --- 4. PUNTOS POR CLIENTE (CORREGIDO: Lógica Modalidad) ---
-    public function obtenerPuntosPorCliente($idCliente) {
+    public function obtenerPuntosPorCliente($idCliente)
+    {
         try {
             // CAMBIO: Ahora obtenemos id_modalidad directamente de la tabla PUNTO
             // Hacemos un LEFT JOIN con modalidad_operativa por si quieres mostrar el nombre (Urbano/Interurbano)
@@ -52,13 +53,12 @@ class ordenCrearModels
                     LEFT JOIN modalidad_operativa mo ON p.id_modalidad = mo.id_modalidad
                     WHERE p.id_cliente = :id_cliente AND p.estado = 1 
                     ORDER BY p.nombre_punto ASC";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':id_cliente', $idCliente, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
         } catch (PDOException $e) {
             error_log("Error en obtenerPuntosPorCliente: " . $e->getMessage());
             return [];
@@ -108,7 +108,8 @@ class ordenCrearModels
     }
 
     // --- 7: OBTENER ESTADOS ---
-    public function obtenerEstadosMaquina() {
+    public function obtenerEstadosMaquina()
+    {
         $sql = "SELECT id_estado, nombre_estado FROM estado_maquina ORDER BY id_estado ASC";
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
@@ -116,7 +117,8 @@ class ordenCrearModels
     }
 
     // --- 8: OBTENER CALIFICACIONES ---
-    public function obtenerCalificaciones() {
+    public function obtenerCalificaciones()
+    {
         $sql = "SELECT id_calificacion, nombre_calificacion FROM calificacion_servicio ORDER BY id_calificacion ASC";
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
@@ -125,7 +127,8 @@ class ordenCrearModels
 
 
     // --- 9: OBTENER LISTA DE REPUESTOS ---
-    public function obtenerListaRepuestos() {
+    public function obtenerListaRepuestos()
+    {
         $sql = "SELECT id_repuesto, nombre_repuesto FROM repuesto WHERE estado = 1 ORDER BY nombre_repuesto ASC";
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
@@ -133,7 +136,8 @@ class ordenCrearModels
     }
 
     // --- 10: GUARDAR ORDEN (CORREGIDO: Con cálculo de tiempo) ---
-    public function guardarOrden($datos) {
+    public function guardarOrden($datos)
+    {
         try {
             $this->conn->beginTransaction();
 
@@ -143,12 +147,12 @@ class ordenCrearModels
                 try {
                     $d1 = new DateTime($datos['hora_entrada']);
                     $d2 = new DateTime($datos['hora_salida']);
-                    
+
                     // Si la salida es menor que la entrada (ej: 11pm a 1am), sumamos un día
                     if ($d2 < $d1) {
                         $d2->modify('+1 day');
                     }
-                    
+
                     $intervalo = $d1->diff($d2);
                     $tiempoCalculado = $intervalo->format('%H:%I'); // Formato 02:30
                 } catch (Exception $e) {
@@ -169,7 +173,7 @@ class ordenCrearModels
             $stmt->execute([
                 ':id_cliente' => $datos['id_cliente'],
                 ':id_punto'   => $datos['id_punto'],
-                'id_modalidad'=> $datos['id_modalidad'],
+                'id_modalidad' => $datos['id_modalidad'],
                 ':remision'   => $datos['remision'],
                 ':fecha'      => $datos['fecha'],
                 ':id_maquina' => $datos['id_maquina'],
@@ -181,15 +185,22 @@ class ordenCrearModels
                 ':tiempo'     => $tiempoCalculado, // <--- AQUÍ GUARDAMOS EL CÁLCULO
                 ':id_estado'  => $datos['estado'],
                 ':id_calif'   => $datos['calif'],
-                ':actividades'=> $datos['obs']
+                ':actividades' => $datos['obs']
             ]);
 
-            $idOrden = $this->conn->lastInsertId(); 
+            $idOrden = $this->conn->lastInsertId();
+
+            // =================================================================================
+            // NUEVO BLOQUE: ACTUALIZAR EL PUNTO AQUÍ MISMO
+            // =================================================================================
+            // Usamos los mismos datos que llegaron en $datos
+            $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
+            // =================================================================================
 
             // --- B. PROCESAR REPUESTOS ---
             if (!empty($datos['json_repuestos'])) {
                 $repuestos = json_decode($datos['json_repuestos'], true);
-                
+
                 if (is_array($repuestos) && count($repuestos) > 0) {
                     $sqlRep = "INSERT INTO orden_servicio_repuesto 
                                 (id_orden_servicio, id_repuesto, origen, cantidad) 
@@ -197,7 +208,7 @@ class ordenCrearModels
                     $stmtRep = $this->conn->prepare($sqlRep);
 
                     foreach ($repuestos as $rep) {
-                        if(isset($rep['id']) && isset($rep['origen'])){
+                        if (isset($rep['id']) && isset($rep['origen'])) {
                             $stmtRep->execute([
                                 $idOrden,
                                 $rep['id'],
@@ -210,7 +221,6 @@ class ordenCrearModels
 
             $this->conn->commit();
             return $idOrden;
-
         } catch (PDOException $e) {
             $this->conn->rollBack();
             error_log("Error guardarOrden: " . $e->getMessage());
@@ -219,7 +229,8 @@ class ordenCrearModels
     }
 
     // --- 11. ACTUALIZAR MODALIDAD DEL PUNTO (AJAX SILENCIOSO) ---
-    public function actualizarModalidadPunto($idPunto, $idModalidad) {
+    public function actualizarModalidadPunto($idPunto, $idModalidad)
+    {
         try {
             $sql = "UPDATE punto SET id_modalidad = :modalidad WHERE id_punto = :id_punto";
             $stmt = $this->conn->prepare($sql);
@@ -229,6 +240,36 @@ class ordenCrearModels
             ]);
         } catch (PDOException $e) {
             error_log("Error actualizando modalidad punto: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // --- NUEVA FUNCIÓN: ACTUALIZAR FECHA Y TIPO EN PUNTO ---
+    public function actualizarInfoMantenimientoPunto($idPunto)
+    {
+        try {
+            // Esta consulta busca la fecha MÁXIMA registrada para ese punto en TODAS las órdenes.
+            // No confía ciegamente en la que acabas de meter, sino en la historia real.
+            $sql = "UPDATE punto p
+                    JOIN (
+                        SELECT id_punto, fecha_visita, id_tipo_mantenimiento
+                        FROM ordenes_servicio
+                        WHERE id_punto = :id_punto_b
+                        ORDER BY fecha_visita DESC, id_ordenes_servicio DESC
+                        LIMIT 1
+                    ) AS ultima_real ON p.id_punto = ultima_real.id_punto
+                    SET p.fecha_ultima_visita = ultima_real.fecha_visita,
+                        p.id_ultimo_tipo_mantenimiento = ultima_real.id_tipo_mantenimiento
+                    WHERE p.id_punto = :id_punto_a";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([
+                ':id_punto_b' => $idPunto, // Para el subquery
+                ':id_punto_a' => $idPunto  // Para el where principal
+            ]);
+            return true;
+        } catch (PDOException $e) {
+            error_log("Error actualizando info mantenimiento punto (Smart): " . $e->getMessage());
             return false;
         }
     }

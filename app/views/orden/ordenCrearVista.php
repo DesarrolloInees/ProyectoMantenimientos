@@ -245,22 +245,22 @@
 
         
         <td class="p-1">
-            <select name="filas[${id}][id_modalidad]"  id="select_modalidad_${id}" 
-                class="w-full border rounded p-1 text-xs bg-gray-50 font-bold text-gray-700"
-                onchange="calcularPrecio(${id})"   disabled>
-                    <option value="1">URBANO</option>
-                    <option value="2">INTERURBANO</option>
-            </select>
+        <select name="filas[${id}][id_modalidad]" id="select_modalidad_${id}" 
+            class="w-full border rounded p-1 text-xs bg-gray-50 font-bold text-gray-700"
+            onchange="calcularPrecio(${id})" disabled>
+                <option value="1">URBANO</option>
+                <option value="2">INTERURBANO</option>
+        </select>
         </td>
 
         <td class="px-2">
-            <select name="filas[${id}][id_tecnico]" class="w-full border rounded p-1 font-semibold">                
+            <select name="filas[${id}][id_tecnico]" id="select_tecnico_${id}" class="w-full border rounded p-1 font-semibold">                
                 ${optTec}
             </select>
         </td>
 
         <td class="px-2">
-            <select name="filas[${id}][tipo_servicio]" onchange="calcularPrecio(${id})" class="w-full border rounded p-1 font-semibold">                
+            <select name="filas[${id}][tipo_servicio]" id="select_servicio_${id}" onchange="calcularPrecio(${id})" class="w-full border rounded p-1 font-semibold">                
                 ${optMan}
             </select>
         </td>
@@ -304,13 +304,13 @@
         </td>
 
         <td class="px-2">
-            <select name="filas[${id}][estado]" class="w-full border rounded p-1 text-[10px]">
+            <select name="filas[${id}][estado]" id="select_estado_${id}" class="w-full border rounded p-1 text-[10px]">
                 ${optEst}
             </select>
         </td>
 
         <td class="px-2">
-            <select name="filas[${id}][calif]" class="w-full border rounded p-1 text-[10px]">
+            <select name="filas[${id}][calif]" id="select_calif_${id}" class="w-full border rounded p-1 text-[10px]">
                 ${optCal}
             </select>
         </td>
@@ -342,7 +342,15 @@
             contenedor.insertAdjacentHTML('beforeend', html);
             activarSelect2(`#select_cliente_${id}`);
             activarSelect2(`#select_punto_${id}`);
-            activarSelect2(`select_maquina_${id}`);
+            activarSelect2(`#select_maquina_${id}`);
+
+            activarSelect2(`#select_modalidad_${id}`);
+            activarSelect2(`#select_tecnico_${id}`);
+            activarSelect2(`#select_servicio_${id}`);
+            activarSelect2(`#select_estado_${id}`);
+            activarSelect2(`#select_calif_${id}`);
+
+
             activarInputHora(`#in_${id}`, id);
             activarInputHora(`#out_${id}`, id);
 
@@ -422,6 +430,7 @@
 
         // A. LÓGICA DE MODALIDAD (Mantenemos esto igual)
         const selPunto = document.getElementById(`select_punto_${id}`);
+
         // Nota: Si usas Select2, asegúrate de recuperar el atributo correctamente. 
         // Con Select2 a veces el 'selectedOptions' cambia, pero usando el objeto DOM nativo suele funcionar.
         // Si tienes problemas con select2, usa: $(`#select_punto_${id}`).find(':selected').data('modalidad')
@@ -845,148 +854,314 @@
 
 
     // ==========================================
-    // 🛡️ MÓDULO DE AUTO-GUARDADO (SALVAVIDAS)
+    // 1. CONFIGURACIÓN Y VARIABLES GLOBALES
+    // ==========================================
+    const CLAVE_GUARDADO = 'borrador_orden_servicios';
+    let ignorarCambios = false; // Bandera vital para la restauración
+    let enviandoFormulario = false; // 🔥 NUEVA BANDERA: Bloquea el auto-guardado al enviar
+
+    // ==========================================
+    // 2. LÓGICA DE VALIDACIÓN (ALERTAS INTELIGENTES)
+    // ==========================================
+    function validarCoherencia(id) {
+        // SI ESTAMOS RESTAURANDO, NO MOSTRAR ALERTAS
+        if (ignorarCambios) return;
+
+        const selectServicio = document.getElementById(`select_servicio_${id}`);
+        // Validación de seguridad por si el elemento aun no existe
+        if (!selectServicio || selectServicio.selectedIndex === -1) return;
+
+        const textoServicio = selectServicio.options[selectServicio.selectedIndex].text.toUpperCase();
+        const numRepuestos = almacenRepuestos[id] ? almacenRepuestos[id].length : 0;
+
+        let mensaje = "";
+
+        // CASO 1: Correctivo SIN repuestos
+        if (textoServicio.includes("CORRECTIVO") && numRepuestos === 0) {
+            mensaje = "⚠️ AVISO: Mantenimiento CORRECTIVO sin repuestos.\n\n¿Estás seguro que no se usaron piezas?";
+        }
+
+        // CASO 2: Preventivo CON repuestos
+        if (textoServicio.includes("PREVENTIVO") && numRepuestos > 0) {
+            mensaje = "🤔 AVISO: Mantenimiento PREVENTIVO con repuestos cargados.\n\nVerifica si deberías cambiar el tipo a Correctivo.";
+        }
+
+        if (mensaje !== "") {
+            // Pequeño timeout para no bloquear la interfaz gráfica bruscamente
+            setTimeout(() => alert(mensaje), 300);
+        }
+    }
+
+    // Listener mejorado
+    function cambioServicio(id) {
+        calcularPrecio(id); // Tu función original
+        validarCoherencia(id); // La nueva validación
+    }
+
+    // ==========================================
+    // 3. AUTO-GUARDADO
     // ==========================================
 
-    const CLAVE_GUARDADO = 'borrador_orden_servicios';
-
-    // 1. FUNCIÓN PARA GUARDAR (Se ejecuta cada 5 segundos si hubo cambios)
     function guardarProgresoLocal() {
+        // 🔥 EL CAMBIO CLAVE: Si se está enviando el formulario, NO GUARDAR NADA
+        if (ignorarCambios || enviandoFormulario) return;
+
         const filas = [];
         const filasHTML = document.querySelectorAll('#contenedorFilas tr');
 
         filasHTML.forEach(tr => {
             const idFila = tr.id.replace('fila_', '');
 
-            // Obtenemos los valores de esa fila
+            // Recolección segura de datos (usa ?. para evitar errores si algo falta)
             const filaData = {
                 id: idFila,
                 remision: tr.querySelector(`input[name="filas[${idFila}][remision]"]`)?.value || '',
-                id_cliente: $(`#select_cliente_${idFila}`).val(), // Select2 usa jQuery val()
+                id_cliente: $(`#select_cliente_${idFila}`).val(),
                 id_punto: $(`#select_punto_${idFila}`).val(),
-                id_maquina: $(`#select_maquina_${idFila}`).val(), // OJO: Esto guarda el ID de la máquina
+                id_maquina: $(`#select_maquina_${idFila}`).val(),
                 modalidad: document.getElementById(`select_modalidad_${idFila}`)?.value,
-                id_tecnico: tr.querySelector(`select[name="filas[${idFila}][id_tecnico]"]`)?.value,
-                tipo_servicio: tr.querySelector(`select[name="filas[${idFila}][tipo_servicio]"]`)?.value,
+                id_tecnico: $(`#select_tecnico_${idFila}`).val(),
+                tipo_servicio: $(`#select_servicio_${idFila}`).val(),
                 hora_in: document.getElementById(`in_${idFila}`)?.value,
                 hora_out: document.getElementById(`out_${idFila}`)?.value,
                 valor: tr.querySelector(`input[name="filas[${idFila}][valor]"]`)?.value,
-                estado: tr.querySelector(`select[name="filas[${idFila}][estado]"]`)?.value,
-                calif: tr.querySelector(`select[name="filas[${idFila}][calif]"]`)?.value,
+                estado: $(`#select_estado_${idFila}`).val(),
+                calif: $(`#select_calif_${idFila}`).val(),
                 obs: tr.querySelector(`textarea[name="filas[${idFila}][obs]"]`)?.value
             };
             filas.push(filaData);
         });
 
         const datosGlobales = {
-            fecha: new Date().getTime(), // Para saber cuándo se guardó
+            fecha: new Date().getTime(),
             filas: filas,
-            repuestos: almacenRepuestos // Guardamos también los repuestos
+            repuestos: almacenRepuestos
         };
 
         localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(datosGlobales));
-
-        // Feedback visual discreto en la consola
-        // console.log("Borrador auto-guardado", new Date().toLocaleTimeString());
     }
 
-    // 2. FUNCIÓN PARA RESTAURAR
+    // ==========================================
+    // 4. RESTAURACIÓN (CORREGIDA Y BLINDADA)
+    // ==========================================
+
     async function verificarYRestaurar() {
         const borrador = localStorage.getItem(CLAVE_GUARDADO);
 
-        if (borrador) {
-            const datos = JSON.parse(borrador);
-            // Si el borrador es de hace más de 24 horas, mejor lo ignoramos (opcional)
-            // Pero aquí preguntaremos siempre.
+        // Si no hay borrador o está vacío, iniciamos limpio
+        if (!borrador) {
+            iniciarLimpio();
+            return;
+        }
 
-            if (datos.filas.length > 0 && confirm(`⚠️ Hemos encontrado un borrador con ${datos.filas.length} servicios no guardados. \n\n¿Deseas recuperarlos?`)) {
+        let datos;
+        try {
+            datos = JSON.parse(borrador);
+        } catch (e) {
+            iniciarLimpio();
+            return;
+        }
 
-                // A. Limpiar tabla actual
-                document.getElementById('contenedorFilas').innerHTML = '';
-                contadorFilas = 0;
-                almacenRepuestos = datos.repuestos || {};
+        if (!datos.filas || datos.filas.length === 0) {
+            iniciarLimpio();
+            return;
+        }
 
-                // B. Reconstruir filas (Una por una y esperando las cargas AJAX)
-                // Usamos un bucle for..of para poder usar await
-                for (const fila of datos.filas) {
-                    // 1. Crear estructura visual
-                    agregarFila();
-                    const idActual = contadorFilas; // El ID que acaba de generar agregarFila()
+        const confirmar = confirm(`📂 RECUPERACIÓN DE DATOS\n\nHay un reporte pendiente con ${datos.filas.length} servicios.\n¿Quieres recuperarlos?`);
 
-                    // 2. Llenar datos simples
-                    document.querySelector(`input[name="filas[${idActual}][remision]"]`).value = fila.remision;
+        if (!confirmar) {
+            localStorage.removeItem(CLAVE_GUARDADO);
+            iniciarLimpio();
+            return;
+        }
 
-                    // Cliente
-                    $(`#select_cliente_${idActual}`).val(fila.id_cliente).trigger('change');
+        // --- INICIO PROCESO DE RESTAURACIÓN ---
+        ignorarCambios = true; // PAUSA EL AUTO-GUARDADO
+        const btnSubmit = document.querySelector('button[type="submit"]');
+        const textoOriginal = btnSubmit.innerHTML;
 
-                    // 3. Esperar a que carguen los puntos (CRÍTICO)
-                    if (fila.id_cliente) {
-                        await cargarPuntos(idActual, fila.id_cliente); // Esperamos a AJAX
-                        $(`#select_punto_${idActual}`).val(fila.id_punto).trigger('change');
-                    }
+        try {
+            // 1. UI Loading
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> RECUPERANDO DATOS...';
+            btnSubmit.disabled = true;
 
-                    // 4. Esperar a que carguen las máquinas
-                    if (fila.id_punto) {
-                        await cargarMaquinas(idActual, fila.id_punto); // Esperamos a AJAX
-                        // Selección manual de la máquina guardada
-                        const selMaq = document.getElementById(`select_maquina_${idActual}`);
+            // 2. Limpieza Total
+            document.getElementById('contenedorFilas').innerHTML = '';
+            contadorFilas = 0;
+            almacenRepuestos = datos.repuestos || {};
+
+            // 3. Reconstrucción fila por fila
+            for (const fila of datos.filas) {
+                agregarFila();
+                const idActual = contadorFilas;
+
+                console.log(`Recuperando fila ${idActual}...`);
+
+                // A. Datos Simples
+                const inputRemision = document.querySelector(`input[name="filas[${idActual}][remision]"]`);
+                if (inputRemision) inputRemision.value = fila.remision;
+
+                // B. Cliente
+                $(`#select_cliente_${idActual}`).val(fila.id_cliente).trigger('change.select2');
+
+                // C. Punto (CRÍTICO: Usar Await)
+                if (fila.id_cliente) {
+                    await cargarPuntos(idActual, fila.id_cliente); // Esperamos a AJAX
+                    // Asignamos valor SIN disparar eventos para evitar cascadas locas
+                    const selPunto = document.getElementById(`select_punto_${idActual}`);
+                    if (selPunto) selPunto.value = fila.id_punto;
+                    $(`#select_punto_${idActual}`).trigger('change.select2'); // Actualizar visual
+                }
+
+                // D. Máquina (CRÍTICO: Usar Await)
+                if (fila.id_punto) {
+                    await cargarMaquinas(idActual, fila.id_punto); // Esperamos a AJAX
+
+                    const selMaq = document.getElementById(`select_maquina_${idActual}`);
+                    if (selMaq) {
                         selMaq.value = fila.id_maquina;
-                        // Forzar relleno de Device ID y Precio
+                        // Forzamos manualmente el relleno de Device ID
                         rellenarDeviceId(idActual, fila.id_maquina);
                     }
-
-                    // 5. Resto de campos
-                    document.getElementById(`select_modalidad_${idActual}`).value = fila.modalidad;
-                    document.querySelector(`select[name="filas[${idActual}][id_tecnico]"]`).value = fila.id_tecnico;
-                    document.querySelector(`select[name="filas[${idActual}][tipo_servicio]"]`).value = fila.tipo_servicio;
-                    document.getElementById(`in_${idActual}`).value = fila.hora_in;
-                    document.getElementById(`out_${idActual}`).value = fila.hora_out;
-    
-                    // ACTIVAR MÁSCARA AL RESTAURAR
-                    activarInputHora(`#in_${idActual}`, idActual); // <--- IMPORTANTE
-    
-                    calcTiempo(idActual);
-
-                    document.querySelector(`input[name="filas[${idActual}][valor]"]`).value = fila.valor;
-                    document.querySelector(`select[name="filas[${idActual}][estado]"]`).value = fila.estado;
-                    document.querySelector(`select[name="filas[${idActual}][calif]"]`).value = fila.calif;
-                    document.querySelector(`textarea[name="filas[${idActual}][obs]"]`).value = fila.obs;
-
-                    // Actualizar botón de repuestos visualmente
-                    const btnRep = document.getElementById(`count_rep_${idActual}`);
-                    const numRep = almacenRepuestos[idActual] ? almacenRepuestos[idActual].length : 0;
-                    btnRep.innerText = `${numRep} Items`;
-                    if (numRep > 0) btnRep.parentElement.classList.add('bg-blue-100', 'border-blue-300');
-
-                    // IMPORTANTE: Actualizar el input oculto de repuestos para que se envíe al guardar
-                    const jsonInput = document.getElementById(`json_rep_${idActual}`);
-                    if (jsonInput && almacenRepuestos[idActual]) {
-                        jsonInput.value = JSON.stringify(almacenRepuestos[idActual]);
-                    }
+                    $(`#select_maquina_${idActual}`).trigger('change.select2');
                 }
-                alert("✅ Información recuperada con éxito.");
-            } else {
-                // Si dice que no, borramos el borrador viejo
-                localStorage.removeItem(CLAVE_GUARDADO);
+
+                // E. Resto de campos
+                if (fila.modalidad) $(`#select_modalidad_${idActual}`).val(fila.modalidad).trigger('change');
+                if (fila.id_tecnico) $(`#select_tecnico_${idActual}`).val(fila.id_tecnico).trigger('change');
+
+                // Tipo de servicio (sin disparar alertas)
+                if (fila.tipo_servicio) {
+                    const selServ = document.getElementById(`select_servicio_${idActual}`);
+                    if (selServ) selServ.value = fila.tipo_servicio;
+                    $(`#select_servicio_${idActual}`).trigger('change.select2');
+                }
+
+                // Horas y Tiempos
+                const inEl = document.getElementById(`in_${idActual}`);
+                const outEl = document.getElementById(`out_${idActual}`);
+                if (inEl) inEl.value = fila.hora_in;
+                if (outEl) outEl.value = fila.hora_out;
+
+                // Recalcular tiempo
+                calcTiempo(idActual);
+
+                // Valor (Sobrescribir el calculado si hay uno guardado)
+                if (fila.valor) {
+                    const valEl = document.querySelector(`input[name="filas[${idActual}][valor]"]`);
+                    if (valEl) valEl.value = fila.valor;
+                }
+
+                // Estados y Obs
+                if (fila.estado) $(`#select_estado_${idActual}`).val(fila.estado).trigger('change');
+                if (fila.calif) $(`#select_calif_${idActual}`).val(fila.calif).trigger('change');
+
+                const obsEl = document.querySelector(`textarea[name="filas[${idActual}][obs]"]`);
+                if (obsEl) obsEl.value = fila.obs;
+
+                // Repuestos
+                actualizarBotonRepuestos(idActual);
+                const jsonInput = document.getElementById(`json_rep_${idActual}`);
+                if (jsonInput && almacenRepuestos[idActual]) {
+                    jsonInput.value = JSON.stringify(almacenRepuestos[idActual]);
+                }
+            }
+
+            // ÉXITO
+            console.log("Restauración completada.");
+
+        } catch (error) {
+            console.error("Error crítico en restauración:", error);
+            alert("Ocurrió un error recuperando algunos datos. Por favor revisa la información cargada.");
+        } finally {
+            // ESTO ES LO QUE ARREGLA EL CONGELAMIENTO
+            // Se ejecuta SIEMPRE, haya error o no.
+            ignorarCambios = false;
+            btnSubmit.innerHTML = textoOriginal;
+            btnSubmit.disabled = false;
+        }
+    }
+
+    function iniciarLimpio() {
+        console.log("Iniciando limpio...");
+        for (let i = 0; i < 3; i++) {
+            agregarFila();
+        }
+    }
+
+    function actualizarBotonRepuestos(id) {
+        const btnTexto = document.getElementById(`count_rep_${id}`);
+        const lista = almacenRepuestos[id] || [];
+        if (btnTexto) {
+            btnTexto.innerText = `${lista.length} Items`;
+            const btnPadre = btnTexto.parentElement;
+            if (lista.length > 0) {
+                btnPadre.classList.remove('bg-gray-200', 'text-gray-700');
+                btnPadre.classList.add('bg-blue-600', 'text-white', 'border-blue-700');
             }
         }
     }
 
-    // 3. INICIAR SISTEMA
+    // ==========================================
+    // 5. INICIALIZACIÓN
+    // ==========================================
+
     document.addEventListener("DOMContentLoaded", function() {
-        // Intentar restaurar al cargar la página
-        // Ponemos un pequeño timeout para asegurar que Select2 y todo esté listo
+        // Inicializar Select2 Modal
+        $('#select_repuesto_modal').select2({
+            width: '100%',
+            dropdownParent: $('#modalRepuestos'),
+            placeholder: "- Buscar Repuesto -",
+            language: {
+                noResults: () => "No se encontró el repuesto"
+            }
+        });
+
+        // Cargar opciones modal
+        const selectModal = document.getElementById('select_repuesto_modal');
+        if (selectModal && typeof listaRepuestosBD !== 'undefined') {
+            listaRepuestosBD.forEach(r => {
+                const option = new Option(r.nombre_repuesto, r.id_repuesto, false, false);
+                $(selectModal).append(option);
+            });
+        }
+
+        // Delay para asegurar carga de librerías antes de restaurar
         setTimeout(verificarYRestaurar, 500);
 
-        // Activar guardado automático cada 5 segundos
-        setInterval(guardarProgresoLocal, 5000);
+        // Auto-guardado
+        setInterval(guardarProgresoLocal, 4000);
 
-        // Limpiar borrador al enviar el formulario EXITOSAMENTE
+       // 🔥 EVENTO DE ENVÍO DEL FORMULARIO - LA CLAVE
         const form = document.getElementById('formServicios');
-        form.addEventListener('submit', function() {
-            // Solo limpiamos si el submit es válido (esto es optimista)
-            // Lo ideal es limpiarlo en el PHP cuando redirecciona, pero aquí funciona bien
-            localStorage.removeItem(CLAVE_GUARDADO);
-        });
+        if (form) {
+            form.addEventListener('submit', function() {
+                console.log("Enviando formulario... Matando auto-guardado.");
+                enviandoFormulario = true; // 1. Bloquea el timer de guardado
+                localStorage.removeItem(CLAVE_GUARDADO); // 2. Borra el caché inmediatamente
+            });
+        }
     });
+
+    // ==========================================
+    // 6. MODIFICACIÓN: GUARDAR MODAL
+    // ==========================================
+
+    // Sobrescribimos la función para incluir la validación al cerrar modal
+    const _oldGuardarModal = guardarCambiosModal; // Backup por si acaso
+
+    guardarCambiosModal = function() {
+        const idFila = document.getElementById('modal_fila_actual').value;
+        const lista = almacenRepuestos[idFila] || [];
+
+        // Lógica visual
+        const jsonInput = document.getElementById(`json_rep_${idFila}`);
+        if (jsonInput) jsonInput.value = JSON.stringify(lista);
+        actualizarBotonRepuestos(idFila);
+
+        cerrarModal();
+
+        // Validar coherencia solo al salir
+        validarCoherencia(idFila);
+    };
 </script>
