@@ -128,6 +128,11 @@
                         <option value="">- Buscar Repuesto -</option>
                     </select>
                 </div>
+                <div class="w-20">
+                    <input type="number" id="cantidad_repuesto_modal" value="1" min="1"
+                        class="w-full border rounded p-2 text-sm text-center font-bold bg-gray-50 h-[38px]"
+                        placeholder="Cant.">
+                </div>
 
                 <div class="w-1/3">
                     <select id="select_origen_modal" class="w-full border rounded p-2 text-xs bg-gray-100 font-bold text-gray-700 h-[38px]">
@@ -217,7 +222,20 @@
         <td class="px-2 py-3 text-center font-bold text-gray-400 sticky left-0 bg-white">${id}</td>
         
         <td class="px-2">
-            <input type="text" name="filas[${id}][remision]" placeholder="Num Remisión" class="w-full border border-gray-300 rounded p-1 text-center font-bold focus:border-blue-500">
+            <select name="filas[${id}][id_tecnico]" 
+                    id="select_tecnico_${id}" 
+                    onchange="cargarRemisiones(${id}, this.value)"
+                    class="mi-select2 w-full border rounded p-1 font-semibold">                
+                ${optTec}
+            </select>
+        </td>
+
+        <td class="px-2" id="celda_remision_${id}">
+            <select name="filas[${id}][remision]" 
+                    id="select_remision_${id}" 
+                    class="w-full border border-gray-300 rounded p-1 text-center font-bold bg-gray-100" disabled>
+                <option value="">Wait...</option>
+            </select>
         </td>
 
         <!-- UBICACIÓN: CLIENTE -> PUNTO -->
@@ -253,11 +271,7 @@
         </select>
         </td>
 
-        <td class="px-2">
-            <select name="filas[${id}][id_tecnico]" id="select_tecnico_${id}" class="w-full border rounded p-1 font-semibold">                
-                ${optTec}
-            </select>
-        </td>
+        
 
         <td class="px-2">
             <select name="filas[${id}][tipo_servicio]" id="select_servicio_${id}" onchange="calcularPrecio(${id})" class="w-full border rounded p-1 font-semibold">                
@@ -316,7 +330,10 @@
         </td>
 
         <td class="px-2">
-            <textarea name="filas[${id}][obs]" rows="2" class="w-full border rounded p-1 text-xs resize-none" placeholder="Describa las actividades realizadas (Limpieza, ajustes, cambios...)"></textarea>
+            <textarea name="filas[${id}][obs]" rows="2" 
+                class="w-full border rounded p-1 text-xs resize-y focus:ring-2 focus:ring-blue-200" 
+                style="min-height: 38px;"
+                placeholder="Describa las actividades..."></textarea>
         </td>
 
         <td class="px-2 text-center">
@@ -343,6 +360,8 @@
             activarSelect2(`#select_cliente_${id}`);
             activarSelect2(`#select_punto_${id}`);
             activarSelect2(`#select_maquina_${id}`);
+
+            activarSelect2(`#select_remision_${id}`);
 
             activarSelect2(`#select_modalidad_${id}`);
             activarSelect2(`#select_tecnico_${id}`);
@@ -392,6 +411,59 @@
         } catch (error) {
             console.error('Error en AJAX:', error);
             return [];
+        }
+    }
+
+    // --- NUEVA FUNCIÓN: CARGAR REMISIONES + SELECT2 ---
+    async function cargarRemisiones(idFila, idTecnico) {
+        const selectRemision = document.getElementById(`select_remision_${idFila}`);
+        const celda = document.getElementById(`celda_remision_${idFila}`);
+
+        // 1. Limpieza y Estado de Carga
+        // Si ya tenía select2, lo destruimos para limpiar bien
+        if ($(selectRemision).data('select2')) {
+            $(selectRemision).select2('destroy');
+        }
+
+        selectRemision.innerHTML = '<option value="">Cargando...</option>';
+        selectRemision.disabled = true;
+
+        if (!idTecnico) {
+            selectRemision.innerHTML = '<option value="">- Seleccione Técnico -</option>';
+            return;
+        }
+
+        // 2. AJAX
+        const remisiones = await enviarAjax('ajaxRemisiones', {
+            id_tecnico: idTecnico
+        });
+
+        // 3. Renderizado
+        if (remisiones.length > 0) {
+            let options = '<option value="">- Buscar Remisión -</option>';
+            remisiones.forEach(r => {
+                options += `<option value="${r.numero_remision}">${r.numero_remision}</option>`;
+            });
+
+            selectRemision.innerHTML = options;
+            selectRemision.disabled = false;
+            selectRemision.classList.remove('bg-gray-100');
+            selectRemision.classList.add('bg-white');
+
+            // 🔥 4. ACTIVAR SELECT2 (Para que pueda escribir y filtrar)
+            $(`#select_remision_${idFila}`).select2({
+                width: '100%',
+                placeholder: "Escriba remisión...",
+                allowClear: true,
+                language: {
+                    noResults: () => "Sin coincidencias"
+                }
+            });
+
+        } else {
+            // Caso: Técnico sin talonario
+            selectRemision.innerHTML = '<option value="">🚫 Sin remisiones</option>';
+            alert('⚠️ Este técnico no tiene remisiones disponibles. Asigne un talonario en el panel administrativo.');
         }
     }
 
@@ -645,39 +717,49 @@
     function agregarRepuestoALista() {
         const idFila = document.getElementById('modal_fila_actual').value;
 
-        // Obtener datos del Select2 (jQuery)
+        // 1. Obtener datos del Select
         const idRepuesto = $('#select_repuesto_modal').val();
         const dataSelect = $('#select_repuesto_modal').select2('data');
         const nombreRepuesto = dataSelect[0]?.text;
-
         const origen = document.getElementById('select_origen_modal').value;
+
+        // 2. 🔥 CORRECCIÓN: Leer el valor del Input de Cantidad
+        let inputCant = document.getElementById('cantidad_repuesto_modal').value;
+        let cantidad = parseInt(inputCant);
+
+        // Validación básica
+        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
 
         if (!idRepuesto) {
             alert("⚠️ Por favor busque y seleccione un repuesto.");
             return;
         }
 
-        // Agregar al array global
+        // Inicializar array si no existe
         if (!almacenRepuestos[idFila]) almacenRepuestos[idFila] = [];
 
-        almacenRepuestos[idFila].push({
-            id: idRepuesto,
-            nombre: nombreRepuesto,
-            origen: origen
-        });
+        // 3. Lógica inteligente: Si ya existe el repuesto (mismo ID y Origen), SUMAR cantidad
+        const indiceExistente = almacenRepuestos[idFila].findIndex(r => r.id === idRepuesto && r.origen === origen);
 
-        // Limpiar buscador y re-renderizar
+        if (indiceExistente !== -1) {
+            // Ya existe, sumamos lo nuevo a lo viejo
+            almacenRepuestos[idFila][indiceExistente].cantidad += cantidad;
+        } else {
+            // No existe, creamos nuevo objeto CON LA CANTIDAD
+            almacenRepuestos[idFila].push({
+                id: idRepuesto,
+                nombre: nombreRepuesto,
+                origen: origen,
+                cantidad: cantidad // <--- AQUÍ SE GUARDA EL NÚMERO
+            });
+        }
+
+        // 4. Resetear formulario
         $('#select_repuesto_modal').val(null).trigger('change');
+        document.getElementById('cantidad_repuesto_modal').value = "1"; // Volver a 1
         renderizarListaVisual(idFila);
     }
-
-    function borrarRepuestoTemporal(idFila, index) {
-        if (almacenRepuestos[idFila]) {
-            almacenRepuestos[idFila].splice(index, 1);
-            renderizarListaVisual(idFila);
-        }
-    }
-
+    // 2. RENDERIZAR VISUALMENTE (CON (xN))
     function renderizarListaVisual(idFila) {
         const ul = document.getElementById('lista_repuestos_visual');
         ul.innerHTML = '';
@@ -685,45 +767,58 @@
         const lista = almacenRepuestos[idFila] || [];
 
         if (lista.length === 0) {
-            ul.innerHTML = '<li class="text-gray-400 text-center italic mt-10 flex flex-col items-center"><i class="fas fa-box-open text-2xl mb-2"></i><span>No hay repuestos agregados.</span></li>';
+            ul.innerHTML = '<li class="text-gray-400 text-center italic mt-10">No hay repuestos seleccionados.</li>';
             return;
         }
 
         lista.forEach((item, index) => {
             const bgBadge = item.origen === 'INEES' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800';
 
+            // 🔥 Mostrar badge visual si la cantidad es mayor a 1
+            const cant = item.cantidad || 1;
+            const badgeCantidad = cant > 1 ?
+                `<span class="ml-1 bg-gray-700 text-white text-[10px] px-1.5 rounded font-bold">x${cant}</span>` :
+                '';
+
             ul.innerHTML += `
-            <li class="flex justify-between items-center bg-gray-50 p-2 mb-2 border rounded shadow-sm hover:bg-white transition">
-                <div class="flex items-center gap-2 overflow-hidden">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bgBadge}">${item.origen}</span>
-                    <span class="text-xs text-gray-700 truncate font-medium" title="${item.nombre}">${item.nombre}</span>
-                </div>
-                <button type="button" onclick="borrarRepuestoTemporal('${idFila}', ${index})" class="text-red-400 hover:text-red-600 px-2">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </li>
-        `;
+        <li class="flex justify-between items-center bg-gray-50 p-2 mb-2 border rounded shadow-sm">
+            <div class="flex items-center gap-2 overflow-hidden">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bgBadge}">${item.origen}</span>
+                <span class="text-xs text-gray-700 truncate font-medium">
+                    ${item.nombre} ${badgeCantidad}
+                </span>
+            </div>
+            <button type="button" onclick="borrarRepuestoTemporal('${idFila}', ${index})" class="text-red-400 hover:text-red-600 px-2">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </li>`;
         });
     }
 
+    // 3. GUARDAR Y ACTUALIZAR CONTADOR (SUMANDO CANTIDADES REALES)
     function guardarCambiosModal() {
         const idFila = document.getElementById('modal_fila_actual').value;
         const lista = almacenRepuestos[idFila] || [];
 
-        // 1. Actualizar Input Oculto en la tabla (para que se envíe al backend)
+        // 1. Actualizar JSON
         const jsonInput = document.getElementById(`json_rep_${idFila}`);
         if (jsonInput) {
             jsonInput.value = JSON.stringify(lista);
         }
 
-        // 2. Actualizar Botón Visual en la tabla
+        // 2. Calcular total de items (sumando cantidades)
+        let totalItems = 0;
+        lista.forEach(item => {
+            totalItems += (item.cantidad || 1);
+        });
+
+        // 3. Actualizar Botón Visual
         const btnTexto = document.getElementById(`count_rep_${idFila}`);
         if (btnTexto) {
-            btnTexto.innerText = `${lista.length} Items`;
+            btnTexto.innerText = `${totalItems} Items`;
 
-            // Cambiar color del botón si tiene items
-            const btnPadre = btnTexto.parentElement; // El botón <button>
-            if (lista.length > 0) {
+            const btnPadre = btnTexto.parentElement;
+            if (totalItems > 0) {
                 btnPadre.classList.remove('bg-gray-200', 'text-gray-700');
                 btnPadre.classList.add('bg-blue-600', 'text-white', 'border-blue-700');
             } else {
@@ -733,8 +828,8 @@
         }
 
         cerrarModal();
+        validarCoherencia(idFila);
     }
-
 
     // Función para convertir un Select normal en uno con Buscador
     function activarSelect2(selector) {
@@ -1092,12 +1187,26 @@
     function actualizarBotonRepuestos(id) {
         const btnTexto = document.getElementById(`count_rep_${id}`);
         const lista = almacenRepuestos[id] || [];
+
+        // 🔥 CORRECCIÓN: Sumar las cantidades, no el largo del array
+        let totalReal = 0;
+        lista.forEach(item => {
+            // Aseguramos que sea número, si no tiene cantidad asume 1
+            totalReal += parseInt(item.cantidad || 1);
+        });
+
         if (btnTexto) {
-            btnTexto.innerText = `${lista.length} Items`;
+            // Antes decía: lista.length
+            // Ahora dice: totalReal
+            btnTexto.innerText = `${totalReal} Items`;
+
             const btnPadre = btnTexto.parentElement;
             if (lista.length > 0) {
                 btnPadre.classList.remove('bg-gray-200', 'text-gray-700');
                 btnPadre.classList.add('bg-blue-600', 'text-white', 'border-blue-700');
+            } else {
+                btnPadre.classList.add('bg-gray-200', 'text-gray-700');
+                btnPadre.classList.remove('bg-blue-600', 'text-white', 'border-blue-700');
             }
         }
     }
@@ -1107,38 +1216,24 @@
     // ==========================================
 
     document.addEventListener("DOMContentLoaded", function() {
-        // Inicializar Select2 Modal
-        $('#select_repuesto_modal').select2({
-            width: '100%',
-            dropdownParent: $('#modalRepuestos'),
-            placeholder: "- Buscar Repuesto -",
-            language: {
-                noResults: () => "No se encontró el repuesto"
-            }
-        });
+        console.log('DOM cargado. Iniciando sistema...');
 
-        // Cargar opciones modal
-        const selectModal = document.getElementById('select_repuesto_modal');
-        if (selectModal && typeof listaRepuestosBD !== 'undefined') {
-            listaRepuestosBD.forEach(r => {
-                const option = new Option(r.nombre_repuesto, r.id_repuesto, false, false);
-                $(selectModal).append(option);
-            });
-        }
+        // 1. ELIMINA TODO EL BLOQUE DE "Cargar opciones modal" Y EL "select2" QUE APUNTABA A #select_repuesto_id 
+        // (Ya lo hiciste arriba en el código y apuntaba a un ID antiguo).
 
-        // Delay para asegurar carga de librerías antes de restaurar
+        // 2. Delay para asegurar carga de librerías antes de restaurar
         setTimeout(verificarYRestaurar, 500);
 
-        // Auto-guardado
+        // 3. Auto-guardado
         setInterval(guardarProgresoLocal, 4000);
 
-       // 🔥 EVENTO DE ENVÍO DEL FORMULARIO - LA CLAVE
+        // 🔥 EVENTO DE ENVÍO DEL FORMULARIO - LA CLAVE
         const form = document.getElementById('formServicios');
         if (form) {
             form.addEventListener('submit', function() {
                 console.log("Enviando formulario... Matando auto-guardado.");
-                enviandoFormulario = true; // 1. Bloquea el timer de guardado
-                localStorage.removeItem(CLAVE_GUARDADO); // 2. Borra el caché inmediatamente
+                enviandoFormulario = true;
+                localStorage.removeItem(CLAVE_GUARDADO);
             });
         }
     });

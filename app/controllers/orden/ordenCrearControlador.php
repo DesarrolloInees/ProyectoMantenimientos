@@ -3,7 +3,8 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 // 1. IMPORTAR ARCHIVOS NECESARIOS (Sin esto, PHP no encuentra las clases)
 require_once __DIR__ . '/../../config/conexion.php';
-require_once __DIR__ . '/../../models/orden/ordenCrearModelo.php';class ordenCrearControlador
+require_once __DIR__ . '/../../models/orden/ordenCrearModelo.php';
+class ordenCrearControlador
 {
     private $modelo;
     private $db;
@@ -108,13 +109,13 @@ require_once __DIR__ . '/../../models/orden/ordenCrearModelo.php';class ordenCre
         try {
             // CAMBIO: Ahora validamos 'id_modalidad' en vez de 'id_zona'
             if (isset($_POST['id_maquina_tipo']) && isset($_POST['id_manto']) && isset($_POST['id_modalidad'])) {
-                
+
                 $precio = $this->modelo->consultarTarifa(
                     intval($_POST['id_maquina_tipo']),
                     intval($_POST['id_manto']),
                     intval($_POST['id_modalidad']) // <--- AQUÍ ESTÁ EL CAMBIO CLAVE
                 );
-                
+
                 echo json_encode(['precio' => $precio]);
             } else {
                 echo json_encode(['precio' => 0, 'error' => 'Parámetros incompletos (Falta modalidad)']);
@@ -131,31 +132,32 @@ require_once __DIR__ . '/../../models/orden/ordenCrearModelo.php';class ordenCre
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $fechaReporte = $_POST['fecha_reporte'];
+            // Validación: Asegurarse que 'filas' existe y es array
             $filas = $_POST['filas'] ?? [];
 
             $guardados = 0;
             $errores = 0;
+            $detallesError = ""; // Para saber qué falló
 
-            foreach ($filas as $fila) {
+            foreach ($filas as $index => $fila) {
+
+                // 🔥 CLAVE: Validar que venga la máquina seleccionada
+                // Si la fila 2 no tiene máquina seleccionada, el sistema la ignora
                 if (!empty($fila['id_maquina'])) {
 
-                    // --- LIMPIEZA DEL PRECIO ---
-                    // Quitamos '$', espacios y puntos para que quede solo el número
-                    // Ej: "$ 150.000" -> "150000"
                     $valorLimpio = str_replace(['$', '.', ' '], '', $fila['valor']);
-                    // Si viene vacío, ponemos 0
                     $valorFinal = is_numeric($valorLimpio) ? $valorLimpio : 0;
 
                     $datosParaModelo = [
                         'remision'      => $fila['remision'],
-                        'id_cliente'    => $fila['id_cliente'],    // <--- ¡AGREGA ESTO!
-                        'id_punto'      => $fila['id_punto'],
-                        'id_modalidad'  => $fila['id_modalidad'],
+                        'id_cliente'    => $fila['id_cliente'] ?? null, // Usar null coalescing
+                        'id_punto'      => $fila['id_punto'] ?? null,
+                        'id_modalidad'  => $fila['id_modalidad'] ?? 1,
                         'fecha'         => $fechaReporte,
                         'id_maquina'    => $fila['id_maquina'],
                         'id_tecnico'    => $fila['id_tecnico'],
                         'tipo_servicio' => $fila['tipo_servicio'],
-                        'valor'         => $valorFinal,        // <--- ENVIAMOS EL LIMPIO
+                        'valor'         => $valorFinal,
                         'hora_entrada'  => $fila['hora_in'],
                         'hora_salida'   => $fila['hora_out'],
                         'estado'        => $fila['estado'],
@@ -164,19 +166,53 @@ require_once __DIR__ . '/../../models/orden/ordenCrearModelo.php';class ordenCre
                         'json_repuestos' => $fila['json_repuestos']
                     ];
 
+                    // Intentar guardar
                     if ($this->modelo->guardarOrden($datosParaModelo)) {
                         $guardados++;
                     } else {
                         $errores++;
+                        $detallesError .= "Fila #" . ($index + 1) . " falló en BD. ";
                     }
+                } else {
+                    // Si entra aquí es porque la fila no tenía máquina seleccionada
+                    // Esto es común si agregas filas vacías y le das guardar sin llenarlas
                 }
             }
 
-            // Redireccionar al final
-            echo "<script>
-                alert('Proceso terminado. Guardados: $guardados. Errores: $errores');
+            // Feedback detallado
+            if ($guardados > 0 && $errores == 0) {
+                echo "<script>
+                alert('✅ ÉXITO TOTAL: Se guardaron $guardados servicios correctamente.');
                 window.location.href = 'index.php?pagina=ordenCrear';
             </script>";
+            } else {
+                echo "<script>
+                alert('⚠️ ATENCIÓN: Se guardaron $guardados servicios, pero hubo $errores errores.\\nDetalles: $detallesError');
+                window.location.href = 'index.php?pagina=ordenCrear';
+            </script>";
+            }
         }
+    }
+    public function ajaxRemisiones()
+    {
+        // Limpieza de buffer por seguridad
+        while (ob_get_level()) ob_end_clean();
+        ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            if (isset($_POST['id_tecnico']) && !empty($_POST['id_tecnico'])) {
+                $id = intval($_POST['id_tecnico']);
+                // Llamamos a la función que ya tienes en el modelo
+                $remisiones = $this->modelo->obtenerRemisionesDisponibles($id);
+                echo json_encode($remisiones);
+            } else {
+                echo json_encode([]);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        ob_end_flush();
+        exit;
     }
 }

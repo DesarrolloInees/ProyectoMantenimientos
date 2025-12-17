@@ -191,6 +191,15 @@ class ordenCrearModels
             $idOrden = $this->conn->lastInsertId();
 
             // =================================================================================
+            // 🔥 CORRECCIÓN AQUÍ: LLAMAR A LA FUNCIÓN PARA QUEMAR LA REMISIÓN
+            // =================================================================================
+            if (!empty($datos['remision'])) {
+                // Llamamos a la función que ya creaste abajo
+                $this->marcarRemisionComoUsada($datos['remision'], $idOrden);
+            }
+            // =================================================================================
+
+            // =================================================================================
             // NUEVO BLOQUE: ACTUALIZAR EL PUNTO AQUÍ MISMO
             // =================================================================================
             // Usamos los mismos datos que llegaron en $datos
@@ -204,15 +213,19 @@ class ordenCrearModels
                 if (is_array($repuestos) && count($repuestos) > 0) {
                     $sqlRep = "INSERT INTO orden_servicio_repuesto 
                                 (id_orden_servicio, id_repuesto, origen, cantidad) 
-                                VALUES (?, ?, ?, 1)";
+                                VALUES (?, ?, ?, ?)";
                     $stmtRep = $this->conn->prepare($sqlRep);
 
                     foreach ($repuestos as $rep) {
                         if (isset($rep['id']) && isset($rep['origen'])) {
+                            // Validación: Si no viene cantidad, asumimos 1
+                            $cant = isset($rep['cantidad']) && $rep['cantidad'] > 0 ? $rep['cantidad'] : 1;
+
                             $stmtRep->execute([
                                 $idOrden,
                                 $rep['id'],
-                                $rep['origen']
+                                $rep['origen'],
+                                $cant // 🔥 AQUÍ PASAMOS LA CANTIDAD REAL
                             ]);
                         }
                     }
@@ -272,5 +285,29 @@ class ordenCrearModels
             error_log("Error actualizando info mantenimiento punto (Smart): " . $e->getMessage());
             return false;
         }
+    }
+
+    // 1. Obtener las remisiones que el técnico tiene libres
+    public function obtenerRemisionesDisponibles($idTecnico)
+    {
+        $sql = "SELECT id_control, numero_remision 
+            FROM control_remisiones 
+            WHERE id_tecnico = ? AND estado = 'DISPONIBLE' 
+            ORDER BY numero_remision ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$idTecnico]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // 2. Método auxiliar para "Quemar" la remisión al guardar la orden
+    public function marcarRemisionComoUsada($numeroRemision, $idOrden)
+    {
+        $sql = "UPDATE control_remisiones 
+            SET estado = 'USADA', 
+                id_orden_servicio = ?, 
+                fecha_uso = NOW() 
+            WHERE numero_remision = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$idOrden, $numeroRemision]);
     }
 }

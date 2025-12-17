@@ -5,53 +5,81 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
 
 <style>
-    /* Estilos Select2 idénticos a tu estándar */
+    /* Estilos base (Mismos de siempre) */
     .select2-container .select2-selection--single {
         height: 42px !important;
         border: 1px solid #d1d5db !important;
         border-radius: 0.5rem !important;
-        display: flex; align-items: center;
+        display: flex;
+        align-items: center;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__rendered {
-        padding-left: 0.75rem; color: #374151;
+        padding-left: 0.75rem;
+        color: #374151;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 40px !important;
     }
 
-    /* Estilos DataTables */
-    .dataTables_length select, .dataTables_filter input {
-        background-color: white !important; color: #374151 !important;
-        border: 1px solid #d1d5db !important; border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem; margin: 0 0.5rem;
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin: 0 0.5rem;
     }
-    #reporteTable tbody tr { background-color: white !important; }
-    #reporteTable tbody tr:hover { background-color: #f9fafb !important; }
+
+    #reporteTable tbody tr {
+        background-color: white !important;
+    }
+
+    #reporteTable tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
     .dataTables_paginate .paginate_button.current {
-        background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important;
+        background-color: #4f46e5 !important;
+        color: white !important;
+        border-color: #4f46e5 !important;
     }
-    .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type {
-        display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin: 1.5rem 0;
+
+    .dataTables_wrapper>div:first-child,
+    .dataTables_wrapper>div:last-of-type {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1.5rem 0;
     }
 </style>
 
 <div class="w-full max-w-7xl mx-auto">
-    
+
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-8">
-        <div class="mb-4 border-b pb-2 flex justify-between items-center">
+        <div class="mb-4 border-b pb-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-cogs text-blue-600 mr-2"></i> Reporte de Repuestos</h1>
-                <p class="text-gray-500 text-sm">Consulta el consumo de materiales por mes o rango de fechas.</p>
+                <p class="text-gray-500 text-sm">Control de inventario y salida de repuestos.</p>
             </div>
-            <?php if (!empty($datosReporte)): ?>
-                <button type="button" onclick="exportarExcelRepuestos()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow flex items-center gap-2 transform hover:scale-105 transition">
-                    <i class="fas fa-file-excel"></i> Exportar Excel
-                </button>
-            <?php endif; ?>
+
+            <div class="flex gap-2">
+                <?php if (!empty($datosReporte)): ?>
+                    <button type="button" onclick="exportarExcelResumen()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow flex items-center gap-2 transform hover:scale-105 transition text-sm">
+                        <i class="fas fa-file-excel"></i> Resumen General
+                    </button>
+
+                    <button type="button" onclick="exportarDetalleInees()" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700 shadow flex items-center gap-2 transform hover:scale-105 transition text-sm">
+                        <i class="fas fa-boxes"></i> Detallado INEES
+                    </button>
+                <?php endif; ?>
+            </div>
         </div>
 
         <form action="<?= BASE_URL ?>reporteRepuesto" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            
             <div class="md:col-span-1">
                 <label class="block text-sm font-bold text-gray-700 mb-1">Origen del Repuesto</label>
                 <select name="origen" class="select2-search w-full border border-gray-300 rounded-lg">
@@ -60,19 +88,14 @@
                     <option value="PROSEGUR" <?= ($filtros['origen'] == 'PROSEGUR') ? 'selected' : '' ?>>PROSEGUR</option>
                 </select>
             </div>
-
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Desde</label>
-                <input type="date" name="fecha_inicio" value="<?= $filtros['fecha_inicio'] ?>" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <input type="date" name="fecha_inicio" value="<?= $filtros['fecha_inicio'] ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
-
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Hasta</label>
-                <input type="date" name="fecha_fin" value="<?= $filtros['fecha_fin'] ?>" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <input type="date" name="fecha_fin" value="<?= $filtros['fecha_fin'] ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
-
             <div>
                 <button type="submit" class="w-full py-2 px-4 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition-all">
                     <i class="fas fa-search mr-2"></i> Generar
@@ -82,7 +105,6 @@
     </div>
 
     <?php if (!empty($datosReporte)): ?>
-        
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <p class="text-sm text-blue-600 font-bold uppercase">Referencias Distintas</p>
@@ -115,48 +137,29 @@
                     <tbody class="divide-y divide-gray-100">
                         <?php foreach ($datosReporte as $fila): ?>
                             <tr class="hover:bg-gray-50">
-                                <td class="py-3 px-4 whitespace-nowrap text-gray-500 font-mono">
-                                    <?= htmlspecialchars($fila['codigo_referencia'] ?? 'S/R') ?>
-                                </td>
-                                <td class="py-3 px-4 font-bold text-gray-800">
-                                    <?= htmlspecialchars($fila['nombre_repuesto']) ?>
-                                </td>
+                                <td class="py-3 px-4 whitespace-nowrap text-gray-500 font-mono"><?= htmlspecialchars($fila['codigo_referencia'] ?? 'S/R') ?></td>
+                                <td class="py-3 px-4 font-bold text-gray-800"><?= htmlspecialchars($fila['nombre_repuesto']) ?></td>
                                 <td class="py-3 px-4 text-center">
-                                    <?php if($fila['origen'] == 'INEES'): ?>
+                                    <?php if ($fila['origen'] == 'INEES'): ?>
                                         <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">INEES</span>
                                     <?php else: ?>
                                         <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded">PROSEGUR</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="py-3 px-4 text-center text-gray-600">
-                                    <?= $fila['veces_usado'] ?>
-                                </td>
-                                <td class="py-3 px-4 text-right font-bold text-blue-600 text-lg">
-                                    <?= $fila['total_cantidad'] ?>
-                                </td>
+                                <td class="py-3 px-4 text-center text-gray-600"><?= $fila['veces_usado'] ?></td>
+                                <td class="py-3 px-4 text-right font-bold text-blue-600 text-lg"><?= $fila['total_cantidad'] ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
-                    <tfoot class="bg-gray-50 font-bold text-gray-800">
-                        <tr>
-                            <td colspan="4" class="py-3 px-4 text-right uppercase text-xs">Total Piezas:</td>
-                            <td class="py-3 px-4 text-right"><?= number_format($totalPiezas) ?></td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         </div>
-
     <?php elseif ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
             <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-exclamation-circle text-yellow-400"></i>
-                </div>
+                <div class="flex-shrink-0"><i class="fas fa-exclamation-circle text-yellow-400"></i></div>
                 <div class="ml-3">
-                    <p class="text-sm text-yellow-700">
-                        <?= htmlspecialchars($mensaje) ?>
-                    </p>
+                    <p class="text-sm text-yellow-700"><?= htmlspecialchars($mensaje) ?></p>
                 </div>
             </div>
         </div>
@@ -169,87 +172,133 @@
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
 
 <script>
-    // ==========================================
-    // 1. PASO DE DATOS PHP -> JS (Para el Excel)
-    // ==========================================
-    // Esto asegura que tengamos los datos limpios y completos, sin depender de leer el HTML
-    const datosReporte = <?= json_encode($datosReporte ?? []) ?>;
-    const filtrosAplicados = {
-        inicio: "<?= $filtros['fecha_inicio'] ?? '' ?>",
-        fin: "<?= $filtros['fecha_fin'] ?? '' ?>"
-    };
+    // 1. DATA PHP -> JS
+    const datosResumen = <?= json_encode($datosReporte ?? []) ?>;
+    const datosInees = <?= json_encode($datosInees ?? []) ?>; // <--- AQUÍ ESTÁ LA NUEVA DATA DETALLADA
 
     $(document).ready(function() {
-        // Inicializar Select2
         $('.select2-search').select2({
             width: '100%',
             minimumResultsForSearch: Infinity
         });
-
-        // Inicializar DataTable
         if ($('#reporteTable').length) {
             $('#reporteTable').DataTable({
                 responsive: true,
-                language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' },
-                order: [[ 4, "desc" ]] // Ordenar por Cantidad Total
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                },
+                order: [
+                    [4, "desc"]
+                ]
             });
         }
     });
 
     // ==========================================
-    // 2. FUNCIÓN EXPORTAR EXCEL (ESTILO TUYO)
+    // EXPORTAR RESUMEN (BOTÓN VERDE)
     // ==========================================
-    function exportarExcelRepuestos() {
-        if (typeof XLSX === 'undefined') {
-            alert("Error: Librería SheetJS no cargada.");
+    function exportarExcelResumen() {
+        if (!datosResumen.length) return alert("Sin datos.");
+        let workbook = XLSX.utils.book_new();
+        let matriz = [
+            ['CÓDIGO', 'REPUESTO', 'ORIGEN', 'VECES SOLICITADO', 'CANTIDAD TOTAL']
+        ];
+        datosResumen.forEach(d => matriz.push([d.codigo_referencia, d.nombre_repuesto, d.origen, parseInt(d.veces_usado), parseInt(d.total_cantidad)]));
+        let ws = XLSX.utils.aoa_to_sheet(matriz);
+        ws['!cols'] = [{
+            wch: 15
+        }, {
+            wch: 40
+        }, {
+            wch: 15
+        }, {
+            wch: 20
+        }, {
+            wch: 15
+        }];
+        XLSX.utils.book_append_sheet(workbook, ws, "Resumen");
+        XLSX.writeFile(workbook, `Resumen_Repuestos.xlsx`);
+    }
+
+    // ==========================================
+    // NUEVO: EXPORTAR DETALLE INEES (BOTÓN AZUL)
+    // ==========================================
+
+    // ==========================================
+    // EXPORTAR DETALLE INEES (CORREGIDO)
+    // ==========================================
+    function exportarDetalleInees() {
+        if (!datosInees || datosInees.length === 0) {
+            alert("No hay datos detallados de INEES o hubo un error al cargarlos.");
             return;
         }
 
-        if (datosReporte.length === 0) {
-            alert("No hay datos para exportar.");
-            return;
-        }
-
-        // Crear Libro
         let workbook = XLSX.utils.book_new();
 
-        // Crear Matriz de Datos (Array of Arrays)
-        // Encabezados
+        // 1. Encabezados (Orden Solicitado)
         let matriz = [
-            ['REPORTE DE USO DE REPUESTOS'],
-            ['Periodo:', filtrosAplicados.inicio + ' al ' + filtrosAplicados.fin],
-            [], // Fila vacía
-            ['Código Referencia', 'Nombre Repuesto', 'Origen', 'Veces Solicitado (Órdenes)', 'Cantidad Total Usada'] // Encabezados Tabla
+            ['REPORTE DETALLADO DE REPUESTOS - INEES'],
+            [],
+            [
+                'CLIENTE',
+                'PUNTO / SEDE',
+                'MÁQUINA (ID)',
+                'TIPO MÁQUINA', // Columna 4
+                'REMISIÓN',
+                'OBSERVACIÓN', // Columna 6 (A la izquierda de repuestos)
+                'REPUESTO',
+                'CANT.'
+            ]
         ];
 
-        // Rellenar datos
-        datosReporte.forEach(d => {
+        // 2. Llenar filas
+        datosInees.forEach(d => {
+            // Nota: Con esta librería básica no existe "Wrap Text" automático,
+            // pero organizamos las columnas y el ancho para que sea legible.
             matriz.push([
-                d.codigo_referencia || 'S/R',
+                d.nombre_cliente,
+                d.nombre_punto,
+                d.device_id,
+                d.nombre_tipo_maquina || 'N/A',
+                d.numero_remision,
+                d.observacion, // Observación
                 d.nombre_repuesto,
-                d.origen,
-                parseInt(d.veces_usado),
-                parseInt(d.total_cantidad)
+                parseInt(d.cantidad)
             ]);
         });
 
-        // Convertir Matriz a Hoja
+        // 3. Crear hoja
         let ws = XLSX.utils.aoa_to_sheet(matriz);
 
-        // Ajustar Ancho de Columnas (Estilo Pro)
-        ws['!cols'] = [
-            { wch: 20 }, // Código
-            { wch: 40 }, // Nombre
-            { wch: 15 }, // Origen
-            { wch: 25 }, // Veces
-            { wch: 20 }  // Cantidad
+        // 4. Ajustar anchos (Visualización)
+        ws['!cols'] = [{
+                wch: 30
+            }, // Cliente
+            {
+                wch: 25
+            }, // Punto
+            {
+                wch: 15
+            }, // Máquina
+            {
+                wch: 20
+            }, // Tipo Máquina
+            {
+                wch: 15
+            }, // Remisión
+            {
+                wch: 50
+            }, // Observación (Ancho grande para que quepa texto)
+            {
+                wch: 35
+            }, // Repuesto
+            {
+                wch: 8
+            } // Cantidad
         ];
 
-        // Agregar Hoja al Libro
-        XLSX.utils.book_append_sheet(workbook, ws, "Repuestos");
-
-        // Descargar Archivo
-        let fechaArchivo = new Date().toISOString().slice(0,10).replace(/-/g,"");
-        XLSX.writeFile(workbook, `Repuestos_${filtrosAplicados.inicio}_${fechaArchivo}.xlsx`);
+        XLSX.utils.book_append_sheet(workbook, ws, "Detalle INEES");
+        let fecha = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(workbook, `Detalle_Repuestos_INEES_${fecha}.xlsx`);
     }
 </script>

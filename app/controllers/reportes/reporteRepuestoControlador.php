@@ -4,41 +4,53 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/reportes/reporteRepuestoModelo.php';
 
-class reporteRepuestoControlador {
-    
+class reporteRepuestoControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new ReporteRepuestosModelo($this->db);
     }
 
-    public function index() {
-        $datosReporte = [];
+    public function index()
+    {
+        $datosReporte = []; // Reporte Agrupado (Tabla visual)
+        $datosInees = [];   // Reporte Detallado (Para el Excel nuevo)
+
         $filtros = [
-            'origen' => '', // Filtro opcional por INEES o PROSEGUR
-            'fecha_inicio' => date('Y-m-01'), // Por defecto 1ro del mes
-            'fecha_fin' => date('Y-m-d')      // Por defecto hoy
+            'origen' => '',
+            'fecha_inicio' => date('Y-m-01'),
+            'fecha_fin' => date('Y-m-d')
         ];
         $totalPiezas = 0;
         $mensaje = "";
 
-        // Si se envió el formulario (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filtros['origen'] = $_POST['origen'] ?? '';
             $filtros['fecha_inicio'] = $_POST['fecha_inicio'] ?? '';
             $filtros['fecha_fin'] = $_POST['fecha_fin'] ?? '';
 
             if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
-                $datosReporte = $this->modelo->generarReporteRepuesto(
-                    $filtros['origen'], 
-                    $filtros['fecha_inicio'], 
+
+                // 1. Obtener Datos Agrupados (Visualización HTML)
+                $datosReporte = $this->modelo->generarReporteRepuestos(
+                    $filtros['origen'],
+                    $filtros['fecha_inicio'],
                     $filtros['fecha_fin']
                 );
-                
-                // Calcular total de piezas usadas
+
+                // 2. Obtener Datos Detallados INEES (Para el Excel Nuevo)
+                $datosInees = $this->modelo->obtenerDetalleInees(
+                    $filtros['fecha_inicio'],
+                    $filtros['fecha_fin']
+                );
+
+                // Calcular total visual
                 foreach ($datosReporte as $row) {
                     $totalPiezas += $row['total_cantidad'];
                 }
