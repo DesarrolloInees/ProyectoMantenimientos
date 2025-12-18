@@ -63,7 +63,7 @@
 
 <a href="<?= BASE_URL ?>tipoMaquinaVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-solid fa-dharmachakra mr-3 w-6 text-center"></i>  Administrar Tipos de Máquinas
+    <i class="fa-solid fa-dharmachakra mr-3 w-6 text-center"></i> Administrar Tipos de Máquinas
 </a>
 
 <a href="<?= BASE_URL ?>tipoMantenimientoVer"
@@ -83,38 +83,40 @@
 
 <a href="<?= BASE_URL ?>estadoMaquinaVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-brands fa-bilibili mr-3 w-6 text-center"></i>  Administrar Tipos de Estado de Máquina
+    <i class="fa-brands fa-bilibili mr-3 w-6 text-center"></i> Administrar Tipos de Estado de Máquina
 </a>
 
 <a href="<?= BASE_URL ?>modalidadOperativaVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-solid fa-building mr-3 w-6 text-center"></i>   Administrar Modalidad Operativa
+    <i class="fa-solid fa-building mr-3 w-6 text-center"></i> Administrar Modalidad Operativa
 </a>
 
 <a href="<?= BASE_URL ?>tecnicoVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-solid fa-user mr-3 w-6 text-center"></i>   Administrar Tecnicos
+    <i class="fa-solid fa-user mr-3 w-6 text-center"></i> Administrar Tecnicos
 </a>
 
 <a href="<?= BASE_URL ?>tipoUsuarioVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-solid fa-user mr-3 w-6 text-center"></i>   Administrar Tipos Usuarios
+    <i class="fa-solid fa-user mr-3 w-6 text-center"></i> Administrar Tipos Usuarios
 </a>
 
 <a href="<?= BASE_URL ?>tarifaVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-solid fa-money-bill mr-3 w-6 text-center"></i>  Administrar Tarifas 
+    <i class="fa-solid fa-money-bill mr-3 w-6 text-center"></i> Administrar Tarifas
 </a>
 
 <a href="<?= BASE_URL ?>puntoVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-solid fa-city mr-3 w-6 text-center"></i>  Administrar Puntos
+    <i class="fa-solid fa-city mr-3 w-6 text-center"></i> Administrar Puntos
 </a>
 
 <a href="<?= BASE_URL ?>maquinaVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
-    <i class="fa-solid fa-cash-register mr-3 w-6 text-center"></i>  Administrar Máquinas
+    <i class="fa-solid fa-cash-register mr-3 w-6 text-center"></i> Administrar Máquinas
 </a>
 
-
-
+<a href="<?= BASE_URL ?>diasFestivosVer"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
+    <i class="fa-solid fa-calendar-day mr-3 w-6 text-center"></i> Administrar Días Festivos
+</a>

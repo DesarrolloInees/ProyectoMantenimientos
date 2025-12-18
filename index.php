@@ -1,4 +1,5 @@
 <?php
+
 /**
  * index.php (v5.0 - MASTER)
  * Fusión: Seguridad estricta del proyecto antiguo + Arquitectura MVC del nuevo.
@@ -51,7 +52,7 @@ $pagina = isset($_GET['pagina']) ? $_GET['pagina'] : 'inicio';
 if (isset($_GET['id'])) {
     // Si estamos en ordenDetalle, convertimos ese 'id' en 'fecha'
     if ($pagina == 'ordenDetalle') {
-        $_GET['fecha'] = $_GET['id']; 
+        $_GET['fecha'] = $_GET['id'];
     }
     // Aquí puedes agregar más casos si otras páginas usan ID
 }
@@ -115,7 +116,6 @@ try {
             $stmt->execute([':rol_id' => $nivel_usuario, ':pagina' => $pagina]);
         }
         $controlador_ruta_archivo = $stmt->fetchColumn();
-
     } elseif (in_array($pagina, $paginas_publicas)) {
         // Rutas públicas: solo consultamos si existe la ruta física en la BD
         $sql = "SELECT controlador_ruta FROM rutas WHERE nombre_ruta = :pagina AND estado = 'activo'";
@@ -123,7 +123,6 @@ try {
         $stmt->execute([':pagina' => $pagina]);
         $controlador_ruta_archivo = $stmt->fetchColumn();
     }
-
 } catch (PDOException $e) {
     die("Error crítico en el Router RBAC: " . $e->getMessage());
 }
@@ -132,7 +131,7 @@ try {
 // AQUÍ ESTÁ LA CORRECCIÓN CLAVE PARA QUE FUNCIONE TU CONTROLADOR NUEVO
 
 if ($controlador_ruta_archivo && file_exists(__DIR__ . '/' . $controlador_ruta_archivo)) {
-    
+
     // 1. Incluimos el archivo
     require_once __DIR__ . '/' . $controlador_ruta_archivo;
 
@@ -145,8 +144,8 @@ if ($controlador_ruta_archivo && file_exists(__DIR__ . '/' . $controlador_ruta_a
 
         // 4. Determinamos la acción (Método)
         // CAMBIO: Por defecto ahora usamos 'index', que es el estándar
-        $accion = 'index'; 
-        
+        $accion = 'index';
+
         if (isset($_POST['accion'])) {
             $accion = $_POST['accion']; // Prioridad si viene por POST (AJAX)
         } elseif (isset($_GET['accion'])) {
@@ -157,25 +156,20 @@ if ($controlador_ruta_archivo && file_exists(__DIR__ . '/' . $controlador_ruta_a
         if (method_exists($controlador, $accion)) {
             // Si el método existe (ej: index, guardar, eliminar), se ejecuta.
             $controlador->{$accion}();
-        
         } elseif ($accion === 'index' && method_exists($controlador, 'cargarVista')) {
             // COMPATIBILIDAD HACIA ATRÁS:
             // Si buscamos 'index' (default) pero no existe, y la clase tiene 'cargarVista'
             // (tu forma antigua de hacerlo), usamos cargarVista.
             $controlador->cargarVista();
-            
         } else {
             // Error si no encuentra ni index ni el método pedido
             echo "Error: Método '$accion' no encontrado en el controlador '$nombreClase'.";
         }
-
     } else {
         echo "Error: La clase '$nombreClase' no se encontró en el archivo.";
     }
-
 } else {
     // 404
     header("HTTP/1.0 404 Not Found");
     echo "<h1>Error 404</h1><p>Página no encontrada o acceso denegado.</p>";
 }
-?>

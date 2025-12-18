@@ -135,64 +135,64 @@ class ordenDetalleModelo
 
     // ⭐⭐ FUNCIÓN PARA CONVERTIR TEXTO A JSON (MÁS ROBUSTA) ⭐⭐
     private function convertirTextoAJSON($texto)
-{
-    $arrayRepuestos = [];
+    {
+        $arrayRepuestos = [];
 
-    if (empty($texto) || trim($texto) === '') {
-        return '[]';
-    }
-
-    $palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO', ''];
-
-    // Truco para proteger los paréntesis de origen
-    $textoTemp = str_replace(' (PROSEGUR)', '_(PROSEGUR)', $texto);
-    $textoTemp = str_replace(' (INEES)', '_(INEES)', $textoTemp);
-
-    $items = explode(',', $textoTemp);
-
-    foreach ($items as $item) {
-        // Restaurar origen
-        $item = str_replace('_(PROSEGUR)', ' (PROSEGUR)', $item);
-        $item = str_replace('_(INEES)', ' (INEES)', $item);
-        $itemLimpio = trim($item);
-
-        if (empty($itemLimpio) || in_array(strtoupper($itemLimpio), $palabrasIgnorar)) {
-            continue;
+        if (empty($texto) || trim($texto) === '') {
+            return '[]';
         }
 
-        $cantidad = 1; // Default
+        $palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO', ''];
 
-        // 1. DETECTAR CANTIDAD (xN)
-        if (preg_match('/\(x(\d+)\)$/i', $itemLimpio, $matches)) {
-            $cantidad = intval($matches[1]);
-            // Quitamos el (x3) del nombre para buscar limpio el ID
-            $itemLimpio = trim(preg_replace('/\(x\d+\)$/i', '', $itemLimpio));
-        }
+        // Truco para proteger los paréntesis de origen
+        $textoTemp = str_replace(' (PROSEGUR)', '_(PROSEGUR)', $texto);
+        $textoTemp = str_replace(' (INEES)', '_(INEES)', $textoTemp);
 
-        $origen = 'INEES';
-        $nombre = $itemLimpio;
+        $items = explode(',', $textoTemp);
 
-        // 2. DETECTAR ORIGEN
-        if (stripos($itemLimpio, '(PROSEGUR)') !== false) {
-            $origen = 'PROSEGUR';
-            $nombre = trim(str_ireplace('(PROSEGUR)', '', $itemLimpio));
-        } elseif (stripos($itemLimpio, '(INEES)') !== false) {
+        foreach ($items as $item) {
+            // Restaurar origen
+            $item = str_replace('_(PROSEGUR)', ' (PROSEGUR)', $item);
+            $item = str_replace('_(INEES)', ' (INEES)', $item);
+            $itemLimpio = trim($item);
+
+            if (empty($itemLimpio) || in_array(strtoupper($itemLimpio), $palabrasIgnorar)) {
+                continue;
+            }
+
+            $cantidad = 1; // Default
+
+            // 1. DETECTAR CANTIDAD (xN)
+            if (preg_match('/\(x(\d+)\)$/i', $itemLimpio, $matches)) {
+                $cantidad = intval($matches[1]);
+                // Quitamos el (x3) del nombre para buscar limpio el ID
+                $itemLimpio = trim(preg_replace('/\(x\d+\)$/i', '', $itemLimpio));
+            }
+
             $origen = 'INEES';
-            $nombre = trim(str_ireplace('(INEES)', '', $itemLimpio));
+            $nombre = $itemLimpio;
+
+            // 2. DETECTAR ORIGEN
+            if (stripos($itemLimpio, '(PROSEGUR)') !== false) {
+                $origen = 'PROSEGUR';
+                $nombre = trim(str_ireplace('(PROSEGUR)', '', $itemLimpio));
+            } elseif (stripos($itemLimpio, '(INEES)') !== false) {
+                $origen = 'INEES';
+                $nombre = trim(str_ireplace('(INEES)', '', $itemLimpio));
+            }
+
+            $idRepuesto = $this->buscarIdRepuestoPorNombre($nombre);
+
+            $arrayRepuestos[] = [
+                'id' => $idRepuesto,
+                'nombre' => $nombre,
+                'origen' => $origen,
+                'cantidad' => $cantidad // Guardamos la cantidad
+            ];
         }
 
-        $idRepuesto = $this->buscarIdRepuestoPorNombre($nombre);
-
-        $arrayRepuestos[] = [
-            'id' => $idRepuesto,
-            'nombre' => $nombre,
-            'origen' => $origen,
-            'cantidad' => $cantidad // Guardamos la cantidad
-        ];
+        return json_encode($arrayRepuestos, JSON_UNESCAPED_UNICODE);
     }
-
-    return json_encode($arrayRepuestos, JSON_UNESCAPED_UNICODE);
-}
 
     // ⭐⭐ BUSCAR ID DE REPUESTO POR NOMBRE ⭐⭐
     private function buscarIdRepuestoPorNombre($nombre)
@@ -286,16 +286,29 @@ class ordenDetalleModelo
         return $stmt->fetchColumn() ?: "Sin Asignar";
     }
 
-    public function obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad)
+    // ==========================================
+    // CAMBIO: AHORA RECIBE EL AÑO COMO PARÁMETRO
+    // ==========================================
+    public function obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad, $anio)
     {
+        // Si no llega año, usamos el actual por seguridad
+        $anioVigencia = $anio ? $anio : date('Y');
+
         $stmt = $this->conn->prepare("SELECT precio 
                                         FROM tarifa 
                                         WHERE id_tipo_maquina = ? 
                                         AND id_tipo_mantenimiento = ? 
                                         AND id_modalidad = ?
-                                        AND año_vigencia = 2025
+                                        AND año_vigencia = ?  -- 🔥 AÑO DINÁMICO
                                         LIMIT 1");
-        $stmt->execute([$id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad]);
+
+        $stmt->execute([
+            $id_tipo_maquina,
+            $id_tipo_mantenimiento,
+            $id_modalidad,
+            $anioVigencia // 🔥 Pasamos el año
+        ]);
+
         $precio = $stmt->fetchColumn();
         return $precio ? floatval($precio) : 0;
     }
@@ -314,15 +327,59 @@ class ordenDetalleModelo
     }
 
     // ==========================================
-    // 3. ACTUALIZACIÓN (CON REPUESTOS) ⭐
+    // 3. ACTUALIZACIÓN (CON GESTIÓN DE REMISIONES) ⭐
     // ==========================================
     public function actualizarOrdenFull($id, $datos)
     {
         try {
-            // Iniciamos transacción: O se guarda todo bien, o no se guarda nada
+            // Iniciamos transacción
             $this->conn->beginTransaction();
 
-            // 1. ACTUALIZAR TABLA PRINCIPAL
+            // -----------------------------------------------------------------
+            // 🕵️ PASO 0: GESTIÓN INTELIGENTE DE REMISIONES (CORRECCIÓN)
+            // -----------------------------------------------------------------
+            // Primero averiguamos qué tenía la orden ANTES de guardar los cambios
+            $sqlCheck = "SELECT numero_remision, id_tecnico FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
+            $stmtCheck = $this->conn->prepare($sqlCheck);
+            $stmtCheck->execute([$id]);
+            $actual = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+            // Verificamos si cambió el Número de Remisión O el Técnico
+            if ($actual && ($actual['numero_remision'] != $datos['remision'] || $actual['id_tecnico'] != $datos['id_tecnico'])) {
+
+                // A. LIBERAR LA VIEJA: Soltamos cualquier remisión que estuviera amarrada a esta orden
+                // Esto pone en DISPONIBLE la remisión anterior (sin importar cuál era)
+                $sqlLiberar = "UPDATE control_remisiones 
+                                SET estado = 'DISPONIBLE', 
+                                    id_orden_servicio = NULL, 
+                                    fecha_uso = NULL 
+                                WHERE id_orden_servicio = ?";
+                $stmtLib = $this->conn->prepare($sqlLiberar);
+                $stmtLib->execute([$id]);
+
+                // B. OCUPAR LA NUEVA: Si la nueva remisión no está vacía, la marcamos como USADA
+                if (!empty($datos['remision'])) {
+                    $sqlOcupar = "UPDATE control_remisiones 
+                                    SET estado = 'USADA', 
+                                        id_orden_servicio = ?, 
+                                        fecha_uso = ? 
+                                    WHERE numero_remision = ? AND id_tecnico = ?";
+
+                    $stmtOcu = $this->conn->prepare($sqlOcupar);
+                    // Usamos la fecha de la visita para que el historial tenga sentido
+                    $fechaUso = $datos['fecha_individual'] . ' ' . ($datos['entrada'] ?: '00:00:00');
+
+                    $stmtOcu->execute([
+                        $id,
+                        $fechaUso,
+                        $datos['remision'],
+                        $datos['id_tecnico']
+                    ]);
+                }
+            }
+            // -----------------------------------------------------------------
+
+            // 1. ACTUALIZAR TABLA PRINCIPAL (ORDENES)
             $sql = "UPDATE ordenes_servicio SET 
                         id_cliente = ?,
                         id_punto = ?,
@@ -364,50 +421,39 @@ class ordenDetalleModelo
             ]);
 
             // 2. ACTUALIZAR REPUESTOS
-            // La estrategia es: Borrar los viejos -> Insertar los nuevos (si hay)
-
-            // A. Borrar repuestos anteriores de esta orden
+            // A. Borrar repuestos anteriores
             $sqlDelete = "DELETE FROM orden_servicio_repuesto WHERE id_orden_servicio = ?";
             $stmtDel = $this->conn->prepare($sqlDelete);
             $stmtDel->execute([$id]);
 
-            // B. Insertar los nuevos (si el JSON trae datos)
+            // B. Insertar los nuevos
             if (!empty($datos['json_repuestos'])) {
                 $repuestos = json_decode($datos['json_repuestos'], true);
 
                 if (is_array($repuestos) && count($repuestos) > 0) {
-                    // AGREGAMOS 'cantidad' AL INSERT
                     $sqlIns = "INSERT INTO orden_servicio_repuesto (id_orden_servicio, id_repuesto, origen, cantidad) VALUES (?, ?, ?, ?)";
                     $stmtIns = $this->conn->prepare($sqlIns);
 
                     foreach ($repuestos as $rep) {
                         if (!empty($rep['id'])) {
-                            // Validamos que exista cantidad, si no, por defecto 1
                             $cantidad = !empty($rep['cantidad']) ? $rep['cantidad'] : 1;
-
                             $stmtIns->execute([
                                 $id,
                                 $rep['id'],
                                 $rep['origen'],
-                                $cantidad // <--- Aquí guardamos el valor
+                                $cantidad
                             ]);
                         }
                     }
                 }
             }
-            // =================================================================================
-            // 3. ACTUALIZAR EL PUNTO AUTOMÁTICAMENTE (LÓGICA INTELIGENTE)
-            // =================================================================================
-            // Esto asegura que la tabla 'punto' siempre tenga la fecha y servicio más reciente,
-            // sin importar si estás editando una orden vieja o nueva.
-            $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
-            // =================================================================================
 
-            // Si todo salió bien, confirmamos los cambios
+            // 3. ACTUALIZAR INFO MANTENIMIENTO EN PUNTO
+            $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
+
             $this->conn->commit();
             return true;
         } catch (Exception $e) {
-            // Si algo falló, deshacemos todo
             $this->conn->rollBack();
             error_log("Error actualizando orden: " . $e->getMessage());
             return false;
@@ -431,7 +477,7 @@ class ordenDetalleModelo
                     SET p.fecha_ultima_visita = ultima_real.fecha_visita,
                         p.id_ultimo_tipo_mantenimiento = ultima_real.id_tipo_mantenimiento
                     WHERE p.id_punto = :id_punto_a";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
                 ':id_punto_b' => $idPunto, // Para el subquery
@@ -441,6 +487,19 @@ class ordenDetalleModelo
         } catch (PDOException $e) {
             error_log("Error actualizando info mantenimiento punto (Smart): " . $e->getMessage());
             return false;
+        }
+    }
+
+    public function obtenerFestivos()
+    {
+        try {
+            $sql = "SELECT fecha FROM dias_festivos ORDER BY fecha ASC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            // Devuelve un array plano: ["2025-01-01", "2025-01-06", ...]
+            return $stmt->fetchAll(PDO::FETCH_COLUMN); 
+        } catch (PDOException $e) {
+            return [];
         }
     }
 }

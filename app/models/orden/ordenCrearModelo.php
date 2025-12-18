@@ -83,29 +83,38 @@ class ordenCrearModels
         }
     }
 
-    // --- 6. CONSULTAR TARIFA (CORREGIDO: Lógica Modalidad) ---
-    public function consultarTarifa($idTipoMaq, $idTipoManto, $idModalidad)
+    // --- 6. CONSULTAR TARIFA (DINÁMICA POR AÑO) ---
+    // Ahora pedimos la fecha para saber qué año cobrar
+    public function consultarTarifa($idTipoMaq, $idTipoManto, $idModalidad, $fechaVisita)
     {
         try {
-            // CAMBIO: id_tipo_zona -> id_modalidad
+            // 1. Extraer el AÑO de la fecha de visita. 
+            // Si la fecha viene vacía, usamos el año actual del servidor por defecto.
+            $anio = !empty($fechaVisita) ? date('Y', strtotime($fechaVisita)) : date('Y');
+
             $sql = "SELECT precio FROM tarifa 
                     WHERE id_tipo_maquina = :tipo_maq
                         AND id_tipo_mantenimiento = :tipo_manto
                         AND id_modalidad = :modalidad
-                        AND año_vigencia = 2025 
+                        AND año_vigencia = :anio  -- 🔥 AQUÍ ESTÁ LA MAGIA
                     LIMIT 1";
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':tipo_maq', $idTipoMaq, PDO::PARAM_INT);
             $stmt->bindParam(':tipo_manto', $idTipoManto, PDO::PARAM_INT);
             $stmt->bindParam(':modalidad', $idModalidad, PDO::PARAM_INT);
+            $stmt->bindParam(':anio', $anio, PDO::PARAM_INT); // Pasamos el año calculado
+
             $stmt->execute();
             $res = $stmt->fetch(PDO::FETCH_ASSOC);
+
             return $res ? $res['precio'] : 0;
         } catch (PDOException $e) {
             error_log("Error en consultarTarifa: " . $e->getMessage());
             return 0;
         }
     }
+
 
     // --- 7: OBTENER ESTADOS ---
     public function obtenerEstadosMaquina()
@@ -191,12 +200,14 @@ class ordenCrearModels
             $idOrden = $this->conn->lastInsertId();
 
             // =================================================================================
-            // 🔥 CORRECCIÓN AQUÍ: LLAMAR A LA FUNCIÓN PARA QUEMAR LA REMISIÓN
+            // 🔥 CORRECCIÓN CRÍTICA: PASAR TAMBIÉN EL ID TÉCNICO
             // =================================================================================
             if (!empty($datos['remision'])) {
-                // Llamamos a la función que ya creaste abajo
-                $this->marcarRemisionComoUsada($datos['remision'], $idOrden);
+                // Le pasamos el numero, el id de la orden Y EL ID DEL TÉCNICO
+                $this->marcarRemisionComoUsada($datos['remision'], $idOrden, $datos['id_tecnico']);
             }
+            // =================================================================================
+
             // =================================================================================
 
             // =================================================================================
@@ -299,15 +310,31 @@ class ordenCrearModels
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // 2. Método auxiliar para "Quemar" la remisión al guardar la orden
-    public function marcarRemisionComoUsada($numeroRemision, $idOrden)
+    // 2. Método auxiliar para "Quemar" la remisión (ACTUALIZADO PARA DUPLICADOS)
+    public function marcarRemisionComoUsada($numeroRemision, $idOrden, $idTecnico)
     {
+        // 🔥 AGREGAMOS "AND id_tecnico = ?" PARA QUE NO QUEME LA DEL OTRO MAN
         $sql = "UPDATE control_remisiones 
-            SET estado = 'USADA', 
-                id_orden_servicio = ?, 
-                fecha_uso = NOW() 
-            WHERE numero_remision = ?";
+                SET estado = 'USADA', 
+                    id_orden_servicio = ?, 
+                    fecha_uso = NOW() 
+                WHERE numero_remision = ? AND id_tecnico = ?";
+
         $stmt = $this->conn->prepare($sql);
-        $stmt->execute([$idOrden, $numeroRemision]);
+        // Ojo al orden de los parámetros: Orden, Numero, Tecnico
+        $stmt->execute([$idOrden, $numeroRemision, $idTecnico]);
+    }
+    // Obtener lista simple de fechas festivas
+    public function obtenerFestivos()
+    {
+        try {
+            $sql = "SELECT fecha FROM dias_festivos ORDER BY fecha ASC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            // Devuelve un array plano: ["2025-01-01", "2025-01-06", ...]
+            return $stmt->fetchAll(PDO::FETCH_COLUMN); 
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 }

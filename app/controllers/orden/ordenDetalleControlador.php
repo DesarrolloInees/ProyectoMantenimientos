@@ -69,6 +69,7 @@ class ordenDetalleControlador
         $listaEstados  = $this->modelo->obtenerEstados();
         $listaCalifs   = $this->modelo->obtenerCalificaciones();
         $listaModalidades = $this->modelo->obtenerModalidades();
+        $listaFestivos = $this->modelo->obtenerFestivos(); // <--- ESTO ES VITAL
 
         $titulo = "Edición Total: " . $fecha;
 
@@ -120,7 +121,14 @@ class ordenDetalleControlador
         $id_tipo_mantenimiento = $_POST['id_tipo_mantenimiento'] ?? 0;
         $id_modalidad = $_POST['id_modalidad'] ?? 1;
 
-        $precio = $this->modelo->obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad);
+        // 🔥 1. RECIBIMOS LA FECHA DE LA FILA
+        $fechaVisita = $_POST['fecha_visita'] ?? date('Y-m-d');
+
+        // 🔥 2. CALCULAMOS EL AÑO (Ej: '2026-01-05' -> 2026)
+        $anio = date('Y', strtotime($fechaVisita));
+
+        // 🔥 3. LLAMAMOS AL MODELO CON EL AÑO
+        $precio = $this->modelo->obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad, $anio);
 
         header('Content-Type: application/json');
         echo json_encode(['precio' => $precio]);

@@ -414,6 +414,36 @@
         }
     }
 
+    // ==========================================
+// 📅 LÓGICA DE DOMINGOS Y FESTIVOS (DINÁMICA)
+// ==========================================
+
+// 1. Inyectamos los festivos desde la Base de Datos
+// PHP convierte el array de la BD a un array de Javascript [ ... ]
+const FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
+
+console.log("Festivos cargados desde BD:", FESTIVOS_DB);
+
+function esDiaEspecial(fechaString) {
+    if (!fechaString) return false;
+
+    // A. Verificar si es Domingo (0 = Domingo en JS)
+    // El truco de la 'T' es para evitar problemas de zona horaria
+    const fecha = new Date(fechaString + 'T00:00:00');
+    if (fecha.getDay() === 0) {
+        console.log(`📅 ${fechaString} es Domingo.`);
+        return true;
+    }
+
+    // B. Verificar si está en la lista que trajo PHP de la BD
+    if (FESTIVOS_DB.includes(fechaString)) {
+        console.log(`🎉 ${fechaString} es Festivo (Base de Datos).`);
+        return true;
+    }
+
+    return false;
+}
+
     // --- NUEVA FUNCIÓN: CARGAR REMISIONES + SELECT2 ---
     async function cargarRemisiones(idFila, idTecnico) {
         const selectRemision = document.getElementById(`select_remision_${idFila}`);
@@ -561,31 +591,39 @@
     }
 
     async function calcularPrecio(id) {
+        // Referencia a la fila
         const fila = document.getElementById(`fila_${id}`);
+        if (!fila) return;
 
-        // 1. CAMBIO: Leemos directamente el valor del Select de Modalidad
+        // 1. Obtener datos existentes
         const selectModalidad = document.getElementById(`select_modalidad_${id}`);
-        const idModalidad = selectModalidad.value;
+        const idModalidad = selectModalidad ? selectModalidad.value : '';
 
         const selectMaquina = document.getElementById(`select_maquina_${id}`);
         const tipoMaq = selectMaquina.options[selectMaquina.selectedIndex]?.getAttribute('data-tipo');
 
         const selectServicio = fila.querySelector(`select[name="filas[${id}][tipo_servicio]"]`);
-        const idManto = selectServicio.value;
+        const idManto = selectServicio ? selectServicio.value : '';
 
         const inputValor = fila.querySelector(`input[name="filas[${id}][valor]"]`);
 
-        // Validamos que tengamos los 3 datos
+        // 🔥 CORRECCIÓN AQUÍ: BUSCAR LA FECHA GLOBAL (ARRIBA), NO EN LA FILA
+        const inputFechaGlobal = document.querySelector('input[name="fecha_reporte"]');
+        const fechaVal = inputFechaGlobal ? inputFechaGlobal.value : '';
+
+        // Validamos que tengamos los 3 datos CLAVE
         if (idModalidad && tipoMaq && idManto) {
-            inputValor.value = "...";
+
+            inputValor.value = "..."; // Indicador visual de carga
 
             const res = await enviarAjax('ajaxCalcularPrecio', {
                 id_maquina_tipo: tipoMaq,
                 id_manto: idManto,
-                id_modalidad: idModalidad // Enviamos lo que dice el select
+                id_modalidad: idModalidad,
+                fecha_visita: fechaVal // 🔥 AHORA SÍ ENVIAMOS LA FECHA DE ARRIBA (2026)
             });
 
-            if (res && res.precio) {
+            if (res && res.precio !== undefined) {
                 inputValor.value = new Intl.NumberFormat('es-CO').format(res.precio);
             } else {
                 inputValor.value = 0;
@@ -677,6 +715,50 @@
             const option = new Option(r.nombre_repuesto, r.id_repuesto, false, false);
             select.add(option);
         });
+        // 🔥 LÓGICA DE FECHA GLOBAL CORREGIDA 🔥
+        const inputFechaGlobal = document.querySelector('input[name="fecha_reporte"]');
+        
+        if (inputFechaGlobal) {
+            inputFechaGlobal.addEventListener('change', function() {
+                const fechaSeleccionada = this.value;
+                const esFestivo = esDiaEspecial(fechaSeleccionada);
+                
+                console.log(`📅 Fecha cambiada a: ${fechaSeleccionada}. ¿Es festivo?: ${esFestivo}`);
+
+                if (esFestivo) {
+                    alert("📅 La fecha seleccionada es Domingo o Festivo.\n\nSe cambiará la modalidad a INTERURBANO automáticamente.");
+                }
+
+                // Recorremos todas las filas existentes
+                const filas = document.querySelectorAll('#contenedorFilas tr');
+                
+                filas.forEach(tr => {
+                    const idFila = tr.id.replace('fila_', '');
+                    const selectModalidad = document.getElementById(`select_modalidad_${idFila}`);
+
+                    // 1. CAMBIAR MODALIDAD SI ES FESTIVO
+                    if (selectModalidad) {
+                        if (esFestivo) {
+                            // Forzamos valor 2 (Interurbano)
+                            selectModalidad.value = "2"; 
+                            
+                            // Efecto visual (Amarillo)
+                            selectModalidad.classList.add('bg-yellow-100', 'border-yellow-500');
+                            
+                            // ⚠️ IMPORTANTE: Avisar a Select2 que el valor cambió (si lo usas ahí)
+                            $(selectModalidad).trigger('change');
+                        } else {
+                            // (Opcional) Si vuelves a un día normal, quitar el color amarillo
+                            selectModalidad.classList.remove('bg-yellow-100', 'border-yellow-500');
+                            // Nota: No lo regresamos a Urbano automáticamente por si el usuario lo cambió a propósito.
+                        }
+                    }
+
+                    // 2. RECALCULAR PRECIO CON LA NUEVA FECHA Y MODALIDAD
+                    calcularPrecio(idFila);
+                });
+            });
+        }
     });
 
     function abrirModalRepuestos(idFila) {

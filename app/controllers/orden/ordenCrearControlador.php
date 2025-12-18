@@ -35,6 +35,7 @@ class ordenCrearControlador
         $estados    = $this->modelo->obtenerEstadosMaquina();
         $califs     = $this->modelo->obtenerCalificaciones();
         $listaRepuestos = $this->modelo->obtenerListaRepuestos();
+        $listaFestivos = $this->modelo->obtenerFestivos();
 
         $titulo = "Reporte de Servicios";
         $vistaContenido = "app/views/orden/ordenCrearVista.php";
@@ -98,27 +99,28 @@ class ordenCrearControlador
 
     public function ajaxCalcularPrecio()
     {
-        // Limpiamos buffer de salida para evitar errores de JSON
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-
+        // Limpiamos buffer
+        while (ob_get_level()) ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
         try {
-            // CAMBIO: Ahora validamos 'id_modalidad' en vez de 'id_zona'
+            // Validamos que lleguen los datos básicos
             if (isset($_POST['id_maquina_tipo']) && isset($_POST['id_manto']) && isset($_POST['id_modalidad'])) {
+
+                // 🔥 1. RECIBIMOS LA FECHA (Si no llega, usamos la de hoy)
+                $fechaVisita = $_POST['fecha_visita'] ?? date('Y-m-d');
 
                 $precio = $this->modelo->consultarTarifa(
                     intval($_POST['id_maquina_tipo']),
                     intval($_POST['id_manto']),
-                    intval($_POST['id_modalidad']) // <--- AQUÍ ESTÁ EL CAMBIO CLAVE
+                    intval($_POST['id_modalidad']),
+                    $fechaVisita // 🔥 2. SE LA PASAMOS AL MODELO (Argumento #4)
                 );
 
                 echo json_encode(['precio' => $precio]);
             } else {
-                echo json_encode(['precio' => 0, 'error' => 'Parámetros incompletos (Falta modalidad)']);
+                echo json_encode(['precio' => 0, 'error' => 'Faltan datos']);
             }
         } catch (Exception $e) {
             echo json_encode(['error' => $e->getMessage()]);

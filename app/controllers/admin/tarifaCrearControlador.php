@@ -17,39 +17,36 @@ class tarifaCrearControlador {
 
     public function index() {
         $errores = [];
-        $datosPrevios = [];
 
-        // 1. Procesar Formulario
+        // 1. Procesar Formulario Masivo
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $datosPrevios = [
-                'id_tipo_maquina' => $_POST['id_tipo_maquina'] ?? '',
-                'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? '',
-                'id_modalidad' => $_POST['id_modalidad'] ?? '',
-                'precio' => $_POST['precio'] ?? '',
-                'año_vigencia' => $_POST['año_vigencia'] ?? date('Y')
-            ];
+            
+            $idMaquina = $_POST['id_tipo_maquina'] ?? '';
+            $anio = $_POST['año_vigencia'] ?? date('Y');
+            // Aquí recibimos la matriz: precios[id_manto][id_modalidad]
+            $precios = $_POST['precios'] ?? []; 
 
-            if (empty($datosPrevios['id_tipo_maquina'])) $errores[] = "Selecciona una Máquina.";
-            if (empty($datosPrevios['id_tipo_mantenimiento'])) $errores[] = "Selecciona un Mantenimiento.";
-            if (empty($datosPrevios['id_modalidad'])) $errores[] = "Selecciona una Modalidad.";
-            if (empty($datosPrevios['precio'])) $errores[] = "El precio es obligatorio.";
+            if (empty($idMaquina)) $errores[] = "Selecciona una Máquina.";
+            if (empty($precios)) $errores[] = "No has ingresado ningún precio.";
 
             if (empty($errores)) {
-                if ($this->modelo->crearTarifa($datosPrevios)) {
-                    header("Location: " . BASE_URL . "tarifaVer");
+                // Llamamos a la nueva función masiva
+                if ($this->modelo->guardarTarifasMasivas($idMaquina, $anio, $precios)) {
+                    // Redirigir con éxito
+                    echo "<script>alert('¡Tarifas guardadas correctamente!'); window.location.href='" . BASE_URL . "tarifaVer';</script>";
                     exit();
                 } else {
-                    $errores[] = "Error al guardar. Verifica que no exista una tarifa igual para este año.";
+                    $errores[] = "Hubo un error al guardar. Verifica que no existan duplicados.";
                 }
             }
         }
 
-        // 2. Cargar datos para los Selects
+        // 2. Cargar datos para la vista
         $listaMaquinas = $this->modelo->obtenerTiposMaquina();
         $listaMantenimientos = $this->modelo->obtenerTiposMantenimiento();
         $listaModalidades = $this->modelo->obtenerModalidades();
 
-        $titulo = "Crear Tarifa";
+        $titulo = "Crear Tarifas Masivas";
         $vistaContenido = "app/views/admin/tarifaCrearVista.php";
         include "app/views/plantillaVista.php";
     }

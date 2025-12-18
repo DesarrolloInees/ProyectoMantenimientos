@@ -484,7 +484,41 @@
 
     // Lista maestra de repuestos (desde PHP)
     const catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
+    
+    // Lista de festivos (desde PHP)
+    const FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
+
+    // ==========================================
+    // 📅 FUNCIÓN BLINDADA PARA DETECTAR FESTIVOS
+    // ==========================================
+    function esDiaEspecial(fechaString) {
+        if (!fechaString) return false;
+
+        // 1. Verificar si está en la lista de festivos (Comparación de texto exacta)
+        // Esto evita problemas de conversión de fechas con la BD
+        if (FESTIVOS_DB.includes(fechaString)) {
+            console.log(`📅 ${fechaString} es FESTIVO en BD.`);
+            return true;
+        }
+
+        // 2. Verificar si es Domingo
+        // TRUCO: Usamos 'T12:00:00' (mediodía) en lugar de 'T00:00:00'.
+        // Esto evita que la zona horaria (UTC-5) te devuelva el día anterior.
+        const fecha = new Date(fechaString + 'T12:00:00'); 
+        
+        if (fecha.getDay() === 0) {
+            console.log(`📅 ${fechaString} es DOMINGO.`);
+            return true;
+        }
+
+        return false;
+    }
+
     let repuestosTemporales = []; // Variable global para el modal
+
+    // ==========================================
+    // INICIO DEL DOCUMENTO (JQUERY)
+    // ==========================================
 
     $(document).ready(function() {
         console.log("Iniciando Sistema Completo...");
@@ -573,6 +607,45 @@
 
         // Corrección Z-Index para Select2
         $('head').append('<style>.select2-container--open { z-index: 99999999 !important; }</style>');
+        // ==========================================
+        // 🔥 DETECTOR DE CAMBIO DE FECHA (CORREGIDO)
+        // ==========================================
+        // Lo ponemos DENTRO del ready para asegurar que la tabla existe
+        $('#tablaEdicion').on('change', 'input[type="date"]', function() {
+            let tr = $(this).closest('tr');
+            let idFila = tr.attr('id').replace('fila_', '');
+            let fechaNueva = $(this).val();
+
+            console.log(`Cambio detectado en Fila ${idFila}: ${fechaNueva}`);
+
+            // 1. VERIFICAR SI ES DOMINGO O FESTIVO
+            if (esDiaEspecial(fechaNueva)) {
+                let selModalidad = document.getElementById(`sel_modalidad_${idFila}`);
+                
+                if (selModalidad) {
+                    // Verificar valor actual para no sobrescribir si ya es interurbano
+                    if(selModalidad.value !== "2") {
+                        selModalidad.value = "2"; // Cambiar a Interurbano
+                        
+                        // Efecto Visual
+                        selModalidad.style.backgroundColor = "#fef08a"; // Amarillo
+                        selModalidad.style.borderColor = "#eab308";
+                        selModalidad.style.transition = "all 0.5s";
+                        
+                        setTimeout(() => {
+                            selModalidad.style.backgroundColor = ""; 
+                            selModalidad.style.borderColor = ""; 
+                        }, 2000);
+                        
+                        console.log("-> 🚀 ¡DETECTADO FESTIVO! Modalidad cambiada a INTERURBANO.");
+                    }
+                }
+            }
+
+            // 2. RECALCULAR TARIFA
+            actualizarTarifa(idFila);
+        });
+
 
         // Ejecutar cálculos iniciales
         calcularDesplazamientos();
@@ -849,7 +922,44 @@
     });
 
     // ==========================================
-    // 2. ACTUALIZAR TARIFA
+    // 🔥 DETECTOR DE CAMBIO DE FECHA (CON LÓGICA FESTIVOS)
+    // ==========================================
+    $('#tablaEdicion').on('change', 'input[type="date"]', function() {
+        // Encontrar el ID de la fila (el TR padre)
+        let tr = $(this).closest('tr');
+        let idFila = tr.attr('id').replace('fila_', '');
+        let fechaNueva = $(this).val();
+
+        console.log(`📅 Fecha cambiada en fila ${idFila} a: ${fechaNueva}`);
+
+        // 1. VERIFICAR SI ES DOMINGO O FESTIVO
+        if (esDiaEspecial(fechaNueva)) {
+            let selModalidad = document.getElementById(`sel_modalidad_${idFila}`);
+            
+            if (selModalidad) {
+                // A. Cambiar valor a 2 (Interurbano)
+                selModalidad.value = "2"; 
+                
+                // B. Feedback Visual (Amarillo parpadeante)
+                selModalidad.style.backgroundColor = "#fef08a"; // Amarillo
+                selModalidad.style.borderColor = "#eab308";     // Borde oscuro
+                
+                // C. Pequeña animación visual para que el usuario sepa que pasó algo
+                setTimeout(() => {
+                    selModalidad.style.backgroundColor = ""; 
+                    selModalidad.style.borderColor = ""; 
+                }, 1500);
+
+                console.log("-> 🚀 Cambio automático a INTERURBANO por festivo.");
+            }
+        }
+
+        // 2. RECALCULAR TARIFA (Con la nueva fecha y nueva modalidad)
+        actualizarTarifa(idFila);
+    });
+
+    // ==========================================
+    // 2. ACTUALIZAR TARIFA (VERSIÓN INTELIGENTE POR FECHA)
     // ==========================================
     function actualizarTarifa(idFila) {
         const inputValor = document.getElementById(`input_valor_${idFila}`);
@@ -865,13 +975,22 @@
         const idTipoMantenimiento = selectServicio.value;
         const idModalidad = selectModalidad.value;
 
+        // 🔥 1. OBTENEMOS LA FECHA DE ESA FILA ESPECÍFICA
+        // Buscamos el input que tenga el name="servicios[ID][fecha_individual]"
+        const inputFecha = document.querySelector(`input[name="servicios[${idFila}][fecha_individual]"]`);
+        const fechaVal = inputFecha ? inputFecha.value : '';
+
         if (!idTipoMaquina || !idTipoMantenimiento) return;
+
+        // Indicador de carga visual
+        inputValor.style.opacity = "0.5";
 
         const formData = new FormData();
         formData.append('accion', 'ajaxObtenerPrecio');
         formData.append('id_tipo_maquina', idTipoMaquina);
         formData.append('id_tipo_mantenimiento', idTipoMantenimiento);
         formData.append('id_modalidad', idModalidad);
+        formData.append('fecha_visita', fechaVal); // 🔥 2. ENVIAMOS LA FECHA
 
         fetch('index.php?pagina=ordenDetalle', {
                 method: 'POST',
@@ -881,10 +1000,16 @@
             .then(data => {
                 let precio = data.precio || 0;
                 inputValor.value = new Intl.NumberFormat('es-CO').format(precio);
-                inputValor.style.backgroundColor = "#bbf7d0";
+
+                // Efecto visual de éxito
+                inputValor.style.opacity = "1";
+                inputValor.style.backgroundColor = "#bbf7d0"; // Verde claro
                 setTimeout(() => inputValor.style.backgroundColor = "", 500);
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error(err);
+                inputValor.style.opacity = "1";
+            });
     }
 
     function calcularDesplazamientos() {

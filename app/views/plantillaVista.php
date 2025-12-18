@@ -24,23 +24,35 @@
             border-color: #d1d5db !important;
             border-radius: 0.25rem !important;
         }
+
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             top: 0 !important;
             bottom: 0 !important;
             height: 100% !important;
         }
-        .select2-search__field { outline: none !important; }
+
+        .select2-search__field {
+            outline: none !important;
+        }
 
         /* Sidebar Animations */
         #sidebar {
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
         }
-        #sidebar.active { transform: translateX(0); }
+
+        #sidebar.active {
+            transform: translateX(0);
+        }
 
         /* Overlay */
-        #overlay { display: none; }
-        #overlay.active { display: block; }
+        #overlay {
+            display: none;
+        }
+
+        #overlay.active {
+            display: block;
+        }
     </style>
 
     <script>
@@ -48,7 +60,10 @@
             theme: {
                 extend: {
                     colors: {
-                        azul: { 500: '#3b82f6', 900: '#1e3a8a' },
+                        azul: {
+                            500: '#3b82f6',
+                            900: '#1e3a8a'
+                        },
                         gris: '#f3f4f6'
                     }
                 }
@@ -63,8 +78,8 @@
 
         <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30" onclick="toggleSidebar()"></div>
 
-        <aside id="sidebar" class="fixed w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col z-[50] h-full shadow-2xl"> 
-            
+        <aside id="sidebar" class="fixed w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col z-[50] h-full shadow-2xl">
+
             <div class="p-6 text-center font-bold text-2xl tracking-wider border-b border-gray-700 flex justify-between items-center">
                 <span>INEES APP</span>
                 <button class="text-white hover:text-red-400 transition" onclick="toggleSidebar()">
@@ -73,10 +88,10 @@
             </div>
 
             <nav class="flex-1 overflow-y-auto py-4">
-    
-    <?php include __DIR__ . '/../partials/menu_lateral.php'; ?>
 
-</nav>
+                <?php include __DIR__ . '/../partials/menu_lateral.php'; ?>
+
+            </nav>
 
             <div class="p-4 border-t border-gray-700 text-center text-xs text-gray-500">
                 © 2025 INEES <br>
@@ -147,4 +162,5 @@
     </script>
 
 </body>
+
 </html>
