@@ -30,6 +30,11 @@
     <i class="fa-solid fa-screwdriver-wrench mr-3 w-6 text-center"></i> Reporte Repuestos
 </a>
 
+<a href="<?= BASE_URL ?>reporteEjecutivo"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">
+    <i class="fa-solid fa-chart-line mr-3 w-6 text-center"></i> Reporte Ejecutivo
+</a>
+
 <p class="px-6 py-2 text-xs text-gray-500 uppercase font-bold mt-4">Cuenta</p>
 
 <div class="mt-2">

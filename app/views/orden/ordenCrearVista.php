@@ -415,34 +415,34 @@
     }
 
     // ==========================================
-// 📅 LÓGICA DE DOMINGOS Y FESTIVOS (DINÁMICA)
-// ==========================================
+    // 📅 LÓGICA DE DOMINGOS Y FESTIVOS (DINÁMICA)
+    // ==========================================
 
-// 1. Inyectamos los festivos desde la Base de Datos
-// PHP convierte el array de la BD a un array de Javascript [ ... ]
-const FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
+    // 1. Inyectamos los festivos desde la Base de Datos
+    // PHP convierte el array de la BD a un array de Javascript [ ... ]
+    const FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
 
-console.log("Festivos cargados desde BD:", FESTIVOS_DB);
+    console.log("Festivos cargados desde BD:", FESTIVOS_DB);
 
-function esDiaEspecial(fechaString) {
-    if (!fechaString) return false;
+    function esDiaEspecial(fechaString) {
+        if (!fechaString) return false;
 
-    // A. Verificar si es Domingo (0 = Domingo en JS)
-    // El truco de la 'T' es para evitar problemas de zona horaria
-    const fecha = new Date(fechaString + 'T00:00:00');
-    if (fecha.getDay() === 0) {
-        console.log(`📅 ${fechaString} es Domingo.`);
-        return true;
+        // A. Verificar si es Domingo (0 = Domingo en JS)
+        // El truco de la 'T' es para evitar problemas de zona horaria
+        const fecha = new Date(fechaString + 'T00:00:00');
+        if (fecha.getDay() === 0) {
+            console.log(`📅 ${fechaString} es Domingo.`);
+            return true;
+        }
+
+        // B. Verificar si está en la lista que trajo PHP de la BD
+        if (FESTIVOS_DB.includes(fechaString)) {
+            console.log(`🎉 ${fechaString} es Festivo (Base de Datos).`);
+            return true;
+        }
+
+        return false;
     }
-
-    // B. Verificar si está en la lista que trajo PHP de la BD
-    if (FESTIVOS_DB.includes(fechaString)) {
-        console.log(`🎉 ${fechaString} es Festivo (Base de Datos).`);
-        return true;
-    }
-
-    return false;
-}
 
     // --- NUEVA FUNCIÓN: CARGAR REMISIONES + SELECT2 ---
     async function cargarRemisiones(idFila, idTecnico) {
@@ -717,12 +717,12 @@ function esDiaEspecial(fechaString) {
         });
         // 🔥 LÓGICA DE FECHA GLOBAL CORREGIDA 🔥
         const inputFechaGlobal = document.querySelector('input[name="fecha_reporte"]');
-        
+
         if (inputFechaGlobal) {
             inputFechaGlobal.addEventListener('change', function() {
                 const fechaSeleccionada = this.value;
                 const esFestivo = esDiaEspecial(fechaSeleccionada);
-                
+
                 console.log(`📅 Fecha cambiada a: ${fechaSeleccionada}. ¿Es festivo?: ${esFestivo}`);
 
                 if (esFestivo) {
@@ -731,7 +731,7 @@ function esDiaEspecial(fechaString) {
 
                 // Recorremos todas las filas existentes
                 const filas = document.querySelectorAll('#contenedorFilas tr');
-                
+
                 filas.forEach(tr => {
                     const idFila = tr.id.replace('fila_', '');
                     const selectModalidad = document.getElementById(`select_modalidad_${idFila}`);
@@ -740,11 +740,11 @@ function esDiaEspecial(fechaString) {
                     if (selectModalidad) {
                         if (esFestivo) {
                             // Forzamos valor 2 (Interurbano)
-                            selectModalidad.value = "2"; 
-                            
+                            selectModalidad.value = "2";
+
                             // Efecto visual (Amarillo)
                             selectModalidad.classList.add('bg-yellow-100', 'border-yellow-500');
-                            
+
                             // ⚠️ IMPORTANTE: Avisar a Select2 que el valor cambió (si lo usas ahí)
                             $(selectModalidad).trigger('change');
                         } else {
@@ -875,6 +875,20 @@ function esDiaEspecial(fechaString) {
             </button>
         </li>`;
         });
+    }
+
+    // --- FUNCIÓN FALTANTE PARA ELIMINAR REPUESTOS ---
+    function borrarRepuestoTemporal(idFila, index) {
+        // 1. Verificar si existe el array de repuestos para esa fila
+        if (almacenRepuestos[idFila]) {
+
+            // 2. Eliminar el elemento en la posición (index) del array
+            // splice(indice, cantidad_a_borrar)
+            almacenRepuestos[idFila].splice(index, 1);
+
+            // 3. Volver a dibujar la lista visualmente para reflejar el cambio
+            renderizarListaVisual(idFila);
+        }
     }
 
     // 3. GUARDAR Y ACTUALIZAR CONTADOR (SUMANDO CANTIDADES REALES)
