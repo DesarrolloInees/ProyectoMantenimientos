@@ -5,7 +5,10 @@ class PuntoVerModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function obtenerPuntos()
     {
@@ -24,7 +27,7 @@ class PuntoVerModelo
                 LEFT JOIN delegacion del ON p.id_delegacion = del.id_delegacion
                 WHERE p.estado = 1
                 ORDER BY p.id_punto DESC";
-        
+
         return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 

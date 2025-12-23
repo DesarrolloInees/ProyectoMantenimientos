@@ -5,7 +5,10 @@ class ReporteRepuestosModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     // Función 1: Reporte General (La que ya funciona)
     public function generarReporteRepuestos($origen, $fecha_inicio, $fecha_fin)
@@ -69,9 +72,8 @@ class ReporteRepuestosModelo
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
-            
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             // Esto guardará el error en el log de PHP (busca el archivo error.log si falla)
             error_log("Error reporte detalle INEES: " . $e->getMessage());
@@ -79,4 +81,3 @@ class ReporteRepuestosModelo
         }
     }
 }
-?>

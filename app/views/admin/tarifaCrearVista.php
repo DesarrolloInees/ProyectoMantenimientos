@@ -1,6 +1,7 @@
 <?php if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado."); ?>
 
-<div class="w-full max-w-6xl mx-auto"> <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+<div class="w-full max-w-6xl mx-auto">
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
 
         <div class="mb-6 border-b pb-4">
             <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-layer-group text-blue-600 mr-2"></i> Tarifario Masivo</h1>
@@ -14,7 +15,7 @@
         <?php endif; ?>
 
         <form action="<?= BASE_URL ?>tarifaCrear" method="POST" class="space-y-6">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-lg border">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Máquina a Configurar</label>
@@ -54,13 +55,13 @@
                                 <td class="p-3 border font-bold text-gray-700 bg-gray-100">
                                     <?= htmlspecialchars($manto['nombre_completo']) ?>
                                 </td>
-                                
+
                                 <?php foreach ($listaModalidades as $mod): ?>
                                     <td class="p-2 border text-center">
                                         <div class="relative">
                                             <span class="absolute left-2 top-2 text-gray-400 text-xs">$</span>
-                                            <input type="number" 
-                                                name="precios[<?= $manto['id_tipo_mantenimiento'] ?>][<?= $mod['id_modalidad'] ?>]" 
+                                            <input type="number"
+                                                name="precios[<?= $manto['id_tipo_mantenimiento'] ?>][<?= $mod['id_modalidad'] ?>]"
                                                 step="0.01" min="0" placeholder="0.00"
                                                 class="w-full pl-6 pr-2 py-1 border rounded text-right focus:bg-green-50 focus:border-green-500 font-mono text-sm">
                                         </div>

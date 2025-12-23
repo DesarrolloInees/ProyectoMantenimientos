@@ -16,7 +16,7 @@
 
         <form action="" method="POST" class="space-y-6">
             <input type="hidden" name="id_punto" value="<?= $id ?>">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="md:col-span-2">
                     <label class="block text-sm font-bold text-gray-700 mb-1">Nombre</label>
@@ -68,7 +68,7 @@
                         <option value="0" <?= $datos['estado'] == 0 ? 'selected' : '' ?>>Inactivo</option>
                     </select>
                 </div>
-                
+
                 <div class="md:col-span-2">
                     <label class="block text-sm font-bold text-gray-700 mb-1">Dirección</label>
                     <input type="text" name="direccion" value="<?= htmlspecialchars($datos['direccion']) ?>" class="w-full px-3 py-3 border border-gray-300 rounded-lg">

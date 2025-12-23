@@ -129,22 +129,75 @@ class ordenCrearControlador
         ob_end_flush();
         exit;
     }
+
+    // 1. NUEVO AJAX: CONSULTAR STOCK EN VIVO
+    public function ajaxInventarioTecnico()
+    {
+        while (ob_get_level()) ob_end_clean();
+        ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            if (isset($_POST['id_tecnico'])) {
+                $id = intval($_POST['id_tecnico']);
+                // Llamamos a la nueva función del modelo
+                $stock = $this->modelo->obtenerInventarioTecnico($id);
+                echo json_encode($stock);
+            } else {
+                echo json_encode([]);
+            }
+        } catch (Exception $e) {
+            echo json_encode([]);
+        }
+        ob_end_flush();
+        exit;
+    }
+
+
+    public function ajaxValidarRemision()
+{
+    while (ob_get_level()) ob_end_clean();
+    ob_start();
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+        if (isset($_POST['numero_remision']) && isset($_POST['id_tecnico'])) {
+            $numeroRemision = $_POST['numero_remision'];
+            $idTecnico = intval($_POST['id_tecnico']);
+            
+            // Verificar si la remisión existe y está disponible
+            $resultado = $this->modelo->verificarRemisionDisponible($numeroRemision, $idTecnico);
+            
+            echo json_encode([
+                'disponible' => $resultado['disponible'],
+                'mensaje' => $resultado['mensaje']
+            ]);
+        } else {
+            echo json_encode(['disponible' => false, 'mensaje' => 'Datos incompletos']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['disponible' => false, 'mensaje' => $e->getMessage()]);
+    }
+
+    ob_end_flush();
+    exit;
+}
+
+
     public function guardar()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $fechaReporte = $_POST['fecha_reporte'];
-            // Validación: Asegurarse que 'filas' existe y es array
             $filas = $_POST['filas'] ?? [];
 
             $guardados = 0;
             $errores = 0;
-            $detallesError = ""; // Para saber qué falló
+            $detallesError = "";
 
             foreach ($filas as $index => $fila) {
 
-                // 🔥 CLAVE: Validar que venga la máquina seleccionada
-                // Si la fila 2 no tiene máquina seleccionada, el sistema la ignora
+                // 1. Validar que la fila tenga máquina
                 if (!empty($fila['id_maquina'])) {
 
                     $valorLimpio = str_replace(['$', '.', ' '], '', $fila['valor']);
@@ -152,7 +205,7 @@ class ordenCrearControlador
 
                     $datosParaModelo = [
                         'remision'      => $fila['remision'],
-                        'id_cliente'    => $fila['id_cliente'] ?? null, // Usar null coalescing
+                        'id_cliente'    => $fila['id_cliente'] ?? null,
                         'id_punto'      => $fila['id_punto'] ?? null,
                         'id_modalidad'  => $fila['id_modalidad'] ?? 1,
                         'fecha'         => $fechaReporte,
@@ -168,20 +221,51 @@ class ordenCrearControlador
                         'json_repuestos' => $fila['json_repuestos']
                     ];
 
-                    // Intentar guardar
-                    if ($this->modelo->guardarOrden($datosParaModelo)) {
+                    // 2. Guardar la Orden Primero (Para tener el ID)
+                    $idOrden = $this->modelo->guardarOrden($datosParaModelo);
+
+                    if ($idOrden) {
                         $guardados++;
+
+                        // 3. PROCESAR REPUESTOS (Aquí estaba el error)
+                        if (!empty($datosParaModelo['json_repuestos'])) {
+
+                            $repuestos = json_decode($datosParaModelo['json_repuestos'], true);
+
+                            if (is_array($repuestos) && count($repuestos) > 0) {
+
+                                // A. PREPARAMOS LA CONSULTA (Esto faltaba)
+                                $sqlRep = "INSERT INTO orden_servicio_repuesto 
+                                            (id_orden_servicio, id_repuesto, origen, cantidad) 
+                                            VALUES (?, ?, ?, ?)";
+                                $stmtRep = $this->db->prepare($sqlRep);
+                                // Nota: Usamos $this->db porque estamos en el controlador y tenemos acceso a la conexión
+
+                                foreach ($repuestos as $rep) {
+                                    $cant = isset($rep['cantidad']) && $rep['cantidad'] > 0 ? $rep['cantidad'] : 1;
+
+                                    // B. Insertar en tabla intermedia
+                                    $stmtRep->execute([$idOrden, $rep['id'], $rep['origen'], $cant]);
+
+                                    // C. Descontar del Inventario (Si es de INEES)
+                                    if ($rep['origen'] === 'INEES') {
+                                        $this->modelo->descontarDelInventario(
+                                            $datosParaModelo['id_tecnico'], // Usamos la variable correcta
+                                            $rep['id'],
+                                            $cant
+                                        );
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         $errores++;
-                        $detallesError .= "Fila #" . ($index + 1) . " falló en BD. ";
+                        $detallesError .= "Fila #" . ($index + 1) . " falló al guardar. ";
                     }
-                } else {
-                    // Si entra aquí es porque la fila no tenía máquina seleccionada
-                    // Esto es común si agregas filas vacías y le das guardar sin llenarlas
                 }
             }
 
-            // Feedback detallado
+            // Feedback
             if ($guardados > 0 && $errores == 0) {
                 echo "<script>
                 alert('✅ ÉXITO TOTAL: Se guardaron $guardados servicios correctamente.');

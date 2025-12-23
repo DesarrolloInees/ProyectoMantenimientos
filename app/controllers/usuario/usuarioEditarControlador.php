@@ -4,27 +4,30 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/usuario/usuarioEditarModelo.php';
 
-class usuarioEditarControlador {
-    
+class usuarioEditarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new UsuarioEditarModelo($this->db);
     }
 
-    public function index() {
-        
+    public function index()
+    {
+
         $errores = [];
         $mensaje = "";
-        
+
         // --- 1. PROCESAR FORMULARIO (GUARDAR) ---
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             $id_usuario = $_POST['usuario_id'] ?? null; // ID Oculto en el form
-            
+
             $datos = [
                 'nombre'       => trim($_POST['nombre'] ?? ''),
                 'cedula'       => trim($_POST['cedula'] ?? ''),
@@ -47,7 +50,7 @@ class usuarioEditarControlador {
         }
 
         // --- 2. CARGAR DATOS PARA LA VISTA (GET) ---
-        
+
         // Intentar obtener ID de la URL (gracias al Router)
         // Si venimos de un POST fallido, usamos el ID del POST. Si es GET, usamos $_GET['id']
         $id_para_cargar = $_POST['usuario_id'] ?? ($_GET['id'] ?? null);
@@ -79,4 +82,3 @@ class usuarioEditarControlador {
         include "app/views/plantillaVista.php";
     }
 }
-?>

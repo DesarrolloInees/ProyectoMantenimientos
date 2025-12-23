@@ -327,7 +327,7 @@ class ordenDetalleModelo
     }
 
     // ==========================================
-    // 3. ACTUALIZACIÓN (CON GESTIÓN DE REMISIONES) ⭐
+    // 3. ACTUALIZACIÓN (SOLO DATOS GENERALES Y REMISIÓN)
     // ==========================================
     public function actualizarOrdenFull($id, $datos)
     {
@@ -336,9 +336,8 @@ class ordenDetalleModelo
             $this->conn->beginTransaction();
 
             // -----------------------------------------------------------------
-            // 🕵️ PASO 0: GESTIÓN INTELIGENTE DE REMISIONES (CORRECCIÓN)
+            // 🕵️ PASO 0: GESTIÓN INTELIGENTE DE REMISIONES (SE MANTIENE ✅)
             // -----------------------------------------------------------------
-            // Primero averiguamos qué tenía la orden ANTES de guardar los cambios
             $sqlCheck = "SELECT numero_remision, id_tecnico FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
             $stmtCheck->execute([$id]);
@@ -346,113 +345,58 @@ class ordenDetalleModelo
 
             // Verificamos si cambió el Número de Remisión O el Técnico
             if ($actual && ($actual['numero_remision'] != $datos['remision'] || $actual['id_tecnico'] != $datos['id_tecnico'])) {
-
-                // A. LIBERAR LA VIEJA: Soltamos cualquier remisión que estuviera amarrada a esta orden
-                // Esto pone en DISPONIBLE la remisión anterior (sin importar cuál era)
+                
+                // A. LIBERAR LA VIEJA
                 $sqlLiberar = "UPDATE control_remisiones 
-                                SET estado = 'DISPONIBLE', 
-                                    id_orden_servicio = NULL, 
-                                    fecha_uso = NULL 
-                                WHERE id_orden_servicio = ?";
-                $stmtLib = $this->conn->prepare($sqlLiberar);
-                $stmtLib->execute([$id]);
+                               SET estado = 'DISPONIBLE', id_orden_servicio = NULL, fecha_uso = NULL 
+                               WHERE id_orden_servicio = ?";
+                $this->conn->prepare($sqlLiberar)->execute([$id]);
 
-                // B. OCUPAR LA NUEVA: Si la nueva remisión no está vacía, la marcamos como USADA
+                // B. OCUPAR LA NUEVA
                 if (!empty($datos['remision'])) {
                     $sqlOcupar = "UPDATE control_remisiones 
-                                    SET estado = 'USADA', 
-                                        id_orden_servicio = ?, 
-                                        fecha_uso = ? 
-                                    WHERE numero_remision = ? AND id_tecnico = ?";
-
-                    $stmtOcu = $this->conn->prepare($sqlOcupar);
-                    // Usamos la fecha de la visita para que el historial tenga sentido
+                                  SET estado = 'USADA', id_orden_servicio = ?, fecha_uso = ? 
+                                  WHERE numero_remision = ? AND id_tecnico = ?";
+                    
                     $fechaUso = $datos['fecha_individual'] . ' ' . ($datos['entrada'] ?: '00:00:00');
-
-                    $stmtOcu->execute([
-                        $id,
-                        $fechaUso,
-                        $datos['remision'],
-                        $datos['id_tecnico']
+                    $this->conn->prepare($sqlOcupar)->execute([
+                        $id, $fechaUso, $datos['remision'], $datos['id_tecnico']
                     ]);
                 }
             }
             // -----------------------------------------------------------------
 
+            // ---------------------------------------------------------
             // 1. ACTUALIZAR TABLA PRINCIPAL (ORDENES)
+            // ---------------------------------------------------------
             $sql = "UPDATE ordenes_servicio SET 
-                        id_cliente = ?,
-                        id_punto = ?,
-                        id_maquina = ?,
-                        id_modalidad = ?,
-                        numero_remision = ?, 
-                        id_tecnico = ?, 
-                        id_tipo_mantenimiento = ?, 
-                        id_estado_maquina = ?, 
-                        id_calificacion = ?, 
-                        hora_entrada = ?, 
-                        hora_salida = ?, 
-                        tiempo_servicio = ?,
-                        valor_servicio = ?,
-                        actividades_realizadas = ?,
-                        tiene_novedad = ?,
-                        fecha_visita = ?
+                        id_cliente = ?, id_punto = ?, id_maquina = ?, id_modalidad = ?,
+                        numero_remision = ?, id_tecnico = ?, id_tipo_mantenimiento = ?, 
+                        id_estado_maquina = ?, id_calificacion = ?, hora_entrada = ?, 
+                        hora_salida = ?, tiempo_servicio = ?, valor_servicio = ?,
+                        actividades_realizadas = ?, tiene_novedad = ?, fecha_visita = ?
                     WHERE id_ordenes_servicio = ?";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
-                $datos['id_cliente'],
-                $datos['id_punto'],
-                $datos['id_maquina'],
-                $datos['id_modalidad'],
-                $datos['remision'],
-                $datos['id_tecnico'],
-                $datos['id_manto'],
-                $datos['id_estado'],
-                $datos['id_calif'],
-                $datos['entrada'],
-                $datos['salida'],
-                $datos['tiempo'],
-                $datos['valor'],
-                $datos['obs'],
-                $datos['tiene_novedad'] ?? 0,
-                $datos['fecha_individual'],
-                $id
+                $datos['id_cliente'], $datos['id_punto'], $datos['id_maquina'], $datos['id_modalidad'],
+                $datos['remision'], $datos['id_tecnico'], $datos['id_manto'],
+                $datos['id_estado'], $datos['id_calif'], $datos['entrada'],
+                $datos['salida'], $datos['tiempo'], $datos['valor'],
+                $datos['obs'], $datos['tiene_novedad'] ?? 0, $datos['fecha_individual'], $id
             ]);
 
-            // 2. ACTUALIZAR REPUESTOS
-            // A. Borrar repuestos anteriores
-            $sqlDelete = "DELETE FROM orden_servicio_repuesto WHERE id_orden_servicio = ?";
-            $stmtDel = $this->conn->prepare($sqlDelete);
-            $stmtDel->execute([$id]);
-
-            // B. Insertar los nuevos
-            if (!empty($datos['json_repuestos'])) {
-                $repuestos = json_decode($datos['json_repuestos'], true);
-
-                if (is_array($repuestos) && count($repuestos) > 0) {
-                    $sqlIns = "INSERT INTO orden_servicio_repuesto (id_orden_servicio, id_repuesto, origen, cantidad) VALUES (?, ?, ?, ?)";
-                    $stmtIns = $this->conn->prepare($sqlIns);
-
-                    foreach ($repuestos as $rep) {
-                        if (!empty($rep['id'])) {
-                            $cantidad = !empty($rep['cantidad']) ? $rep['cantidad'] : 1;
-                            $stmtIns->execute([
-                                $id,
-                                $rep['id'],
-                                $rep['origen'],
-                                $cantidad
-                            ]);
-                        }
-                    }
-                }
-            }
+            // ---------------------------------------------------------
+            // 🛑 PASO 2: ACTUALIZAR REPUESTOS -> ELIMINADO ❌
+            // No tocamos la tabla orden_servicio_repuesto aquí.
+            // ---------------------------------------------------------
 
             // 3. ACTUALIZAR INFO MANTENIMIENTO EN PUNTO
             $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
 
             $this->conn->commit();
             return true;
+
         } catch (Exception $e) {
             $this->conn->rollBack();
             error_log("Error actualizando orden: " . $e->getMessage());
@@ -497,9 +441,170 @@ class ordenDetalleModelo
             $stmt = $this->conn->prepare($sql);
             $stmt->execute();
             // Devuelve un array plano: ["2025-01-01", "2025-01-06", ...]
-            return $stmt->fetchAll(PDO::FETCH_COLUMN); 
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             return [];
         }
+    }
+
+
+
+    // ==========================================
+    // 4. GESTIÓN DE INVENTARIO (NUEVO)
+    // ==========================================
+
+    // A. Consultar qué tiene el técnico en su maleta
+    public function obtenerStockPorTecnico($idTecnico)
+    {
+        $sql = "SELECT 
+                    i.id_repuesto, 
+                    r.nombre_repuesto, 
+                    i.cantidad_actual 
+                FROM inventario_tecnico i
+                JOIN repuesto r ON i.id_repuesto = r.id_repuesto
+                WHERE i.id_tecnico = ? AND i.cantidad_actual > 0 AND i.estado = 1
+                ORDER BY r.nombre_repuesto ASC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$idTecnico]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    // Obtener los repuestos que YA estaban guardados en una orden específica
+    public function obtenerRepuestosDeOrden($idOrden)
+    {
+        $sql = "SELECT id_repuesto as id, cantidad 
+                FROM orden_servicio_repuesto 
+                WHERE id_orden_servicio = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$idOrden]);
+        // Devuelve algo como: [['id'=>1, 'cantidad'=>2], ['id'=>5, 'cantidad'=>1]]
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // ==========================================
+    // 6. GESTIÓN TIEMPO REAL (AJAX PURO)
+    // ==========================================
+
+    // A. AGREGAR REPUESTO (Descuenta stock y guarda en orden)
+    public function agregarRepuestoRealTime($idOrden, $idRepuesto, $cantidad, $origen, $idTecnico)
+    {
+        try {
+            $this->conn->beginTransaction();
+
+            // 1. Verificar Stock Disponible
+            $sqlStock = "SELECT cantidad_actual FROM inventario_tecnico 
+                         WHERE id_tecnico = ? AND id_repuesto = ? FOR UPDATE"; // Bloqueo fila
+            $stmt = $this->conn->prepare($sqlStock);
+            $stmt->execute([$idTecnico, $idRepuesto]);
+            $stockActual = $stmt->fetchColumn();
+
+            if ($stockActual === false || $stockActual < $cantidad) {
+                $this->conn->rollBack();
+                return ['status' => 'error', 'msg' => 'Stock insuficiente o no asignado.'];
+            }
+
+            // 2. Descontar del Inventario Técnico
+            $sqlUpdInv = "UPDATE inventario_tecnico 
+                          SET cantidad_actual = cantidad_actual - ? 
+                          WHERE id_tecnico = ? AND id_repuesto = ?";
+            $this->conn->prepare($sqlUpdInv)->execute([$cantidad, $idTecnico, $idRepuesto]);
+
+            // 3. Agregar o Actualizar en la Orden
+            // Verificamos si ya existe ese repuesto en esa orden con ese origen
+            $sqlCheck = "SELECT cantidad FROM orden_servicio_repuesto 
+                         WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
+            $stmtCheck = $this->conn->prepare($sqlCheck);
+            $stmtCheck->execute([$idOrden, $idRepuesto, $origen]);
+            $cantOrden = $stmtCheck->fetchColumn();
+
+            if ($cantOrden !== false) {
+                // Ya existe, sumamos
+                $sqlUpdOrden = "UPDATE orden_servicio_repuesto 
+                                SET cantidad = cantidad + ? 
+                                WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
+                $this->conn->prepare($sqlUpdOrden)->execute([$cantidad, $idOrden, $idRepuesto, $origen]);
+            } else {
+                // No existe, insertamos
+                $sqlInsOrden = "INSERT INTO orden_servicio_repuesto 
+                                (id_orden_servicio, id_repuesto, origen, cantidad) 
+                                VALUES (?, ?, ?, ?)";
+                $this->conn->prepare($sqlInsOrden)->execute([$idOrden, $idRepuesto, $origen, $cantidad]);
+            }
+
+            $this->conn->commit();
+            return ['status' => 'ok', 'msg' => 'Agregado correctamente', 'nuevo_stock' => $stockActual - $cantidad];
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];
+        }
+    }
+
+    // B. ELIMINAR REPUESTO (Devuelve stock y borra de orden)
+    public function eliminarRepuestoRealTime($idOrden, $idRepuesto, $origen, $idTecnico)
+    {
+        try {
+            $this->conn->beginTransaction();
+
+            // 1. Obtener cantidad a devolver
+            $sqlGet = "SELECT cantidad FROM orden_servicio_repuesto 
+                       WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
+            $stmt = $this->conn->prepare($sqlGet);
+            $stmt->execute([$idOrden, $idRepuesto, $origen]);
+            $cantidad = $stmt->fetchColumn();
+
+            if (!$cantidad) {
+                $this->conn->rollBack();
+                return ['status' => 'error', 'msg' => 'El repuesto no existe en esta orden.'];
+            }
+
+            // 2. Devolver al Inventario Técnico
+            // Usamos ON DUPLICATE KEY por seguridad, aunque debería existir
+            $sqlDev = "INSERT INTO inventario_tecnico (id_tecnico, id_repuesto, cantidad_actual, estado) 
+                       VALUES (?, ?, ?, 1) 
+                       ON DUPLICATE KEY UPDATE cantidad_actual = cantidad_actual + ?";
+            $this->conn->prepare($sqlDev)->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
+
+            // 3. Borrar de la Orden
+            $sqlDel = "DELETE FROM orden_servicio_repuesto 
+                       WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
+            $this->conn->prepare($sqlDel)->execute([$idOrden, $idRepuesto, $origen]);
+
+            $this->conn->commit();
+            return ['status' => 'ok', 'msg' => 'Repuesto devuelto al inventario'];
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];
+        }
+    }
+
+    // B. Descontar del inventario (Lógica Segura)
+    public function descontarStock($idTecnico, $idRepuesto, $cantidad)
+    {
+        // 1. Verificamos si tiene saldo suficiente
+        $sqlCheck = "SELECT cantidad_actual FROM inventario_tecnico 
+                    WHERE id_tecnico = ? AND id_repuesto = ?";
+        $stmtCheck = $this->conn->prepare($sqlCheck);
+        $stmtCheck->execute([$idTecnico, $idRepuesto]);
+        $actual = $stmtCheck->fetchColumn();
+
+        if ($actual !== false && $actual >= $cantidad) {
+            // 2. Si tiene, descontamos
+            $sqlUpd = "UPDATE inventario_tecnico 
+                        SET cantidad_actual = cantidad_actual - ? 
+                        WHERE id_tecnico = ? AND id_repuesto = ?";
+            $stmtUpd = $this->conn->prepare($sqlUpd);
+            return $stmtUpd->execute([$cantidad, $idTecnico, $idRepuesto]);
+        }
+        return false; // No tenía stock suficiente
+    }
+
+    // C. Devolver al inventario (Si borras un repuesto de la orden, se le devuelve al técnico)
+    public function devolverStock($idTecnico, $idRepuesto, $cantidad)
+    {
+        $sql = "INSERT INTO inventario_tecnico (id_tecnico, id_repuesto, cantidad_actual, estado)
+                VALUES (?, ?, ?, 1)
+                ON DUPLICATE KEY UPDATE cantidad_actual = cantidad_actual + ?";
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
     }
 }

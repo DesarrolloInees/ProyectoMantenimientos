@@ -324,6 +324,52 @@ class ordenCrearModels
         // Ojo al orden de los parámetros: Orden, Numero, Tecnico
         $stmt->execute([$idOrden, $numeroRemision, $idTecnico]);
     }
+
+    public function verificarRemisionDisponible($numeroRemision, $idTecnico)
+{
+    try {
+        // Verificar si existe en control_remisiones
+        $sql = "SELECT estado, id_orden_servicio 
+                FROM control_remisiones 
+                WHERE numero_remision = :remision 
+                AND id_tecnico = :tecnico 
+                LIMIT 1";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([
+            ':remision' => $numeroRemision,
+            ':tecnico' => $idTecnico
+        ]);
+        
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$resultado) {
+            return [
+                'disponible' => false,
+                'mensaje' => 'Remisión no encontrada en el sistema'
+            ];
+        }
+        
+        if ($resultado['estado'] === 'USADA') {
+            return [
+                'disponible' => false,
+                'mensaje' => 'Remisión ya fue usada en orden #' . $resultado['id_orden_servicio']
+            ];
+        }
+        
+        return [
+            'disponible' => true,
+            'mensaje' => 'Remisión disponible'
+        ];
+        
+    } catch (PDOException $e) {
+        error_log("Error verificando remisión: " . $e->getMessage());
+        return [
+            'disponible' => false,
+            'mensaje' => 'Error al verificar remisión'
+        ];
+    }
+}
     // Obtener lista simple de fechas festivas
     public function obtenerFestivos()
     {
@@ -332,9 +378,56 @@ class ordenCrearModels
             $stmt = $this->conn->prepare($sql);
             $stmt->execute();
             // Devuelve un array plano: ["2025-01-01", "2025-01-06", ...]
-            return $stmt->fetchAll(PDO::FETCH_COLUMN); 
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             return [];
         }
+    }
+
+    // --- NUEVO: OBTENER INVENTARIO ESPECÍFICO DE UN TÉCNICO (Con Cantidades Reales) ---
+    public function obtenerInventarioTecnico($idTecnico)
+    {
+        try {
+            // Traemos solo lo que tiene cantidad > 0 y está activo
+            $sql = "SELECT i.id_repuesto, r.nombre_repuesto, r.codigo_referencia, i.cantidad_actual 
+                    FROM inventario_tecnico i
+                    INNER JOIN repuesto r ON i.id_repuesto = r.id_repuesto
+                    WHERE i.id_tecnico = :id_tec AND i.estado = 1 AND i.cantidad_actual > 0
+                    ORDER BY r.nombre_repuesto ASC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_tec', $idTecnico);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    // --- NUEVO: DESCONTAR DEL INVENTARIO (Al guardar la orden) ---
+    public function descontarDelInventario($idTecnico, $idRepuesto, $cantidad)
+    {
+        try {
+            $sql = "UPDATE inventario_tecnico 
+                    SET cantidad_actual = cantidad_actual - :cant 
+                    WHERE id_tecnico = :id_tec AND id_repuesto = :id_rep";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':cant', $cantidad);
+            $stmt->bindParam(':id_tec', $idTecnico);
+            $stmt->bindParam(':id_rep', $idRepuesto);
+            $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Error descontando inventario: " . $e->getMessage());
+        }
+    }
+
+    // --- OPCIONAL: OBTENER LISTA GLOBAL (Para repuestos de PROSEGUR/Cliente) ---
+    public function obtenerTodosLosRepuestos()
+    {
+        $sql = "SELECT id_repuesto, nombre_repuesto FROM repuesto WHERE estado = 1 ORDER BY nombre_repuesto ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

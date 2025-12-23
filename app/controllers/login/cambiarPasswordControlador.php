@@ -27,4 +27,4 @@ $datos_plantilla = [
 
 // Instrucción 2: Define cuál es el archivo de contenido que se debe mostrar.
 $vistaContenido = "app/views/login/cambiarPasswordVista.php";
-        include "app/views/plantillaVista.php";
+include "app/views/plantillaVista.php";

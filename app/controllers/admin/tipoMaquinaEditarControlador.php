@@ -4,22 +4,28 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/tipoMaquinaEditarModelo.php';
 
-class tipoMaquinaEditarControlador {
-    
+class tipoMaquinaEditarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new TipoMaquinaEditarModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         // ID puede venir por GET (al entrar) o POST (al guardar)
         $id = $_GET['id'] ?? $_POST['id_tipo_maquina'] ?? null;
 
-        if (!$id) { header("Location: " . BASE_URL . "tipoMaquinaVer"); exit(); }
+        if (!$id) {
+            header("Location: " . BASE_URL . "tipoMaquinaVer");
+            exit();
+        }
 
         $errores = [];
         $datos = [];
@@ -46,7 +52,10 @@ class tipoMaquinaEditarControlador {
         // CARGAR DATOS (Si no hay datos previos del POST)
         if (empty($datos)) {
             $datos = $this->modelo->obtenerTipoPorId($id);
-            if (!$datos) { header("Location: " . BASE_URL . "tipoMaquinaVer"); exit(); }
+            if (!$datos) {
+                header("Location: " . BASE_URL . "tipoMaquinaVer");
+                exit();
+            }
         }
 
         $titulo = "Editar Tipo de Máquina";

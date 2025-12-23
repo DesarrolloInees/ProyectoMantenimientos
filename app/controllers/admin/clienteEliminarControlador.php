@@ -5,18 +5,21 @@ require_once __DIR__ . '/../../config/conexion.php';
 // Importamos el modelo de visualización que ya contiene la función de eliminar
 require_once __DIR__ . '/../../models/admin/clienteVerModelo.php';
 
-class clienteEliminarControlador {
-    
+class clienteEliminarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new ClienteVerModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         // Obtenemos ID de la URL (Ej: clienteEliminar/8)
         $id = $_GET['id'] ?? null;
 
@@ -30,4 +33,3 @@ class clienteEliminarControlador {
         exit();
     }
 }
-?>

@@ -1,14 +1,17 @@
 <?php
 if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
-class ordenVerModelo {
+class ordenVerModelo
+{
     private $conn;
 
-    public function __construct($db) {
+    public function __construct($db)
+    {
         $this->conn = $db;
     }
 
-    public function listarOrdenesPorFecha() {
+    public function listarOrdenesPorFecha()
+    {
         // 1. CONSULTA DETALLADA: Agrupamos por Fecha Y Delegación
         $sql = "SELECT 
                     o.fecha_visita,
@@ -57,7 +60,7 @@ class ordenVerModelo {
             // 3. CONVERTIR A ARRAY INDEXADO (Para que JSON lo lea bien) y formatear HTML
             $salidaFinal = [];
             foreach ($datosPorDia as $dia) {
-                
+
                 // Creamos un HTML bonito para el detalle
                 $htmlDetalle = '<ul class="text-xs text-left space-y-1">';
                 foreach ($dia['detalles_delegacion'] as $det) {
@@ -75,16 +78,14 @@ class ordenVerModelo {
 
                 // Agregamos el campo html_detalle al objeto
                 $dia['html_detalle'] = $htmlDetalle;
-                
+
                 $salidaFinal[] = $dia;
             }
 
             return $salidaFinal;
-
         } catch (PDOException $e) {
             error_log("Error SQL: " . $e->getMessage());
             return [];
         }
     }
 }
-?>

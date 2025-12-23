@@ -24,7 +24,7 @@
                 <label class="block text-sm font-bold text-gray-700 mb-1">Nombre de la Delegación <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-building text-gray-400"></i></div>
-                    <input type="text" name="nombre_delegacion" required 
+                    <input type="text" name="nombre_delegacion" required
                         placeholder="Ej: Zona Norte"
                         value="<?= htmlspecialchars($nombrePrevio ?? '') ?>"
                         class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase">

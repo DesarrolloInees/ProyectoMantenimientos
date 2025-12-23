@@ -35,7 +35,7 @@ class RepuestoCrearModelo
             // 2. Vincular parámetros
             // Usamos trim para limpiar espacios en blanco innecesarios
             $stmt->bindParam(':nombre', $datos['nombre_repuesto']);
-            
+
             // Si el código viene vacío, insertamos NULL (ya que la tabla permite NULL)
             $codigo = !empty($datos['codigo_referencia']) ? $datos['codigo_referencia'] : null;
             $stmt->bindParam(':codigo', $codigo);
@@ -46,7 +46,6 @@ class RepuestoCrearModelo
 
             // 3. Ejecutar
             return $stmt->execute();
-
         } catch (PDOException $e) {
             // Guardamos el error en el log del servidor para no exponerlo al usuario
             error_log("Error Base de Datos (crearRepuesto): " . $e->getMessage());
@@ -62,7 +61,7 @@ class RepuestoCrearModelo
     {
         try {
             $sql = "SELECT COUNT(*) FROM repuesto WHERE nombre_repuesto = :nombre";
-            
+
             // Si hay código, ampliamos la búsqueda (depende de tu regla de negocio)
             if ($codigo) {
                 $sql .= " OR codigo_referencia = :codigo";
@@ -70,14 +69,13 @@ class RepuestoCrearModelo
 
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':nombre', $nombre);
-            
+
             if ($codigo) {
                 $stmt->bindParam(':codigo', $codigo);
             }
 
             $stmt->execute();
             return $stmt->fetchColumn() > 0;
-
         } catch (PDOException $e) {
             return false;
         }

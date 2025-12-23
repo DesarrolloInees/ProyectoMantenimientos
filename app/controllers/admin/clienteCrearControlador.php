@@ -4,23 +4,26 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/clienteCrearModelo.php';
 
-class clienteCrearControlador {
-    
+class clienteCrearControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new ClienteCrearModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $errores = [];
         $datosPrevios = [];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             $datosPrevios = [
                 'nombre_cliente' => trim($_POST['nombre_cliente'] ?? ''),
                 'codigo_cliente' => trim($_POST['codigo_cliente'] ?? '')

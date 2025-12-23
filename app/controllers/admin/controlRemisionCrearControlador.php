@@ -4,28 +4,31 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/controlRemisionCrearModelo.php';
 
-class controlRemisionCrearControlador {
-    
+class controlRemisionCrearControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new ControlRemisionCrearModelo($this->db);
     }
 
-    public function index() {
-        
+    public function index()
+    {
+
         // --- ZONA AJAX (API) ---
         // Esto responde al JavaScript cuando cambias el técnico
         if (isset($_GET['ajax']) && $_GET['ajax'] == 'getUltima') {
             $idTecnico = $_GET['id_tecnico'] ?? 0;
             $ultima = $this->modelo->obtenerUltimaRemision($idTecnico);
-            
+
             // Calculamos la siguiente sugerida (si es numérica)
             $siguiente = is_numeric($ultima) ? $ultima + 1 : '';
-            
+
             echo json_encode(['ultima' => $ultima, 'siguiente' => $siguiente]);
             exit; // ¡IMPORTANTE! Aquí cortamos para no cargar la vista
         }
@@ -36,7 +39,7 @@ class controlRemisionCrearControlador {
         $listaTecnicos = $this->modelo->obtenerTecnicos();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             $datosPrevios = [
                 'id_tecnico'      => $_POST['id_tecnico'] ?? '',
                 'remision_inicio' => trim($_POST['remision_inicio'] ?? ''),

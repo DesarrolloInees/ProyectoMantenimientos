@@ -5,18 +5,21 @@ require_once __DIR__ . '/../../config/conexion.php';
 // Reutilizamos el modelo de Ver
 require_once __DIR__ . '/../../models/admin/tipoMaquinaVerModelo.php';
 
-class tipoMaquinaEliminarControlador {
-    
+class tipoMaquinaEliminarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new TipoMaquinaVerModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $id = $_GET['id'] ?? null;
 
         if ($id && is_numeric($id)) {

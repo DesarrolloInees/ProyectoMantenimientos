@@ -22,14 +22,14 @@
         <?php endif; ?>
 
         <form action="" method="POST" class="space-y-6">
-            
+
             <input type="hidden" name="id_repuesto" value="<?= htmlspecialchars($id_repuesto) ?>">
 
             <div>
                 <label for="nombre_repuesto" class="block text-sm font-bold text-gray-700 mb-1">Nombre del Repuesto <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-tag text-gray-400"></i></div>
-                    <input type="text" id="nombre_repuesto" name="nombre_repuesto" required 
+                    <input type="text" id="nombre_repuesto" name="nombre_repuesto" required
                         value="<?= htmlspecialchars($datosRepuesto['nombre_repuesto']) ?>"
                         class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all">
                 </div>
@@ -40,7 +40,7 @@
                     <label for="codigo_referencia" class="block text-sm font-bold text-gray-700 mb-1">Código / Referencia</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-barcode text-gray-400"></i></div>
-                        <input type="text" id="codigo_referencia" name="codigo_referencia" 
+                        <input type="text" id="codigo_referencia" name="codigo_referencia"
                             value="<?= htmlspecialchars($datosRepuesto['codigo_referencia'] ?? '') ?>"
                             class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all uppercase">
                     </div>

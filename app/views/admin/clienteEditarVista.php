@@ -22,14 +22,14 @@
         <?php endif; ?>
 
         <form action="" method="POST" class="space-y-6">
-            
+
             <input type="hidden" name="id_cliente" value="<?= htmlspecialchars($id_cliente) ?>">
 
             <div>
                 <label for="nombre_cliente" class="block text-sm font-bold text-gray-700 mb-1">Nombre / Razón Social <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-building text-gray-400"></i></div>
-                    <input type="text" id="nombre_cliente" name="nombre_cliente" required 
+                    <input type="text" id="nombre_cliente" name="nombre_cliente" required
                         value="<?= htmlspecialchars($datosCliente['nombre_cliente']) ?>"
                         class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 uppercase">
                 </div>
@@ -40,7 +40,7 @@
                     <label for="codigo_cliente" class="block text-sm font-bold text-gray-700 mb-1">Código Interno</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-barcode text-gray-400"></i></div>
-                        <input type="text" id="codigo_cliente" name="codigo_cliente" 
+                        <input type="text" id="codigo_cliente" name="codigo_cliente"
                             value="<?= htmlspecialchars($datosCliente['codigo_cliente'] ?? '') ?>"
                             class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 uppercase">
                     </div>

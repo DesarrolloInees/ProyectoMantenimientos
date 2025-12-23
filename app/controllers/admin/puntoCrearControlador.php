@@ -4,18 +4,21 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/puntoCrearModelo.php';
 
-class puntoCrearControlador {
-    
+class puntoCrearControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new PuntoCrearModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $errores = [];
         $datos = [];
 
@@ -26,7 +29,7 @@ class puntoCrearControlador {
                 'codigo_1'     => trim($_POST['codigo_1'] ?? ''),
                 'codigo_2'     => trim($_POST['codigo_2'] ?? ''),
                 'id_municipio' => $_POST['id_municipio'] ?? '',
-                'id_delegacion'=> $_POST['id_delegacion'] ?? '',
+                'id_delegacion' => $_POST['id_delegacion'] ?? '',
                 'id_modalidad' => $_POST['id_modalidad'] ?? '',
                 'id_cliente'   => $_POST['id_cliente'] ?? ''
             ];

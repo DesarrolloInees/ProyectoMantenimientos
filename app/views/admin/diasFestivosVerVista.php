@@ -2,7 +2,7 @@
 
 <div class="w-full max-w-4xl mx-auto">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-        
+
         <div class="flex justify-between items-center mb-6 border-b pb-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">
@@ -42,8 +42,8 @@
                                     <a href="<?= BASE_URL ?>diasFestivosEditar?id=<?= $f['id_festivo'] ?>" class="text-blue-500 hover:text-blue-700" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="<?= BASE_URL ?>diasFestivosEliminar?id=<?= $f['id_festivo'] ?>" 
-                                        onclick="return confirm('¿Estás seguro de eliminar este festivo?');" 
+                                    <a href="<?= BASE_URL ?>diasFestivosEliminar?id=<?= $f['id_festivo'] ?>"
+                                        onclick="return confirm('¿Estás seguro de eliminar este festivo?');"
                                         class="text-red-500 hover:text-red-700" title="Eliminar">
                                         <i class="fas fa-trash-alt"></i>
                                     </a>

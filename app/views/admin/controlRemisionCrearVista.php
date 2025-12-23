@@ -38,13 +38,13 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="remision_inicio" class="block text-sm font-bold text-gray-700 mb-1">Número Inicial <span class="text-red-500">*</span></label>
-                    <input type="number" id="remision_inicio" name="remision_inicio" required 
+                    <input type="number" id="remision_inicio" name="remision_inicio" required
                         placeholder="Ej: 100" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
                 </div>
 
                 <div>
                     <label for="remision_fin" class="block text-sm font-bold text-gray-700 mb-1">Número Final (Opcional)</label>
-                    <input type="number" id="remision_fin" name="remision_fin" 
+                    <input type="number" id="remision_fin" name="remision_fin"
                         placeholder="Ej: 150" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
                     <p class="text-xs text-gray-400 mt-1">Déjalo vacío si solo vas a registrar una.</p>
                 </div>
@@ -74,13 +74,15 @@
                 $.ajax({
                     url: '<?= BASE_URL ?>controlRemisionCrear&ajax=getUltima',
                     type: 'GET',
-                    data: { id_tecnico: idTecnico },
+                    data: {
+                        id_tecnico: idTecnico
+                    },
                     dataType: 'json',
                     success: function(data) {
                         if (data.ultima != 0) {
                             msg.text('Última remisión registrada: ' + data.ultima);
                             // Sugerimos la siguiente en el input
-                            if(data.siguiente != '') {
+                            if (data.siguiente != '') {
                                 inputInicio.val(data.siguiente);
                             }
                         } else {

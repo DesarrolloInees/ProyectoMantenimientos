@@ -1,5 +1,5 @@
 <div class="max-w-7xl mx-auto">
-    
+
     <div class="mb-8 flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-blue-900 to-blue-700 p-6 rounded-xl shadow-lg text-white">
         <div>
             <h1 class="text-3xl font-bold">¡Hola, bienvenido de nuevo! 👋</h1>
@@ -11,11 +11,11 @@
         </div>
     </div>
 
-    
+
 
     <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-rocket text-blue-600 mr-2"></i> Operaciones Rápidas</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        
+
         <a href="<?= BASE_URL ?>ordenCrear" class="group relative bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-lg p-6 text-white overflow-hidden transform hover:-translate-y-1 transition duration-300">
             <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition duration-500">
                 <i class="fas fa-plus-circle fa-6x"></i>
@@ -52,7 +52,7 @@
 
     <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-chart-pie text-indigo-600 mr-2"></i> Centro de Reportes</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        
+
         <a href="<?= BASE_URL ?>reporteEjecutivo" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition flex items-center border-l-4 border-indigo-500">
             <div class="bg-indigo-100 text-indigo-600 p-3 rounded-lg mr-4">
                 <i class="fa-solid fa-chart-line fa-xl"></i>
@@ -87,7 +87,7 @@
 
     <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-cogs text-gray-600 mr-2"></i> Configuración Rápida</h2>
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        
+
         <a href="<?= BASE_URL ?>usuarioVer" class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg hover:bg-white hover:shadow-md transition border border-gray-200 text-center">
             <i class="fas fa-key text-yellow-600 mb-2 text-xl"></i>
             <span class="text-xs font-bold text-gray-600">Usuarios</span>

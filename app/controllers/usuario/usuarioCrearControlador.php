@@ -6,8 +6,9 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/usuario/usuarioCrearModelo.php';
 
-class usuarioCrearControlador {
-    
+class usuarioCrearControlador
+{
+
     private $modelo;
     private $db;
 
@@ -22,8 +23,9 @@ class usuarioCrearControlador {
      * Este método maneja TANTO la carga del formulario COMO el guardado.
      * Funciona igual que tu script antiguo: el formulario se envía a sí mismo.
      */
-    public function index() {
-        
+    public function index()
+    {
+
         $errores = [];
         $datosPrevios = []; // Para no borrar lo que escribió el usuario si hay error
 
@@ -31,7 +33,7 @@ class usuarioCrearControlador {
         // 1. DETECTAR SI SE ENVIÓ EL FORMULARIO (POST)
         // ---------------------------------------------------------
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             // Recolectar y limpiar datos
             $datosPrevios = [
                 'nombre'       => trim($_POST['nombre'] ?? ''),
@@ -67,9 +69,9 @@ class usuarioCrearControlador {
         // ---------------------------------------------------------
         // 2. PREPARAR LA VISTA (GET o Error en POST)
         // ---------------------------------------------------------
-        
+
         $titulo = "Crear Nuevo Usuario";
-        
+
         // Obtener roles para el select
         $tiposUsuario = $this->modelo->obtenerTiposUsuario();
 
@@ -80,7 +82,7 @@ class usuarioCrearControlador {
         // Cargamos la vista. Como ya procesamos la lógica arriba,
         // pasamos los $errores y $datosPrevios a la vista.
         $vistaContenido = "app/views/usuario/usuarioCrearVista.php";
-        
+
         // Incluimos la plantilla maestra
         include "app/views/plantillaVista.php";
     }

@@ -11,17 +11,21 @@
         display: flex;
         align-items: center;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 44px !important;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__rendered {
         color: #374151;
         padding-left: 0.75rem;
         width: 100%;
     }
+
     /* Foco color amarillo para editar */
     .select2-container--default.select2-container--focus .select2-selection--single {
-        border-color: #eab308 !important; /* Yellow-500 */
+        border-color: #eab308 !important;
+        /* Yellow-500 */
         box-shadow: 0 0 0 1px #eab308;
     }
 </style>
@@ -42,7 +46,7 @@
 
         <form action="" method="POST" class="space-y-6">
             <input type="hidden" name="id_maquina" value="<?= $id ?>">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Device ID</label>
@@ -101,9 +105,13 @@
 <script>
     $(document).ready(function() {
         $('.select2-search').select2({
-            width: '100%', 
+            width: '100%',
             placeholder: '-- Buscar y Seleccionar --',
-            language: { noResults: function() { return "No se encontraron resultados"; } }
+            language: {
+                noResults: function() {
+                    return "No se encontraron resultados";
+                }
+            }
         });
     });
 </script>

@@ -51,6 +51,11 @@
     <i class="fas fa-key mr-3 w-6 text-center"></i> Administrar Usuarios
 </a>
 
+<a href="<?= BASE_URL ?>inventarioTecnicoVer"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
+    <i class="fa-brands fa-centos mr-3 w-6 text-center"></i> Administrar Inventario Repuestos Técnicos
+</a>
+
 <a href="<?= BASE_URL ?>repuestoVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
     <i class="fa-solid fa-puzzle-piece mr-3 w-6 text-center"></i> Crear Repuestos

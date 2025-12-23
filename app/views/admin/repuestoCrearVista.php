@@ -1,7 +1,7 @@
-<?php 
+<?php
 // app/views/admin/repuestoCrearVista.php
 
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado."); 
+if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 ?>
 
 <div class="w-full max-w-3xl mx-auto">
@@ -40,7 +40,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fas fa-tag text-gray-400"></i>
                     </div>
-                    <input type="text" id="nombre_repuesto" name="nombre_repuesto" required 
+                    <input type="text" id="nombre_repuesto" name="nombre_repuesto" required
                         placeholder="Ej: Batería 12V 7Ah"
                         value="<?= $datosPrevios['nombre_repuesto'] ?? '' ?>"
                         class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
@@ -49,7 +49,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 <div>
                     <label for="codigo_referencia" class="block text-sm font-bold text-gray-700 mb-1">
                         Código / Referencia
@@ -58,7 +58,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-barcode text-gray-400"></i>
                         </div>
-                        <input type="text" id="codigo_referencia" name="codigo_referencia" 
+                        <input type="text" id="codigo_referencia" name="codigo_referencia"
                             placeholder="Ej: REF-2025-X"
                             value="<?= $datosPrevios['codigo_referencia'] ?? '' ?>"
                             class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all uppercase">
@@ -73,11 +73,11 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-toggle-on text-gray-400"></i>
                         </div>
-                        <select id="estado" name="estado" 
+                        <select id="estado" name="estado"
                             class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all appearance-none cursor-pointer">
-                            
-                            <?php 
-                                $estadoPrevio = $datosPrevios['estado'] ?? '1'; 
+
+                            <?php
+                            $estadoPrevio = $datosPrevios['estado'] ?? '1';
                             ?>
                             <option value="1" <?= $estadoPrevio == '1' ? 'selected' : '' ?>>Activo (Disponible)</option>
                             <option value="0" <?= $estadoPrevio == '0' ? 'selected' : '' ?>>Inactivo (No Disponible)</option>
@@ -90,13 +90,13 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
             </div>
 
             <div class="pt-6 border-t border-gray-100 flex justify-end space-x-4">
-                <a href="<?= BASE_URL ?>repuestoVer" 
+                <a href="<?= BASE_URL ?>repuestoVer"
                     class="px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200">
                     <i class="fas fa-times mr-2"></i> Cancelar
                 </a>
-                
-                <button type="submit" 
-                        class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 transform hover:-translate-y-1">
+
+                <button type="submit"
+                    class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 transform hover:-translate-y-1">
                     <i class="fas fa-save mr-2"></i> Guardar Repuesto
                 </button>
             </div>

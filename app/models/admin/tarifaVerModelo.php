@@ -5,7 +5,10 @@ class TarifaVerModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function obtenerTarifas()
     {
@@ -22,7 +25,7 @@ class TarifaVerModelo
                 INNER JOIN tipo_mantenimiento tmt ON t.id_tipo_mantenimiento = tmt.id_tipo_mantenimiento
                 INNER JOIN modalidad_operativa mo ON t.id_modalidad = mo.id_modalidad
                 ORDER BY t.año_vigencia DESC, tm.nombre_tipo_maquina ASC";
-        
+
         return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 

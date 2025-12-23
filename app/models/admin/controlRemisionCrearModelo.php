@@ -41,11 +41,10 @@ class ControlRemisionCrearModelo
             $stmt->bindParam(':id_tecnico', $datos['id_tecnico']);
 
             return $stmt->execute();
-
         } catch (PDOException $e) {
             // Error 23000: Violación de restricción única (Número repetido)
             if ($e->getCode() == '23000') {
-                return "DUPLICADO"; 
+                return "DUPLICADO";
             } else {
                 error_log("Error al crear remisión: " . $e->getMessage());
                 return false;
@@ -67,12 +66,11 @@ class ControlRemisionCrearModelo
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':id_tecnico', $id_tecnico);
             $stmt->execute();
-            
+
             $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             // Si encuentra algo devuelve el número, si no, devuelve 0
             return $resultado ? $resultado['numero_remision'] : 0;
-
         } catch (PDOException $e) {
             return 0;
         }

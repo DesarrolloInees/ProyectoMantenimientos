@@ -1,12 +1,12 @@
 <?php
 // --- CONFIGURACIÓN ---
-ini_set('memory_limit', '512M'); 
-set_time_limit(300); 
+ini_set('memory_limit', '512M');
+set_time_limit(300);
 
 $host = 'localhost';
-$user = 'root'; 
-$pass = ''; 
-$db   = 'inees_mantenimientos'; 
+$user = 'root';
+$pass = '';
+$db   = 'inees_mantenimientos';
 
 $mensaje = "";
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -33,20 +33,20 @@ while ($row = $res->fetch_assoc()) {
 // PASO 2: PROCESAR ARCHIVO
 // =========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
-    
+
     if ($_FILES['archivo_csv']['error'] === UPLOAD_ERR_OK) {
         $ruta = $_FILES['archivo_csv']['tmp_name'];
         $handle = fopen($ruta, "r");
-        
+
         $insertados = 0;
         $saltados = 0; // Por si no encontramos la delegación
-        
+
         // Preparamos consulta: Insertamos Municipio y su ID de Delegación
         // Usamos INSERT IGNORE para no repetir si el municipio ya existe con esa delegación
         // Nota: Asumo que en tu tabla el nombre_municipio NO es único globalmente (puede haber municipios con mismo nombre en dif delegaciones?), 
         // pero si quieres evitar duplicados, asegúrate de tener un índice UNIQUE o usar lógica extra.
         // Aquí usaremos una verificación previa simple.
-        
+
         $stmt_check = $mysqli->prepare("SELECT id_municipio FROM municipio WHERE nombre_municipio = ? AND id_delegacion = ?");
         $stmt_insert = $mysqli->prepare("INSERT INTO municipio (nombre_municipio, id_delegacion) VALUES (?, ?)");
 
@@ -68,8 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                     if (strpos($col, 'DELEGACI') !== false)  $idx_del  = $i;
                     if (strpos($col, 'DIRECCI') !== false)   $idx_dir  = $i;
                 }
-                if ($idx_del === -1) { $mensaje = "<div class='error'>❌ No encontré la columna DELEGACIÓN.</div>"; break; }
-                continue; 
+                if ($idx_del === -1) {
+                    $mensaje = "<div class='error'>❌ No encontré la columna DELEGACIÓN.</div>";
+                    break;
+                }
+                continue;
             }
 
             // --- B. EXTRAER DATOS ---
@@ -84,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
             if (!isset($mapa_delegaciones[$raw_delegacion])) {
                 // Si la delegación del Excel no existe en la BD, no podemos crear el municipio
                 // (Opcional: Podrías crearla al vuelo, pero mejor mantener integridad)
-                $saltados++; 
-                continue; 
+                $saltados++;
+                continue;
             }
             $id_delegacion_bd = $mapa_delegaciones[$raw_delegacion];
 
@@ -97,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                 $nombre_final_municipio = $raw_municipio;
             } else {
                 // CASO 2: El municipio es un punto "." o vacío. Intentamos rescatarlo.
-                
+
                 // Intento A: Buscar el Slash "/" en la dirección (Para el caso Yumbo)
                 // Ej: "Bodega 7 / Yumbo, Valle del Cauca"
                 $partes_dir = explode('/', $raw_direccion);
@@ -105,9 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                     // Tomamos la parte después del slash
                     $posible_muni = trim($partes_dir[1]);
                     // Quitamos cosas extra como ", Valle del Cauca"
-                    $posible_muni = explode(',', $posible_muni)[0]; 
+                    $posible_muni = explode(',', $posible_muni)[0];
                     $posible_muni = mb_strtoupper(trim($posible_muni));
-                    
+
                     // Validación básica: que no sea muy largo ni muy corto
                     if (strlen($posible_muni) > 2 && strlen($posible_muni) < 40) {
                         $nombre_final_municipio = $posible_muni;
@@ -121,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
             }
 
             // --- E. INSERTAR EN BD (Evitando duplicados) ---
-            
+
             // 1. Verificamos si ya existe ese par (Municipio + Delegacion)
             $stmt_check->bind_param("si", $nombre_final_municipio, $id_delegacion_bd);
             $stmt_check->execute();
@@ -134,15 +137,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                 $insertados++;
             }
         }
-        
+
         fclose($handle);
-        
+
         $mensaje = "<div class='exito'>
             🎉 <strong>¡Proceso Terminado!</strong><br>
             Municipios nuevos insertados: <strong>$insertados</strong><br>
             Filas saltadas (Delegación no encontrada): $saltados
         </div>";
-
     } else {
         $mensaje = "<div class='error'>❌ Error subiendo archivo.</div>";
     }
@@ -151,17 +153,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Importar Municipios</title>
     <style>
-        body { font-family: sans-serif; background: #eef2f5; padding: 40px; }
-        .card { background: white; padding: 30px; border-radius: 8px; max-width: 600px; margin: auto; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn { background: #6f42c1; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 15px; }
-        .exito { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin-top: 20px; }
-        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        body {
+            font-family: sans-serif;
+            background: #eef2f5;
+            padding: 40px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: auto;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            background: #6f42c1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .exito {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
     </style>
 </head>
+
 <body>
     <div class="card">
         <h1>🏙️ Importar Municipios</h1>
@@ -174,4 +215,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
         </form>
     </div>
 </body>
+
 </html>

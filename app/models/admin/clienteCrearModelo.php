@@ -27,14 +27,13 @@ class ClienteCrearModelo
             $stmt = $this->conn->prepare($sql);
 
             $stmt->bindParam(':nombre', $datos['nombre_cliente']);
-            
+
             // Si el código está vacío, enviamos NULL para evitar conflictos únicos si la columna lo permite
             // Pero como tienes UNIQUE INDEX, lo ideal es que siempre tenga un código único.
             $codigo = !empty($datos['codigo_cliente']) ? $datos['codigo_cliente'] : null;
             $stmt->bindParam(':codigo', $codigo);
 
             return $stmt->execute();
-
         } catch (PDOException $e) {
             // Error 23000 es violación de restricción única (código repetido)
             if ($e->getCode() == '23000') {

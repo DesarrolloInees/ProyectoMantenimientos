@@ -23,7 +23,7 @@ class ControlRemisionVerModelo
                 INNER JOIN tecnico t ON cr.id_tecnico = t.id_tecnico
                 WHERE cr.estado != 'ELIMINADO' 
                 ORDER BY cr.id_control DESC";
-                
+
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

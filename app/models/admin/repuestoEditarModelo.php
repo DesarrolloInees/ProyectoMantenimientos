@@ -39,20 +39,18 @@ class RepuestoEditarModelo
             $stmt = $this->conn->prepare($sql);
 
             $stmt->bindParam(':nombre', $datos['nombre_repuesto']);
-            
+
             // Manejo de NULL para código
             $codigo = !empty($datos['codigo_referencia']) ? $datos['codigo_referencia'] : null;
             $stmt->bindParam(':codigo', $codigo);
-            
+
             $stmt->bindParam(':estado', $datos['estado'], PDO::PARAM_INT);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
             return $stmt->execute();
-
         } catch (PDOException $e) {
             error_log("Error actualizando repuesto: " . $e->getMessage());
             return false;
         }
     }
 }
-?>

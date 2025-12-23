@@ -5,7 +5,10 @@ class TarifaEditarModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function obtenerTarifaPorId($id)
     {
@@ -25,7 +28,7 @@ class TarifaEditarModelo
                     precio = :precio,
                     año_vigencia = :anio
                     WHERE id_tarifa = :id";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':maquina', $datos['id_tipo_maquina'], PDO::PARAM_INT);
             $stmt->bindParam(':mantenimiento', $datos['id_tipo_mantenimiento'], PDO::PARAM_INT);
@@ -40,7 +43,16 @@ class TarifaEditarModelo
     }
 
     // Helpers (Reutilizados del crear)
-    public function obtenerTiposMaquina() { return $this->conn->query("SELECT * FROM tipo_maquina WHERE estado = 1")->fetchAll(PDO::FETCH_ASSOC); }
-    public function obtenerTiposMantenimiento() { return $this->conn->query("SELECT * FROM tipo_mantenimiento WHERE estado = 1")->fetchAll(PDO::FETCH_ASSOC); }
-    public function obtenerModalidades() { return $this->conn->query("SELECT * FROM modalidad_operativa")->fetchAll(PDO::FETCH_ASSOC); }
+    public function obtenerTiposMaquina()
+    {
+        return $this->conn->query("SELECT * FROM tipo_maquina WHERE estado = 1")->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function obtenerTiposMantenimiento()
+    {
+        return $this->conn->query("SELECT * FROM tipo_mantenimiento WHERE estado = 1")->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function obtenerModalidades()
+    {
+        return $this->conn->query("SELECT * FROM modalidad_operativa")->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

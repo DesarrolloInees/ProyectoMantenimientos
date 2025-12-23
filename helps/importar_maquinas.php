@@ -1,15 +1,15 @@
 <?php
 // --- CONFIGURACIÓN ---
-ini_set('memory_limit', '1024M'); 
-set_time_limit(600); 
+ini_set('memory_limit', '1024M');
+set_time_limit(600);
 
 $host = 'localhost';
-$user = 'root'; 
-$pass = ''; 
-$db   = 'inees_mantenimientos'; 
+$user = 'root';
+$pass = '';
+$db   = 'inees_mantenimientos';
 
 $mensaje = "";
-$errores_log = []; 
+$errores_log = [];
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -24,7 +24,8 @@ try {
 // FUNCIÓN AUXILIAR: NORMALIZAR TEXTO (ELIMINA TILDES)
 // =========================================================
 // Esto es vital para que "Bogotá" coincida con "BOGOTA"
-function normalizar_clave($string) {
+function normalizar_clave($string)
+{
     $string = mb_strtoupper(trim($string), 'UTF-8');
     $string = str_replace(
         ['Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ'],
@@ -62,21 +63,21 @@ while ($row = $res->fetch_assoc()) {
 // PASO 2: PROCESAR CSV
 // =========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
-    
+
     if ($_FILES['archivo_csv']['error'] === UPLOAD_ERR_OK) {
         $ruta = $_FILES['archivo_csv']['tmp_name'];
         $handle = fopen($ruta, "r");
-        
+
         $insertados = 0;
         $nuevos_tipos = 0;
         $fila_num = 0;
-        
+
         // Preparar inserción de Máquina
         $stmt_maquina = $mysqli->prepare("INSERT IGNORE INTO maquina (device_id, id_punto, id_tipo_maquina) VALUES (?, ?, ?)");
-        
+
         // Preparar inserción de Tipo de Máquina (por si aparece uno nuevo)
         $stmt_tipo = $mysqli->prepare("INSERT INTO tipo_maquina (nombre_tipo_maquina) VALUES (?)");
-        
+
         $col = ['dev' => -1, 'pto' => -1, 'tip' => -1];
 
         $mysqli->begin_transaction();
@@ -110,13 +111,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
 
                 // --- 1. BUSCAR EL PUNTO (CRÍTICO) ---
                 $clave_punto = normalizar_clave($raw_punto);
-                
+
                 if (isset($mapa_puntos[$clave_punto])) {
                     $id_punto_final = $mapa_puntos[$clave_punto];
                 } else {
                     // SI NO EXISTE, LO REPORTAMOS Y SALTAMOS
                     $errores_log[] = "Fila $fila_num: El punto <b>'$raw_punto'</b> no existe en la BD (Device: $raw_device).";
-                    continue; 
+                    continue;
                 }
 
                 // --- 2. BUSCAR O CREAR TIPO DE MÁQUINA ---
@@ -130,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                     $stmt_tipo->bind_param("s", $raw_tipo);
                     $stmt_tipo->execute();
                     $id_tipo_final = $mysqli->insert_id;
-                    
+
                     // Guardar en memoria para la próxima vez
                     $mapa_tipos[$clave_tipo] = $id_tipo_final;
                     $nuevos_tipos++;
@@ -140,17 +141,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                 // Insert Ignore: Si el Device ID ya existe, no hace nada (evita duplicados)
                 $stmt_maquina->bind_param("sii", $raw_device, $id_punto_final, $id_tipo_final);
                 $stmt_maquina->execute();
-                
+
                 if ($stmt_maquina->affected_rows > 0) $insertados++;
             }
-            
+
             $mysqli->commit();
             $mensaje = "<div class='exito'>
                             🤖 <strong>¡PROCESO FINALIZADO!</strong><br>
                             Máquinas insertadas: <strong>$insertados</strong><br>
                             Nuevos Tipos de Máquina creados: <strong>$nuevos_tipos</strong>
                         </div>";
-
         } catch (Exception $e) {
             $mysqli->rollback();
             $mensaje = "<div class='error'>❌ Error Fatal: " . $e->getMessage() . "</div>";
@@ -163,25 +163,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Importador de Máquinas</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #eef2f5; padding: 20px; }
-        .container { background: white; padding: 30px; border-radius: 10px; max-width: 900px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn { background: #673ab7; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
-        .btn:hover { background: #5e35b1; }
-        .exito { background: #d4edda; color: #155724; padding: 20px; border-radius: 5px; text-align: center; margin-bottom: 20px; font-size: 1.2em; }
-        .error { background: #f8d7da; color: #721c24; padding: 20px; border-radius: 5px; text-align: center; margin-bottom: 20px; }
-        
-        .log-container { margin-top: 30px; border: 1px solid #ddd; border-radius: 5px; overflow: hidden; }
-        .log-header { background: #d32f2f; color: white; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .log-body { max-height: 300px; overflow-y: auto; background: #fafafa; padding: 0; }
-        .log-item { padding: 10px 15px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 14px; color: #555; }
-        .log-item:last-child { border-bottom: none; }
-        .log-item b { color: #d32f2f; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #eef2f5;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 900px;
+            margin: auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            background: #673ab7;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #5e35b1;
+        }
+
+        .exito {
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .log-container {
+            margin-top: 30px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .log-header {
+            background: #d32f2f;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .log-body {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #fafafa;
+            padding: 0;
+        }
+
+        .log-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            font-family: monospace;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .log-item b {
+            color: #d32f2f;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1 style="text-align: center; color: #333;">🤖 Importador de Máquinas</h1>
@@ -189,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
             Vincula máquinas a Puntos existentes.<br>
             Si el punto no existe, <strong>se saltará y aparecerá en el reporte</strong> para gestión manual.
         </p>
-        
+
         <?= $mensaje ?>
 
         <form method="POST" enctype="multipart/form-data">
@@ -218,4 +296,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
         <?php endif; ?>
     </div>
 </body>
+
 </html>

@@ -5,7 +5,10 @@ class ModalidadOperativaCrearModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function crearModalidad($nombre)
     {

@@ -19,14 +19,14 @@
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Fecha</label>
-                <input type="date" name="fecha" required 
+                <input type="date" name="fecha" required
                     value="<?= $datos['fecha'] ?>"
                     class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
             </div>
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Descripción</label>
-                <input type="text" name="descripcion" 
+                <input type="text" name="descripcion"
                     value="<?= htmlspecialchars($datos['descripcion']) ?>"
                     class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
             </div>

@@ -4,18 +4,37 @@
 
 <style>
     /* Reutilizamos los estilos pro que ya definimos antes */
-    .dataTables_length select, .dataTables_filter input {
-        background-color: white !important; color: #374151 !important;
-        border: 1px solid #d1d5db !important; border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem; margin: 0 0.5rem;
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin: 0 0.5rem;
     }
-    #tablaRemisiones tbody tr { background-color: white !important; }
-    #tablaRemisiones tbody tr:hover { background-color: #f9fafb !important; }
+
+    #tablaRemisiones tbody tr {
+        background-color: white !important;
+    }
+
+    #tablaRemisiones tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
     .dataTables_paginate .paginate_button.current {
-        background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important;
+        background-color: #4f46e5 !important;
+        color: white !important;
+        border-color: #4f46e5 !important;
     }
-    .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type {
-        display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin: 1.5rem 0;
+
+    .dataTables_wrapper>div:first-child,
+    .dataTables_wrapper>div:last-of-type {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1.5rem 0;
     }
 </style>
 
@@ -58,8 +77,8 @@
                                 <a href="<?= BASE_URL ?>controlRemisionEditar&id=<?= $r['id_control'] ?>" class="text-indigo-600 hover:text-indigo-900 mx-2" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="<?= BASE_URL ?>controlRemisionEliminar&id=<?= $r['id_control'] ?>" 
-                                    class="text-red-600 hover:text-red-900 mx-2" 
+                                <a href="<?= BASE_URL ?>controlRemisionEliminar&id=<?= $r['id_control'] ?>"
+                                    class="text-red-600 hover:text-red-900 mx-2"
                                     onclick="return confirm('¿Eliminar esta remisión?');" title="Eliminar">
                                     <i class="fas fa-trash"></i>
                                 </a>
@@ -81,8 +100,12 @@
     $(document).ready(function() {
         $('#tablaRemisiones').DataTable({
             responsive: true,
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' },
-            order: [[ 0, "desc" ]]
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+            },
+            order: [
+                [0, "desc"]
+            ]
         });
     });
 </script>

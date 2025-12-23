@@ -24,7 +24,7 @@
                 <label class="block text-sm font-bold text-gray-700 mb-1">Nombre del Estado <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-info-circle text-gray-400"></i></div>
-                    <input type="text" name="nombre_estado" required 
+                    <input type="text" name="nombre_estado" required
                         placeholder="Ej: En Mantenimiento"
                         value="<?= htmlspecialchars($nombrePrevio ?? '') ?>"
                         class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">

@@ -15,7 +15,7 @@
         <?php endif; ?>
 
         <form action="<?= BASE_URL ?>puntoCrear" method="POST" class="space-y-6">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="md:col-span-2">
                     <label class="block text-sm font-bold text-gray-700 mb-1">Nombre del Punto <span class="text-red-500">*</span></label>

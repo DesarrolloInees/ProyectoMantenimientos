@@ -5,21 +5,23 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 // 1. CORRECCIÓN DE RUTAS: Usamos 'models' (inglés) y 'config'
 require_once __DIR__ . '/../../models/login/loginModelo.php';
-require_once __DIR__ . '/../../config/conexion.php'; 
+require_once __DIR__ . '/../../config/conexion.php';
 
-class loginControlador {
-    
+class loginControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         // Creamos la conexión interna aquí para evitar el error de "$db undefined"
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
-        
+
         // Instanciamos el modelo pasándole la conexión
         $this->modelo = new LoginModelo($this->db);
-        
+
         // Si detectamos que se envió el formulario por POST, procesamos el login
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['MM_Login'])) {
             $this->procesarLogin();
@@ -27,10 +29,11 @@ class loginControlador {
     }
 
     // Método para mostrar la vista (HTML)
-    public function cargarVista() {
+    public function cargarVista()
+    {
         // Datos necesarios para la vista
         $datos_plantilla = ['error_login' => false];
-        
+
         if (defined('BASE_URL')) {
             $datos_plantilla['baseURL'] = BASE_URL;
         }
@@ -42,7 +45,8 @@ class loginControlador {
     }
 
     // Método para procesar los datos (AJAX)
-    public function procesarLogin() {
+    public function procesarLogin()
+    {
         // Limpiamos el buffer por si acaso
         ob_clean();
         header('Content-Type: application/json');
@@ -55,7 +59,7 @@ class loginControlador {
 
         if ($user) {
             // --- Validaciones de Seguridad (Password expirado, etc) ---
-            
+
             if ($user['forzar_cambio_pwd'] == 1) {
                 $_SESSION['temp_user_id'] = $user['usuario_id'];
                 $_SESSION['username'] = $user['usuario'];
@@ -82,4 +86,3 @@ class loginControlador {
         }
     }
 }
-?>

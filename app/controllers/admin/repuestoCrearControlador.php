@@ -7,8 +7,9 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/repuestoCrearModelo.php';
 
-class repuestoCrearControlador {
-    
+class repuestoCrearControlador
+{
+
     private $modelo;
     private $db;
 
@@ -16,7 +17,7 @@ class repuestoCrearControlador {
     {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
-        
+
         // Instanciamos el modelo (asegúrate de que la clase en el archivo del modelo se llame así)
         $this->modelo = new RepuestoCrearModelo($this->db);
     }
@@ -24,8 +25,9 @@ class repuestoCrearControlador {
     /**
      * Muestra el formulario y procesa el guardado en la misma función (POST).
      */
-    public function index() {
-        
+    public function index()
+    {
+
         $errores = [];
         $datosPrevios = []; // Para repoblar el form si hay error
 
@@ -33,7 +35,7 @@ class repuestoCrearControlador {
         // 1. DETECTAR SI SE ENVIÓ EL FORMULARIO (POST)
         // ---------------------------------------------------------
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
+
             // Recolectar datos
             $datosPrevios = [
                 'nombre_repuesto'   => trim($_POST['nombre_repuesto'] ?? ''),
@@ -62,14 +64,13 @@ class repuestoCrearControlador {
         // ---------------------------------------------------------
         // 2. PREPARAR LA VISTA (GET o Error en POST)
         // ---------------------------------------------------------
-        
+
         $titulo = "Crear Nuevo Repuesto";
-        
+
         // Ruta apuntando a la carpeta admin
         $vistaContenido = "app/views/admin/repuestoCrearVista.php";
-        
+
         // Incluimos la plantilla maestra
         include "app/views/plantillaVista.php";
     }
 }
-?>

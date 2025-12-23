@@ -39,16 +39,15 @@ class ClienteEditarModelo
             $stmt = $this->conn->prepare($sql);
 
             $stmt->bindParam(':nombre', $datos['nombre_cliente']);
-            
+
             // Manejo de NULL para código
             $codigo = !empty($datos['codigo_cliente']) ? $datos['codigo_cliente'] : null;
             $stmt->bindParam(':codigo', $codigo);
-            
+
             $stmt->bindParam(':estado', $datos['estado'], PDO::PARAM_INT);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
             return $stmt->execute();
-
         } catch (PDOException $e) {
             // Manejo de error si intentan poner un código que ya usa otro cliente
             if ($e->getCode() == '23000') {
@@ -58,4 +57,3 @@ class ClienteEditarModelo
         }
     }
 }
-?>

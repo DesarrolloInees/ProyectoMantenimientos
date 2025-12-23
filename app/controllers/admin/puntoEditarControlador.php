@@ -4,20 +4,26 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/puntoEditarModelo.php';
 
-class puntoEditarControlador {
-    
+class puntoEditarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new PuntoEditarModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $id = $_GET['id'] ?? $_POST['id_punto'] ?? null;
-        if (!$id) { header("Location: " . BASE_URL . "puntoVer"); exit(); }
+        if (!$id) {
+            header("Location: " . BASE_URL . "puntoVer");
+            exit();
+        }
 
         $errores = [];
         $datos = [];
@@ -45,7 +51,10 @@ class puntoEditarControlador {
 
         if (empty($datos)) {
             $datos = $this->modelo->obtenerPuntoPorId($id);
-            if (!$datos) { header("Location: " . BASE_URL . "puntoVer"); exit(); }
+            if (!$datos) {
+                header("Location: " . BASE_URL . "puntoVer");
+                exit();
+            }
         }
 
         $listaClientes = $this->modelo->obtenerClientes();

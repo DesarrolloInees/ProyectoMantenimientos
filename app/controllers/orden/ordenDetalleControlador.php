@@ -44,6 +44,12 @@ class ordenDetalleControlador
             if ($_POST['accion'] === 'ajaxObtenerPrecio') {
                 $this->ajaxObtenerPrecio();
             }
+            if ($_POST['accion'] === 'ajaxObtenerStockTecnico') {
+                $this->ajaxObtenerStockTecnico();
+            }
+            if ($_POST['accion'] === 'ajaxGestionarRepuestoRT') {
+                $this->ajaxGestionarRepuestoRT();
+            }
         }
     }
 
@@ -135,8 +141,45 @@ class ordenDetalleControlador
         exit;
     }
 
+    public function ajaxObtenerStockTecnico()
+    {
+        ob_clean(); // Limpiar buffers previos
+        $idTecnico = $_POST['id_tecnico'] ?? 0;
+
+        if ($idTecnico > 0) {
+            $stock = $this->modelo->obtenerStockPorTecnico($idTecnico);
+            header('Content-Type: application/json');
+            echo json_encode($stock);
+        } else {
+            echo json_encode([]);
+        }
+        exit;
+    }
+
+    public function ajaxGestionarRepuestoRT()
+    {
+        ob_clean();
+        header('Content-Type: application/json');
+
+        $tipo       = $_POST['tipo']; // 'agregar' o 'eliminar'
+        $idOrden    = $_POST['id_orden'];
+        $idRepuesto = $_POST['id_repuesto'];
+        $origen     = $_POST['origen'];
+        $idTecnico  = $_POST['id_tecnico'];
+        
+        if ($tipo === 'agregar') {
+            $cantidad = $_POST['cantidad'];
+            $res = $this->modelo->agregarRepuestoRealTime($idOrden, $idRepuesto, $cantidad, $origen, $idTecnico);
+        } else {
+            $res = $this->modelo->eliminarRepuestoRealTime($idOrden, $idRepuesto, $origen, $idTecnico);
+        }
+
+        echo json_encode($res);
+        exit;
+    }
+
     // ==========================================
-    // 3. GUARDAR CAMBIOS
+    // 3. GUARDAR CAMBIOS (LÓGICA LIMPIA)
     // ==========================================
     public function guardarCambios()
     {
@@ -145,43 +188,44 @@ class ordenDetalleControlador
             $fechaOrigen = $_POST['fecha_origen'];
 
             foreach ($servicios as $id => $datos) {
-                // Calcular Tiempo
-                $tiempoCalc = "00:00";
-                if (!empty($datos['entrada']) && !empty($datos['salida'])) {
-                    $d1 = new DateTime($datos['entrada']);
-                    $d2 = new DateTime($datos['salida']);
-                    if ($d2 < $d1) $d2->modify('+1 day');
-                    $tiempoCalc = $d1->diff($d2)->format('%H:%I');
+
+                // ---------------------------------------------------------
+                // 1. LIMPIEZA DE PRECIO
+                // ---------------------------------------------------------
+                if (isset($datos['valor'])) {
+                    // Quitar puntos de miles (150.000 -> 150000)
+                    $valorLimpio = str_replace('.', '', $datos['valor']);
+                    // (Opcional) Cambiar comas por puntos
+                    $valorLimpio = str_replace(',', '.', $valorLimpio);
+                    $datos['valor'] = $valorLimpio;
                 }
 
-                // Limpiar precio
-                $valorLimpio = str_replace('.', '', $datos['valor']);
-                $valorLimpio = str_replace(',', '.', $valorLimpio);
+                // ---------------------------------------------------------
+                // 2. CALCULAR TIEMPO (Si no viene calculado)
+                // ---------------------------------------------------------
+                if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
+                    $datos['tiempo'] = '00:00'; 
+                    if (!empty($datos['entrada']) && !empty($datos['salida'])) {
+                        try {
+                            $d1 = new DateTime($datos['entrada']);
+                            $d2 = new DateTime($datos['salida']);
+                            if ($d2 < $d1) $d2->modify('+1 day');
+                            $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
+                        } catch (Exception $e) {}
+                    }
+                }
 
-                $this->modelo->actualizarOrdenFull($id, [
-                    'id_cliente' => $datos['id_cliente'],
-                    'id_punto'   => $datos['id_punto'],
-                    'id_maquina' => $datos['id_maquina'],
-                    'id_modalidad' => $datos['id_modalidad'],
-                    'remision'   => $datos['remision'],
-                    'id_tecnico' => $datos['id_tecnico'],
-                    'id_manto'   => $datos['id_manto'],
-                    'id_estado'  => $datos['id_estado'],
-                    'id_calif'   => $datos['id_calif'],
-                    'entrada'    => $datos['entrada'],
-                    'salida'     => $datos['salida'],
-                    'tiempo'     => $tiempoCalc,
-                    'valor'      => $valorLimpio,
-                    'obs'        => $datos['obs'],
-                    'tiene_novedad' => $datos['tiene_novedad'] ?? 0,
-                    'fecha_individual' => $datos['fecha_individual'],
-                    'json_repuestos' => $datos['json_repuestos'] ?? '[]'
-                ]);
+                // ---------------------------------------------------------
+                // 🛑 LÓGICA DE INVENTARIO ELIMINADA 
+                // Ya no calculamos diferencias aquí. El AJAX ya lo hizo.
+                // ---------------------------------------------------------
+
+                // 3. ACTUALIZAR LA ORDEN (CABECERA)
+                $this->modelo->actualizarOrdenFull($id, $datos);
             }
 
-            // Usamos JS para redirigir porque esto suele venir de un submit normal o AJAX
             echo "<script>
-                alert('¡Todo actualizado correctamente!');
+                alert('¡Cambios guardados correctamente!');
                 window.location.href = '" . BASE_URL . "ordenDetalle/$fechaOrigen';
             </script>";
         }

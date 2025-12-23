@@ -44,11 +44,10 @@ class ControlRemisionEditarModelo
             $stmt->bindParam(':id', $datos['id_control']);
 
             return $stmt->execute();
-
         } catch (PDOException $e) {
             // Si intenta poner un número que ya existe en otro registro
             if ($e->getCode() == '23000') {
-                return "DUPLICADO"; 
+                return "DUPLICADO";
             }
             return false;
         }

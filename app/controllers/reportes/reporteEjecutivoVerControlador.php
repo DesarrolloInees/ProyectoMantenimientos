@@ -38,7 +38,7 @@ class ReporteEjecutivoControlador
             'fecha_inicio' => date('Y-m-01'),
             'fecha_fin'    => date('Y-m-d')
         ];
-        
+
         $mensaje = "";
 
         // POST
@@ -49,7 +49,7 @@ class ReporteEjecutivoControlador
 
         // Ejecutar consultas
         if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
-            
+
             // 1. PRIMERO OBTENEMOS LOS DATOS DE LA BD (Esto estaba abajo antes)
             $datosDia        = $this->modelo->getServiciosPorDia($filtros['fecha_inicio'], $filtros['fecha_fin']);
             $datosDelegacion = $this->modelo->getDelegacionesIntervenidas($filtros['fecha_inicio'], $filtros['fecha_fin']);
@@ -60,9 +60,9 @@ class ReporteEjecutivoControlador
             $datosRepuestos  = $this->modelo->getComparativaRepuestos($filtros['fecha_inicio'], $filtros['fecha_fin']);
 
             // 2. AHORA SI CALCULAMOS (Ya tenemos datos)
-            
+
             // A. Calcular Total Servicios
-            foreach($datosDia as $d) {
+            foreach ($datosDia as $d) {
                 $totalServicios += $d['total'];
             }
 
@@ -78,11 +78,11 @@ class ReporteEjecutivoControlador
             // Media Global (Total / Técnicos)
             $mediaGlobal = $numTecnicos > 0 ? round($totalServicios / $numTecnicos, 1) : 0;
             // Variable para la vista (por compatibilidad con código anterior)
-            $mediaServicios = $mediaGlobal; 
+            $mediaServicios = $mediaGlobal;
 
             // Media Diaria ( (Total / Técnicos) / Días )
-            $mediaDiaria = ($numTecnicos > 0 && $cantidadDias > 0) 
-                ? round(($totalServicios / $numTecnicos) / $cantidadDias, 2) 
+            $mediaDiaria = ($numTecnicos > 0 && $cantidadDias > 0)
+                ? round(($totalServicios / $numTecnicos) / $cantidadDias, 2)
                 : 0;
 
             if (empty($datosDia) && empty($datosDelegacion)) {
@@ -94,9 +94,8 @@ class ReporteEjecutivoControlador
 
         // Configuración de la vista
         $titulo = "Tablero Ejecutivo de Servicios";
-        $vistaContenido = "app/views/reportes/reporteEjecutivoVista.php"; 
-        
+        $vistaContenido = "app/views/reportes/reporteEjecutivoVista.php";
+
         include "app/views/plantillaVista.php";
     }
 }
-?>

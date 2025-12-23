@@ -6,14 +6,55 @@
 
 <style>
     /* Estilos Select2 y DataTables (Igual que antes) */
-    .select2-container .select2-selection--single { height: 42px !important; border: 1px solid #d1d5db !important; border-radius: 0.5rem !important; display: flex; align-items: center; }
-    .select2-container--default .select2-selection--single .select2-selection__rendered { padding-left: 0.75rem; color: #374151; }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px !important; }
-    .dataTables_length select, .dataTables_filter input { background-color: white !important; color: #374151 !important; border: 1px solid #d1d5db !important; border-radius: 0.5rem; padding: 0.5rem 0.75rem; margin: 0 0.5rem; }
-    #reporteTable tbody tr { background-color: white !important; }
-    #reporteTable tbody tr:hover { background-color: #f9fafb !important; }
-    .dataTables_paginate .paginate_button.current { background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important; }
-    .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin: 1.5rem 0; }
+    .select2-container .select2-selection--single {
+        height: 42px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem !important;
+        display: flex;
+        align-items: center;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        padding-left: 0.75rem;
+        color: #374151;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+    }
+
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin: 0 0.5rem;
+    }
+
+    #reporteTable tbody tr {
+        background-color: white !important;
+    }
+
+    #reporteTable tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
+    .dataTables_paginate .paginate_button.current {
+        background-color: #4f46e5 !important;
+        color: white !important;
+        border-color: #4f46e5 !important;
+    }
+
+    .dataTables_wrapper>div:first-child,
+    .dataTables_wrapper>div:last-of-type {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1.5rem 0;
+    }
 </style>
 
 <div class="w-full max-w-7xl mx-auto">
@@ -29,7 +70,7 @@
                 </button>
             <?php endif; ?>
         </div>
-        
+
         <form action="<?= BASE_URL ?>reporteTecnico" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div class="md:col-span-1">
                 <label class="block text-sm font-bold text-gray-700 mb-1">Técnico</label>
@@ -59,7 +100,7 @@
     </div>
 
     <?php if (!empty($datosReporte)): ?>
-         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <p class="text-sm text-blue-600 font-bold uppercase">Total Servicios</p>
                 <p class="text-2xl font-bold text-gray-800"><?= count($datosReporte) ?></p>
@@ -73,7 +114,7 @@
                 <p class="text-sm font-medium text-gray-800 mt-1"><?= date('d/m/Y', strtotime($filtros['fecha_inicio'])) ?> - <?= date('d/m/Y', strtotime($filtros['fecha_fin'])) ?></p>
             </div>
         </div>
-        
+
         <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
             <div class="overflow-x-auto">
                 <table id="reporteTable" class="w-full text-sm text-left">
@@ -116,46 +157,39 @@
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
 
 <script>
-    // Recibimos los datos COMPLETOS de PHP (asegurate que hora_entrada y hora_salida vengan aquí)
+    // Recibimos los datos COMPLETOS de PHP
     const datosServicios = <?= json_encode($datosExcel ?? []) ?>;
 
     $(document).ready(function() {
-        $('.select2-search').select2({ width: '100%', placeholder: '-- Todos los Técnicos --' });
+        $('.select2-search').select2({
+            width: '100%',
+            placeholder: '-- Todos los Técnicos --'
+        });
         if ($('#reporteTable').length) {
             $('#reporteTable').DataTable({
                 responsive: true,
-                language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' },
-                order: [[ 0, "desc" ]]
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                },
+                order: [
+                    [0, "desc"]
+                ]
             });
         }
     });
 
-    // --- FUNCIÓN AUXILIAR: Calcular diferencia de horas ---
-    function calcularDiferenciaHoras(inicio, fin) {
-        if (!inicio || !fin) return "00:00";
-        // Asumiendo formato HH:MM:SS
-        let [h1, m1] = inicio.split(':').map(Number);
-        let [h2, m2] = fin.split(':').map(Number);
-        
-        let minutosInicio = h1 * 60 + m1;
-        let minutosFin = h2 * 60 + m2;
-        
-        let diff = minutosFin - minutosInicio;
-        if (diff < 0) diff += 1440; // Si pasa de media noche (raro, pero posible)
-        
-        let horas = Math.floor(diff / 60);
-        let mins = diff % 60;
-        
-        // Formatear a HH:MM
-        return (horas < 10 ? '0' : '') + horas + ':' + (mins < 10 ? '0' : '') + mins;
-    }
-
     // =========================================================
-    // FUNCIÓN: EXCEL DETALLADO CON HORAS
+    // FUNCIÓN: EXCEL CON HOJA DE RESUMEN Y SIN CÁLCULO DE HORAS
     // =========================================================
     function exportarExcelTecnico() {
-        if (typeof XLSX === 'undefined') { alert("Error: Librería SheetJS no cargada."); return; }
-        if (datosServicios.length === 0) { alert("No hay datos para exportar."); return; }
+        if (typeof XLSX === 'undefined') {
+            alert("Error: Librería SheetJS no cargada.");
+            return;
+        }
+        if (datosServicios.length === 0) {
+            alert("No hay datos para exportar.");
+            return;
+        }
 
         let workbook = XLSX.utils.book_new();
 
@@ -165,19 +199,19 @@
         datosServicios.forEach(item => {
             let tecnico = item.nombre_tecnico || "Sin Nombre";
             let fecha = item.fecha_visita.split(' ')[0]; // Solo fecha YYYY-MM-DD
-            
+
             // Datos de hora (asumiendo formato HH:MM:SS en BD)
-            let horaEnt = item.hora_entrada; 
+            let horaEnt = item.hora_entrada;
             let horaSal = item.hora_salida;
 
             if (!resumen[tecnico]) resumen[tecnico] = {};
-            
-            // Si es la primera vez que vemos esta fecha para este técnico, inicializamos
+
+            // Inicializar fecha si no existe
             if (!resumen[tecnico][fecha]) {
                 resumen[tecnico][fecha] = {
                     cantidad: 0,
-                    primera_entrada: "23:59:59", // Valor alto para comparar hacia abajo
-                    ultima_salida: "00:00:00"    // Valor bajo para comparar hacia arriba
+                    primera_entrada: "23:59:59",
+                    ultima_salida: "00:00:00"
                 };
             }
 
@@ -195,72 +229,116 @@
             }
         });
 
+        // ---------------------------------------------------------
+        // NUEVO: CREAR HOJA 1 - RESUMEN GENERAL (TABLA DE TÉCNICOS)
+        // ---------------------------------------------------------
+        let matrizResumenGeneral = [
+            ['NOMBRE DEL TÉCNICO', 'TOTAL SERVICIOS REALIZADOS']
+        ];
         let hayDatos = false;
 
-        // 2. CREAR HOJAS POR TÉCNICO
+        // Recorremos el objeto resumen para llenar la primera hoja
         for (const [nombreTecnico, fechasObj] of Object.entries(resumen)) {
             hayDatos = true;
+            // Sumar todas las cantidades de todas las fechas de este técnico
+            let totalTecnico = Object.values(fechasObj).reduce((a, b) => a + b.cantidad, 0);
+            matrizResumenGeneral.push([nombreTecnico, totalTecnico]);
+        }
+
+        // Crear y agregar la hoja de Resumen al principio
+        let wsResumen = XLSX.utils.aoa_to_sheet(matrizResumenGeneral);
+        wsResumen['!cols'] = [{
+            wch: 40
+        }, {
+            wch: 25
+        }]; // Ajustar ancho de columnas
+        XLSX.utils.book_append_sheet(workbook, wsResumen, "RESUMEN GENERAL");
+
+
+        // ---------------------------------------------------------
+        // CREAR HOJAS INDIVIDUALES POR TÉCNICO
+        // ---------------------------------------------------------
+        for (const [nombreTecnico, fechasObj] of Object.entries(resumen)) {
             let fechasOrdenadas = Object.keys(fechasObj).sort();
-            
-            // Total de servicios (suma de columna cantidad)
             let totalServiciosTecnico = Object.values(fechasObj).reduce((a, b) => a + b.cantidad, 0);
 
             // === CONSTRUIR MATRIZ EXCEL ===
             let matriz = [];
 
-            // Encabezados (Agregamos las columnas de tiempo)
+            // Encabezados (Eliminada la columna "TIEMPO TRABAJO")
             matriz.push([
-                'FECHA', 
-                'PRIMERA ENTRADA',  // Nuevo
-                'ÚLTIMA SALIDA',    // Nuevo
-                'TIEMPO TRABAJO',   // Nuevo
-                'CANTIDAD', 
-                'CALIDAD', 
-                'OTROS', 
-                'KISAN', 
-                'CRP', 
+                'FECHA',
+                'PRIMERA ENTRADA',
+                'ÚLTIMA SALIDA',
+                'CANTIDAD',
+                'CALIDAD',
+                'OTROS',
+                'KISAN',
+                'CRP',
                 'TOTAL SERVICIOS'
             ]);
 
             // Título Técnico
-            matriz.push([nombreTecnico.toUpperCase(), '', '', '', '', '', '', '', '', totalServiciosTecnico]);
+            matriz.push([nombreTecnico.toUpperCase(), '', '', '', '', '', '', '', totalServiciosTecnico]);
 
             fechasOrdenadas.forEach(fecha => {
                 let dataDia = fechasObj[fecha];
-                
-                // Limpieza visual: si no se actualizó la hora por defecto, mostrar vacío
+
                 let hIn = (dataDia.primera_entrada === "23:59:59") ? "--" : dataDia.primera_entrada;
                 let hOut = (dataDia.ultima_salida === "00:00:00") ? "--" : dataDia.ultima_salida;
-                
-                // Calcular Horas Trabajadas
-                let tiempoTrabajado = (hIn !== "--" && hOut !== "--") ? calcularDiferenciaHoras(hIn, hOut) : "00:00";
+
+                // NOTA: Se eliminó el cálculo de diferencia de horas aquí
 
                 matriz.push([
                     fecha,
-                    hIn,              // Primera Entrada
-                    hOut,             // Última Salida
-                    tiempoTrabajado,  // Diferencia
+                    hIn, // Primera Entrada
+                    hOut, // Última Salida
                     dataDia.cantidad, // Cantidad
-                    '', '', '', '',   // Columnas vacías
-                    dataDia.cantidad  // Total repetido
+                    '', '', '', '', // Columnas vacías para llenado manual
+                    dataDia.cantidad // Total repetido
                 ]);
             });
 
             let ws = XLSX.utils.aoa_to_sheet(matriz);
 
-            // Ajustar anchos
-            ws['!cols'] = [
-                { wch: 12 }, // Fecha
-                { wch: 18 }, // Primera Entrada
-                { wch: 18 }, // Última Salida
-                { wch: 18 }, // Tiempo Trabajo
-                { wch: 10 }, // Cantidad
-                { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, // Vacíos
-                { wch: 20 }  // Total
+            // Ajustar anchos (Se eliminó una columna, ajustamos índices)
+            ws['!cols'] = [{
+                    wch: 12
+                }, // Fecha
+                {
+                    wch: 18
+                }, // Primera Entrada
+                {
+                    wch: 18
+                }, // Última Salida
+                {
+                    wch: 10
+                }, // Cantidad
+                {
+                    wch: 10
+                }, {
+                    wch: 10
+                }, {
+                    wch: 10
+                }, {
+                    wch: 10
+                }, // Vacíos
+                {
+                    wch: 20
+                } // Total
             ];
 
-            // Combinar celdas del título
-            ws['!merges'] = [{ s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }];
+            // Combinar celdas del título (ajustado a 8 columnas)
+            ws['!merges'] = [{
+                s: {
+                    r: 1,
+                    c: 0
+                },
+                e: {
+                    r: 1,
+                    c: 7
+                }
+            }];
 
             let nombreHoja = nombreTecnico.replace(/[\\/?*\[\]]/g, "").substring(0, 30);
             XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
@@ -268,7 +346,7 @@
 
         if (hayDatos) {
             let fechaHoy = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-            XLSX.writeFile(workbook, `Resumen_Horas_Tecnicos_${fechaHoy}.xlsx`);
+            XLSX.writeFile(workbook, `Reporte_Servicios_${fechaHoy}.xlsx`);
         }
     }
 </script>

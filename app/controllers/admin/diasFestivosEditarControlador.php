@@ -4,21 +4,24 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/diasFestivosEditarModelo.php';
 
-class DiasFestivosEditarControlador {
-    
+class DiasFestivosEditarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new DiasFestivosEditarModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $errores = [];
         $datos = [];
-        
+
         // Cargar datos GET
         if (isset($_GET['id'])) {
             $datos = $this->modelo->obtenerPorId($_GET['id']);

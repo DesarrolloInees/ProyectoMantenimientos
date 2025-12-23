@@ -5,7 +5,10 @@ class ReporteEjecutivoModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     // 1. Servicios por día
     public function getServiciosPorDia($fecha_inicio, $fecha_fin)
@@ -15,13 +18,12 @@ class ReporteEjecutivoModelo
                     FROM ordenes_servicio 
                     WHERE fecha_visita BETWEEN :inicio AND :fin 
                     GROUP BY fecha_visita ORDER BY fecha_visita ASC";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getServiciosPorDia: " . $e->getMessage());
             return [];
@@ -45,7 +47,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getDelegacionesIntervenidas: " . $e->getMessage());
             return [];
@@ -70,7 +71,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getHorasVsServicios: " . $e->getMessage());
             return [];
@@ -92,7 +92,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getPorTipoMantenimiento: " . $e->getMessage());
             return [];
@@ -114,7 +113,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getDistribucionNovedades: " . $e->getMessage());
             return [];
@@ -136,7 +134,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getServiciosFallidos: " . $e->getMessage());
             return [];
@@ -158,7 +155,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getComparativaRepuestos: " . $e->getMessage());
             return [];
@@ -185,7 +181,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':min', $minServicios, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getPuntosMasVisitados: " . $e->getMessage());
             return [];
@@ -214,7 +209,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':min', $minFallidos, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getPuntosConFallidos: " . $e->getMessage());
             return [];
@@ -234,8 +228,8 @@ class ReporteEjecutivoModelo
                     INNER JOIN calificacion_servicio cs ON os.id_calificacion = cs.id_calificacion
                     WHERE os.fecha_visita BETWEEN :inicio AND :fin
                     GROUP BY cs.nombre_calificacion, cs.id_calificacion
-                    ORDER BY cs.id_calificacion DESC"; 
-            
+                    ORDER BY cs.id_calificacion DESC";
+
             // Nota: Ordenamos por ID DESC para que salga primero la calificación más alta (5, luego 4, etc.)
 
             $stmt = $this->conn->prepare($sql);
@@ -243,7 +237,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getCalificacionesServicio: " . $e->getMessage());
             return [];
@@ -269,7 +262,6 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getTiposMaquinaPorDelegacion: " . $e->getMessage());
             return [];
@@ -298,11 +290,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (PDOException $e) {
             error_log("Error en getServicesFallidosPorDelegacion: " . $e->getMessage());
             return [];
         }
     }
 }
-?>

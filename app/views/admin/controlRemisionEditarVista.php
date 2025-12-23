@@ -43,7 +43,7 @@
                 <select name="estado" class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
                     <option value="DISPONIBLE" <?= ($datos['estado'] == 'DISPONIBLE') ? 'selected' : '' ?>>DISPONIBLE</option>
                     <option value="ANULADA" <?= ($datos['estado'] == 'ANULADA') ? 'selected' : '' ?>>ANULADA</option>
-                    </select>
+                </select>
             </div>
 
             <div class="pt-6 border-t flex justify-end space-x-4">

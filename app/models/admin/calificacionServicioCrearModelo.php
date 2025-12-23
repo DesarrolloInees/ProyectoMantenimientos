@@ -5,7 +5,10 @@ class CalificacionServicioCrearModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function crearCalificacion($nombre)
     {

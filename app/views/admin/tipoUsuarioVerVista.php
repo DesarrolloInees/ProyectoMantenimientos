@@ -2,28 +2,56 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
 <style>
-    .dataTables_length select, .dataTables_filter input { background-color: white !important; border: 1px solid #d1d5db !important; padding: 0.5rem; border-radius: 0.5rem; }
-    .dataTables_wrapper { padding: 1rem 0; }
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        border: 1px solid #d1d5db !important;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+    }
+
+    .dataTables_wrapper {
+        padding: 1rem 0;
+    }
 
     /* Reutilizamos los estilos pro que ya definimos antes */
-    .dataTables_length select, .dataTables_filter input {
-        background-color: white !important; color: #374151 !important;
-        border: 1px solid #d1d5db !important; border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem; margin: 0 0.5rem;
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin: 0 0.5rem;
     }
-    #rolesTable tbody tr { background-color: white !important; }
-    #rolesTable tbody tr:hover { background-color: #f9fafb !important; }
+
+    #rolesTable tbody tr {
+        background-color: white !important;
+    }
+
+    #rolesTable tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
     .dataTables_paginate .paginate_button.current {
-        background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important;
+        background-color: #4f46e5 !important;
+        color: white !important;
+        border-color: #4f46e5 !important;
     }
-    .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type {
-        display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin: 1.5rem 0;
+
+    .dataTables_wrapper>div:first-child,
+    .dataTables_wrapper>div:last-of-type {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1.5rem 0;
     }
 </style>
 
 <div class="w-full max-w-5xl mx-auto">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-        
+
         <div class="flex justify-between items-center mb-6 border-b pb-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-users-cog text-indigo-600 mr-2"></i> Roles de Usuario</h1>
@@ -51,7 +79,7 @@
                                 <td class="py-3 px-4 font-medium text-gray-900"><?= htmlspecialchars($t['nombreTipoUsuario']) ?></td>
                                 <td class="py-3 px-4 text-center flex justify-center space-x-2">
                                     <a href="<?= BASE_URL ?>tipoUsuarioEditar/<?= $t['idTipoUsuario'] ?>" class="p-2 bg-yellow-100 text-yellow-600 rounded-full hover:bg-yellow-200"><i class="fas fa-edit"></i></a>
-                                    <?php if($t['idTipoUsuario'] != 1): ?>
+                                    <?php if ($t['idTipoUsuario'] != 1): ?>
                                         <button onclick="abrirModal(<?= $t['idTipoUsuario'] ?>)" class="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200"><i class="fas fa-trash-alt"></i></button>
                                     <?php endif; ?>
                                 </td>
@@ -61,7 +89,9 @@
                 </table>
             </div>
         <?php else: ?>
-            <div class="text-center p-8 bg-gray-50 rounded-lg"><p class="text-gray-500">No hay roles registrados.</p></div>
+            <div class="text-center p-8 bg-gray-50 rounded-lg">
+                <p class="text-gray-500">No hay roles registrados.</p>
+            </div>
         <?php endif; ?>
     </div>
 </div>
@@ -81,7 +111,20 @@
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
 <script>
-    $(document).ready(function() { $('#rolesTable').DataTable({ language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' } }); });
-    function abrirModal(id) { document.getElementById('btnConfirmar').href = "<?= BASE_URL ?>tipoUsuarioEliminar/" + id; document.getElementById('modalEliminar').classList.remove('hidden'); }
-    function cerrarModal() { document.getElementById('modalEliminar').classList.add('hidden'); }
+    $(document).ready(function() {
+        $('#rolesTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+            }
+        });
+    });
+
+    function abrirModal(id) {
+        document.getElementById('btnConfirmar').href = "<?= BASE_URL ?>tipoUsuarioEliminar/" + id;
+        document.getElementById('modalEliminar').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalEliminar').classList.add('hidden');
+    }
 </script>

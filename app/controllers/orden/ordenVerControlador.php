@@ -5,7 +5,8 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 // 1. IMPORTAR ARCHIVOS NECESARIOS (Sin esto, PHP no encuentra las clases)
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/orden/ordenVerModelo.php';
-class ordenVerControlador {
+class ordenVerControlador
+{
     private $modelo;
     private $db;
 
@@ -21,17 +22,20 @@ class ordenVerControlador {
 
     // AGREGA ESTA FUNCIÓN AQUÍ 👇
     // Sirve de puente: si el router busca "index", lo manda a "cargarVista"
-    public function index() {
+    public function index()
+    {
         $this->cargarVista();
     }
 
-    public function cargarVista() {
+    public function cargarVista()
+    {
         $titulo = "Historial por Días";
         $vistaContenido = "app/views/orden/ordenVerVista.php";
         include "app/views/plantillaVista.php";
     }
 
-    public function ajaxListar() {
+    public function ajaxListar()
+    {
         ob_clean();
         header('Content-Type: application/json');
         // Llamamos al método por fecha
@@ -40,4 +44,3 @@ class ordenVerControlador {
         exit;
     }
 }
-?>

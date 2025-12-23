@@ -4,20 +4,26 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/maquinaEditarModelo.php';
 
-class maquinaEditarControlador {
-    
+class maquinaEditarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new MaquinaEditarModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $id = $_GET['id'] ?? $_POST['id_maquina'] ?? null;
-        if (!$id) { header("Location: " . BASE_URL . "maquinaVer"); exit(); }
+        if (!$id) {
+            header("Location: " . BASE_URL . "maquinaVer");
+            exit();
+        }
 
         $errores = [];
         $datos = [];
@@ -41,7 +47,10 @@ class maquinaEditarControlador {
 
         if (empty($datos)) {
             $datos = $this->modelo->obtenerMaquinaPorId($id);
-            if (!$datos) { header("Location: " . BASE_URL . "maquinaVer"); exit(); }
+            if (!$datos) {
+                header("Location: " . BASE_URL . "maquinaVer");
+                exit();
+            }
         }
 
         $listaPuntos = $this->modelo->obtenerPuntos();

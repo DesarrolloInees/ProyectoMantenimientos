@@ -4,18 +4,21 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/maquinaCrearModelo.php';
 
-class maquinaCrearControlador {
-    
+class maquinaCrearControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new MaquinaCrearModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $errores = [];
         $datos = [];
 

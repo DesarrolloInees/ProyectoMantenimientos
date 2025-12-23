@@ -5,18 +5,37 @@
 
 <style>
     /* Reutilizamos los estilos pro que ya definimos antes */
-    .dataTables_length select, .dataTables_filter input {
-        background-color: white !important; color: #374151 !important;
-        border: 1px solid #d1d5db !important; border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem; margin: 0 0.5rem;
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin: 0 0.5rem;
     }
-    #clientesTable tbody tr { background-color: white !important; }
-    #clientesTable tbody tr:hover { background-color: #f9fafb !important; }
+
+    #clientesTable tbody tr {
+        background-color: white !important;
+    }
+
+    #clientesTable tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
     .dataTables_paginate .paginate_button.current {
-        background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important;
+        background-color: #4f46e5 !important;
+        color: white !important;
+        border-color: #4f46e5 !important;
     }
-    .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type {
-        display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin: 1.5rem 0;
+
+    .dataTables_wrapper>div:first-child,
+    .dataTables_wrapper>div:last-of-type {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1.5rem 0;
     }
 </style>
 
@@ -90,7 +109,9 @@
                     </div>
                     <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                         <h3 class="text-lg leading-6 font-medium text-gray-900">Eliminar Cliente</h3>
-                        <div class="mt-2"><p class="text-sm text-gray-500">¿Estás seguro? Se ocultará el cliente y sus puntos asociados podrían quedar inaccesibles.</p></div>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">¿Estás seguro? Se ocultará el cliente y sus puntos asociados podrían quedar inaccesibles.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -108,12 +129,19 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script>
     $(document).ready(function() {
-        $('#clientesTable').DataTable({ responsive: true, language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' } });
+        $('#clientesTable').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+            }
+        });
     });
+
     function abrirModal(id) {
         document.getElementById('btnConfirmar').href = "<?= BASE_URL ?>clienteEliminar/" + id;
         document.getElementById('modalEliminar').classList.remove('hidden');
     }
+
     function cerrarModal() {
         document.getElementById('modalEliminar').classList.add('hidden');
     }

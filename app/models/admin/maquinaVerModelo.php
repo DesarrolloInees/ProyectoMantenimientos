@@ -5,7 +5,10 @@ class MaquinaVerModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function obtenerMaquinas()
     {
@@ -19,7 +22,7 @@ class MaquinaVerModelo
                 INNER JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
                 WHERE m.estado = 1
                 ORDER BY m.id_maquina DESC";
-        
+
         return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 

@@ -4,20 +4,26 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/admin/delegacionEditarModelo.php';
 
-class delegacionEditarControlador {
-    
+class delegacionEditarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new DelegacionEditarModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         $id = $_GET['id'] ?? $_POST['id_delegacion'] ?? null;
-        if (!$id) { header("Location: " . BASE_URL . "delegacionVer"); exit(); }
+        if (!$id) {
+            header("Location: " . BASE_URL . "delegacionVer");
+            exit();
+        }
 
         $errores = [];
         $datos = [];
@@ -41,7 +47,10 @@ class delegacionEditarControlador {
 
         if (empty($datos)) {
             $datos = $this->modelo->obtenerDelegacionPorId($id);
-            if (!$datos) { header("Location: " . BASE_URL . "delegacionVer"); exit(); }
+            if (!$datos) {
+                header("Location: " . BASE_URL . "delegacionVer");
+                exit();
+            }
         }
 
         $titulo = "Editar Delegación";

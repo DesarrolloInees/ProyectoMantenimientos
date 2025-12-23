@@ -12,8 +12,8 @@
             </div>
 
             <?php if (!empty($datosDia)): ?>
-                <a href="<?= BASE_URL ?>generarReporte?inicio=<?= $filtros['fecha_inicio'] ?>&fin=<?= $filtros['fecha_fin'] ?>" 
-                    target="_blank" 
+                <a href="<?= BASE_URL ?>generarReporte?inicio=<?= $filtros['fecha_inicio'] ?>&fin=<?= $filtros['fecha_fin'] ?>"
+                    target="_blank"
                     class="bg-red-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-red-700 shadow flex items-center gap-2 transform hover:scale-105 transition text-sm">
                     <i class="fas fa-file-pdf"></i> Descargar PDF
                 </a>
@@ -21,8 +21,8 @@
         </div>
 
         <form action="<?= BASE_URL ?>reporteEjecutivo" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div class="hidden md:block"></div> 
-            
+            <div class="hidden md:block"></div>
+
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Desde</label>
                 <input type="date" name="fecha_inicio" value="<?= $filtros['fecha_inicio'] ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700">
@@ -56,7 +56,7 @@
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Servicios</p>
                 <p class="text-3xl font-extrabold text-blue-600 mt-1"><?= number_format($totalServicios) ?></p>
             </div>
-            
+
             <div class="bg-white p-4 rounded-xl shadow border-l-4 border-indigo-500 flex flex-col items-center justify-center">
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider text-center">Promedio Diario x Técnico</p>
                 <p class="text-3xl font-extrabold text-indigo-600 mt-1"><?= $mediaDiaria ?></p>
@@ -75,7 +75,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            
+
             <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100">
                 <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Evolución Diaria de Servicios</h3>
                 <div class="relative h-64 w-full">
@@ -125,11 +125,11 @@
 
 <script>
     // 1. Convertir PHP Arrays a JS Objects
-    const dataDias      = <?= json_encode($datosDia ?? []) ?>;
-    const dataTipo      = <?= json_encode($datosTipo ?? []) ?>;
-    const dataEstado    = <?= json_encode($datosEstado ?? []) ?>;
-    const dataDelegacion= <?= json_encode($datosDelegacion ?? []) ?>;
-    const dataTecnico   = <?= json_encode($datosHoras ?? []) ?>;
+    const dataDias = <?= json_encode($datosDia ?? []) ?>;
+    const dataTipo = <?= json_encode($datosTipo ?? []) ?>;
+    const dataEstado = <?= json_encode($datosEstado ?? []) ?>;
+    const dataDelegacion = <?= json_encode($datosDelegacion ?? []) ?>;
+    const dataTecnico = <?= json_encode($datosHoras ?? []) ?>;
     const dataRepuestos = <?= json_encode($datosRepuestos ?? []) ?>;
 
     // Configuración Global de Fuente para ChartJS
@@ -137,7 +137,7 @@
     Chart.defaults.color = '#4b5563';
 
     // A. GRÁFICO DIAS (Línea)
-    if(document.getElementById('chartDias')){
+    if (document.getElementById('chartDias')) {
         new Chart(document.getElementById('chartDias'), {
             type: 'line',
             data: {
@@ -155,12 +155,15 @@
                     borderWidth: 2
                 }]
             },
-            options: { maintainAspectRatio: false, responsive: true }
+            options: {
+                maintainAspectRatio: false,
+                responsive: true
+            }
         });
     }
 
     // B. TIPO MANTENIMIENTO (Pie)
-    if(document.getElementById('chartTipo')){
+    if (document.getElementById('chartTipo')) {
         new Chart(document.getElementById('chartTipo'), {
             type: 'pie',
             data: {
@@ -171,12 +174,15 @@
                     borderWidth: 0
                 }]
             },
-            options: { maintainAspectRatio: false, responsive: true }
+            options: {
+                maintainAspectRatio: false,
+                responsive: true
+            }
         });
     }
 
     // C. ESTADO (Doughnut)
-    if(document.getElementById('chartEstado')){
+    if (document.getElementById('chartEstado')) {
         new Chart(document.getElementById('chartEstado'), {
             type: 'doughnut',
             data: {
@@ -187,12 +193,15 @@
                     borderWidth: 0
                 }]
             },
-            options: { maintainAspectRatio: false, responsive: true }
+            options: {
+                maintainAspectRatio: false,
+                responsive: true
+            }
         });
     }
 
     // D. DELEGACIONES (Bar Horizontal)
-    if(document.getElementById('chartDelegacion')){
+    if (document.getElementById('chartDelegacion')) {
         new Chart(document.getElementById('chartDelegacion'), {
             type: 'bar',
             data: {
@@ -204,17 +213,21 @@
                     borderRadius: 4
                 }]
             },
-            options: { 
+            options: {
                 indexAxis: 'y',
-                maintainAspectRatio: false, 
+                maintainAspectRatio: false,
                 responsive: true,
-                scales: { x: { beginAtZero: true } }
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
             }
         });
     }
 
     // E. TÉCNICOS (Bar Vertical)
-    if(document.getElementById('chartTecnico')){
+    if (document.getElementById('chartTecnico')) {
         new Chart(document.getElementById('chartTecnico'), {
             type: 'bar',
             data: {
@@ -236,20 +249,38 @@
                     yAxisID: 'y1'
                 }]
             },
-            options: { 
-                maintainAspectRatio: false, 
+            options: {
+                maintainAspectRatio: false,
                 responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                scales: { 
-                    y: { beginAtZero: true, title: {display: true, text: 'Cant. Servicios'} },
-                    y1: { position: 'right', grid: {drawOnChartArea: false}, title: {display: true, text: 'Horas'} }
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Cant. Servicios'
+                        }
+                    },
+                    y1: {
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Horas'
+                        }
+                    }
                 }
             }
         });
     }
 
     // F. REPUESTOS (Pie)
-    if(document.getElementById('chartRepuestos')){
+    if (document.getElementById('chartRepuestos')) {
         // Validación para evitar gráfico vacío
         const labelsRep = dataRepuestos.length ? dataRepuestos.map(i => i.origen) : ['Sin Datos'];
         const valuesRep = dataRepuestos.length ? dataRepuestos.map(i => i.total) : [1];
@@ -265,7 +296,10 @@
                     borderWidth: 0
                 }]
             },
-            options: { maintainAspectRatio: false, responsive: true }
+            options: {
+                maintainAspectRatio: false,
+                responsive: true
+            }
         });
     }
 </script>

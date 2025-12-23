@@ -60,7 +60,6 @@ class UsuarioCrearModelo
             $stmt->bindParam(':nivel_acceso', $datos['nivel_acceso'], PDO::PARAM_INT);
 
             return $stmt->execute();
-
         } catch (PDOException $e) {
             // Esto guardará el error exacto en tu log de errores de PHP (xampp/apache/logs/error.log)
             error_log("Error Base de Datos (crearUsuario): " . $e->getMessage());

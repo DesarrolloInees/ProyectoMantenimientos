@@ -5,20 +5,27 @@
 <style>
     /* Ajustes para que Select2 se parezca a los inputs de Tailwind */
     .select2-container .select2-selection--single {
-        height: 46px !important; /* Altura similar a py-3 */
-        border: 1px solid #d1d5db !important; /* gray-300 */
-        border-radius: 0.5rem !important; /* rounded-lg */
+        height: 46px !important;
+        /* Altura similar a py-3 */
+        border: 1px solid #d1d5db !important;
+        /* gray-300 */
+        border-radius: 0.5rem !important;
+        /* rounded-lg */
         display: flex;
         align-items: center;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 44px !important;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: #374151; /* gray-700 */
+        color: #374151;
+        /* gray-700 */
         padding-left: 0.75rem;
         width: 100%;
     }
+
     /* Color del anillo de foco (simulando Indigo-500 de Tailwind) */
     .select2-container--default.select2-container--focus .select2-selection--single {
         border-color: #6366f1 !important;
@@ -41,7 +48,7 @@
         <?php endif; ?>
 
         <form action="<?= BASE_URL ?>maquinaCrear" method="POST" class="space-y-6">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Device ID (Serial) <span class="text-red-500">*</span></label>

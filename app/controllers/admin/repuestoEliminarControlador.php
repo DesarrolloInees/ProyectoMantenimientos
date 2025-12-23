@@ -5,18 +5,21 @@ require_once __DIR__ . '/../../config/conexion.php';
 // Reutilizamos el modelo de Ver porque ahí está la función de eliminar
 require_once __DIR__ . '/../../models/admin/repuestoVerModelo.php';
 
-class repuestoEliminarControlador {
-    
+class repuestoEliminarControlador
+{
+
     private $modelo;
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new RepuestoVerModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         // Obtenemos el ID de la URL (repuestoEliminar/10)
         $id = $_GET['id'] ?? null;
 
@@ -29,4 +32,3 @@ class repuestoEliminarControlador {
         exit();
     }
 }
-?>

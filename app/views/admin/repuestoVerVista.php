@@ -14,25 +14,39 @@
         padding: 0.5rem 0.75rem;
         margin: 0 0.5rem;
     }
-    .dataTables_length label, .dataTables_filter label {
+
+    .dataTables_length label,
+    .dataTables_filter label {
         color: #4b5563 !important;
         font-weight: 500;
-        display: flex; align-items: center;
+        display: flex;
+        align-items: center;
     }
-    #repuestosTable tbody tr { background-color: white !important; }
-    #repuestosTable tbody tr:hover { background-color: #f9fafb !important; }
-    
+
+    #repuestosTable tbody tr {
+        background-color: white !important;
+    }
+
+    #repuestosTable tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
     .dataTables_paginate .paginate_button.current,
     .dataTables_paginate .paginate_button:hover {
         background-color: #4f46e5 !important;
         color: white !important;
         border-color: #4f46e5 !important;
     }
+
     /* Controles responsive */
     .dataTables_wrapper>div:first-child,
     .dataTables_wrapper>div:last-of-type {
-        display: flex; flex-wrap: wrap; justify-content: space-between;
-        align-items: center; gap: 1rem; margin: 1.5rem 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin: 1.5rem 0;
     }
 </style>
 
@@ -85,13 +99,13 @@
                                 </td>
                                 <td class="py-4 px-4 text-center whitespace-nowrap">
                                     <div class="flex justify-center items-center space-x-2">
-                                        <a href="<?= BASE_URL ?>repuestoEditar/<?= $r['id_repuesto'] ?>" 
-                                           class="p-2 w-8 h-8 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-full hover:bg-yellow-200 transition-colors border border-yellow-200" title="Editar">
+                                        <a href="<?= BASE_URL ?>repuestoEditar/<?= $r['id_repuesto'] ?>"
+                                            class="p-2 w-8 h-8 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-full hover:bg-yellow-200 transition-colors border border-yellow-200" title="Editar">
                                             <i class="fas fa-edit text-xs"></i>
                                         </a>
-                                        
-                                        <button onclick="abrirModalEliminar(<?= $r['id_repuesto'] ?>)" 
-                                                class="p-2 w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors border border-red-200" title="Eliminar">
+
+                                        <button onclick="abrirModalEliminar(<?= $r['id_repuesto'] ?>)"
+                                            class="p-2 w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors border border-red-200" title="Eliminar">
                                             <i class="fas fa-trash-alt text-xs"></i>
                                         </button>
                                     </div>
@@ -169,7 +183,7 @@
         // Actualizamos el enlace del botón rojo con el ID correcto
         const urlBase = "<?= BASE_URL ?>";
         document.getElementById('btnConfirmarEliminar').href = urlBase + "repuestoEliminar/" + id;
-        
+
         // Mostramos el modal
         document.getElementById('modalEliminar').classList.remove('hidden');
     }

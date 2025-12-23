@@ -5,7 +5,10 @@ class ReporteTecnicoModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function obtenerTecnicos()
     {
@@ -44,18 +47,17 @@ class ReporteTecnicoModelo
             $sql .= " ORDER BY t.nombre_tecnico ASC, os.fecha_visita DESC, os.hora_entrada ASC"; // Ordenamos por hora también
 
             $stmt = $this->conn->prepare($sql);
-            
+
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
-            
+
             if (!empty($id_tecnico)) {
                 $stmt->bindParam(':id_tecnico', $id_tecnico, PDO::PARAM_INT);
             }
 
             $stmt->execute();
-            
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Error en reporte técnico: " . $e->getMessage());
             return [];

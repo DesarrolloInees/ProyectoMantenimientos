@@ -1,15 +1,15 @@
 <?php
 // --- CONFIGURACIÓN ---
-ini_set('memory_limit', '1024M'); 
-set_time_limit(600); 
+ini_set('memory_limit', '1024M');
+set_time_limit(600);
 
 $host = 'localhost';
-$user = 'root'; 
-$pass = ''; 
-$db   = 'inees_mantenimientos'; 
+$user = 'root';
+$pass = '';
+$db   = 'inees_mantenimientos';
 
 $mensaje = "";
-$errores_log = []; 
+$errores_log = [];
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -55,19 +55,19 @@ while ($row = $res->fetch_assoc()) {
 // PASO 2: PROCESAR EL CSV
 // =========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
-    
+
     if ($_FILES['archivo_csv']['error'] === UPLOAD_ERR_OK) {
         $ruta = $_FILES['archivo_csv']['tmp_name'];
         $handle = fopen($ruta, "r");
-        
+
         $insertados = 0;
         $fila_num = 0;
-        
+
         $stmt = $mysqli->prepare("INSERT IGNORE INTO punto (nombre_punto, direccion, codigo_1, codigo_2, id_municipio, id_cliente) VALUES (?, ?, ?, ?, ?, ?)");
-        
+
         $col = ['nom' => -1, 'dir' => -1, 'c1' => -1, 'c2' => -1, 'mun' => -1, 'cli' => -1, 'del' => -1];
 
-        $mysqli->begin_transaction(); 
+        $mysqli->begin_transaction();
 
         try {
             while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                 // --- DATOS ---
                 $raw_nombre = trim(mb_convert_encoding($data[$col['nom']], 'UTF-8', 'ISO-8859-1'));
                 $raw_cli    = mb_strtoupper(trim(mb_convert_encoding($data[$col['cli']], 'UTF-8', 'ISO-8859-1')));
-                
+
                 // Si el nombre del punto está vacío, saltamos
                 if (empty($raw_nombre)) continue;
 
@@ -117,25 +117,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                 // 1. Intentamos buscar el nombre exacto si existe
                 if (isset($mapa_municipios[$raw_mun])) {
                     $id_municipio_final = $mapa_municipios[$raw_mun];
-                } 
+                }
                 // 2. Si no, intentamos con la Delegación (como plan B si es que existe como municipio)
                 elseif (isset($mapa_municipios[$raw_del])) {
                     $id_municipio_final = $mapa_municipios[$raw_del];
                 }
-                
+
                 // NOTA: Si ninguno coincide, se queda con $id_muni_default ("SIN DEFINIR")
                 // Así que NUNCA fallará por culpa del municipio.
 
                 // --- INSERTAR ---
                 $stmt->bind_param("ssssii", $raw_nombre, $raw_dir, $raw_c1, $raw_c2, $id_municipio_final, $id_cliente_final);
                 $stmt->execute();
-                
+
                 if ($stmt->affected_rows > 0) $insertados++;
             }
-            
+
             $mysqli->commit();
             $mensaje = "<div class='exito'>✅ <strong>¡IMPORTACIÓN FINALIZADA!</strong><br>Puntos insertados correctamente: <strong>$insertados</strong><br><small>(Los puntos sin municipio se guardaron como 'SIN DEFINIR')</small></div>";
-
         } catch (Exception $e) {
             $mysqli->rollback();
             $mensaje = "<div class='error'>❌ Error Fatal: " . $e->getMessage() . "</div>";
@@ -149,24 +148,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Importador Puntos (Modo Seguro)</title>
     <style>
-        body { font-family: sans-serif; background: #eef2f5; padding: 20px; }
-        .container { background: white; padding: 30px; border-radius: 10px; max-width: 900px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn { background: #007bff; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
-        .btn:hover { background: #0069d9; }
-        .exito { background: #d4edda; color: #155724; padding: 20px; border-radius: 5px; text-align: center; margin-bottom: 20px; font-size: 1.2em; }
-        .error { background: #f8d7da; color: #721c24; padding: 20px; border-radius: 5px; text-align: center; margin-bottom: 20px; }
-        .log-box { max-height: 200px; overflow-y: auto; background: #333; color: #f8d7da; padding: 15px; border-radius: 5px; font-family: monospace; margin-top: 20px; }
+        body {
+            font-family: sans-serif;
+            background: #eef2f5;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 900px;
+            margin: auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #0069d9;
+        }
+
+        .exito {
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .log-box {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #333;
+            color: #f8d7da;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 20px;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1 style="text-align: center; color: #333;">📍 Carga de Puntos (Sin Bloqueos)</h1>
         <p style="text-align: center;">Si un punto no tiene municipio, se guardará como <strong>"SIN DEFINIR"</strong> automáticamente.</p>
-        
+
         <?= $mensaje ?>
 
         <form method="POST" enctype="multipart/form-data">
@@ -186,4 +240,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
         <?php endif; ?>
     </div>
 </body>
+
 </html>

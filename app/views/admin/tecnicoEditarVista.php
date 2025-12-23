@@ -26,7 +26,7 @@
                 <label class="block text-sm font-bold text-gray-700 mb-1">Nombre Completo <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-user text-gray-400"></i></div>
-                    <input type="text" name="nombre_tecnico" required 
+                    <input type="text" name="nombre_tecnico" required
                         value="<?= htmlspecialchars($datos['nombre_tecnico']) ?>"
                         class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500">
                 </div>

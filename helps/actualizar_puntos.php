@@ -23,20 +23,20 @@ $mapaMantenimiento = [
 // 1. MODIFICADO: Ahora traemos también el NOMBRE y la FECHA ACTUAL para el reporte
 // Hacemos JOIN con 'punto' de una vez para tener el nombre a la mano
 $sqlInfoPunto = "SELECT p.id_punto, p.nombre_punto, p.fecha_ultima_visita 
-                 FROM maquina m 
-                 INNER JOIN punto p ON m.id_punto = p.id_punto 
-                 WHERE m.device_id = ? LIMIT 1";
+                    FROM maquina m 
+                    INNER JOIN punto p ON m.id_punto = p.id_punto 
+                    WHERE m.device_id = ? LIMIT 1";
 $stmtInfo = $pdo->prepare($sqlInfoPunto);
 
 // 2. El Update (ya sin la condición de fecha en el WHERE, porque la validamos en PHP)
 $sqlActualizar = "UPDATE punto 
-                  SET fecha_ultima_visita = ?, 
-                      id_ultimo_tipo_mantenimiento = ? 
-                  WHERE id_punto = ?";
+                    SET fecha_ultima_visita = ?, 
+                        id_ultimo_tipo_mantenimiento = ? 
+                    WHERE id_punto = ?";
 $stmtUpdate = $pdo->prepare($sqlActualizar);
 
 
-$archivoCsv = __DIR__ . '/CONSOLIDADO INEES actualizado (1).csv'; 
+$archivoCsv = __DIR__ . '/CONSOLIDADO INEES actualizado (1).csv';
 
 if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
     fgetcsv($handle, 1000, ";"); // Saltar header
@@ -44,7 +44,7 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
     // Contadores
     $leidos = 0;
     $actualizados = 0;
-    
+
     // Arrays para el reporte
     $reporteOmitidos = []; // Puntos que ya tenían fecha más reciente
     $reporteNoEncontrados = []; // Device IDs que no existen en BD
@@ -54,7 +54,7 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
     try {
         while (($datos = fgetcsv($handle, 1000, ";")) !== FALSE) {
             $leidos++;
-            
+
             $device_id = trim($datos[0]);
             $fechaRaw  = trim($datos[1]);
             $tipoRaw   = trim(strtoupper($datos[4]));
@@ -73,7 +73,7 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
                 elseif (strpos($tipoRaw, 'PREVENTIVO') !== false) $idTipoMant = 1;
                 elseif (strpos($tipoRaw, 'CORRECTIVO') !== false || strpos($tipoRaw, 'CORECTIVO') !== false) $idTipoMant = 3;
             }
-            if (!$idTipoMant) continue; 
+            if (!$idTipoMant) continue;
 
             // --- LÓGICA DE REPORTE ---
 
@@ -89,13 +89,12 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
                 // 2. Comparar fechas
                 // ¿La fecha del CSV es mayor a la de la BD? (O la BD está vacía)
                 if ($fechaActualBD === null || $fechaCSV > $fechaActualBD) {
-                    
+
                     // ACTUALIZAR
                     $stmtUpdate->execute([$fechaCSV, $idTipoMant, $idPunto]);
                     $actualizados++;
-
                 } else {
-                    
+
                     // NO ACTUALIZAR (Reportar)
                     // Guardamos los datos para mostrar la tabla al final
                     $reporteOmitidos[] = [
@@ -105,14 +104,12 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
                         'fecha_bd'  => $fechaActualBD // La que ya tenía (más reciente)
                     ];
                 }
-
             } else {
                 // Device ID no existe
                 $reporteNoEncontrados[] = $device_id;
             }
         }
         $pdo->commit();
-
     } catch (Exception $e) {
         $pdo->rollBack();
         echo "Error: " . $e->getMessage();
@@ -120,15 +117,41 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
     fclose($handle);
 
     // --- MOSTRAR RESULTADOS EN HTML ---
-    ?>
-    
+?>
+
     <style>
-        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-family: Arial, sans-serif; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .success { color: green; font-weight: bold; }
-        .warning { color: orange; font-weight: bold; }
-        .danger { color: red; font-weight: bold; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: orange;
+            font-weight: bold;
+        }
+
+        .danger {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 
     <h2>Resumen del Proceso</h2>
@@ -152,12 +175,12 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
             </thead>
             <tbody>
                 <?php foreach ($reporteOmitidos as $item): ?>
-                <tr>
-                    <td><?php echo $item['device']; ?></td>
-                    <td><?php echo $item['punto']; ?></td>
-                    <td><?php echo $item['fecha_csv']; ?></td>
-                    <td style="background-color: #e6fffa; font-weight:bold;"><?php echo $item['fecha_bd']; ?></td>
-                </tr>
+                    <tr>
+                        <td><?php echo $item['device']; ?></td>
+                        <td><?php echo $item['punto']; ?></td>
+                        <td><?php echo $item['fecha_csv']; ?></td>
+                        <td style="background-color: #e6fffa; font-weight:bold;"><?php echo $item['fecha_bd']; ?></td>
+                    </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
@@ -170,7 +193,7 @@ if (($handle = fopen($archivoCsv, "r")) !== FALSE) {
         </div>
     <?php endif; ?>
 
-    <?php
+<?php
 } else {
     echo "No se pudo abrir el archivo CSV.";
 }

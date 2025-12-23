@@ -5,7 +5,10 @@ class MaquinaCrearModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function crearMaquina($datos)
     {
@@ -15,19 +18,18 @@ class MaquinaCrearModelo
                     ) VALUES (
                         :dev, :punto, :tipo, :visita, 1
                     )";
-            
+
             $stmt = $this->conn->prepare($sql);
-            
+
             $stmt->bindParam(':dev', $datos['device_id']);
             $stmt->bindParam(':punto', $datos['id_punto'], PDO::PARAM_INT);
             $stmt->bindParam(':tipo', $datos['id_tipo_maquina'], PDO::PARAM_INT);
-            
+
             // Si fecha viene vacía, enviamos NULL
             $visita = !empty($datos['ultima_visita']) ? $datos['ultima_visita'] : null;
             $stmt->bindParam(':visita', $visita);
-            
-            return $stmt->execute();
 
+            return $stmt->execute();
         } catch (PDOException $e) {
             // Código 23000 = Violación de índice único (Device ID repetido)
             if ($e->getCode() == '23000') {
@@ -38,7 +40,8 @@ class MaquinaCrearModelo
     }
 
     // Helpers para llenar listas
-    public function obtenerPuntos() {
+    public function obtenerPuntos()
+    {
         // Traemos nombre punto y cliente para que sea fácil identificar
         $sql = "SELECT p.id_punto, p.nombre_punto, c.nombre_cliente 
                 FROM punto p 
@@ -48,7 +51,8 @@ class MaquinaCrearModelo
         return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function obtenerTipos() {
+    public function obtenerTipos()
+    {
         return $this->conn->query("SELECT * FROM tipo_maquina WHERE estado = 1 ORDER BY nombre_tipo_maquina ASC")->fetchAll(PDO::FETCH_ASSOC);
     }
 }

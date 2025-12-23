@@ -2,28 +2,56 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
 <style>
-    .dataTables_length select, .dataTables_filter input { background-color: white !important; border: 1px solid #d1d5db !important; padding: 0.5rem; border-radius: 0.5rem; }
-    .dataTables_wrapper { padding: 1rem 0; }
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        border: 1px solid #d1d5db !important;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+    }
+
+    .dataTables_wrapper {
+        padding: 1rem 0;
+    }
 
     /* Reutilizamos los estilos pro que ya definimos antes */
-    .dataTables_length select, .dataTables_filter input {
-        background-color: white !important; color: #374151 !important;
-        border: 1px solid #d1d5db !important; border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem; margin: 0 0.5rem;
+    .dataTables_length select,
+    .dataTables_filter input {
+        background-color: white !important;
+        color: #374151 !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin: 0 0.5rem;
     }
-    #tecnicosTable tbody tr { background-color: white !important; }
-    #tecnicosTable tbody tr:hover { background-color: #f9fafb !important; }
+
+    #tecnicosTable tbody tr {
+        background-color: white !important;
+    }
+
+    #tecnicosTable tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
     .dataTables_paginate .paginate_button.current {
-        background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important;
+        background-color: #4f46e5 !important;
+        color: white !important;
+        border-color: #4f46e5 !important;
     }
-    .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type {
-        display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin: 1.5rem 0;
+
+    .dataTables_wrapper>div:first-child,
+    .dataTables_wrapper>div:last-of-type {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1.5rem 0;
     }
 </style>
 
 <div class="w-full max-w-5xl mx-auto">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-        
+
         <div class="flex justify-between items-center mb-6 border-b pb-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-users-cog text-indigo-600 mr-2"></i> Técnicos</h1>
@@ -59,7 +87,9 @@
                 </table>
             </div>
         <?php else: ?>
-            <div class="text-center p-8 bg-gray-50 rounded-lg"><p class="text-gray-500">No hay técnicos registrados.</p></div>
+            <div class="text-center p-8 bg-gray-50 rounded-lg">
+                <p class="text-gray-500">No hay técnicos registrados.</p>
+            </div>
         <?php endif; ?>
     </div>
 </div>
@@ -79,7 +109,20 @@
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
 <script>
-    $(document).ready(function() { $('#tecnicosTable').DataTable({ language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' } }); });
-    function abrirModal(id) { document.getElementById('btnConfirmar').href = "<?= BASE_URL ?>tecnicoEliminar/" + id; document.getElementById('modalEliminar').classList.remove('hidden'); }
-    function cerrarModal() { document.getElementById('modalEliminar').classList.add('hidden'); }
+    $(document).ready(function() {
+        $('#tecnicosTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+            }
+        });
+    });
+
+    function abrirModal(id) {
+        document.getElementById('btnConfirmar').href = "<?= BASE_URL ?>tecnicoEliminar/" + id;
+        document.getElementById('modalEliminar').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalEliminar').classList.add('hidden');
+    }
 </script>

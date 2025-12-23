@@ -7,21 +7,24 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/login/loginModelo.php';
 
-class ProcesarCambioPasswordControlador {
-    
+class ProcesarCambioPasswordControlador
+{
+
     private $db;
     private $modelo;
 
-    public function __construct() {
+    public function __construct()
+    {
         // 1. SOLUCIÓN AL ERROR: Creamos la conexión aquí mismo
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
-        
+
         // 2. Instanciamos el modelo con la conexión segura
         $this->modelo = new LoginModelo($this->db);
     }
 
-    public function index() {
+    public function index()
+    {
         // Verificar sesión
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -41,7 +44,7 @@ class ProcesarCambioPasswordControlador {
         }
 
         // --- RECOLECCIÓN Y LÓGICA ---
-        
+
         $nuevaPass = $_POST['nueva_password'] ?? '';
         $confirmPass = $_POST['confirmar_password'] ?? '';
         $userId = (int)$_SESSION['temp_user_id'];
@@ -55,7 +58,7 @@ class ProcesarCambioPasswordControlador {
         // 2. VALIDACIÓN: Seguridad (Regex)
         // Obtenemos parámetro de longitud mínima (valor por defecto 8)
         $longitudMinima = (int)$this->modelo->obtenerParametro('password_min_longitud', '8');
-        
+
         $regex = "/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{" . $longitudMinima . ",}$/";
 
         if (!preg_match($regex, $nuevaPass)) {
@@ -68,7 +71,7 @@ class ProcesarCambioPasswordControlador {
 
         if ($actualizado) {
             // ÉXITO: Limpiamos sesión y mandamos al login
-            session_destroy(); 
+            session_destroy();
             header('Location: ' . BASE_URL . 'login?exito=cambio_ok');
             exit();
         } else {
@@ -78,4 +81,3 @@ class ProcesarCambioPasswordControlador {
         }
     }
 }
-?>

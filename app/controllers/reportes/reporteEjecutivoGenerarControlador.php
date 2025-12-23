@@ -2,13 +2,13 @@
 if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 require_once __DIR__ . '/../../../vendor/autoload.php';
-require_once __DIR__ . '/../../config/conexion.php'; 
+require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/reportes/ReporteEjecutivoModelo.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-class generarReporteControlador 
+class generarReporteControlador
 {
     private $modelo;
     private $db;
@@ -20,7 +20,7 @@ class generarReporteControlador
         $this->modelo = new ReporteEjecutivoModelo($this->db);
     }
 
-    public function index() 
+    public function index()
     {
         // 1. Obtener Fechas
         $inicio = $_GET['inicio'] ?? date('Y-m-01');
@@ -34,7 +34,7 @@ class generarReporteControlador
         $datosTecnico    = $this->modelo->getHorasVsServicios($inicio, $fin);
         $datosEstado     = $this->modelo->getServiciosFallidos($inicio, $fin);
         $datosRepuestos  = $this->modelo->getComparativaRepuestos($inicio, $fin);
-        
+
         // NUEVOS DATOS
         $datosPuntosMasVisitados = $this->modelo->getPuntosMasVisitados($inicio, $fin);
         $datosPuntosFallidos = $this->modelo->getPuntosConFallidos($inicio, $fin);
@@ -54,14 +54,14 @@ class generarReporteControlador
 
         // Pie chart mejorado para tipos
         $graficas['tipo'] = $this->generarGraficaPie(
-            $datosTipo, 
-            'tipo', 
+            $datosTipo,
+            'tipo',
             'Distribución por Tipo de Mantenimiento'
         );
 
         // Top 15 Técnicos con colores degradados
-        usort($datosTecnico, function($a, $b) { 
-            return $b['total_servicios'] - $a['total_servicios']; 
+        usort($datosTecnico, function ($a, $b) {
+            return $b['total_servicios'] - $a['total_servicios'];
         });
         $topTecnicos = array_slice($datosTecnico, 0, 15);
         $graficas['tecnicos'] = $this->generarGraficaTecnicos($topTecnicos);
@@ -80,35 +80,35 @@ class generarReporteControlador
 
         // 4. Calcular KPIs
         $totalServicios = array_sum(array_column($datosDia, 'total'));
-        
+
         // Calcular días del período
         $fecha1 = new DateTime($inicio);
         $fecha2 = new DateTime($fin);
         $cantidadDias = $fecha1->diff($fecha2)->days + 1;
 
         $numTecnicos = count($datosTecnico);
-        
+
         // Media Global por técnico
         $mediaServicios = $numTecnicos > 0 ? round($totalServicios / $numTecnicos, 1) : 0;
-        
+
         // Media Diaria por técnico
-        $mediaDiaria = ($numTecnicos > 0 && $cantidadDias > 0) 
-            ? round($totalServicios / ($numTecnicos * $cantidadDias), 2) 
+        $mediaDiaria = ($numTecnicos > 0 && $cantidadDias > 0)
+            ? round($totalServicios / ($numTecnicos * $cantidadDias), 2)
             : 0;
 
         // 5. Renderizar PDF
         ob_start();
-        include __DIR__ . '/../../views/reportes/reporteEjecutivoGenerar.php'; 
+        include __DIR__ . '/../../views/reportes/reporteEjecutivoGenerar.php';
         $html = ob_get_clean();
 
         $options = new Options();
-        $options->set('isRemoteEnabled', true); 
+        $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'Helvetica');
         $options->set('isHtml5ParserEnabled', true);
-        
+
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape'); 
+        $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
 
         $dompdf->stream("Reporte_Ejecutivo_" . date('Ymd_Hi') . ".pdf", ["Attachment" => false]);
@@ -118,10 +118,10 @@ class generarReporteControlador
     {
         if (empty($datos)) return $this->imagenVacia();
 
-        $labels = array_map(function($d) {
+        $labels = array_map(function ($d) {
             return date('d/m', strtotime($d['fecha_visita']));
         }, $datos);
-        
+
         $data = array_map('intval', array_column($datos, 'total'));
 
         $config = [
@@ -422,7 +422,7 @@ class generarReporteControlador
         // Convierte hex a RGB
         $rgbInicio = sscanf($colorInicio, "#%02x%02x%02x");
         $rgbFin = sscanf($colorFin, "#%02x%02x%02x");
-        
+
         $colores = [];
         for ($i = 0; $i < $cantidad; $i++) {
             $ratio = $cantidad > 1 ? $i / ($cantidad - 1) : 0;
@@ -431,7 +431,7 @@ class generarReporteControlador
             $b = round($rgbInicio[2] + ($rgbFin[2] - $rgbInicio[2]) * $ratio);
             $colores[] = "rgba($r, $g, $b, 0.8)";
         }
-        
+
         return $colores;
     }
 
@@ -452,21 +452,21 @@ class generarReporteControlador
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        
+
         $result = curl_exec($ch);
-        
+
         if (curl_errno($ch)) {
             error_log('Error QuickChart: ' . curl_error($ch));
             curl_close($ch);
             return $this->imagenVacia();
         }
-        
+
         curl_close($ch);
 
         if ($result) {
             return 'data:image/png;base64,' . base64_encode($result);
         }
-        
+
         return $this->imagenVacia();
     }
 
@@ -479,7 +479,7 @@ class generarReporteControlador
     {
         if (empty($datos)) return $this->imagenVacia();
 
-        $labels = array_map(function($d) {
+        $labels = array_map(function ($d) {
             return $d['nombre_punto'] . ' (' . $d['nombre_delegacion'] . ')';
         }, $datos);
         $data = array_map('intval', array_column($datos, 'total'));
@@ -530,7 +530,7 @@ class generarReporteControlador
     {
         if (empty($datos)) return $this->imagenVacia();
 
-        $labels = array_map(function($d) {
+        $labels = array_map(function ($d) {
             return $d['nombre_punto'] . ' (' . $d['nombre_delegacion'] . ')';
         }, $datos);
         $data = array_map('intval', array_column($datos, 'total_fallidos'));

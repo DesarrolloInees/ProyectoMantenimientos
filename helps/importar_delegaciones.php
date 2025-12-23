@@ -1,7 +1,7 @@
 <?php
 // --- CONFIGURACIÓN ---
 ini_set('memory_limit', '1024M');
-set_time_limit(0); 
+set_time_limit(0);
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -26,10 +26,10 @@ try {
 // LÓGICA DE PROCESAMIENTO
 // =========================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
-    
+
     if ($_FILES['archivo_csv']['error'] === UPLOAD_ERR_OK) {
         $ruta_archivo = $_FILES['archivo_csv']['tmp_name'];
-        
+
         // 1. Detectar delimitador automáticamente
         $handle_temp = fopen($ruta_archivo, "r");
         $primera_linea = fgets($handle_temp);
@@ -46,8 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
             ];
 
             // Índices de columnas (Se detectarán automáticamente)
-            $idx_punto = -1; 
-            $idx_codigo = -1; 
+            $idx_punto = -1;
+            $idx_codigo = -1;
             $idx_nombre_del = -1;
 
             // PREPARAR CONSULTAS
@@ -71,16 +71,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                     if ($fila === 1) {
                         // Quitamos el BOM si existe para leer bien la primera columna
                         $data[0] = preg_replace('/^\xEF\xBB\xBF/', '', $data[0]);
-                        
+
                         foreach ($data as $i => $val) {
                             $header = mb_strtoupper(trim($val), 'UTF-8');
-                            
+
                             // Buscar columna PUNTO
                             if (strpos($header, 'NOMBRE DEL PUNTO') !== false) $idx_punto = $i;
-                            
+
                             // Buscar columna CÓDIGO (En tu archivo es "DELEGACION" sin tilde)
                             if ($header === 'DELEGACION' || $header === 'CODIGO') $idx_codigo = $i;
-                            
+
                             // Buscar columna NOMBRE DELEGACIÓN (En tu archivo es "DELEGACIÓN" con tilde)
                             if ($header === 'DELEGACIÓN' || $header === 'NOMBRE DELEGACION') $idx_nombre_del = $i;
                         }
@@ -93,34 +93,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
 
                     // --- PROCESAR DATOS ---
                     if (isset($data[$idx_codigo]) && isset($data[$idx_punto])) {
-                        
+
                         // 1. Obtener Datos y Limpiar
                         $codigo_raw = trim($data[$idx_codigo]);
                         $nombre_punto = trim($data[$idx_punto]); // Asumiendo UTF-8 directo
-                        
+
                         // Nombre Delegación: Si no lo encuentra, usa "DELEGACION X"
-                        $nombre_del = ($idx_nombre_del >= 0 && isset($data[$idx_nombre_del])) 
-                                      ? trim($data[$idx_nombre_del]) 
-                                      : "DELEGACION $codigo_raw";
+                        $nombre_del = ($idx_nombre_del >= 0 && isset($data[$idx_nombre_del]))
+                            ? trim($data[$idx_nombre_del])
+                            : "DELEGACION $codigo_raw";
 
                         // 2. Unificar Código (001 -> 1)
                         $id_delegacion = intval($codigo_raw);
 
                         if ($id_delegacion > 0 && !empty($nombre_punto)) {
-                            
+
                             // A. Insertar/Actualizar Delegación en la tabla maestra
                             $nombre_del_upper = mb_strtoupper($nombre_del, 'UTF-8');
                             $stmtDel->bind_param("is", $id_delegacion, $nombre_del_upper);
                             $stmtDel->execute();
-                            if ($stmtDel->affected_rows > 0 && $stmtDel->affected_rows != 2) { 
+                            if ($stmtDel->affected_rows > 0 && $stmtDel->affected_rows != 2) {
                                 // affected_rows 1=insert, 2=update. Contamos inserciones reales.
-                                $stats['delegaciones_creadas']++; 
+                                $stats['delegaciones_creadas']++;
                             }
 
                             // B. Vincular al Punto
                             $stmtPunto->bind_param("is", $id_delegacion, $nombre_punto);
                             $stmtPunto->execute();
-                            
+
                             if ($stmtPunto->affected_rows > 0) {
                                 $stats['puntos_vinculados']++;
                             }
@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                 }
 
                 $mysqli->commit();
-                
+
                 $tipo_mensaje = "success";
                 $mensaje = "<h3>✅ Importación Exitosa</h3>
                             <ul>
@@ -143,7 +143,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                     $mensaje .= "<br>⚠️ <strong>Atención:</strong> No se vinculó ningún punto. <br>
                                     Verifica que los nombres en la columna 'NOMBRE DEL PUNTO' sean idénticos a los de tu base de datos.";
                 }
-
             } catch (Exception $e) {
                 $mysqli->rollback();
                 $tipo_mensaje = "error";
@@ -160,12 +159,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Actualizar Delegaciones</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body class="bg-gray-100 h-screen flex items-center justify-center">
 
     <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -187,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
                     <p id="filename" class="text-sm text-gray-500 mt-2"></p>
                 </label>
             </div>
-            
+
             <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">
                 🚀 Procesar Archivo
             </button>
@@ -195,4 +196,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_csv'])) {
     </div>
 
 </body>
+
 </html>

@@ -5,7 +5,10 @@ class DiasFestivosCrearModelo
 {
     private $conn;
 
-    public function __construct(PDO $db) { $this->conn = $db; }
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
     public function crearFestivo($fecha, $descripcion)
     {
@@ -19,7 +22,7 @@ class DiasFestivosCrearModelo
             // Error 1062 es entrada duplicada (por el UNIQUE INDEX de fecha)
             if ($e->errorInfo[1] == 1062) {
                 error_log("Intento de duplicar fecha festiva: " . $fecha);
-                return "DUPLICADO"; 
+                return "DUPLICADO";
             }
             error_log("Error crear festivo: " . $e->getMessage());
             return false;

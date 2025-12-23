@@ -16,7 +16,7 @@
 
         <form action="" method="POST" class="space-y-6">
             <input type="hidden" name="id_tarifa" value="<?= $id ?>">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Tipo de Máquina</label>

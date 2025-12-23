@@ -20,11 +20,11 @@
         <?php endif; ?>
 
         <form action="<?= BASE_URL ?>diasFestivosCrear" method="POST" class="space-y-6">
-            
+
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Selecciona la Fecha <span class="text-red-500">*</span></label>
                 <div class="relative">
-                    <input type="date" name="fecha" required 
+                    <input type="date" name="fecha" required
                         value="<?= htmlspecialchars($fecha ?? '') ?>"
                         class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
@@ -34,7 +34,7 @@
                 <label class="block text-sm font-bold text-gray-700 mb-1">Descripción / Motivo</label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-info-circle text-gray-400"></i></div>
-                    <input type="text" name="descripcion" 
+                    <input type="text" name="descripcion"
                         placeholder="Ej: Navidad, Año Nuevo, Semana Santa..."
                         value="<?= htmlspecialchars($descripcion ?? '') ?>"
                         class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">

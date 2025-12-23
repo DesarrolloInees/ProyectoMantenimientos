@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Reporte Ejecutivo</title>
     <style>
-        @page { 
+        @page {
             margin: 0.5cm;
             size: A4 landscape;
         }
-        
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -30,6 +31,7 @@
             background: white;
             overflow: hidden;
         }
+
         .slide:last-child {
             page-break-after: avoid;
         }
@@ -45,63 +47,75 @@
             color: white;
             position: relative;
         }
+
         .cover-content {
             padding: 40px;
             width: 100%;
         }
+
         .cover-icon {
             font-size: 80px;
             margin-bottom: 20px;
         }
+
         .cover-title {
             font-size: 48px;
             font-weight: 700;
             margin-bottom: 15px;
             letter-spacing: -1px;
         }
+
         .cover-subtitle {
             font-size: 24px;
             margin-bottom: 40px;
             font-weight: 300;
         }
+
         .cover-period {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             padding: 15px 30px;
             border-radius: 8px;
             font-size: 18px;
             margin: 0 auto 20px auto;
             display: inline-block;
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
         }
+
         .cover-kpis {
             margin: 40px auto;
             max-width: 800px;
             display: table;
             width: 100%;
         }
+
         .cover-kpi {
             display: table-cell;
             padding: 20px;
             text-align: center;
-            border-right: 1px solid rgba(255,255,255,0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
         }
+
         .cover-kpi:last-child {
             border-right: none;
         }
+
         .cover-kpi-value {
             font-size: 40px;
             font-weight: 700;
             margin-bottom: 8px;
         }
+
         .cover-kpi-label {
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+
         .cover-date {
             font-size: 14px;
             margin-top: 40px;
         }
+
         .cover-footer {
             position: absolute;
             bottom: 30px;
@@ -109,7 +123,7 @@
             right: 0;
             text-align: center;
             font-size: 12px;
-            border-top: 1px solid rgba(255,255,255,0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
             padding-top: 20px;
         }
 
@@ -129,12 +143,14 @@
             color: white;
             position: relative;
         }
+
         .header-title {
             font-size: 18px;
             font-weight: 700;
             margin: 0;
             position: relative;
         }
+
         .header-meta {
             margin-top: 3px;
             font-size: 10px;
@@ -148,15 +164,17 @@
             gap: 8px;
             margin: 8px 0;
         }
+
         .kpi-card {
             background: white;
             border-radius: 8px;
             padding: 10px;
             text-align: center;
             position: relative;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             overflow: hidden;
         }
+
         .kpi-card::before {
             content: '';
             position: absolute;
@@ -166,11 +184,13 @@
             height: 3px;
             background: var(--kpi-color, #667eea);
         }
+
         .kpi-icon {
             font-size: 22px;
             margin-bottom: 4px;
             opacity: 0.8;
         }
+
         .kpi-value {
             font-size: 26px;
             font-weight: 700;
@@ -179,6 +199,7 @@
             margin: 4px 0;
             line-height: 1;
         }
+
         .kpi-label {
             font-size: 9px;
             text-transform: uppercase;
@@ -187,6 +208,7 @@
             letter-spacing: 0.3px;
             margin-top: 4px;
         }
+
         .kpi-sub {
             font-size: 8px;
             color: #95a5a6;
@@ -210,12 +232,13 @@
             border-radius: 8px;
             padding: 10px;
             margin-bottom: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             flex: 1;
             display: flex;
             flex-direction: column;
             min-height: 0;
         }
+
         .chart-title {
             color: #34495e;
             font-size: 11px;
@@ -223,6 +246,7 @@
             font-weight: 600;
             text-align: center;
         }
+
         .chart-img {
             width: 100%;
             max-width: 100%;
@@ -261,7 +285,7 @@
             padding: 5px 12px;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
             white-space: nowrap;
         }
 
@@ -289,14 +313,15 @@
         }
     </style>
 </head>
+
 <body>
 
-    
+
 
     <!-- PÁGINA 1: TENDENCIAS -->
     <div class="slide content-slide">
         <div class="page-badge">1/5</div>
-        
+
         <div class="header">
             <div class="header-title"> Tendencias y Evolución</div>
             <div class="header-meta">
@@ -305,7 +330,7 @@
         </div>
 
         <div class="content-wrapper">
-            
+
 
             <div class="section-title">Evolución Diaria de Servicios</div>
             <div class="chart-container chart-full">
@@ -320,7 +345,7 @@
     <!-- PÁGINA 2: ANÁLISIS DE MANTENIMIENTO -->
     <div class="slide content-slide">
         <div class="page-badge">2/5</div>
-        
+
         <div class="header">
             <div class="header-title"> Análisis de Mantenimiento y Estados</div>
             <div class="header-meta">
@@ -354,7 +379,7 @@
     <!-- PÁGINA 3: PRODUCTIVIDAD -->
     <div class="slide content-slide">
         <div class="page-badge">3/5</div>
-        
+
         <div class="header">
             <div class="header-title"> Productividad Técnica y Recursos</div>
             <div class="header-meta">
@@ -384,7 +409,7 @@
     <!-- PÁGINA 4: ANÁLISIS DE PUNTOS -->
     <div class="slide content-slide">
         <div class="page-badge">4/5</div>
-        
+
         <div class="header">
             <div class="header-title"> Análisis de Puntos Críticos</div>
             <div class="header-meta">
@@ -412,7 +437,7 @@
     <!-- PÁGINA 5: CALIDAD Y SATISFACCIÓN -->
     <div class="slide content-slide">
         <div class="page-badge">5/5</div>
-        
+
         <div class="header">
             <div class="header-title"> Calidad y Análisis de Fallas</div>
             <div class="header-meta">
@@ -443,11 +468,11 @@
             <div class="cover-icon"></div>
             <h1 class="cover-title">Reporte Ejecutivo</h1>
             <p class="cover-subtitle">Operaciones y Productividad</p>
-            
+
             <div class="cover-period">
                 <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
             </div>
-            
+
             <table class="cover-kpis">
                 <tr>
                     <td class="cover-kpi">
@@ -468,16 +493,17 @@
                     </td>
                 </tr>
             </table>
-            
+
             <div class="cover-date">
                 Generado: <?= date('d/m/Y H:i') ?>
             </div>
         </div>
-        
+
         <div class="cover-footer">
             Documento Confidencial
         </div>
     </div>
 
 </body>
+
 </html>
