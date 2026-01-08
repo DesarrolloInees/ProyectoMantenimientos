@@ -121,7 +121,19 @@
         $('#tarifasTable').DataTable({
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
-            }
+            },
+            // AGREGA ESTO: Para que muestre 50 filas por defecto
+            pageLength: 50,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Todos"]
+            ],
+            // AGREGA ESTO: Para ordenar por la columna de Máquina (índice 0) y Mantenimiento (1)
+            order: [
+                [0, 'asc'],
+                [1, 'asc']
+            ]
+
         });
     });
 

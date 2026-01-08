@@ -72,7 +72,7 @@
             if (idTecnico) {
                 // Hacemos petición AJAX al mismo controlador
                 $.ajax({
-                    url: '<?= BASE_URL ?>controlRemisionCrear&ajax=getUltima',
+                    url: 'controlRemisionCrear&ajax=getUltima',
                     type: 'GET',
                     data: {
                         id_tecnico: idTecnico

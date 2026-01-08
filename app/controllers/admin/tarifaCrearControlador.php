@@ -6,7 +6,6 @@ require_once __DIR__ . '/../../models/admin/tarifaCrearModelo.php';
 
 class tarifaCrearControlador
 {
-
     private $modelo;
     private $db;
 
@@ -21,30 +20,34 @@ class tarifaCrearControlador
     {
         $errores = [];
 
-        // 1. Procesar Formulario Masivo
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            $idMaquina = $_POST['id_tipo_maquina'] ?? '';
+            // CAMBIO: Recibimos un array. Si no llega nada, es un array vacío.
+            $idsMaquinas = $_POST['ids_maquinas'] ?? [];
             $anio = $_POST['año_vigencia'] ?? date('Y');
-            // Aquí recibimos la matriz: precios[id_manto][id_modalidad]
             $precios = $_POST['precios'] ?? [];
 
-            if (empty($idMaquina)) $errores[] = "Selecciona una Máquina.";
+            // Validamos que sea un array y tenga datos
+            if (empty($idsMaquinas) || !is_array($idsMaquinas)) {
+                $errores[] = "Debes seleccionar al menos una Máquina.";
+            }
+
             if (empty($precios)) $errores[] = "No has ingresado ningún precio.";
 
             if (empty($errores)) {
-                // Llamamos a la nueva función masiva
-                if ($this->modelo->guardarTarifasMasivas($idMaquina, $anio, $precios)) {
-                    // Redirigir con éxito
-                    echo "<script>alert('¡Tarifas guardadas correctamente!'); window.location.href='" . BASE_URL . "tarifaVer';</script>";
+                // Pasamos el array de IDs al modelo
+                if ($this->modelo->guardarTarifasMasivas($idsMaquinas, $anio, $precios)) {
+                    // Contamos cuántas máquinas se actualizaron para el mensaje
+                    $cantidad = count($idsMaquinas);
+                    echo "<script>alert('¡Tarifas guardadas correctamente para $cantidad máquinas!'); window.location.href='" . BASE_URL . "tarifaVer';</script>";
                     exit();
                 } else {
-                    $errores[] = "Hubo un error al guardar. Verifica que no existan duplicados.";
+                    $errores[] = "Hubo un error al guardar. Revisa el log de errores.";
                 }
             }
         }
 
-        // 2. Cargar datos para la vista
+        // Cargar datos vista
         $listaMaquinas = $this->modelo->obtenerTiposMaquina();
         $listaMantenimientos = $this->modelo->obtenerTiposMantenimiento();
         $listaModalidades = $this->modelo->obtenerModalidades();
@@ -52,5 +55,18 @@ class tarifaCrearControlador
         $titulo = "Crear Tarifas Masivas";
         $vistaContenido = "app/views/admin/tarifaCrearVista.php";
         include "app/views/plantillaVista.php";
+    }
+    public function verificarMaquinas()
+    {
+        // Solo respondemos si nos envían el año
+        if (isset($_GET['anio'])) {
+            $anio = $_GET['anio'];
+            $maquinasOcupadas = $this->modelo->obtenerMaquinasConTarifa($anio);
+
+            // Devolvemos la lista en formato JSON para que JS la entienda
+            header('Content-Type: application/json');
+            echo json_encode($maquinasOcupadas);
+            exit(); // Terminamos aquí para no cargar toda la vista HTML
+        }
     }
 }

@@ -185,6 +185,125 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
+$(document).ready(function () {
+    // 1. DESVINCULAMOS CUALQUIER EVENTO ANTERIOR PARA EVITAR DUPLICADOS
+    $('#btnGuardarFijo').off('click');
+    $('#formServicios').off('submit'); // Nos aseguramos que el submit no haga nada automático
+
+    // 2. ESCUCHAMOS EL CLICK DEL BOTÓN (No el submit del form)
+    $('#btnGuardarFijo').on('click', function (e) {
+        e.preventDefault();
+        console.log('👆 Botón presionado. Iniciando validación...');
+        procesarGuardado();
+    });
+});
+
+async function procesarGuardado() {
+    console.log('⚙️ Ejecutando procesarGuardado()...');
+
+    const filas = document.querySelectorAll('#contenedorFilas tr');
+    let hayErroresBloqueantes = false;
+    let hayAdvertenciasLogicas = false;
+
+    // --- 1. VALIDAR SI HAY FILAS ---
+    if (filas.length === 0) {
+        window.CrearNotificaciones.mostrarNotificacion('⚠️ No hay servicios para guardar.', 'error');
+        return;
+    }
+
+    // --- 2. VALIDAR REMISIONES ---
+    console.log('⏳ Validando remisiones...');
+    const remisionesValidas = await window.ValidadorRemisiones.validarTodasRemisionesAnteDeEnviar();
+    if (!remisionesValidas) {
+        console.log('❌ Error en remisiones. Cancelando.');
+        return;
+    }
+
+    // --- 3. RECORRIDO DE FILAS ---
+    filas.forEach((fila, index) => {
+        const idFila = fila.getAttribute('data-id');
+        console.log(`🔍 Analizando fila ${index + 1} (ID: ${idFila})`);
+
+        // A. Obtener valores
+        const tecnico = fila.querySelector(`select[name^="filas"][name$="[id_tecnico]"]`)?.value;
+        const cliente = fila.querySelector(`select[name^="filas"][name$="[id_cliente]"]`)?.value;
+        const maquina = fila.querySelector(`select[name^="filas"][name$="[id_maquina]"]`)?.value;
+        const tipoServicioElem = fila.querySelector(`select[name^="filas"][name$="[tipo_servicio]"]`);
+        const tipoServicioVal = tipoServicioElem?.value;
+
+        // B. Validar vacíos
+        if (!tecnico || !cliente || !maquina || !tipoServicioVal) {
+            hayErroresBloqueantes = true;
+            fila.classList.add('bg-red-200'); // Color más fuerte para ver si funciona
+            setTimeout(() => fila.classList.remove('bg-red-200'), 3000);
+        }
+
+        // C. Lógica CORRECTIVO SIN REPUESTOS
+        if (tipoServicioElem) {
+            // Obtenemos el texto visible (ej: "Mantenimiento Correctivo")
+            const textoServicio = tipoServicioElem.options[tipoServicioElem.selectedIndex].text.toUpperCase().trim();
+            console.log(`   - Servicio detectado: "${textoServicio}"`);
+
+            // Buscamos el input de repuestos
+            const inputRepuestos = fila.querySelector(`.input-json-repuestos`) || fila.querySelector(`input[id^="json_rep_"]`);
+            const jsonRepuestos = inputRepuestos ? inputRepuestos.value : '[]';
+
+            let cantidadRepuestos = 0;
+            try {
+                const arr = JSON.parse(jsonRepuestos || '[]');
+                cantidadRepuestos = arr.length;
+            } catch (e) { console.error('Error parseando JSON repuestos', e); }
+
+            console.log(`   - Cantidad repuestos: ${cantidadRepuestos}`);
+
+            // LA CONDICIÓN CLAVE
+            if (textoServicio.includes("CORRECTIVO") && cantidadRepuestos === 0) {
+                console.warn('⚠️ DETECTADO: Correctivo sin repuestos');
+                hayAdvertenciasLogicas = true;
+                fila.classList.add('bg-yellow-200'); // Color fuerte
+            }
+        }
+    });
+
+    if (hayErroresBloqueantes) {
+        window.CrearNotificaciones.mostrarNotificacion('Faltan datos obligatorios (marcados en rojo)', 'error');
+        return;
+    }
+
+    // --- 4. PREPARAR EL MODAL ---
+    console.log(`📊 Resultado análisis: Advertencias Logicas = ${hayAdvertenciasLogicas}`);
+
+    let mensajeModal = "¿Estás seguro de que deseas guardar y enviar este reporte?";
+    let tipoIcono = "question";
+
+    if (hayAdvertenciasLogicas) {
+        mensajeModal = "⚠️ <b>¡ADVERTENCIA!</b><br><br>Hay mantenimientos <b>CORRECTIVOS que NO tienen repuestos</b>.<br>Esto es inusual.<br><br>¿Deseas guardar de todas formas?";
+        tipoIcono = "warning";
+    }
+
+    // --- 5. INTENTAR MOSTRAR EL MODAL ---
+    console.log('🖥️ Llamando al modal...');
+
+    // Verificamos si la función existe antes de llamarla
+    if (typeof window.CrearNotificaciones.mostrarModalConfirmacion === 'function') {
+        window.CrearNotificaciones.mostrarModalConfirmacion(mensajeModal, function () {
+            console.log("✅ Usuario dijo SI en el modal. ENVIANDO...");
+
+            // --- AGREGA ESTA LÍNEA AQUÍ ---
+            // Esto asegura que se borre el borrador ANTES de recargar la página
+            if (window.StorageManager && window.StorageManager.limpiarStorageParaEnvio) {
+                window.StorageManager.limpiarStorageParaEnvio();
+            }
+            document.getElementById('formServicios').submit(); // AHORA SÍ ENVIAMOS MANUALMENTE
+        }, tipoIcono);
+    } else {
+        // Fallback por si el modal falla, usar confirm nativo para probar
+        console.error('❌ No se encontró la función mostrarModalConfirmacion');
+        if (confirm(mensajeModal.replace(/<br>/g, '\n').replace(/<b>/g, '').replace(/<\/b>/g, ''))) {
+            document.getElementById('formServicios').submit();
+        }
+    }
+}
 // ==========================================
 // EXPORTAR PARA DEBUG EN CONSOLA
 // ==========================================

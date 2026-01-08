@@ -106,26 +106,19 @@ class LoginModelo
     }
 
     // Esta función se encargará de actualizar la contraseña del usuario.
-    public function actualizarPassword($usuario_id, $nueva_password)
+    public function actualizarPassword($usuario_id, $nuevo_hash)
     {
-        try {
-            $nuevo_hash = password_hash($nueva_password, PASSWORD_BCRYPT);
+        // CORRECCIÓN: Tu tabla usa 'usuario_id', no 'id_usuario'
+        $sql = "UPDATE usuarios SET 
+                    password_hash = :hash, 
+                    forzar_cambio_pwd = 0, 
+                    pwd_ultimo_cambio = NOW() 
+                WHERE usuario_id = :id";
 
-            $sql = "UPDATE usuarios SET 
-                        password_hash = :hash, 
-                        forzar_cambio_pwd = FALSE, 
-                        pwd_ultimo_cambio = NOW() 
-                    WHERE usuario_id = :id";
-
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bindParam(':hash', $nuevo_hash);
-            $stmt->bindParam(':id', $usuario_id, PDO::PARAM_INT);
-
-            return $stmt->execute();
-        } catch (PDOException $e) {
-            error_log("Error al actualizar la contraseña: " . $e->getMessage());
-            return false;
-        }
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':hash', $nuevo_hash);
+        $stmt->bindParam(':id', $usuario_id, PDO::PARAM_INT);
+        return $stmt->execute();
     }
 
     // ***** NUEVA FUNCIÓN OPCIONAL PERO RECOMENDADA *****
@@ -175,6 +168,7 @@ class LoginModelo
      */
     public function obtenerUsuarioPorEmail($email)
     {
+        // Seleccionamos todo. La columna ID vendrá como 'usuario_id'
         $stmt = $this->conn->prepare("SELECT * FROM usuarios WHERE email = :email AND estado = 'activo' LIMIT 1");
         $stmt->bindParam(':email', $email);
         $stmt->execute();
@@ -186,13 +180,14 @@ class LoginModelo
      */
     public function guardarCodigoReset($email, $codigo_hash, $expiracion)
     {
-        // Invalida códigos viejos de ese email
-        $stmt_invalidar = $this->conn->prepare("UPDATE password_reset SET usado = TRUE WHERE usuario_email = :email");
+        // 1. Invalidar códigos viejos
+        // OJO: Tu tabla se llama 'password_reset' y la columna 'usuario_email'
+        $stmt_invalidar = $this->conn->prepare("UPDATE password_reset SET usado = 1 WHERE usuario_email = :email");
         $stmt_invalidar->bindParam(':email', $email);
         $stmt_invalidar->execute();
 
-        // Inserta el nuevo código
-        $sql = "INSERT INTO password_reset (usuario_email, codigo_hash, expira_en) VALUES (:email, :hash, :expira)";
+        // 2. Insertar nuevo
+        $sql = "INSERT INTO password_reset (usuario_email, codigo_hash, expira_en, usado) VALUES (:email, :hash, :expira, 0)";
         $stmt = $this->conn->prepare($sql);
         $stmt->bindParam(':email', $email);
         $stmt->bindParam(':hash', $codigo_hash);
@@ -205,31 +200,40 @@ class LoginModelo
      */
     public function verificarCodigoReset($email, $codigo_enviado)
     {
-        // Busca un código que coincida, que no esté usado, y que no haya expirado
-        $sql = "SELECT * FROM password_reset 
-                WHERE usuario_email = :email AND usado = FALSE AND expira_en > NOW()
-                ORDER BY id DESC"; // Obtener el más reciente
+        // CORRECCIÓN VITAL: Usamos la hora de PHP, no la de MySQL
+        $ahora = date('Y-m-d H:i:s');
+
+        // Buscamos código no usado y que expire DESPUÉS de ahora
+        $sql = "SELECT id, codigo_hash FROM password_reset 
+                WHERE usuario_email = :email 
+                AND usado = 0 
+                AND expira_en > :ahora 
+                ORDER BY id DESC LIMIT 1";
+
         $stmt = $this->conn->prepare($sql);
         $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':ahora', $ahora); // Enviamos hora PHP Bogotá
         $stmt->execute();
-        $codigos_en_bd = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Comparamos el código enviado con los hashes vigentes
-        foreach ($codigos_en_bd as $row) {
-            if (password_verify($codigo_enviado, $row['codigo_hash'])) {
-                return $row['id']; // ¡Coincidencia! Devolvemos el ID del registro
+        $registro = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($registro) {
+            // Verificamos el hash (bcrypt)
+            if (password_verify((string)$codigo_enviado, $registro['codigo_hash'])) {
+                return $registro['id']; // Retornamos el ID del registro en password_reset
             }
         }
-        return false; // No se encontró coincidencia
+
+        return false;
     }
 
     /**
      * Marca un código como 'usado' después de un reseteo exitoso.
      */
-    public function marcarCodigoComoUsado($id_del_codigo)
+    public function marcarCodigoComoUsado($id_codigo)
     {
-        $stmt_update = $this->conn->prepare("UPDATE password_reset SET usado = TRUE WHERE id = :id");
-        $stmt_update->bindParam(':id', $id_del_codigo);
-        return $stmt_update->execute();
+        $stmt = $this->conn->prepare("UPDATE password_reset SET usado = 1 WHERE id = :id");
+        $stmt->bindParam(':id', $id_codigo);
+        return $stmt->execute();
     }
 }

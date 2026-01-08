@@ -6,17 +6,21 @@
  * Guardar progreso en localStorage
  */
 function guardarProgresoLocal() {
-    if (window.AppConfig.ignorarCambios || window.AppConfig.enviandoFormulario) return;
+    // Si estamos enviando, NO guardamos nada nuevo para no revivir el borrador
+    if (window.AppConfig.ignorarCambios || window.AppConfig.enviandoFormulario)
+        return;
 
     const filas = [];
-    const filasHTML = document.querySelectorAll('#contenedorFilas tr');
+    const filasHTML = document.querySelectorAll("#contenedorFilas tr");
 
-    filasHTML.forEach(tr => {
-        const idFila = tr.id.replace('fila_', '');
+    filasHTML.forEach((tr) => {
+        const idFila = tr.id.replace("fila_", "");
 
         const filaData = {
             id: idFila,
-            remision: tr.querySelector(`select[name="filas[${idFila}][remision]"]`)?.value || '',
+            remision:
+                tr.querySelector(`select[name="filas[${idFila}][remision]"]`)?.value ||
+                "",
             id_cliente: $(`#select_cliente_${idFila}`).val(),
             id_punto: $(`#select_punto_${idFila}`).val(),
             id_maquina: $(`#select_maquina_${idFila}`).val(),
@@ -28,7 +32,7 @@ function guardarProgresoLocal() {
             valor: tr.querySelector(`input[name="filas[${idFila}][valor]"]`)?.value,
             estado: $(`#select_estado_${idFila}`).val(),
             calif: $(`#select_calif_${idFila}`).val(),
-            obs: tr.querySelector(`textarea[name="filas[${idFila}][obs]"]`)?.value
+            obs: tr.querySelector(`textarea[name="filas[${idFila}][obs]"]`)?.value,
         };
         filas.push(filaData);
     });
@@ -36,11 +40,14 @@ function guardarProgresoLocal() {
     const datosGlobales = {
         fecha: new Date().getTime(),
         filas: filas,
-        repuestos: window.AppConfig.almacenRepuestos
+        repuestos: window.AppConfig.almacenRepuestos,
     };
 
-    localStorage.setItem(window.AppConfig.CLAVE_GUARDADO, JSON.stringify(datosGlobales));
-    console.log('💾 Auto-guardado completado');
+    localStorage.setItem(
+        window.AppConfig.CLAVE_GUARDADO,
+        JSON.stringify(datosGlobales)
+    );
+    // console.log('💾 Auto-guardado completado'); // Comentado para no saturar consola
 
     // 🔔 NOTIFICACIÓN de auto-guardado (solo cada 5 veces para no saturar)
     if (!window._contadorAutoGuardado) window._contadorAutoGuardado = 0;
@@ -66,7 +73,8 @@ async function verificarYRestaurar() {
     try {
         datos = JSON.parse(borrador);
     } catch (e) {
-        console.error('Error parseando borrador:', e);
+        console.error("Error parseando borrador:", e);
+        localStorage.removeItem(window.AppConfig.CLAVE_GUARDADO); // Si está corrupto, bórralo
         iniciarLimpio();
         return;
     }
@@ -76,11 +84,14 @@ async function verificarYRestaurar() {
         return;
     }
 
+    // Usamos el modal de confirmación tuyo si existe, si no, el nativo
+    // Para simplificar aquí usamos el nativo porque esta carga es muy temprana
     const confirmar = confirm(
-        `📂 RECUPERACIÓN DE DATOS\n\nHay un reporte pendiente con ${datos.filas.length} servicios.\n¿Quieres recuperarlos?`
+        `📂 RECUPERACIÓN DE DATOS\n\nHay un reporte pendiente con ${datos.filas.length} servicios del último cierre inesperado.\n\n¿Quieres recuperarlos?`
     );
 
     if (!confirmar) {
+        console.log("Usuario descartó el borrador.");
         localStorage.removeItem(window.AppConfig.CLAVE_GUARDADO);
         iniciarLimpio();
         return;
@@ -88,17 +99,18 @@ async function verificarYRestaurar() {
 
     // Iniciar restauración
     window.AppConfig.ignorarCambios = true;
-    const btnSubmit = document.querySelector('button[type="submit"]');
-    const textoOriginal = btnSubmit?.innerHTML;
+    const btnSubmit = document.getElementById("btnGuardarFijo"); // Ajustado a tu nuevo ID
+    const textoOriginal = btnSubmit ? btnSubmit.innerHTML : "";
 
     try {
         if (btnSubmit) {
-            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> RECUPERANDO DATOS...';
+            btnSubmit.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i> RECUPERANDO DATOS...';
             btnSubmit.disabled = true;
         }
 
         // Limpiar todo
-        document.getElementById('contenedorFilas').innerHTML = '';
+        document.getElementById("contenedorFilas").innerHTML = "";
         window.AppConfig.contadorFilas = 0;
         window.AppConfig.almacenRepuestos = datos.repuestos || {};
 
@@ -107,23 +119,26 @@ async function verificarYRestaurar() {
             window.FilaManager.agregarFila();
             const idActual = window.AppConfig.contadorFilas;
 
-            console.log(`Recuperando fila ${idActual}...`);
-
             // Remisión y Técnico
             if (fila.id_tecnico) {
-                $(`#select_tecnico_${idActual}`).val(fila.id_tecnico).trigger('change.select2');
-
+                $(`#select_tecnico_${idActual}`)
+                    .val(fila.id_tecnico)
+                    .trigger("change.select2");
                 if (fila.remision) {
                     await window.AjaxUtils.cargarRemisiones(idActual, fila.id_tecnico);
                     setTimeout(() => {
-                        $(`#select_remision_${idActual}`).val(fila.remision).trigger('change.select2');
+                        $(`#select_remision_${idActual}`)
+                            .val(fila.remision)
+                            .trigger("change.select2");
                     }, 200);
                 }
             }
 
             // Cliente
             if (fila.id_cliente) {
-                $(`#select_cliente_${idActual}`).val(fila.id_cliente).trigger('change.select2');
+                $(`#select_cliente_${idActual}`)
+                    .val(fila.id_cliente)
+                    .trigger("change.select2");
             }
 
             // Punto
@@ -131,7 +146,7 @@ async function verificarYRestaurar() {
                 await window.AjaxUtils.cargarPuntos(idActual, fila.id_cliente);
                 const selPunto = document.getElementById(`select_punto_${idActual}`);
                 if (selPunto) selPunto.value = fila.id_punto;
-                $(`#select_punto_${idActual}`).trigger('change.select2');
+                $(`#select_punto_${idActual}`).trigger("change.select2");
             }
 
             // Máquina
@@ -142,17 +157,18 @@ async function verificarYRestaurar() {
                     selMaq.value = fila.id_maquina;
                     window.FilaManager.rellenarDeviceId(idActual, fila.id_maquina);
                 }
-                $(`#select_maquina_${idActual}`).trigger('change.select2');
+                $(`#select_maquina_${idActual}`).trigger("change.select2");
             }
 
             // Resto de campos
-            if (fila.modalidad) {
-                $(`#select_modalidad_${idActual}`).val(fila.modalidad).trigger('change');
-            }
-
-            if (fila.tipo_servicio) {
-                $(`#select_servicio_${idActual}`).val(fila.tipo_servicio).trigger('change.select2');
-            }
+            if (fila.modalidad)
+                $(`#select_modalidad_${idActual}`)
+                    .val(fila.modalidad)
+                    .trigger("change");
+            if (fila.tipo_servicio)
+                $(`#select_servicio_${idActual}`)
+                    .val(fila.tipo_servicio)
+                    .trigger("change.select2");
 
             // Horas
             const inEl = document.getElementById(`in_${idActual}`);
@@ -163,34 +179,38 @@ async function verificarYRestaurar() {
 
             // Valor
             if (fila.valor) {
-                const valEl = document.querySelector(`input[name="filas[${idActual}][valor]"]`);
+                const valEl = document.querySelector(
+                    `input[name="filas[${idActual}][valor]"]`
+                );
                 if (valEl) valEl.value = fila.valor;
             }
 
             // Estados
-            if (fila.estado) $(`#select_estado_${idActual}`).val(fila.estado).trigger('change');
-            if (fila.calif) $(`#select_calif_${idActual}`).val(fila.calif).trigger('change');
+            if (fila.estado)
+                $(`#select_estado_${idActual}`).val(fila.estado).trigger("change");
+            if (fila.calif)
+                $(`#select_calif_${idActual}`).val(fila.calif).trigger("change");
 
             // Observaciones
-            const obsEl = document.querySelector(`textarea[name="filas[${idActual}][obs]"]`);
+            const obsEl = document.querySelector(
+                `textarea[name="filas[${idActual}][obs]"]`
+            );
             if (obsEl) obsEl.value = fila.obs;
 
             // Repuestos
             window.RepuestosManager.actualizarBotonRepuestos(idActual);
             const jsonInput = document.getElementById(`json_rep_${idActual}`);
             if (jsonInput && window.AppConfig.almacenRepuestos[idActual]) {
-                jsonInput.value = JSON.stringify(window.AppConfig.almacenRepuestos[idActual]);
+                jsonInput.value = JSON.stringify(
+                    window.AppConfig.almacenRepuestos[idActual]
+                );
             }
         }
 
-        console.log("✅ Restauración completada");
-
-        // 🔔 NOTIFICACIÓN de borrador recuperado
         window.CrearNotificaciones.notificarBorradorRecuperado(datos.filas.length);
-
     } catch (error) {
         console.error("Error en restauración:", error);
-        alert("Ocurrió un error recuperando algunos datos. Revisa la información cargada.");
+        localStorage.removeItem(window.AppConfig.CLAVE_GUARDADO); // Si falla, mejor borrarlo para que no sea un bucle
     } finally {
         window.AppConfig.ignorarCambios = false;
         if (btnSubmit) {
@@ -211,21 +231,23 @@ function iniciarLimpio() {
 }
 
 /**
+ * NUEVA FUNCIÓN: Limpiar almacenamiento explícitamente al enviar
+ * Se llama desde app.js cuando el usuario confirma el envío
+ */
+function limpiarStorageParaEnvio() {
+    console.log("🧹 Limpiando Storage para envío exitoso...");
+    window.AppConfig.enviandoFormulario = true; // Bloquea futuros guardados
+    localStorage.removeItem(window.AppConfig.CLAVE_GUARDADO); // Borra lo actual
+}
+
+/**
  * Configurar eventos de guardado
  */
 function configurarAutoGuardado() {
     // Auto-guardado cada 4 segundos
     setInterval(guardarProgresoLocal, 4000);
 
-    // Limpiar al enviar
-    const form = document.getElementById('formServicios');
-    if (form) {
-        form.addEventListener('submit', function () {
-            console.log("Enviando formulario... Deteniendo auto-guardado.");
-            window.AppConfig.enviandoFormulario = true;
-            localStorage.removeItem(window.AppConfig.CLAVE_GUARDADO);
-        });
-    }
+    // Ya no necesitamos el listener 'submit' aquí porque el envío es manual desde app.js
 }
 
 // Exportar
@@ -233,5 +255,6 @@ window.StorageManager = {
     guardarProgresoLocal,
     verificarYRestaurar,
     iniciarLimpio,
-    configurarAutoGuardado
+    configurarAutoGuardado,
+    limpiarStorageParaEnvio, // <--- IMPORTANTE: Exportar la nueva función
 };

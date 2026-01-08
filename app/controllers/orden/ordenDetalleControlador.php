@@ -166,7 +166,7 @@ class ordenDetalleControlador
         $idRepuesto = $_POST['id_repuesto'];
         $origen     = $_POST['origen'];
         $idTecnico  = $_POST['id_tecnico'];
-        
+
         if ($tipo === 'agregar') {
             $cantidad = $_POST['cantidad'];
             $res = $this->modelo->agregarRepuestoRealTime($idOrden, $idRepuesto, $cantidad, $origen, $idTecnico);
@@ -187,6 +187,10 @@ class ordenDetalleControlador
             $servicios = $_POST['servicios'] ?? [];
             $fechaOrigen = $_POST['fecha_origen'];
 
+            // 1. DETECTAR SI VENIMOS DEL BUSCADOR
+            // (El input hidden 'es_busqueda' ya lo pusimos en la vista)
+            $esBusqueda = isset($_POST['es_busqueda']) && $_POST['es_busqueda'] == '1';
+
             foreach ($servicios as $id => $datos) {
 
                 // ---------------------------------------------------------
@@ -204,14 +208,15 @@ class ordenDetalleControlador
                 // 2. CALCULAR TIEMPO (Si no viene calculado)
                 // ---------------------------------------------------------
                 if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
-                    $datos['tiempo'] = '00:00'; 
+                    $datos['tiempo'] = '00:00';
                     if (!empty($datos['entrada']) && !empty($datos['salida'])) {
                         try {
                             $d1 = new DateTime($datos['entrada']);
                             $d2 = new DateTime($datos['salida']);
                             if ($d2 < $d1) $d2->modify('+1 day');
                             $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
-                        } catch (Exception $e) {}
+                        } catch (Exception $e) {
+                        }
                     }
                 }
 
@@ -224,10 +229,80 @@ class ordenDetalleControlador
                 $this->modelo->actualizarOrdenFull($id, $datos);
             }
 
+            // 2. REDIRECCIÓN INTELIGENTE
+            if ($esBusqueda) {
+                // Si viene del buscador, recarga la vista del buscador
+                $urlDestino = BASE_URL . "ordenDetalleBuscar";
+            } else {
+                // Si es la vista normal, vuelve a la fecha específica
+                $urlDestino = BASE_URL . "ordenDetalle/" . $fechaOrigen;
+            }
+
             echo "<script>
                 alert('¡Cambios guardados correctamente!');
-                window.location.href = '" . BASE_URL . "ordenDetalle/$fechaOrigen';
+                window.location.href = '$urlDestino';
             </script>";
+        }
+    }
+
+
+    // A. Cargar la vista del buscador
+    public function cargarVistaBusqueda()
+    {
+        if (!isset($_SESSION['usuario_id'])) {
+            header('Location: ' . BASE_URL . 'login');
+            exit;
+        }
+
+        // Listas necesarias para los selectores
+        $listaClientes  = $this->modelo->obtenerTodosLosClientes();
+        $listaTecnicos  = $this->modelo->obtenerTodosLosTecnicos();
+        $listaMantos    = $this->modelo->obtenerTiposMantenimiento();
+        $listaRepuestos = $this->modelo->obtenerListaRepuestos();
+        $listaEstados   = $this->modelo->obtenerEstados();
+        $listaCalifs    = $this->modelo->obtenerCalificaciones();
+        $listaModalidades = $this->modelo->obtenerModalidades();
+        $listaFestivos  = $this->modelo->obtenerFestivos();
+
+        $vistaContenido = "app/views/orden/ordenBusquedaVista.php"; // <--- NUEVA VISTA
+        require_once __DIR__ . '/../../views/plantillaVista.php';
+    }
+
+    // B. Procesar la búsqueda AJAX
+    public function ajaxBuscarOrdenes()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $filtros = [
+                'remision'   => $_POST['remision'] ?? '',
+                'id_cliente' => $_POST['id_cliente'] ?? '',
+                'id_punto'   => $_POST['id_punto'] ?? ''
+            ];
+
+            $servicios = $this->modelo->buscarOrdenesFiltros($filtros);
+
+            // === CORRECCIÓN: CARGAR TODAS LAS LISTAS NECESARIAS PARA detalleFila.php ===
+            $listaClientes    = $this->modelo->obtenerTodosLosClientes(); // <--- FALTABA ESTA
+            $listaTecnicos    = $this->modelo->obtenerTodosLosTecnicos();
+            $listaMantos      = $this->modelo->obtenerTiposMantenimiento();
+            $listaEstados     = $this->modelo->obtenerEstados();
+            $listaCalifs      = $this->modelo->obtenerCalificaciones();
+            $listaModalidades = $this->modelo->obtenerModalidades();      // <--- Y ESTA
+
+            // Renderizamos
+            ob_start();
+            if (empty($servicios)) {
+                echo '<tr><td colspan="16" class="p-4 text-center text-red-500 font-bold">No se encontraron servicios con esos filtros.</td></tr>';
+            } else {
+                foreach ($servicios as $s) {
+                    $idFila = $s['id_ordenes_servicio'];
+                    // Ahora sí, detalleFila tendrá acceso a $listaClientes y demás
+                    include __DIR__ . '/../../views/orden/partials/detalleFila.php';
+                }
+            }
+            $html = ob_get_clean();
+
+            echo $html;
+            exit;
         }
     }
 }

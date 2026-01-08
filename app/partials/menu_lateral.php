@@ -19,6 +19,11 @@
     <i class="fas fa-list-alt mr-3 w-6 text-center"></i> Gestión Órdenes
 </a>
 
+<a href="<?= BASE_URL ?>ordenDetalleBuscar"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">
+    <i class="fa-solid fa-diamond mr-3 w-6 text-center"></i> Buscar Orden Individual
+</a>
+
 
 <a href="<?= BASE_URL ?>reporteTecnico"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">
@@ -129,4 +134,8 @@
 <a href="<?= BASE_URL ?>diasFestivosVer"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
     <i class="fa-solid fa-calendar-day mr-3 w-6 text-center"></i> Administrar Días Festivos
+</a>
+<a href="<?= BASE_URL ?>importarExcel"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
+    <i class="fa-solid fa-file-excel mr-3 w-6 text-center"></i> Importar Excel Prosegur
 </a>

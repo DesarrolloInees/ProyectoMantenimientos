@@ -345,7 +345,7 @@ class ordenDetalleModelo
 
             // Verificamos si cambió el Número de Remisión O el Técnico
             if ($actual && ($actual['numero_remision'] != $datos['remision'] || $actual['id_tecnico'] != $datos['id_tecnico'])) {
-                
+
                 // A. LIBERAR LA VIEJA
                 $sqlLiberar = "UPDATE control_remisiones 
                                SET estado = 'DISPONIBLE', id_orden_servicio = NULL, fecha_uso = NULL 
@@ -357,10 +357,13 @@ class ordenDetalleModelo
                     $sqlOcupar = "UPDATE control_remisiones 
                                   SET estado = 'USADA', id_orden_servicio = ?, fecha_uso = ? 
                                   WHERE numero_remision = ? AND id_tecnico = ?";
-                    
+
                     $fechaUso = $datos['fecha_individual'] . ' ' . ($datos['entrada'] ?: '00:00:00');
                     $this->conn->prepare($sqlOcupar)->execute([
-                        $id, $fechaUso, $datos['remision'], $datos['id_tecnico']
+                        $id,
+                        $fechaUso,
+                        $datos['remision'],
+                        $datos['id_tecnico']
                     ]);
                 }
             }
@@ -379,11 +382,23 @@ class ordenDetalleModelo
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
-                $datos['id_cliente'], $datos['id_punto'], $datos['id_maquina'], $datos['id_modalidad'],
-                $datos['remision'], $datos['id_tecnico'], $datos['id_manto'],
-                $datos['id_estado'], $datos['id_calif'], $datos['entrada'],
-                $datos['salida'], $datos['tiempo'], $datos['valor'],
-                $datos['obs'], $datos['tiene_novedad'] ?? 0, $datos['fecha_individual'], $id
+                $datos['id_cliente'],
+                $datos['id_punto'],
+                $datos['id_maquina'],
+                $datos['id_modalidad'],
+                $datos['remision'],
+                $datos['id_tecnico'],
+                $datos['id_manto'],
+                $datos['id_estado'],
+                $datos['id_calif'],
+                $datos['entrada'],
+                $datos['salida'],
+                $datos['tiempo'],
+                $datos['valor'],
+                $datos['obs'],
+                $datos['tiene_novedad'] ?? 0,
+                $datos['fecha_individual'],
+                $id
             ]);
 
             // ---------------------------------------------------------
@@ -396,7 +411,6 @@ class ordenDetalleModelo
 
             $this->conn->commit();
             return true;
-
         } catch (Exception $e) {
             $this->conn->rollBack();
             error_log("Error actualizando orden: " . $e->getMessage());
@@ -479,6 +493,129 @@ class ordenDetalleModelo
         $stmt->execute([$idOrden]);
         // Devuelve algo como: [['id'=>1, 'cantidad'=>2], ['id'=>5, 'cantidad'=>1]]
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+
+    // ==========================================
+    // 5. BÚSQUEDA AVANZADA (PARA VISTA INDIVIDUAL)
+    // ==========================================
+    public function buscarOrdenesFiltros($filtros)
+    {
+        // NOTA: Usamos EL MISMO SELECT gigante que arriba para que no falten campos
+        $sql = "SELECT 
+                o.id_ordenes_servicio,
+                o.numero_remision,
+                o.fecha_visita,
+                o.hora_entrada,
+                o.hora_salida,
+                o.tiempo_servicio,
+                o.valor_servicio,
+                o.actividades_realizadas as que_se_hizo,
+                o.tiene_novedad,
+                
+                -- MÁQUINA
+                o.id_maquina,
+                m.device_id,
+                tm.nombre_tipo_maquina,
+                tm.id_tipo_maquina,
+                
+                -- CLIENTE
+                COALESCE(o.id_cliente, c_maq.id_cliente) as id_cliente,
+                COALESCE(c_directo.nombre_cliente, c_maq.nombre_cliente) as nombre_cliente,
+                
+                -- PUNTO
+                COALESCE(o.id_punto, p_maq.id_punto) as id_punto,
+                COALESCE(p_directo.nombre_punto, p_maq.nombre_punto) as nombre_punto,
+                
+                -- DELEGACIÓN
+                COALESCE(d_directo.nombre_delegacion, d_maq.nombre_delegacion) as delegacion,
+
+                -- MODALIDAD
+                COALESCE(o.id_modalidad, 1) as id_modalidad,
+                CASE 
+                    WHEN o.id_modalidad = 1 THEN 'URBANO'
+                    WHEN o.id_modalidad = 2 THEN 'INTERURBANO'
+                    ELSE 'NO DEFINIDO'
+                END as tipo_zona,
+
+                -- TÉCNICO Y DEMÁS
+                o.id_tecnico, t.nombre_tecnico,
+                o.id_tipo_mantenimiento as id_manto, tman.nombre_completo as tipo_servicio,
+                o.id_estado_maquina as id_estado, em.nombre_estado as estado_maquina,
+                o.id_calificacion as id_calif, cal.nombre_calificacion,
+
+                -- TEXTO REPUESTOS
+                IFNULL(
+                    (SELECT GROUP_CONCAT(
+                        CONCAT(r.nombre_repuesto, ' (', osr.origen, ')', IF(osr.cantidad>1, CONCAT(' x', osr.cantidad), ''))
+                        SEPARATOR ', ')
+                    FROM orden_servicio_repuesto osr
+                    JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                    WHERE osr.id_orden_servicio = o.id_ordenes_servicio)
+                , '') as repuestos_texto
+
+                FROM ordenes_servicio o
+            
+                LEFT JOIN maquina m ON o.id_maquina = m.id_maquina
+                LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
+                LEFT JOIN tecnico t ON o.id_tecnico = t.id_tecnico
+                LEFT JOIN tipo_mantenimiento tman ON o.id_tipo_mantenimiento = tman.id_tipo_mantenimiento
+                LEFT JOIN estado_maquina em ON o.id_estado_maquina = em.id_estado
+                LEFT JOIN calificacion_servicio cal ON o.id_calificacion = cal.id_calificacion
+                
+                LEFT JOIN punto p_maq ON m.id_punto = p_maq.id_punto
+                LEFT JOIN cliente c_maq ON p_maq.id_cliente = c_maq.id_cliente
+                LEFT JOIN delegacion d_maq ON p_maq.id_delegacion = d_maq.id_delegacion
+
+                LEFT JOIN cliente c_directo ON o.id_cliente = c_directo.id_cliente
+                LEFT JOIN punto p_directo ON o.id_punto = p_directo.id_punto
+                LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
+                
+                WHERE 1=1 ";
+
+        $params = [];
+
+        // Filtro por Remisión
+        if (!empty($filtros['remision'])) {
+            $sql .= " AND o.numero_remision LIKE ?";
+            $params[] = "%" . $filtros['remision'] . "%";
+        }
+
+        // Filtro por Cliente
+        if (!empty($filtros['id_cliente'])) {
+            $sql .= " AND (o.id_cliente = ? OR c_maq.id_cliente = ?)";
+            $params[] = $filtros['id_cliente'];
+            $params[] = $filtros['id_cliente'];
+        }
+
+        // Filtro por Punto
+        if (!empty($filtros['id_punto'])) {
+            $sql .= " AND (o.id_punto = ? OR m.id_punto = ?)";
+            $params[] = $filtros['id_punto'];
+            $params[] = $filtros['id_punto'];
+        }
+
+        // Orden descendente por fecha
+        $sql .= " ORDER BY o.fecha_visita DESC, o.id_ordenes_servicio DESC LIMIT 50";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Procesar repuestos JSON
+        foreach ($resultados as &$row) {
+            $idOrden = $row['id_ordenes_servicio'];
+            $sqlRep = "SELECT r.id_repuesto as id, r.nombre_repuesto as nombre, osr.origen, osr.cantidad 
+                       FROM orden_servicio_repuesto osr
+                       JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                       WHERE osr.id_orden_servicio = ?";
+            $stmtRep = $this->conn->prepare($sqlRep);
+            $stmtRep->execute([$idOrden]);
+            $row['repuestos_json'] = json_encode($stmtRep->fetchAll(PDO::FETCH_ASSOC));
+        }
+
+        return $resultados;
     }
 
     // ==========================================

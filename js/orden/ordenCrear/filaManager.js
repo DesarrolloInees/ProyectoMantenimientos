@@ -271,6 +271,7 @@ function limpiarFilaDesde(id, desde) {
 
 /**
  * Validar coherencia servicio-repuestos
+ * MODIFICADO: Ya no muestra alertas inmediatas para Correctivos
  */
 function validarCoherencia(id) {
     if (window.AppConfig.ignorarCambios) return;
@@ -283,10 +284,15 @@ function validarCoherencia(id) {
 
     let mensaje = "";
 
-    if (textoServicio.includes("CORRECTIVO") && numRepuestos === 0) {
-        mensaje = "⚠️ AVISO: Mantenimiento CORRECTIVO sin repuestos.\n\n¿Estás seguro que no se usaron piezas?";
+    // 1. ELIMINAR O COMENTAR ESTE BLOQUE AQUÍ
+    // La validación de Correctivo sin repuestos ahora solo se hace en app.js al guardar
+    /* if (textoServicio.includes("CORRECTIVO") && numRepuestos === 0) {
+        mensaje = "⚠️ AVISO: Mantenimiento CORRECTIVO sin repuestos...";
     }
+    */
 
+    // 2. Puedes dejar este si quieres avisar lo contrario (Preventivo CON repuestos)
+    // O comentarlo también si prefieres que todo sea al final.
     if (textoServicio.includes("PREVENTIVO") && numRepuestos > 0) {
         mensaje = "🤔 AVISO: Mantenimiento PREVENTIVO con repuestos.\n\nVerifica si deberías cambiar a Correctivo.";
     }
@@ -303,8 +309,11 @@ function cambioServicio(id) {
     if (window.AjaxUtils) {
         window.AjaxUtils.calcularPrecio(id);
     }
-    validarCoherencia(id);
+    // Opcional: Si quieres que NO moleste en absoluto mientras editas,
+    // comenta la siguiente línea:
+    // validarCoherencia(id); 
 }
+
 
 // Exportar
 window.FilaManager = {

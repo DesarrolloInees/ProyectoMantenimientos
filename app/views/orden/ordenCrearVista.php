@@ -96,7 +96,7 @@
 
         <!-- BOTÓN GUARDAR -->
         <div class="mt-8 text-center pb-8">
-            <button type="submit"
+            <button type="button" id="btnGuardarFijo"
                 class="bg-blue-600 hover:bg-blue-800 text-white font-bold py-4 px-12 rounded-xl shadow-xl transform hover:scale-105 transition text-lg">
                 <i class="fas fa-save mr-2"></i> GUARDAR REPORTE COMPLETO
             </button>

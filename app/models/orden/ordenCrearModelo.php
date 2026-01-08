@@ -223,8 +223,8 @@ class ordenCrearModels
 
                 if (is_array($repuestos) && count($repuestos) > 0) {
                     $sqlRep = "INSERT INTO orden_servicio_repuesto 
-                                (id_orden_servicio, id_repuesto, origen, cantidad) 
-                                VALUES (?, ?, ?, ?)";
+                (id_orden_servicio, id_repuesto, origen, cantidad) 
+                VALUES (?, ?, ?, ?)";
                     $stmtRep = $this->conn->prepare($sqlRep);
 
                     foreach ($repuestos as $rep) {
@@ -232,12 +232,23 @@ class ordenCrearModels
                             // Validación: Si no viene cantidad, asumimos 1
                             $cant = isset($rep['cantidad']) && $rep['cantidad'] > 0 ? $rep['cantidad'] : 1;
 
+                            // 1. INSERTAR EN TABLA INTERMEDIA
                             $stmtRep->execute([
                                 $idOrden,
                                 $rep['id'],
                                 $rep['origen'],
-                                $cant // 🔥 AQUÍ PASAMOS LA CANTIDAD REAL
+                                $cant
                             ]);
+
+                            // 2. 🔥 NUEVO: DESCONTAR DEL INVENTARIO AQUÍ MISMO (Dentro de la transacción)
+                            // Solo si el origen es 'INEES' (o la lógica que uses para tu inventario propio)
+                            if ($rep['origen'] === 'INEES') {
+                                $this->descontarDelInventario(
+                                    $datos['id_tecnico'],
+                                    $rep['id'],
+                                    $cant
+                                );
+                            }
                         }
                     }
                 }
@@ -326,50 +337,49 @@ class ordenCrearModels
     }
 
     public function verificarRemisionDisponible($numeroRemision, $idTecnico)
-{
-    try {
-        // Verificar si existe en control_remisiones
-        $sql = "SELECT estado, id_orden_servicio 
+    {
+        try {
+            // Verificar si existe en control_remisiones
+            $sql = "SELECT estado, id_orden_servicio 
                 FROM control_remisiones 
                 WHERE numero_remision = :remision 
                 AND id_tecnico = :tecnico 
                 LIMIT 1";
-        
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute([
-            ':remision' => $numeroRemision,
-            ':tecnico' => $idTecnico
-        ]);
-        
-        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$resultado) {
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([
+                ':remision' => $numeroRemision,
+                ':tecnico' => $idTecnico
+            ]);
+
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$resultado) {
+                return [
+                    'disponible' => false,
+                    'mensaje' => 'Remisión no encontrada en el sistema'
+                ];
+            }
+
+            if ($resultado['estado'] === 'USADA') {
+                return [
+                    'disponible' => false,
+                    'mensaje' => 'Remisión ya fue usada en orden #' . $resultado['id_orden_servicio']
+                ];
+            }
+
+            return [
+                'disponible' => true,
+                'mensaje' => 'Remisión disponible'
+            ];
+        } catch (PDOException $e) {
+            error_log("Error verificando remisión: " . $e->getMessage());
             return [
                 'disponible' => false,
-                'mensaje' => 'Remisión no encontrada en el sistema'
+                'mensaje' => 'Error al verificar remisión'
             ];
         }
-        
-        if ($resultado['estado'] === 'USADA') {
-            return [
-                'disponible' => false,
-                'mensaje' => 'Remisión ya fue usada en orden #' . $resultado['id_orden_servicio']
-            ];
-        }
-        
-        return [
-            'disponible' => true,
-            'mensaje' => 'Remisión disponible'
-        ];
-        
-    } catch (PDOException $e) {
-        error_log("Error verificando remisión: " . $e->getMessage());
-        return [
-            'disponible' => false,
-            'mensaje' => 'Error al verificar remisión'
-        ];
     }
-}
     // Obtener lista simple de fechas festivas
     public function obtenerFestivos()
     {

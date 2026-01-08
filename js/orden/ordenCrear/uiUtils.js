@@ -76,17 +76,9 @@ function validarFormulario() {
         }
     });
 
-    if (filasValidas === 0) {
-        alert('⚠️ No hay servicios completos para guardar.\n\nAsegúrese de llenar al menos: Máquina, Técnico y Tipo de Servicio.');
-        return false;
-    }
 
-    if (errores.length > 0) {
-        const confirmar = confirm(
-            `⚠️ ADVERTENCIA\n\nSe encontraron ${errores.length} filas incompletas que NO se guardarán:\n\n${errores.join('\n')}\n\n¿Desea continuar?`
-        );
-        return confirmar;
-    }
+
+
 
     return true;
 }

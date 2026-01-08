@@ -1,83 +1,51 @@
 <?php
-// controladores/usuario/procesarCambioPasswordControlador.php
-
 if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
-// Importamos lo necesario
-require_once __DIR__ . '/../../config/conexion.php';
-require_once __DIR__ . '/../../models/login/loginModelo.php';
-
-class ProcesarCambioPasswordControlador
+class CambiarPasswordControlador
 {
-
-    private $db;
-    private $modelo;
 
     public function __construct()
     {
-        // 1. SOLUCIÓN AL ERROR: Creamos la conexión aquí mismo
-        $conexionObj = new Conexion();
-        $this->db = $conexionObj->getConexion();
-
-        // 2. Instanciamos el modelo con la conexión segura
-        $this->modelo = new LoginModelo($this->db);
+        // Inicia la sesión si no está iniciada
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
     public function index()
     {
-        // Verificar sesión
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        // Validación de seguridad de sesión temporal
+        // Seguridad: Si no existe la sesión temporal, redirigir al login
         if (!isset($_SESSION['temp_user_id'])) {
-            // Si pierdes la sesión, redirige al login con error
-            header('Location: ' . BASE_URL . 'login?error=sesion_expirada');
-            exit();
-        }
-
-        // Verificar método POST
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: ' . BASE_URL . 'login');
             exit();
         }
 
-        // --- RECOLECCIÓN Y LÓGICA ---
+        // --- PREPARACIÓN DE DATOS PARA LA VISTA ---
+        // Usamos la misma lógica de variables que tu controlador de Remisiones
+        $titulo = "Recuperar Contraseña";
+        $username = $_SESSION['username'] ?? 'Usuario';
 
-        $nuevaPass = $_POST['nueva_password'] ?? '';
-        $confirmPass = $_POST['confirmar_password'] ?? '';
-        $userId = (int)$_SESSION['temp_user_id'];
+        // Datos que la plantilla/vista podrían usar
+        $datos_plantilla = [
+            'baseURL' => BASE_URL,
+            'username' => $username
+        ];
 
-        // 1. VALIDACIÓN: Coincidencia
-        if ($nuevaPass !== $confirmPass) {
-            header('Location: ' . BASE_URL . 'cambiarPassword?error=no_coinciden');
-            exit();
-        }
+        // --- CARGA DE VISTAS ---
+        // Definimos la vista de contenido y llamamos a la plantilla principal
+        $vistaContenido = "app/views/login/solicitarCodigoVista.php";
+        include "app/views/plantillaVista.php";
+    }
 
-        // 2. VALIDACIÓN: Seguridad (Regex)
-        // Obtenemos parámetro de longitud mínima (valor por defecto 8)
-        $longitudMinima = (int)$this->modelo->obtenerParametro('password_min_longitud', '8');
-
-        $regex = "/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{" . $longitudMinima . ",}$/";
-
-        if (!preg_match($regex, $nuevaPass)) {
-            header('Location: ' . BASE_URL . 'cambiarPassword?error=no_segura');
-            exit();
-        }
-
-        // 3. EJECUCIÓN
-        $actualizado = $this->modelo->actualizarPassword($userId, $nuevaPass);
-
-        if ($actualizado) {
-            // ÉXITO: Limpiamos sesión y mandamos al login
-            session_destroy();
-            header('Location: ' . BASE_URL . 'login?exito=cambio_ok');
-            exit();
-        } else {
-            // ERROR BD
-            header('Location: ' . BASE_URL . 'cambiarPassword?error=db_error');
-            exit();
+    /**
+     * Ejemplo de cómo podrías manejar la validación del código 
+     * si decides enviarlo por POST a este mismo controlador
+     */
+    public function validarCodigo()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Aquí iría la lógica para verificar el código
+            // similar a como validas las remisiones
         }
     }
 }

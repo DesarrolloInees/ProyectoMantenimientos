@@ -100,6 +100,8 @@
     $(document).ready(function() {
         $('#tablaRemisiones').DataTable({
             responsive: true,
+            pageLength: 100, // <--- Esto establece el valor por defecto a 100
+
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
             },

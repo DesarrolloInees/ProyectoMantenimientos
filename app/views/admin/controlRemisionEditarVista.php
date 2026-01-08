@@ -1,5 +1,21 @@
 <?php if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado."); ?>
 
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    /* Ajuste para que Select2 combine con el estilo de Tailwind que ya tienes */
+    .select2-container--default .select2-selection--single {
+        height: 46px !important;
+        padding: 8px !important;
+        border-color: #d1d5db !important;
+        border-radius: 0.5rem !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 44px !important;
+    }
+</style>
+
 <div class="w-full max-w-2xl mx-auto">
     <div class="bg-white p-8 rounded-xl shadow-md border border-gray-100">
 
@@ -29,7 +45,7 @@
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Técnico Responsable</label>
-                <select name="id_tecnico" required class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
+                <select name="id_tecnico" id="select-tecnico" required class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
                     <?php foreach ($listaTecnicos as $t): ?>
                         <option value="<?= $t['id_tecnico'] ?>" <?= ($datos['id_tecnico'] == $t['id_tecnico']) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($t['nombre_tecnico']) ?>
@@ -43,6 +59,9 @@
                 <select name="estado" class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
                     <option value="DISPONIBLE" <?= ($datos['estado'] == 'DISPONIBLE') ? 'selected' : '' ?>>DISPONIBLE</option>
                     <option value="ANULADA" <?= ($datos['estado'] == 'ANULADA') ? 'selected' : '' ?>>ANULADA</option>
+                    <?php if ($datos['estado'] == 'USADA'): ?>
+                        <option value="USADA" selected disabled>USADA (No editable)</option>
+                    <?php endif; ?>
                 </select>
             </div>
 
@@ -56,3 +75,17 @@
         </form>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Inicializamos Select2 en el campo de técnicos
+        $('#select-tecnico').select2({
+            placeholder: "Seleccione un técnico",
+            allowClear: true,
+            width: '100%' // Asegura que ocupe todo el ancho de Tailwind
+        });
+    });
+</script>

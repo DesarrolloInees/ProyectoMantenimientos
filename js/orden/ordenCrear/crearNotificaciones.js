@@ -444,6 +444,92 @@ function configurarNotificaciones(opciones = {}) {
     Object.assign(NotifConfig, opciones);
 }
 
+// ==========================================
+// NUEVO: MODAL DE CONFIRMACIÓN (BLOQUEANTE)
+// ==========================================
+
+/**
+ * Muestra un modal que exige respuesta del usuario
+ * @param {string} mensaje - El texto de la pregunta
+ * @param {function} callbackConfirmar - Función a ejecutar si dice SÍ
+ */
+function mostrarModalConfirmacion(mensaje, callbackConfirmar) {
+    const id = 'modal_confirm_' + Date.now();
+
+    const modal = document.createElement('div');
+    modal.id = id;
+    modal.className = 'fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity duration-300';
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full transform scale-100 transition-transform duration-300 border-t-4 border-blue-600">
+            <div class="text-center mb-6">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                    <i class="fas fa-question text-blue-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">¿Estás seguro?</h3>
+                <div class="mt-2">
+                    <p class="text-sm text-gray-500">${mensaje}</p>
+                </div>
+            </div>
+            <div class="flex justify-center gap-3">
+                <button id="btn_cancelar_${id}" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    Cancelar
+                </button>
+                <button id="btn_confirmar_${id}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Confirmar y Guardar
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Eventos
+    document.getElementById(`btn_cancelar_${id}`).onclick = () => {
+        modal.style.opacity = '0';
+        setTimeout(() => modal.remove(), 300);
+    };
+
+    document.getElementById(`btn_confirmar_${id}`).onclick = () => {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.remove();
+            callbackConfirmar(); // EJECUTA EL GUARDADO SOLO AQUÍ
+        }, 300);
+    };
+
+    // Animación de entrada
+    modal.style.opacity = '0';
+    setTimeout(() => modal.style.opacity = '1', 10);
+}
+
+/**
+ * Valida coherencia de UNA fila (Correctivo vs Repuestos)
+ * Retorna TRUE si hay error, FALSE si está bien
+ */
+function validarCoherenciaFila(idFila, tipoServicio, tieneRepuestos) {
+    let mensaje = '';
+    let hayError = false;
+
+    // Lógica ajustada: Solo notifica, pero retornamos el estado para que decidas si bloqueas o no
+    if (tipoServicio.toUpperCase().includes('CORRECTIVO') && !tieneRepuestos) {
+        mensaje = `🤔 Fila #${idFila}: Es Mantenimiento CORRECTIVO pero no has agregado repuestos.<br>¿Seguro que no se usaron piezas?`;
+        hayError = true;
+    } else if (tipoServicio.toUpperCase().includes('PREVENTIVO') && tieneRepuestos) {
+        mensaje = `🤔 Fila #${idFila}: Es Mantenimiento PREVENTIVO pero tiene repuestos.<br>¿Debería ser Correctivo?`;
+        hayError = true;
+    }
+
+    if (mensaje) {
+        // Usamos advertencia sonora y visual
+        mostrarNotificacion(mensaje, 'advertencia', 6000);
+    }
+
+    return hayError;
+}
+
+
+
 // Exportar
 window.CrearNotificaciones = {
     mostrarNotificacion,
@@ -471,7 +557,9 @@ window.CrearNotificaciones = {
     notificarGuardadoExitoso,
     notificarEnviandoFormulario,
     notificarInventarioCargado,
-    notificarMaquinaAutoSeleccionada
+    notificarMaquinaAutoSeleccionada,
+    mostrarModalConfirmacion,
+    validarCoherenciaFila
 };
 
 console.log('🔔 Sistema de notificaciones CREAR cargado');
