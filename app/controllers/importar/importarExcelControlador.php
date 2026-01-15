@@ -1,7 +1,6 @@
 <?php
 if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
-// 1. IMPORTAR ARCHIVOS NECESARIOS
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/importar/importarExcelModelo.php';
 require_once __DIR__ . '/../../../vendor/autoload.php';
@@ -12,6 +11,7 @@ class importarExcelControlador
 {
     private $modelo;
     private $db;
+    private $rutaTemporal = __DIR__ . '/../../uploads/temp_import.xlsx';
 
     public function __construct()
     {
@@ -27,160 +27,206 @@ class importarExcelControlador
         include "app/views/plantillaVista.php";
     }
 
-    public function procesar()
+    // ========================================================================
+    // FASE 1: SUBIR EL ARCHIVO Y CONTAR FILAS
+    // ========================================================================
+    public function subirArchivo()
     {
-        // Configuración de recursos para archivos grandes
-        ini_set('memory_limit', '-1');
-        set_time_limit(300);
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['archivo_excel'])) {
+            
+            if (!is_dir(dirname($this->rutaTemporal))) mkdir(dirname($this->rutaTemporal), 0777, true);
 
-            if ($_FILES['archivo_excel']['error'] == 0) {
-
-                $rutaArchivo = $_FILES['archivo_excel']['tmp_name'];
-
+            if (move_uploaded_file($_FILES['archivo_excel']['tmp_name'], $this->rutaTemporal)) {
+                
                 try {
-                    // 1. CARGA OPTIMIZADA DEL EXCEL
-                    $reader = IOFactory::createReaderForFile($rutaArchivo);
+                    $reader = IOFactory::createReaderForFile($this->rutaTemporal);
                     $reader->setReadDataOnly(true);
-                    $spreadsheet = $reader->load($rutaArchivo);
-
-                    // Buscar hoja específica o usar la primera
-                    $nombreHojaObjetivo = 'INSTALADAS CT';
-                    $hoja = $spreadsheet->getSheetByName($nombreHojaObjetivo);
-                    if ($hoja === null) {
-                        $hoja = $spreadsheet->getActiveSheet();
+                    
+                    // Intentamos leer información básica
+                    try {
+                        $info = $reader->listWorksheetInfo($this->rutaTemporal);
+                        $totalFilas = $info[0]['totalRows'];
+                        
+                        // Buscamos la hoja correcta
+                        foreach ($info as $hoja) {
+                            if ($hoja['worksheetName'] == 'INSTALADAS CT') {
+                                $totalFilas = $hoja['totalRows'];
+                                break;
+                            }
+                        }
+                    } catch (Exception $e) {
+                        // Fallback si falla listWorksheetInfo
+                        $spreadsheet = $reader->load($this->rutaTemporal);
+                        $totalFilas = $spreadsheet->getActiveSheet()->getHighestRow();
                     }
 
-                    $filas = $hoja->toArray();
+                    echo json_encode([
+                        'exito' => true, 
+                        'total_filas' => $totalFilas,
+                        'mensaje' => 'Archivo cargado. Iniciando procesamiento...'
+                    ]);
 
-                    // 2. MARCAR HORA DE INICIO (El sello de tiempo para la limpieza)
-                    $fechaInicio = date('Y-m-d H:i:s');
-                    sleep(1); // Pequeña pausa para evitar conflictos de milisegundos
-
-                    // Variables de reporte
-                    $stats = ['insertados' => 0, 'omitidos' => 0, 'errores' => 0];
-                    $detallesInsertados = [];
-                    $mapaTipos = ['MINI MEI' => 'Mini Mei', 'SDM-10' => 'SDM 10', 'JH-600' => 'JH 600'];
-
-                    // 3. RECORRER FILAS (i=1 para saltar encabezado)
-                    for ($i = 1; $i < count($filas); $i++) {
-                        $fila = $filas[$i];
-
-                        // Mapeo de columnas (Ajustado a tu CSV INSTALADAS CT)
-                        $codClienteStr = $fila[0];  // A
-                        $nombreCliente = $fila[1];  // B
-                        $deviceId      = $fila[2] ?? ''; // C
-                        $cod1          = $fila[3];  // D
-                        $cod2          = $fila[4];  // E
-                        $nombrePunto   = $fila[5];  // F
-                        $delegacionTxt = $fila[8];  // I
-                        $tipoMaquina   = $fila[10]; // K
-                        $direccion     = $fila[36]; // AK (Verificar columna dirección)
-
-                        if (empty($deviceId)) continue;
-
-                        // =========================================================
-                        // CASO A: YA EXISTE LA MÁQUINA
-                        // =========================================================
-                        if ($this->modelo->existeDeviceId($deviceId)) {
-
-                            // 1. "Tocamos" la máquina para salvarla
-                            $this->modelo->tocarMaquina($deviceId);
-
-                            // 2. BUSCAMOS SU PUNTO REAL EN LA BASE DE DATOS
-                            // No creamos uno nuevo basado en el nombre del Excel (evita duplicados por typos)
-                            $idPuntoActual = $this->modelo->obtenerIdPuntoPorDevice($deviceId);
-
-                            if ($idPuntoActual) {
-                                // "Tocamos" el punto donde vive la máquina actualmente
-                                $this->modelo->tocarPunto($idPuntoActual);
-                            } else {
-                                // Caso raro: La máquina existe pero no tiene punto (húerfana).
-                                // Aquí sí podríamos intentar crearle uno o asignarlo, 
-                                // pero por seguridad mejor no hacemos nada para no ensuciar.
-                            }
-
-                            $stats['omitidos']++;
-                            continue;
-                        }
-
-                        // =========================================================
-                        // CASO B: ES UNA MÁQUINA NUEVA
-                        // =========================================================
-                        try {
-                            $this->db->beginTransaction();
-
-                            // 1. Gestionar Cliente
-                            $idCliente = $this->modelo->gestionarCliente($nombreCliente, $codClienteStr);
-
-                            // 2. Gestionar Punto
-                            $idDelegacion = $this->modelo->obtenerIdDelegacion($delegacionTxt);
-                            $idPunto = $this->modelo->gestionarPunto(
-                                $nombrePunto,
-                                $idCliente,
-                                $cod1,
-                                $cod2,
-                                $idDelegacion,
-                                $direccion
-                            );
-
-                            // Marcamos el punto nuevo como activo hoy
-                            $this->modelo->tocarPunto($idPunto);
-
-                            // 3. Gestionar Tipo y Máquina
-                            $tipoFinal = isset($mapaTipos[trim($tipoMaquina)]) ? $mapaTipos[trim($tipoMaquina)] : $tipoMaquina;
-                            $idTipo = $this->modelo->obtenerIdTipoMaquina($tipoFinal);
-
-                            $datosMaq = [
-                                'device_id' => trim($deviceId),
-                                'id_punto' => $idPunto,
-                                'id_tipo_maquina' => $idTipo
-                            ];
-
-                            if ($this->modelo->insertarMaquina($datosMaq)) {
-
-                                // Marcamos la máquina nueva como activa hoy
-                                $this->modelo->tocarMaquina($deviceId);
-
-                                $stats['insertados']++;
-                                $detallesInsertados[] = [
-                                    'device_id' => $deviceId,
-                                    'cliente'   => $nombreCliente,
-                                    'punto'     => $nombrePunto,
-                                    'ciudad'    => $delegacionTxt
-                                ];
-                                $this->db->commit();
-                            } else {
-                                $this->db->rollBack();
-                                $stats['errores']++;
-                            }
-                        } catch (Exception $e) {
-                            $this->db->rollBack();
-                            $stats['errores']++;
-                        }
-                    }
-
-                    // 4. LIMPIEZA FINAL (APAGAR FANTASMAS)
-                    // Todo lo que tenga fecha_actualizacion menor a $fechaInicio se desactiva
-                    $bajas = $this->modelo->desactivarFantasmas($fechaInicio);
-
-                    // 5. PREPARAR DATOS PARA LA VISTA
-                    $resultados = $stats;
-                    $resultados['bajas_maquinas'] = $bajas['maquinas'];
-                    $resultados['bajas_puntos']   = $bajas['puntos'];
-                    $listaNuevos = $detallesInsertados;
-
-                    // Cargar vista con los datos
-                    $vistaContenido = "app/views/importar/importarExcelVista.php";
-                    include "app/views/plantillaVista.php";
-                    return;
                 } catch (Exception $e) {
-                    echo "<script>alert('Error crítico: " . $e->getMessage() . "'); window.history.back();</script>";
+                    echo json_encode(['exito' => false, 'error' => $e->getMessage()]);
                 }
             } else {
-                echo "<script>alert('Error al subir el archivo.'); window.history.back();</script>";
+                echo json_encode(['exito' => false, 'error' => 'No se pudo mover el archivo temporal.']);
             }
         }
+        exit;
+    }
+
+    // ========================================================================
+    // FASE 2: PROCESAR UN LOTE (CHUNK)
+    // ========================================================================
+   public function procesarLote()
+    {
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: application/json');
+        
+        ini_set('memory_limit', '-1');
+        set_time_limit(300); 
+
+        $inicio = intval($_POST['inicio'] ?? 2); 
+        $cantidad = intval($_POST['cantidad'] ?? 200);
+
+        try {
+            $reader = IOFactory::createReaderForFile($this->rutaTemporal);
+            $reader->setReadDataOnly(true);
+            
+            $chunkFilter = new ChunkReadFilter(); 
+            $chunkFilter->setRows($inicio, $cantidad);
+            $reader->setReadFilter($chunkFilter);
+
+            $spreadsheet = $reader->load($this->rutaTemporal);
+            
+            $nombreHoja = 'INSTALADAS CT';
+            $hoja = $spreadsheet->getSheetByName($nombreHoja);
+            if ($hoja === null) $hoja = $spreadsheet->getActiveSheet();
+            
+            $filas = $hoja->toArray(null, true, true, true); 
+
+            $stats = ['insertados' => 0, 'actualizados' => 0, 'errores' => 0];
+            $detallesNuevos = []; // <--- 1. ARRAY PARA GUARDAR LOS NUEVOS DE ESTE LOTE
+            $mapaTipos = ['MINI MEI' => 'Mini Mei', 'SDM-10' => 'SDM 10', 'JH-600' => 'JH 600'];
+
+            $filasConDatosEnEsteLote = 0;
+
+            foreach ($filas as $numFila => $fila) {
+                if ($numFila == 1) continue; 
+                if ($numFila < $inicio) continue;
+
+                $checkCliente  = trim($fila['A'] ?? '');
+                $checkDeviceId = trim($fila['C'] ?? '');
+                if (empty($checkCliente) && empty($checkDeviceId)) continue;
+                
+                $filasConDatosEnEsteLote++;
+
+                $codClienteStr = $fila['A']; 
+                $nombreCliente = $fila['B']; 
+                $deviceId      = $fila['C'] ?? ''; 
+                $cod1          = $fila['D']; 
+                $cod2          = $fila['E']; 
+                $nombrePunto   = $fila['F']; 
+                $delegacionTxt = $fila['I']; 
+                $tipoMaquina   = $fila['K']; 
+                $direccion     = $fila['AK'] ?? ''; 
+
+                if (empty($deviceId)) continue;
+
+                try {
+                    $this->db->beginTransaction();
+
+                    $idCliente = $this->modelo->gestionarCliente($nombreCliente, $codClienteStr);
+                    $idDelegacion = $this->modelo->obtenerIdDelegacion($delegacionTxt);
+                    $idPuntoDestino = $this->modelo->gestionarPunto($nombrePunto, $idCliente, $cod1, $cod2, $idDelegacion, $direccion);
+                    $this->modelo->tocarPunto($idPuntoDestino);
+
+                    $tipoFinal = isset($mapaTipos[trim($tipoMaquina)]) ? $mapaTipos[trim($tipoMaquina)] : $tipoMaquina;
+                    $idTipo = $this->modelo->obtenerIdTipoMaquina($tipoFinal);
+
+                    if ($this->modelo->existeDeviceId($deviceId)) {
+                        $this->modelo->actualizarMaquina($deviceId, $idPuntoDestino, $idTipo);
+                        $this->modelo->tocarMaquina($deviceId);
+                        $stats['actualizados']++;
+                    } else {
+                        $datosMaq = ['device_id' => trim($deviceId), 'id_punto' => $idPuntoDestino, 'id_tipo_maquina' => $idTipo];
+                        if ($this->modelo->insertarMaquina($datosMaq)) {
+                            $this->modelo->tocarMaquina($deviceId);
+                            $stats['insertados']++;
+                            
+                            // <--- 2. GUARDAMOS EL DETALLE DEL NUEVO
+                            $detallesNuevos[] = [
+                                'device'  => $deviceId,
+                                'cliente' => $nombreCliente,
+                                'punto'   => $nombrePunto,
+                                'ciudad'  => $delegacionTxt
+                            ];
+                        }
+                    }
+                    $this->db->commit();
+                } catch (Exception $e) {
+                    $this->db->rollBack();
+                    $stats['errores']++;
+                }
+            }
+            
+            $forzarDetencion = ($filasConDatosEnEsteLote === 0 && count($filas) > 0);
+
+            echo json_encode([
+                'exito' => true,
+                'procesados' => count($filas),
+                'stats' => $stats,
+                'nuevos' => $detallesNuevos, // <--- 3. ENVIAMOS LA LISTA AL JS
+                'detener' => $forzarDetencion
+            ]);
+
+        } catch (Exception $e) {
+            echo json_encode(['exito' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ========================================================================
+    // FASE 3: LIMPIEZA FINAL
+    // ========================================================================
+    public function finalizarImportacion()
+    {
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: application/json');
+
+        $fechaInicio = $_POST['fecha_inicio'];
+        $bajas = $this->modelo->desactivarFantasmas($fechaInicio);
+        
+        if (file_exists($this->rutaTemporal)) unlink($this->rutaTemporal);
+
+        echo json_encode(['exito' => true, 'bajas' => $bajas]);
+        exit;
     }
 }
+
+// ============================================================================
+// CLASE AUXILIAR CORREGIDA (Aquí estaba el error)
+// ============================================================================
+class ChunkReadFilter implements \PhpOffice\PhpSpreadsheet\Reader\IReadFilter
+{
+    private $startRow = 0;
+    private $endRow   = 0;
+
+    public function setRows($startRow, $chunkSize) {
+        $this->startRow = $startRow;
+        $this->endRow   = $startRow + $chunkSize;
+    }
+
+    // 🔥 CORRECCIÓN: Se agregaron los tipos string, int y :bool
+    public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool {
+        if (($row == 1) || ($row >= $this->startRow && $row < $this->endRow)) {
+            return true;
+        }
+        return false;
+    }
+}
+?>

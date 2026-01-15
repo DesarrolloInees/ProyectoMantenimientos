@@ -623,31 +623,41 @@ class ordenDetalleModelo
     // ==========================================
 
     // A. AGREGAR REPUESTO (Descuenta stock y guarda en orden)
+   // A. AGREGAR REPUESTO (CORREGIDO: Solo descuenta si es INEES)
     public function agregarRepuestoRealTime($idOrden, $idRepuesto, $cantidad, $origen, $idTecnico)
     {
         try {
             $this->conn->beginTransaction();
 
-            // 1. Verificar Stock Disponible
-            $sqlStock = "SELECT cantidad_actual FROM inventario_tecnico 
-                         WHERE id_tecnico = ? AND id_repuesto = ? FOR UPDATE"; // Bloqueo fila
-            $stmt = $this->conn->prepare($sqlStock);
-            $stmt->execute([$idTecnico, $idRepuesto]);
-            $stockActual = $stmt->fetchColumn();
+            $nuevoStockVisual = 0; // Por defecto
 
-            if ($stockActual === false || $stockActual < $cantidad) {
-                $this->conn->rollBack();
-                return ['status' => 'error', 'msg' => 'Stock insuficiente o no asignado.'];
+            // =========================================================
+            // 🔥 PROTECCIÓN: SOLO TOCAMOS INVENTARIO SI ES INEES
+            // =========================================================
+            if ($origen === 'INEES') {
+                // 1. Verificar Stock Disponible
+                $sqlStock = "SELECT cantidad_actual FROM inventario_tecnico 
+                             WHERE id_tecnico = ? AND id_repuesto = ? FOR UPDATE";
+                $stmt = $this->conn->prepare($sqlStock);
+                $stmt->execute([$idTecnico, $idRepuesto]);
+                $stockActual = $stmt->fetchColumn();
+
+                if ($stockActual === false || $stockActual < $cantidad) {
+                    $this->conn->rollBack();
+                    return ['status' => 'error', 'msg' => 'Stock insuficiente en la maleta del técnico.'];
+                }
+
+                // 2. Descontar del Inventario Técnico
+                $sqlUpdInv = "UPDATE inventario_tecnico 
+                              SET cantidad_actual = cantidad_actual - ? 
+                              WHERE id_tecnico = ? AND id_repuesto = ?";
+                $this->conn->prepare($sqlUpdInv)->execute([$cantidad, $idTecnico, $idRepuesto]);
+                
+                $nuevoStockVisual = $stockActual - $cantidad;
             }
+            // =========================================================
 
-            // 2. Descontar del Inventario Técnico
-            $sqlUpdInv = "UPDATE inventario_tecnico 
-                          SET cantidad_actual = cantidad_actual - ? 
-                          WHERE id_tecnico = ? AND id_repuesto = ?";
-            $this->conn->prepare($sqlUpdInv)->execute([$cantidad, $idTecnico, $idRepuesto]);
-
-            // 3. Agregar o Actualizar en la Orden
-            // Verificamos si ya existe ese repuesto en esa orden con ese origen
+            // 3. Agregar o Actualizar en la Orden (ESTO SIEMPRE SE HACE)
             $sqlCheck = "SELECT cantidad FROM orden_servicio_repuesto 
                          WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
@@ -655,13 +665,13 @@ class ordenDetalleModelo
             $cantOrden = $stmtCheck->fetchColumn();
 
             if ($cantOrden !== false) {
-                // Ya existe, sumamos
+                // Sumar
                 $sqlUpdOrden = "UPDATE orden_servicio_repuesto 
                                 SET cantidad = cantidad + ? 
                                 WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
                 $this->conn->prepare($sqlUpdOrden)->execute([$cantidad, $idOrden, $idRepuesto, $origen]);
             } else {
-                // No existe, insertamos
+                // Insertar
                 $sqlInsOrden = "INSERT INTO orden_servicio_repuesto 
                                 (id_orden_servicio, id_repuesto, origen, cantidad) 
                                 VALUES (?, ?, ?, ?)";
@@ -669,22 +679,25 @@ class ordenDetalleModelo
             }
 
             $this->conn->commit();
-            return ['status' => 'ok', 'msg' => 'Agregado correctamente', 'nuevo_stock' => $stockActual - $cantidad];
+            
+            // Devolvemos el stock nuevo solo si era INEES, sino devolvemos null o algo neutral
+            return ['status' => 'ok', 'msg' => 'Agregado correctamente', 'nuevo_stock' => $nuevoStockVisual];
+            
         } catch (Exception $e) {
             $this->conn->rollBack();
             return ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];
         }
     }
 
-    // B. ELIMINAR REPUESTO (Devuelve stock y borra de orden)
+    // B. ELIMINAR REPUESTO (CORREGIDO: Solo devuelve stock si es INEES)
     public function eliminarRepuestoRealTime($idOrden, $idRepuesto, $origen, $idTecnico)
     {
         try {
             $this->conn->beginTransaction();
 
-            // 1. Obtener cantidad a devolver
+            // 1. Obtener cantidad a borrar
             $sqlGet = "SELECT cantidad FROM orden_servicio_repuesto 
-                       WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
+                        WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $stmt = $this->conn->prepare($sqlGet);
             $stmt->execute([$idOrden, $idRepuesto, $origen]);
             $cantidad = $stmt->fetchColumn();
@@ -694,20 +707,25 @@ class ordenDetalleModelo
                 return ['status' => 'error', 'msg' => 'El repuesto no existe en esta orden.'];
             }
 
-            // 2. Devolver al Inventario Técnico
-            // Usamos ON DUPLICATE KEY por seguridad, aunque debería existir
-            $sqlDev = "INSERT INTO inventario_tecnico (id_tecnico, id_repuesto, cantidad_actual, estado) 
-                       VALUES (?, ?, ?, 1) 
-                       ON DUPLICATE KEY UPDATE cantidad_actual = cantidad_actual + ?";
-            $this->conn->prepare($sqlDev)->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
+            // =========================================================
+            // 🔥 PROTECCIÓN: SOLO DEVOLVEMOS AL TÉCNICO SI ES INEES
+            // =========================================================
+            if ($origen === 'INEES') {
+                $sqlDev = "INSERT INTO inventario_tecnico (id_tecnico, id_repuesto, cantidad_actual, estado) 
+                            VALUES (?, ?, ?, 1) 
+                            ON DUPLICATE KEY UPDATE cantidad_actual = cantidad_actual + ?";
+                $this->conn->prepare($sqlDev)->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
+            }
+            // =========================================================
 
-            // 3. Borrar de la Orden
+            // 3. Borrar de la Orden (ESTO SIEMPRE SE HACE)
             $sqlDel = "DELETE FROM orden_servicio_repuesto 
-                       WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
+                        WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $this->conn->prepare($sqlDel)->execute([$idOrden, $idRepuesto, $origen]);
 
             $this->conn->commit();
-            return ['status' => 'ok', 'msg' => 'Repuesto devuelto al inventario'];
+            return ['status' => 'ok', 'msg' => 'Repuesto eliminado de la orden'];
+            
         } catch (Exception $e) {
             $this->conn->rollBack();
             return ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];

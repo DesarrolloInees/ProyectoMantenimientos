@@ -154,6 +154,12 @@ function agregarRepuestoALista() {
         alert("Seleccione un repuesto");
         return;
     }
+
+    // 🔥 CORRECCIÓN AQUÍ: SOLO VALIDAR STOCK SI ES DE INEES
+    if (origen === 'INEES' && cantidad > stockDisponible) {
+        alert("⛔ Stock insuficiente en inventario (INEES).");
+        return;
+    }
     if (cantidad > stockDisponible) {
         alert("⛔ Stock insuficiente en inventario.");
         return;

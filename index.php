@@ -12,7 +12,15 @@ date_default_timezone_set('America/Bogota');
 define('ENTRADA_PRINCIPAL', true);
 
 // Definir URL Base automáticamente
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+$es_https = false;
+if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+    ($_SERVER['SERVER_PORT'] == 443) ||
+    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')) {
+    $es_https = true;
+}
+
+$protocol = $es_https ? "https://" : "http://";
+
 $base_path = str_replace('/index.php', '', str_replace('\\', '/', $_SERVER['SCRIPT_NAME']));
 define('BASE_URL', $protocol . $_SERVER['HTTP_HOST'] . $base_path . '/');
 
