@@ -24,16 +24,14 @@
         <div class="space-y-4">
             <div class="flex gap-2 items-center">
 
-                <!-- SELECT DE REPUESTOS (Select2) -->
-                <div class="flex-grow w-2/3">
+                <div class="flex-1 min-w-0">
                     <select id="select_repuesto_modal"
                         class="w-full border rounded p-2 text-sm">
                         <option value="">- Buscar Repuesto -</option>
                     </select>
                 </div>
 
-                <!-- INPUT DE CANTIDAD -->
-                <div class="w-20">
+                <div class="w-20 flex-shrink-0">
                     <input type="number"
                         id="cantidad_repuesto_modal"
                         value="1"
@@ -42,8 +40,7 @@
                         placeholder="Cant.">
                 </div>
 
-                <!-- SELECT DE ORIGEN -->
-                <div class="w-1/3">
+                <div class="w-32 flex-shrink-0">
                     <select id="select_origen_modal"
                         class="w-full border rounded p-2 text-xs bg-gray-100 font-bold text-gray-700 h-[38px]">
                         <option value="INEES">INEES</option>
@@ -51,10 +48,9 @@
                     </select>
                 </div>
 
-                <!-- BOTÓN AGREGAR -->
                 <button type="button"
                     onclick="agregarRepuestoALista()"
-                    class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow transition h-[38px]">
+                    class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow transition h-[38px] flex-shrink-0">
                     <i class="fas fa-plus"></i>
                 </button>
             </div>

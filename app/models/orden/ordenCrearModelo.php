@@ -83,35 +83,40 @@ class ordenCrearModels
         }
     }
 
-    // --- 6. CONSULTAR TARIFA (DINÁMICA POR AÑO) ---
-    // Ahora pedimos la fecha para saber qué año cobrar
+    // --- 6. CONSULTAR TARIFA (CON VALIDACIÓN DE EXISTENCIA) ---
     public function consultarTarifa($idTipoMaq, $idTipoManto, $idModalidad, $fechaVisita)
     {
         try {
-            // 1. Extraer el AÑO de la fecha de visita. 
-            // Si la fecha viene vacía, usamos el año actual del servidor por defecto.
             $anio = !empty($fechaVisita) ? date('Y', strtotime($fechaVisita)) : date('Y');
 
             $sql = "SELECT precio FROM tarifa 
                     WHERE id_tipo_maquina = :tipo_maq
                         AND id_tipo_mantenimiento = :tipo_manto
                         AND id_modalidad = :modalidad
-                        AND año_vigencia = :anio  -- 🔥 AQUÍ ESTÁ LA MAGIA
+                        AND año_vigencia = :anio
                     LIMIT 1";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':tipo_maq', $idTipoMaq, PDO::PARAM_INT);
             $stmt->bindParam(':tipo_manto', $idTipoManto, PDO::PARAM_INT);
             $stmt->bindParam(':modalidad', $idModalidad, PDO::PARAM_INT);
-            $stmt->bindParam(':anio', $anio, PDO::PARAM_INT); // Pasamos el año calculado
+            $stmt->bindParam(':anio', $anio, PDO::PARAM_INT);
 
             $stmt->execute();
             $res = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            return $res ? $res['precio'] : 0;
+            // 🔥 AQUÍ ESTÁ EL TRUCO:
+            // Si $res es false, significa que NO HAY TARIFA CREADA -> Devolvemos -1
+            if ($res === false) {
+                return -1; 
+            }
+
+            // Si existe (incluso si es 0), devolvemos el precio
+            return $res['precio'];
+
         } catch (PDOException $e) {
             error_log("Error en consultarTarifa: " . $e->getMessage());
-            return 0;
+            return -1; // Ante error de conexión, también asumimos error
         }
     }
 

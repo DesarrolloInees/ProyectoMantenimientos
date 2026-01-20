@@ -29,6 +29,11 @@
     <i class="fa-solid fa-file-excel mr-3 w-6 text-center"></i> Exportar Excel por fechas
 </a>
 
+<a href="<?= BASE_URL ?>exportarExcel"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center"> 
+    <i class="fa-solid fa-building-user mr-3 w-6 text-center"></i> Exportar Excel Programación
+</a>
+
 
 <a href="<?= BASE_URL ?>reporteTecnico"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">

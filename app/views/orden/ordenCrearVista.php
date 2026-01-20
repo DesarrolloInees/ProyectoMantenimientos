@@ -37,6 +37,15 @@
     .select2-search__field {
         z-index: 99999999 !important;
     }
+
+    /* Esto fuerza a que el texto largo termine en "..." */
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        padding-right: 20px !important;
+        /* Espacio para que no choque con la X */
+    }
 </style>
 
 <!-- CONTENIDO PRINCIPAL -->
@@ -118,38 +127,38 @@
 
         <input type="hidden" id="modal_fila_actual">
 
-        <div class="space-y-4">
-            <div class="flex gap-2 items-center">
-                <div class="flex-grow w-2/3">
-                    <select id="select_repuesto_modal" class="w-full border rounded p-2 text-sm">
-                        <option value="">- Buscar Repuesto -</option>
-                    </select>
-                </div>
+        <div class="flex gap-2 items-center">
 
-                <div class="w-20">
-                    <input type="number" id="cantidad_repuesto_modal" value="1" min="1"
-                        class="w-full border rounded p-2 text-sm text-center font-bold bg-gray-50 h-[38px]"
-                        placeholder="Cant.">
-                </div>
-
-                <div class="w-1/3">
-                    <select id="select_origen_modal"
-                        class="w-full border rounded p-2 text-xs bg-gray-100 font-bold text-gray-700 h-[38px]">
-                        <option value="INEES">INEES</option>
-                        <option value="PROSEGUR">PROSEGUR</option>
-                    </select>
-                </div>
-
-                <button type="button" onclick="agregarRepuestoALista()"
-                    class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow transition h-[38px]">
-                    <i class="fas fa-plus"></i>
-                </button>
+            <div class="flex-1 min-w-0">
+                <select id="select_repuesto_modal" class="w-full border rounded p-2 text-sm">
+                    <option value="">- Buscar Repuesto -</option>
+                </select>
             </div>
 
-            <ul id="lista_repuestos_visual" class="border rounded p-2 h-48 overflow-y-auto bg-gray-50 text-sm">
-                <li class="text-gray-400 text-center italic mt-10">No hay repuestos seleccionados.</li>
-            </ul>
+            <div class="w-20 flex-shrink-0">
+                <input type="number" id="cantidad_repuesto_modal" value="1" min="1"
+                    class="w-full border rounded p-2 text-sm text-center font-bold bg-gray-50 h-[38px]"
+                    placeholder="Cant.">
+            </div>
+
+            <div class="w-1/3 flex-shrink-0" style="max-width: 130px;">
+                <select id="select_origen_modal"
+                    class="w-full border rounded p-2 text-xs bg-gray-100 font-bold text-gray-700 h-[38px]">
+                    <option value="INEES">INEES</option>
+                    <option value="PROSEGUR">PROSEGUR</option>
+                </select>
+            </div>
+
+            <button type="button" onclick="agregarRepuestoALista()"
+                class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow transition h-[38px] flex-shrink-0">
+                <i class="fas fa-plus"></i>
+            </button>
         </div>
+
+        <ul id="lista_repuestos_visual" class="border rounded p-2 h-48 overflow-y-auto bg-gray-50 text-sm">
+            <li class="text-gray-400 text-center italic mt-10">No hay repuestos seleccionados.</li>
+        </ul>
+
 
         <div class="mt-6 text-right border-t pt-4">
             <button type="button" onclick="guardarCambiosModal()"
@@ -158,6 +167,7 @@
             </button>
         </div>
     </div>
+</div>
 </div>
 
 <!-- ============================================== -->

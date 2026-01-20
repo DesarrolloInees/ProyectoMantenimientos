@@ -95,6 +95,35 @@ function inicializarAplicacionDetalle() {
     window.DetalleDesplazamientos.calcularDesplazamientos();
     window.DetallePaginacion.iniciarPaginacion();
 
+    // =========================================================
+    // 🔥 4. NUEVO: BLOQUEO DE GUARDADO SI HAY ERRORES
+    // =========================================================
+    const form = document.querySelector('form'); // O usa el ID específico de tu form si lo tienes
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            
+            // Buscar filas marcadas con error por el AJAX
+            const filasConError = document.querySelectorAll('.error-tarifa-faltante');
+
+            if (filasConError.length > 0) {
+                e.preventDefault(); // 🛑 DETENER ENVÍO
+                
+                // Scroll a la primera fila con error
+                filasConError[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Efecto visual
+                filasConError.forEach(tr => {
+                    const input = tr.querySelector('input[id^="input_valor_"]');
+                    if(input) input.classList.add('animate-pulse');
+                });
+
+                alert(`⛔ NO SE PUEDE GUARDAR\n\nHay ${filasConError.length} servicio(s) marcados en ROJO porque NO tienen tarifa configurada.\n\nPor favor corrija el tipo de servicio o contacte al administrador.`);
+                return false;
+            }
+        });
+    }
+    // =========================================================
+
     console.log('✅ Sistema de Detalle inicializado correctamente');
 }
 

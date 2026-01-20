@@ -219,7 +219,7 @@ async function procesarGuardado() {
         return;
     }
 
-    // --- 3. RECORRIDO DE FILAS ---
+    // --- 3. RECORRIDO DE FILAS (Validaciones unificadas) ---
     filas.forEach((fila, index) => {
         const idFila = fila.getAttribute('data-id');
         console.log(`🔍 Analizando fila ${index + 1} (ID: ${idFila})`);
@@ -231,20 +231,32 @@ async function procesarGuardado() {
         const tipoServicioElem = fila.querySelector(`select[name^="filas"][name$="[tipo_servicio]"]`);
         const tipoServicioVal = tipoServicioElem?.value;
 
-        // B. Validar vacíos
+        // B. Validar vacíos (EXISTENTE)
         if (!tecnico || !cliente || !maquina || !tipoServicioVal) {
             hayErroresBloqueantes = true;
-            fila.classList.add('bg-red-200'); // Color más fuerte para ver si funciona
-            setTimeout(() => fila.classList.remove('bg-red-200'), 3000);
+            fila.classList.add('bg-red-200'); // Fila roja
+            setTimeout(() => fila.classList.remove('bg-red-200'), 4000); // Efecto visual
         }
 
-        // C. Lógica CORRECTIVO SIN REPUESTOS
-        if (tipoServicioElem) {
-            // Obtenemos el texto visible (ej: "Mantenimiento Correctivo")
-            const textoServicio = tipoServicioElem.options[tipoServicioElem.selectedIndex].text.toUpperCase().trim();
-            console.log(`   - Servicio detectado: "${textoServicio}"`);
+        // =====================================================================
+        // 🔥 C. NUEVA VALIDACIÓN: TARIFA FALTANTE (DENTRO DEL BUCLE)
+        // =====================================================================
+        // Si ajaxUtils.js marcó la fila con 'error-tarifa-faltante', la bloqueamos aquí
+        if (fila.classList.contains('error-tarifa-faltante')) {
+            hayErroresBloqueantes = true;
+            fila.classList.add('bg-red-200'); // También la ponemos roja
 
-            // Buscamos el input de repuestos
+            // Opcional: Hacer que parpadee el input del valor para que se vea cuál es
+            const inputValor = fila.querySelector(`input[name^="filas"][name$="[valor]"]`);
+            if (inputValor) inputValor.classList.add('animate-pulse');
+
+            console.warn(`⚠️ Fila ${index + 1}: Sin tarifa configurada.`);
+        }
+        // =====================================================================
+
+        // D. Lógica CORRECTIVO SIN REPUESTOS (ADVERTENCIA)
+        if (tipoServicioElem) {
+            const textoServicio = tipoServicioElem.options[tipoServicioElem.selectedIndex].text.toUpperCase().trim();
             const inputRepuestos = fila.querySelector(`.input-json-repuestos`) || fila.querySelector(`input[id^="json_rep_"]`);
             const jsonRepuestos = inputRepuestos ? inputRepuestos.value : '[]';
 
@@ -254,23 +266,22 @@ async function procesarGuardado() {
                 cantidadRepuestos = arr.length;
             } catch (e) { console.error('Error parseando JSON repuestos', e); }
 
-            console.log(`   - Cantidad repuestos: ${cantidadRepuestos}`);
-
-            // LA CONDICIÓN CLAVE
             if (textoServicio.includes("CORRECTIVO") && cantidadRepuestos === 0) {
                 console.warn('⚠️ DETECTADO: Correctivo sin repuestos');
                 hayAdvertenciasLogicas = true;
-                fila.classList.add('bg-yellow-200'); // Color fuerte
+                fila.classList.add('bg-yellow-200'); // Advertencia amarilla
             }
         }
     });
 
+    // --- 4. SI HAY ERRORES BLOQUEANTES (Vacíos O Sin Tarifa) ---
     if (hayErroresBloqueantes) {
-        window.CrearNotificaciones.mostrarNotificacion('Faltan datos obligatorios (marcados en rojo)', 'error');
-        return;
+        // Mensaje genérico para ambos casos
+        window.CrearNotificaciones.mostrarNotificacion('⛔ No se puede guardar: Hay datos incompletos o servicios SIN TARIFA (marcados en rojo).', 'error');
+        return; // SE DETIENE AQUÍ
     }
 
-    // --- 4. PREPARAR EL MODAL ---
+    // --- 5. PREPARAR EL MODAL (Si pasó las validaciones rojas) ---
     console.log(`📊 Resultado análisis: Advertencias Logicas = ${hayAdvertenciasLogicas}`);
 
     let mensajeModal = "¿Estás seguro de que deseas guardar y enviar este reporte?";
@@ -281,28 +292,20 @@ async function procesarGuardado() {
         tipoIcono = "warning";
     }
 
-    // --- 5. INTENTAR MOSTRAR EL MODAL ---
-    console.log('🖥️ Llamando al modal...');
-
-    // Verificamos si la función existe antes de llamarla
+    // --- 6. MOSTRAR EL MODAL ---
     if (typeof window.CrearNotificaciones.mostrarModalConfirmacion === 'function') {
         window.CrearNotificaciones.mostrarModalConfirmacion(mensajeModal, function () {
-            console.log("✅ Usuario dijo SI en el modal. ENVIANDO...");
-
-            // --- AGREGA ESTA LÍNEA AQUÍ ---
-            // Esto asegura que se borre el borrador ANTES de recargar la página
             if (window.StorageManager && window.StorageManager.limpiarStorageParaEnvio) {
                 window.StorageManager.limpiarStorageParaEnvio();
             }
-            document.getElementById('formServicios').submit(); // AHORA SÍ ENVIAMOS MANUALMENTE
+            document.getElementById('formServicios').submit();
         }, tipoIcono);
     } else {
-        // Fallback por si el modal falla, usar confirm nativo para probar
-        console.error('❌ No se encontró la función mostrarModalConfirmacion');
         if (confirm(mensajeModal.replace(/<br>/g, '\n').replace(/<b>/g, '').replace(/<\/b>/g, ''))) {
             document.getElementById('formServicios').submit();
         }
     }
+
 }
 // ==========================================
 // EXPORTAR PARA DEBUG EN CONSOLA

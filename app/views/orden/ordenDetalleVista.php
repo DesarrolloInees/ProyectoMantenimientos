@@ -84,6 +84,15 @@
     .flex {
         display: flex !important;
     }
+
+    /* Esto hace que Select2 corte el texto con "..." en lugar de ensancharse */
+.select2-container .select2-selection--single .select2-selection__rendered {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    padding-right: 10px !important;
+    max-width: 100% !important;
+}
 </style>
 
 <!-- CONTENIDO PRINCIPAL -->

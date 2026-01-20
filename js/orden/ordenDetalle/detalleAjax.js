@@ -107,10 +107,10 @@ function cargarMaquinas(idFila, idPunto) {
         selMaq.innerHTML = '<option value="">- Seleccione -</option>';
         data.forEach(m => {
             selMaq.innerHTML += `<option value="${m.id_maquina}" 
-                                          data-tipo="${m.nombre_tipo_maquina}" 
-                                          data-idtipomaquina="${m.id_tipo_maquina}">
+                                            data-tipo="${m.nombre_tipo_maquina}" 
+                                            data-idtipomaquina="${m.id_tipo_maquina}">
                                     ${m.device_id} (${m.nombre_tipo_maquina})
-                                 </option>`;
+                                    </option>`;
         });
 
         if (data.length > 0) {
@@ -142,13 +142,14 @@ function actualizarTipoMaquina(idFila) {
 }
 
 /**
- * Actualizar tarifa con fecha dinámica
+ * Actualizar tarifa con fecha dinámica y validación de existencia
  */
 function actualizarTarifa(idFila) {
     const inputValor = document.getElementById(`input_valor_${idFila}`);
     const selectMaquina = document.getElementById(`sel_maq_${idFila}`);
     const selectServicio = document.getElementById(`sel_servicio_${idFila}`);
     const selectModalidad = document.getElementById(`sel_modalidad_${idFila}`);
+    const filaTR = document.getElementById(`fila_${idFila}`); // Referencia a la fila
 
     if (!selectMaquina || !selectServicio || !selectModalidad) return;
 
@@ -160,13 +161,15 @@ function actualizarTarifa(idFila) {
     const inputFecha = document.querySelector(`input[name="servicios[${idFila}][fecha_individual]"]`);
     const fechaVal = inputFecha ? inputFecha.value : '';
 
+    // Limpieza de estados de error previos
+    inputValor.classList.remove('bg-red-200', 'border-red-500', 'text-red-700', 'font-bold');
+    if (filaTR) filaTR.classList.remove('error-tarifa-faltante');
+    inputValor.placeholder = "Valor";
+
     if (!idTipoMaquina || !idTipoMantenimiento) return;
 
     inputValor.style.opacity = "0.5";
     
-    // 🔔 Guardar valor anterior para comparar
-    const valorAnterior = parseFloat(inputValor.value.replace(/\./g, '').replace(/,/g, '.')) || 0;
-
     const formData = new FormData();
     formData.append('accion', 'ajaxObtenerPrecio');
     formData.append('id_tipo_maquina', idTipoMaquina);
@@ -180,22 +183,35 @@ function actualizarTarifa(idFila) {
     })
     .then(res => res.json())
     .then(data => {
-        let precio = data.precio || 0;
-        inputValor.value = new Intl.NumberFormat('es-CO').format(precio);
+        let precio = parseInt(data.precio);
+
+        // 🛑 CASO 1: TARIFA NO EXISTE (-1)
+        if (precio === -1) {
+            inputValor.value = ""; 
+            inputValor.placeholder = "🚫 SIN TARIFA";
+            
+            // Pintar de rojo
+            inputValor.style.opacity = "1";
+            inputValor.classList.add('bg-red-200', 'border-red-500', 'text-red-700', 'font-bold');
+            
+            // MARCAR LA FILA (Vital para el bloqueo al guardar)
+            if (filaTR) filaTR.classList.add('error-tarifa-faltante');
+
+            window.DetalleNotificaciones.notificarError(`Fila ${idFila}: No existe tarifa para esa máquina/servicio`);
         
-        inputValor.style.opacity = "1";
-        inputValor.style.backgroundColor = "#bbf7d0";
-        setTimeout(() => inputValor.style.backgroundColor = "", 500);
-        
-        // 🔔 NOTIFICACIÓN si hubo cambio significativo
-        if (Math.abs(precio - valorAnterior) > 100) {
-            window.DetalleNotificaciones.notificarPrecioActualizado(idFila, valorAnterior, precio);
+        } else {
+            // ✅ CASO 2: TARIFA CORRECTA (Incluye 0)
+            inputValor.value = new Intl.NumberFormat('es-CO').format(precio);
+            
+            inputValor.style.opacity = "1";
+            inputValor.style.backgroundColor = "#bbf7d0"; // Verde flash
+            setTimeout(() => inputValor.style.backgroundColor = "", 500);
         }
     })
     .catch(err => {
         console.error(err);
         inputValor.style.opacity = "1";
-        window.DetalleNotificaciones.notificarError('No se pudo actualizar el precio');
+        window.DetalleNotificaciones.notificarError('Error de conexión al obtener precio');
     });
 }
 

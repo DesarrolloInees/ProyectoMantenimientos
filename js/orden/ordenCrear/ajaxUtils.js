@@ -165,6 +165,11 @@ async function calcularPrecio(id) {
     const inputFechaGlobal = document.querySelector('input[name="fecha_reporte"]');
     const fechaVal = inputFechaGlobal?.value || '';
 
+    // Limpiar estados previos antes de calcular
+    inputValor.classList.remove('bg-red-200', 'border-red-500', 'text-red-700', 'font-bold', 'placeholder-red-700');
+    fila.classList.remove('error-tarifa-faltante');
+    inputValor.placeholder = "Valor";
+
     if (idModalidad && tipoMaq && idManto) {
         inputValor.value = "...";
 
@@ -176,12 +181,31 @@ async function calcularPrecio(id) {
         });
 
         if (res && res.precio !== undefined) {
-            inputValor.value = new Intl.NumberFormat('es-CO').format(res.precio);
+            
+            // 🛑 CASO 1: NO EXISTE TARIFA (-1)
+            if (parseInt(res.precio) === -1) {
+                inputValor.value = ""; // Borramos el valor
+                inputValor.placeholder = "🚫 SIN TARIFA"; // Mensaje claro
+                
+                // Estilos de ERROR VISUAL
+                inputValor.classList.add('bg-red-200', 'border-red-500', 'text-red-700', 'font-bold', 'placeholder-red-700');
+                
+                // MARCA TÉCNICA PARA EL VALIDADOR
+                fila.classList.add('error-tarifa-faltante');
 
-            // 🔔 NOTIFICACIÓN de precio calculado
-            if (res.precio > 0) {
-                window.CrearNotificaciones.notificarPrecioCalculado(id, res.precio);
+                // Notificación opcional (si quieres ser muy evidente)
+                // window.CrearNotificaciones.mostrarNotificacion('⚠️ Máquina sin tarifa configurada', 'warning');
+
+            } else {
+                // ✅ CASO 2: PRECIO VÁLIDO (Incluye 0)
+                inputValor.value = new Intl.NumberFormat('es-CO').format(res.precio);
+
+                // 🔔 NOTIFICACIÓN de precio calculado
+                if (res.precio > 0) {
+                    window.CrearNotificaciones.notificarPrecioCalculado(id, res.precio);
+                }
             }
+
         } else {
             inputValor.value = 0;
         }

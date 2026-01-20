@@ -294,23 +294,32 @@ class ordenDetalleModelo
         // Si no llega año, usamos el actual por seguridad
         $anioVigencia = $anio ? $anio : date('Y');
 
-        $stmt = $this->conn->prepare("SELECT precio 
-                                        FROM tarifa 
-                                        WHERE id_tipo_maquina = ? 
-                                        AND id_tipo_mantenimiento = ? 
-                                        AND id_modalidad = ?
-                                        AND año_vigencia = ?  -- 🔥 AÑO DINÁMICO
-                                        LIMIT 1");
+        // 🔥 CAMBIO IMPORTANTE: Quitamos fetchColumn y usamos fetch para validar existencia
+        $sql = "SELECT precio 
+                FROM tarifa 
+                WHERE id_tipo_maquina = ? 
+                AND id_tipo_mantenimiento = ? 
+                AND id_modalidad = ?
+                AND año_vigencia = ? 
+                LIMIT 1";
 
+        $stmt = $this->conn->prepare($sql);
         $stmt->execute([
             $id_tipo_maquina,
             $id_tipo_mantenimiento,
             $id_modalidad,
-            $anioVigencia // 🔥 Pasamos el año
+            $anioVigencia
         ]);
 
-        $precio = $stmt->fetchColumn();
-        return $precio ? floatval($precio) : 0;
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // 🛑 Si no existe registro -> Retornamos -1
+        if ($fila === false) {
+            return -1;
+        }
+
+        // ✅ Si existe (aunque sea 0) -> Retornamos el precio
+        return floatval($fila['precio']);
     }
 
     public function obtenerListaRepuestos()

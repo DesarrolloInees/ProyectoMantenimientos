@@ -1,5 +1,5 @@
 // ==========================================
-// GESTOR DE REPUESTOS
+// GESTOR DE REPUESTOS (Lógica Híbrida: Global + Stock)
 // ==========================================
 
 /**
@@ -11,11 +11,11 @@ async function abrirModal(idFila) {
     const idTecnico = $(`#select_tecnico_${idFila}`).val();
 
     if (!idTecnico) {
-        alert("⚠️ Seleccione primero un TÉCNICO para cargar su inventario.");
+        alert("⚠️ Seleccione primero un TÉCNICO para verificar su inventario.");
         return;
     }
 
-    // Recuperar datos guardados
+    // 1. Recuperar repuestos ya seleccionados en esta fila
     if (!window.AppConfig.almacenRepuestos[idFila]) {
         const hiddenInput = document.getElementById(`json_rep_${idFila}`);
         if (hiddenInput && hiddenInput.value && hiddenInput.value !== '[]') {
@@ -29,47 +29,81 @@ async function abrirModal(idFila) {
         }
     }
 
-    // Preparar select
+    // 2. Preparar el Select
     const selectRep = $('#select_repuesto_modal');
     selectRep.empty();
-    selectRep.append(new Option("Cargando inventario...", ""));
+    selectRep.append(new Option("Cargando catálogo completo...", ""));
     selectRep.prop('disabled', true);
 
-    // Cargar inventario en vivo
     try {
-        const inventario = await window.AjaxUtils.cargarInventarioTecnico(idTecnico);
+        // 3. Obtener Inventario REAL del Técnico (AJAX)
+        // Esto nos dice qué tiene y cuánto, aunque mostraremos todo.
+        const inventarioTecnico = await window.AjaxUtils.cargarInventarioTecnico(idTecnico);
+
+        // Convertimos el array del técnico en un Objeto "Mapa" para búsqueda rápida
+        // Ejemplo: { '101': 5, '102': 2 } (Donde key es id_repuesto y value es cantidad)
+        window.AppConfig.stockActualModal = {}; 
+        
+        if (inventarioTecnico.length > 0) {
+            inventarioTecnico.forEach(item => {
+                window.AppConfig.stockActualModal[item.id_repuesto] = parseInt(item.cantidad_actual);
+            });
+        }
 
         selectRep.empty();
-        selectRep.append(new Option("- Buscar en Maleta del Técnico -", ""));
+        selectRep.append(new Option("- Seleccione un Repuesto -", ""));
 
-        window.AppConfig.stockActualModal = {};
+        // 4. 🔥 RECORRER LA LISTA GLOBAL (listaRepuestosBD)
+        // Esta variable viene desde PHP con TODOS los repuestos del sistema
+        if (typeof listaRepuestosBD !== 'undefined' && listaRepuestosBD.length > 0) {
+            
+            listaRepuestosBD.forEach(globalItem => {
+                const idRep = globalItem.id_repuesto;
+                // Verificamos si el técnico tiene stock de este ítem global
+                const stockReal = window.AppConfig.stockActualModal[idRep] || 0;
 
-        if (inventario.length > 0) {
-            inventario.forEach(item => {
-                window.AppConfig.stockActualModal[item.id_repuesto] = parseInt(item.cantidad_actual);
+                let textoOption = "";
+                
+                // Formato visual para ayudar al usuario
+                if (stockReal > 0) {
+                    textoOption = `✅ ${globalItem.nombre_repuesto} (Stock: ${stockReal})`;
+                } else {
+                    textoOption = `📦 ${globalItem.nombre_repuesto} (Sin Stock)`;
+                }
 
-                const textoOption = `${item.nombre_repuesto} (Disp: ${item.cantidad_actual})`;
-                const option = new Option(textoOption, item.id_repuesto, false, false);
-                $(option).attr('data-max', item.cantidad_actual);
+                // Creamos la opción
+                const option = new Option(textoOption, idRep, false, false);
+                
+                // Guardamos el stock real en un atributo data para validarlo luego sin ir al servidor
+                $(option).attr('data-stock-real', stockReal);
+                
+                // (Opcional) Guardamos el nombre limpio para la lista visual
+                $(option).attr('data-nombre-limpio', globalItem.nombre_repuesto);
 
                 selectRep.append(option);
             });
+
         } else {
-            selectRep.append(new Option("🚫 Técnico sin stock asignado", ""));
+            selectRep.append(new Option("Error: No hay catálogo de repuestos", ""));
         }
+
     } catch (error) {
-        console.error("Error cargando inventario:", error);
+        console.error("Error al cruzar inventarios:", error);
         selectRep.append(new Option("Error de conexión", ""));
     } finally {
         selectRep.prop('disabled', false);
-        selectRep.trigger('change');
+        // Inicializamos Select2 si no estaba ya
+        if (!selectRep.data('select2')) {
+                window.RepuestosManager.inicializarSelect2Modal();
+        }
     }
 
-    // Resetear formulario
+    // Resetear inputs del modal
     $('#select_repuesto_modal').val(null).trigger('change');
     document.getElementById('cantidad_repuesto_modal').value = "1";
-    document.getElementById('select_origen_modal').value = "INEES";
+    document.getElementById('select_origen_modal').value = "INEES"; // Default
 
+    // Renderizar la lista de abajo
     renderizarListaVisual(idFila);
 
     // Mostrar modal
@@ -84,49 +118,79 @@ function cerrarModal() {
 }
 
 /**
- * Agregar repuesto a la lista temporal
+ * Agregar repuesto a la lista temporal (CON VALIDACIÓN INTELIGENTE)
  */
 function agregarRepuestoALista() {
     const idFila = document.getElementById('modal_fila_actual').value;
+    
+    // Obtener datos del Select2
     const idRepuesto = $('#select_repuesto_modal').val();
     const dataSelect = $('#select_repuesto_modal').select2('data');
-    const nombreRepuesto = dataSelect[0]?.text || '';
-    const origen = document.getElementById('select_origen_modal').value;
-    let cantidadSolicitada = parseInt(document.getElementById('cantidad_repuesto_modal').value) || 1;
-
-    if (!idRepuesto) {
-        alert("⚠️ Seleccione un repuesto.");
+    
+    if (!idRepuesto || dataSelect.length === 0) {
+        alert("⚠️ Por favor seleccione un repuesto.");
         return;
     }
 
-    // Validar stock para origen INEES
+    // Recuperar datos guardados en los atributos data- del option
+    const element = $(dataSelect[0].element); 
+    const stockReal = parseInt(element.attr('data-stock-real')) || 0;
+    const nombreLimpio = element.attr('data-nombre-limpio') || dataSelect[0].text;
+
+    const origen = document.getElementById('select_origen_modal').value; // INEES o PROSEGUR
+    let cantidadSolicitada = parseInt(document.getElementById('cantidad_repuesto_modal').value) || 1;
+
+    if (cantidadSolicitada <= 0) {
+        alert("La cantidad debe ser mayor a 0.");
+        return;
+    }
+
+    // ========================================================================
+    // 🔥 LÓGICA DE VALIDACIÓN (EL CORAZÓN DEL CAMBIO)
+    // ========================================================================
+    
+    // CASO 1: Origen INEES (Debe tener inventario sí o sí)
     if (origen === 'INEES') {
-        const maxDisponible = window.AppConfig.stockActualModal[idRepuesto] || 0;
+        
+        // Calcular cuánto se ha usado ya en la lista temporal de este modal
         const yaEnLista = window.AppConfig.almacenRepuestos[idFila] || [];
         let cantidadEnUso = 0;
-
         const itemExistente = yaEnLista.find(r => r.id == idRepuesto && r.origen === 'INEES');
+        
         if (itemExistente) {
             cantidadEnUso = itemExistente.cantidad;
         }
 
-        const totalFinal = cantidadEnUso + cantidadSolicitada;
+        const totalRequerido = cantidadEnUso + cantidadSolicitada;
 
-        if (totalFinal > maxDisponible) {
-            alert(`⚠️ STOCK INSUFICIENTE\n\nDisponible: ${maxDisponible}\nYa usaste: ${cantidadEnUso}\nIntentas agregar: ${cantidadSolicitada}`);
+        if (totalRequerido > stockReal) {
+            // BLOQUEO: No dejamos agregar porque no tiene stock físico
+            alert(`🛑 ERROR DE INVENTARIO (INEES)\n\n` +
+                    `El técnico solo tiene: ${stockReal} unidades.\n` +
+                    `Ya agregó: ${cantidadEnUso}\n` +
+                    `Intenta agregar: ${cantidadSolicitada}\n\n` +
+                    `Total requerido: ${totalRequerido} > Disponible: ${stockReal}\n\n` +
+                    `👉 SOLUCIÓN: Si el repuesto lo suministró el cliente, cambie el Origen a "PROSEGUR".`);
             return;
         }
     }
 
-    // Inicializar array
+    // CASO 2: Origen PROSEGUR (Pase libre)
+    if (origen === 'PROSEGUR') {
+        // No hacemos validación de stock.
+        // El cliente lo trajo, nosotros lo instalamos. No se descuenta de nuestro inventario.
+        // Opcional: Podrías mostrar un warning si quieres, pero mejor dejarlo fluido.
+        console.log("Agregando repuesto Prosegur (Sin descuento de inventario).");
+    }
+
+    // ========================================================================
+
+    // Inicializar array si no existe
     if (!window.AppConfig.almacenRepuestos[idFila]) {
         window.AppConfig.almacenRepuestos[idFila] = [];
     }
 
-    // Limpiar nombre (quitar texto de disponibilidad)
-    let nombreLimpio = nombreRepuesto.split(' (Disp:')[0];
-
-    // Buscar si ya existe
+    // Lógica de inserción (igual que antes)
     const indiceExistente = window.AppConfig.almacenRepuestos[idFila].findIndex(
         r => r.id === idRepuesto && r.origen === origen
     );
@@ -136,20 +200,23 @@ function agregarRepuestoALista() {
     } else {
         window.AppConfig.almacenRepuestos[idFila].push({
             id: idRepuesto,
-            nombre: nombreLimpio,
+            nombre: nombreLimpio, // Usamos el nombre limpio sin el texto de stock
             origen: origen,
             cantidad: cantidadSolicitada
         });
     }
 
-    // Resetear formulario
-    $('#select_repuesto_modal').val(null).trigger('change');
+    // UX: Feedback rápido
     document.getElementById('cantidad_repuesto_modal').value = "1";
+    // Opcional: No limpiar el select para facilitar agregar el mismo repuesto con otro origen si fuera necesario, 
+    // pero usualmente mejor limpiar:
+    $('#select_repuesto_modal').val(null).trigger('change'); 
+
     renderizarListaVisual(idFila);
 }
 
 /**
- * Renderizar lista visual de repuestos
+ * Renderizar lista visual de repuestos (Sin cambios mayores)
  */
 function renderizarListaVisual(idFila) {
     const ul = document.getElementById('lista_repuestos_visual');
@@ -168,28 +235,32 @@ function renderizarListaVisual(idFila) {
             'bg-orange-100 text-orange-800';
 
         const cant = item.cantidad || 1;
-        const badgeCantidad = cant > 1 ?
-            `<span class="ml-1 bg-gray-700 text-white text-[10px] px-1.5 rounded font-bold">x${cant}</span>` : '';
-
+        
         ul.innerHTML += `
-        <li class="flex justify-between items-center bg-gray-50 p-2 mb-2 border rounded shadow-sm">
-            <div class="flex items-center gap-2 overflow-hidden">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bgBadge}">${item.origen}</span>
-                <span class="text-xs text-gray-700 truncate font-medium">
-                    ${item.nombre} ${badgeCantidad}
+        <li class="flex justify-between items-center bg-gray-50 p-2 mb-2 border rounded shadow-sm hover:bg-gray-100 transition">
+            <div class="flex items-center gap-2 overflow-hidden w-full">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bgBadge} border border-opacity-20 flex-shrink-0" style="min-width:60px; text-align:center">
+                    ${item.origen}
+                </span>
+                <span class="text-xs text-gray-700 font-medium truncate flex-grow">
+                    ${item.nombre}
+                </span>
+                <span class="bg-gray-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0">
+                    x${cant}
                 </span>
             </div>
             <button type="button" onclick="window.RepuestosManager.borrarRepuesto('${idFila}', ${index})" 
-                    class="text-red-400 hover:text-red-600 px-2">
+                    class="text-red-400 hover:text-red-600 px-2 ml-2 transition transform hover:scale-110">
                 <i class="fas fa-trash-alt"></i>
             </button>
         </li>`;
     });
 }
 
-/**
- * Borrar un repuesto de la lista temporal
- */
+// ... Las funciones borrarRepuesto, guardarCambiosModal, etc. se mantienen igual ...
+// Solo asegúrate de copiar el resto del archivo original o usar el objeto window.RepuestosManager completo.
+// Aquí exportamos solo lo modificado:
+
 function borrarRepuesto(idFila, index) {
     if (window.AppConfig.almacenRepuestos[idFila]) {
         window.AppConfig.almacenRepuestos[idFila].splice(index, 1);
@@ -197,30 +268,23 @@ function borrarRepuesto(idFila, index) {
     }
 }
 
-/**
- * Guardar cambios del modal
- */
 function guardarCambiosModal() {
     const idFila = document.getElementById('modal_fila_actual').value;
     const lista = window.AppConfig.almacenRepuestos[idFila] || [];
 
-    // Actualizar JSON oculto
     const jsonInput = document.getElementById(`json_rep_${idFila}`);
     if (jsonInput) {
         jsonInput.value = JSON.stringify(lista);
     }
 
-    // Calcular total de items
     let totalItems = 0;
     lista.forEach(item => {
         totalItems += (item.cantidad || 1);
     });
 
-    // Actualizar botón visual
     const btnTexto = document.getElementById(`count_rep_${idFila}`);
     if (btnTexto) {
         btnTexto.innerText = `${totalItems} Items`;
-
         const btnPadre = btnTexto.parentElement;
         if (totalItems > 0) {
             btnPadre.classList.remove('bg-gray-200', 'text-gray-700');
@@ -230,15 +294,15 @@ function guardarCambiosModal() {
             btnPadre.classList.remove('bg-blue-600', 'text-white', 'border-blue-700');
         }
     }
-
     cerrarModal();
-    window.FilaManager.validarCoherencia(idFila);
+    // Llamar validación si existe
+    if(window.FilaManager && window.FilaManager.validarCoherencia) {
+        window.FilaManager.validarCoherencia(idFila);
+    }
 }
 
-/**
- * Actualizar botón de repuestos
- */
 function actualizarBotonRepuestos(id) {
+    // ... misma función que tenías ...
     const btnTexto = document.getElementById(`count_rep_${id}`);
     const lista = window.AppConfig.almacenRepuestos[id] || [];
 
@@ -261,20 +325,16 @@ function actualizarBotonRepuestos(id) {
     }
 }
 
-/**
- * Inicializar select2 en el modal
- */
 function inicializarSelect2Modal() {
     $('#select_repuesto_modal').select2({
         width: '100%',
         dropdownParent: $('#modalRepuestos'),
-        placeholder: "- Escriba para buscar -",
+        placeholder: "- Buscar Repuesto -",
         allowClear: true,
         language: { noResults: () => "No se encontró el repuesto" }
     });
 }
 
-// Exportar
 window.RepuestosManager = {
     abrirModal,
     cerrarModal,
@@ -284,10 +344,3 @@ window.RepuestosManager = {
     actualizarBotonRepuestos,
     inicializarSelect2Modal
 };
-
-// Retrocompatibilidad
-window.abrirModalRepuestos = abrirModal;
-window.cerrarModal = cerrarModal;
-window.agregarRepuestoALista = agregarRepuestoALista;
-window.borrarRepuestoTemporal = borrarRepuesto;
-window.guardarCambiosModal = guardarCambiosModal;
