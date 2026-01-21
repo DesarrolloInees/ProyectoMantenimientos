@@ -39,13 +39,6 @@
 </style>
 
 <div class="w-full max-w-7xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800"><i class="fas fa-list-alt text-indigo-600 mr-2"></i> Control de Remisiones</h1>
-        <a href="<?= BASE_URL ?>controlRemisionCrear" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded shadow transition transform hover:scale-105">
-            <i class="fas fa-plus mr-2"></i> Nueva Asignación
-        </a>
-    </div>
-
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 overflow-hidden">
         <table id="tablaRemisiones" class="w-full text-sm text-left text-gray-500">
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
@@ -54,7 +47,7 @@
                     <th class="px-6 py-3">Técnico Responsable</th>
                     <th class="px-6 py-3">Estado</th>
                     <th class="px-6 py-3">Fecha Asignación</th>
-                    <th class="px-6 py-3 text-center">Acciones</th>
+                    <th class="px-6 py-3">Fecha Uso</th> <th class="px-6 py-3 text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,7 +64,26 @@
                                 <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Anulada</span>
                             <?php endif; ?>
                         </td>
-                        <td class="px-6 py-4"><?= date('d/m/Y', strtotime($r['fecha_asignacion'])) ?></td>
+                        
+                        <td class="px-6 py-4">
+                            <?= date('d/m/Y', strtotime($r['fecha_asignacion'])) ?>
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <?php if (!empty($r['fecha_uso'])): ?>
+                                <div class="flex flex-col">
+                                    <span class="text-gray-900 font-medium">
+                                        <?= date('d/m/Y', strtotime($r['fecha_uso'])) ?>
+                                    </span>
+                                    <span class="text-xs text-gray-400">
+                                        <?= date('H:i', strtotime($r['fecha_uso'])) ?>
+                                    </span>
+                                </div>
+                            <?php else: ?>
+                                <span class="text-gray-300">---</span>
+                            <?php endif; ?>
+                        </td>
+
                         <td class="px-6 py-4 text-center">
                             <?php if ($r['estado'] != 'USADA'): ?>
                                 <a href="<?= BASE_URL ?>controlRemisionEditar&id=<?= $r['id_control'] ?>" class="text-indigo-600 hover:text-indigo-900 mx-2" title="Editar">

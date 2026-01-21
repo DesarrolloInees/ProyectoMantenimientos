@@ -10,7 +10,7 @@ class InventarioTecnicoVerModelo
         $this->conn = $db;
     }
 
-    // Listar todo el inventario activo
+    // Listar todo el inventario activo (DataTables se encarga del filtro)
     public function obtenerInventarioCompleto()
     {
         try {
@@ -36,7 +36,22 @@ class InventarioTecnicoVerModelo
         }
     }
 
-    // Borrado Lógico (Cambiar estado a 0)
+    // Método auxiliar para llenar el Select2 de técnicos (opcional, para el filtro)
+    public function obtenerListaTecnicos()
+    {
+        try {
+            $sql = "SELECT DISTINCT t.nombre_tecnico FROM tecnico t 
+                    INNER JOIN inventario_tecnico i ON t.id_tecnico = i.id_tecnico
+                    WHERE i.estado = 1 ORDER BY t.nombre_tecnico ASC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    // Borrado Lógico
     public function eliminarLogico($id)
     {
         try {

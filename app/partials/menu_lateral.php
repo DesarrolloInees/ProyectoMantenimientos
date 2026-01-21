@@ -149,3 +149,13 @@
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
     <i class="fa-solid fa-file-excel mr-3 w-6 text-center"></i> Importar Excel Prosegur
 </a>
+
+<a href="<?= BASE_URL ?>importarMunicipios"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center"> 
+    <i class="fa-solid fa-tree-city mr-3 w-6 text-center"></i> Importar Municipios
+</a>
+
+<a href="<?= BASE_URL ?>remisionesPendientes"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
+    <i class="fa-solid fa-traffic-light mr-3 w-6 text-center"></i> Remisiones Salteadas
+</a>
