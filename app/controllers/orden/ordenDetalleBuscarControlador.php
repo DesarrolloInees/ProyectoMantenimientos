@@ -41,6 +41,7 @@ class ordenDetalleBuscarControlador
         $listaCalifs    = $this->modelo->obtenerCalificaciones();
         $listaModalidades = $this->modelo->obtenerModalidades();
         $listaFestivos  = $this->modelo->obtenerFestivos();
+        $listaNovedades = $this->modelo->obtenerTiposNovedad();
 
         // 3. Título de la pestaña
         $titulo = "Buscador Individual de Servicios";

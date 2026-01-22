@@ -50,6 +50,9 @@ class ordenDetalleControlador
             if ($_POST['accion'] === 'ajaxGestionarRepuestoRT') {
                 $this->ajaxGestionarRepuestoRT();
             }
+            if ($_POST['accion'] === 'ajaxGuardarNovedad') {
+                $this->ajaxGuardarNovedad();
+            }
         }
     }
 
@@ -76,6 +79,8 @@ class ordenDetalleControlador
         $listaCalifs   = $this->modelo->obtenerCalificaciones();
         $listaModalidades = $this->modelo->obtenerModalidades();
         $listaFestivos = $this->modelo->obtenerFestivos(); // <--- ESTO ES VITAL
+        $listaFestivos = $this->modelo->obtenerFestivos();
+        $listaNovedades = $this->modelo->obtenerTiposNovedad();
 
         $titulo = "Edición Total: " . $fecha;
 
@@ -304,5 +309,33 @@ class ordenDetalleControlador
             echo $html;
             exit;
         }
+    }
+
+    // En ordenDetalleControlador.php -> function ajaxGuardarNovedad()
+
+    public function ajaxGuardarNovedad()
+    {
+        ob_clean(); // Limpia cualquier basura anterior
+        header('Content-Type: application/json');
+
+        $idOrden = $_POST['id_orden'] ?? 0;
+        $tipo    = $_POST['tipo'] ?? ''; // 'guardar' o 'eliminar'
+
+        // Verificar que venga un ID válido
+        if ($idOrden <= 0) {
+            echo json_encode(['success' => false, 'msg' => 'ID inválido']);
+            exit;
+        }
+
+        if ($tipo === 'eliminar') {
+            // Llama a la función del modelo que acabamos de corregir
+            $res = $this->modelo->eliminarNovedadOrden($idOrden);
+        } else {
+            $idTipoNovedad = $_POST['id_tipo_novedad'] ?? null;
+            $res = $this->modelo->guardarNovedadOrden($idOrden, $idTipoNovedad);
+        }
+
+        echo json_encode(['success' => $res]);
+        exit;
     }
 }

@@ -25,6 +25,8 @@ class ordenDetalleModelo
                 o.valor_servicio,
                 o.actividades_realizadas as que_se_hizo,
                 o.tiene_novedad,
+                o.id_tipo_novedad,
+                o.detalle_novedad,
                 
                 -- MÁQUINA
                 o.id_maquina,
@@ -632,7 +634,7 @@ class ordenDetalleModelo
     // ==========================================
 
     // A. AGREGAR REPUESTO (Descuenta stock y guarda en orden)
-   // A. AGREGAR REPUESTO (CORREGIDO: Solo descuenta si es INEES)
+    // A. AGREGAR REPUESTO (CORREGIDO: Solo descuenta si es INEES)
     public function agregarRepuestoRealTime($idOrden, $idRepuesto, $cantidad, $origen, $idTecnico)
     {
         try {
@@ -661,7 +663,7 @@ class ordenDetalleModelo
                               SET cantidad_actual = cantidad_actual - ? 
                               WHERE id_tecnico = ? AND id_repuesto = ?";
                 $this->conn->prepare($sqlUpdInv)->execute([$cantidad, $idTecnico, $idRepuesto]);
-                
+
                 $nuevoStockVisual = $stockActual - $cantidad;
             }
             // =========================================================
@@ -688,10 +690,9 @@ class ordenDetalleModelo
             }
 
             $this->conn->commit();
-            
+
             // Devolvemos el stock nuevo solo si era INEES, sino devolvemos null o algo neutral
             return ['status' => 'ok', 'msg' => 'Agregado correctamente', 'nuevo_stock' => $nuevoStockVisual];
-            
         } catch (Exception $e) {
             $this->conn->rollBack();
             return ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];
@@ -734,7 +735,6 @@ class ordenDetalleModelo
 
             $this->conn->commit();
             return ['status' => 'ok', 'msg' => 'Repuesto eliminado de la orden'];
-            
         } catch (Exception $e) {
             $this->conn->rollBack();
             return ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];
@@ -770,5 +770,54 @@ class ordenDetalleModelo
                 ON DUPLICATE KEY UPDATE cantidad_actual = cantidad_actual + ?";
         $stmt = $this->conn->prepare($sql);
         return $stmt->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
+    }
+
+    // A. Obtener lista de tipos de novedad para el Select
+    public function obtenerTiposNovedad()
+    {
+        return $this->conn->query("SELECT * FROM tipo_novedad WHERE estado = 1 ORDER BY nombre_novedad ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // B. Guardar la novedad desde el Modal (AJAX)
+    // 🗑️ Quitamos el parámetro $detalle de la función
+    public function guardarNovedadOrden($idOrden, $idTipoNovedad)
+    {
+        try {
+            // SQL simplificado: solo actualiza el ID del tipo
+            $sql = "UPDATE ordenes_servicio 
+                SET tiene_novedad = 1, 
+                    id_tipo_novedad = ?
+                    -- Ya no tocamos detalle_novedad
+                WHERE id_ordenes_servicio = ?";
+
+            $stmt = $this->conn->prepare($sql);
+            return $stmt->execute([$idTipoNovedad, $idOrden]);
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    // C. Eliminar novedad (Si se arrepienten)
+    // En ordenDetalleModelo.php
+
+    public function eliminarNovedadOrden($idOrden)
+    {
+        try {
+            $sql = "UPDATE ordenes_servicio 
+                SET tiene_novedad = 0, 
+                    id_tipo_novedad = NULL, 
+                    detalle_novedad = NULL 
+                WHERE id_ordenes_servicio = ?";
+
+            // ⚠️ IMPORTANTE: Debe ser 'prepare', NO 'query'
+            $stmt = $this->conn->prepare($sql);
+
+            // Ejecutamos pasando el ID
+            return $stmt->execute([$idOrden]);
+        } catch (Exception $e) {
+            // Tip: Descomenta esto si quieres ver el error real en los logs de PHP
+            // error_log("Error al eliminar novedad: " . $e->getMessage());
+            return false;
+        }
     }
 }

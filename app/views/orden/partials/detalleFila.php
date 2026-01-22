@@ -115,18 +115,25 @@
     </td>
 
     <!-- 9. NOVEDAD -->
-    <td class="p-1 text-center bg-gray-50">
-        <input type="hidden"
-            name="servicios[<?= $idFila ?>][tiene_novedad]"
-            id="input_novedad_<?= $idFila ?>"
-            value="<?= $s['tiene_novedad'] ?>">
+    <td class="border p-1 text-center align-middle relative">
+    <?php 
+        $tieneNovedad = (isset($s['tiene_novedad']) && $s['tiene_novedad'] == 1) || 
+                        (!empty($s['id_tipo_novedad']) && $s['id_tipo_novedad'] > 0);
+        
+        $claseIcono = $tieneNovedad ? 'text-red-600 animate-pulse' : 'text-gray-300 hover:text-yellow-500'; 
+    ?>
 
-        <button type="button"
-            onclick="toggleNovedad(<?= $idFila ?>)"
-            id="btn_novedad_<?= $idFila ?>"
-            class="w-full h-8 rounded border shadow-sm transition-colors duration-300 flex items-center justify-center <?= $s['tiene_novedad'] == 1 ? 'bg-red-500 border-red-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-300 hover:bg-gray-200' ?>">
-            <i class="fas fa-exclamation-triangle"></i>
-        </button>
+    <button type="button" 
+            onclick="abrirModalNovedad(<?= $idFila ?>)"
+            id="btn-nov-<?= $idFila ?>"
+            class="text-lg transition-colors duration-200 <?= $claseIcono ?>"
+            title="<?= $tieneNovedad ? 'Tiene Novedad Reportada' : 'Reportar Novedad' ?>">
+        <i class="fas fa-exclamation-triangle"></i>
+    </button>
+
+    <input type="hidden" id="hdn-tiene-<?= $idFila ?>" name="servicios[<?= $idFila ?>][tiene_novedad]" value="<?= $tieneNovedad ? 1 : 0 ?>">
+    <input type="hidden" id="hdn-tipo-<?= $idFila ?>" name="servicios[<?= $idFila ?>][id_tipo_novedad]" value="<?= $s['id_tipo_novedad'] ?? '' ?>">
+    
     </td>
 
     <!-- 10. VALOR -->

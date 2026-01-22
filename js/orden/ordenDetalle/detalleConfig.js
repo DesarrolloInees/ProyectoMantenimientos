@@ -8,6 +8,8 @@ window.DetalleConfig = window.DetalleConfig || {};
 // 2. Definir propiedades SOLO SI NO EXISTEN (para no borrar los datos de PHP)
 if (!window.DetalleConfig.catalogoRepuestos) window.DetalleConfig.catalogoRepuestos = [];
 if (!window.DetalleConfig.FESTIVOS_DB) window.DetalleConfig.FESTIVOS_DB = [];
+if (!window.DetalleConfig.listaNovedades) window.DetalleConfig.listaNovedades = [];
+
 window.DetalleConfig.listaClientes = [];
 window.DetalleConfig.listaPuntos = [];
 window.DetalleConfig.listaTecnicos = [];
@@ -34,6 +36,7 @@ window.DetalleConfig.totalPaginas = 0;
 window.DetalleConfig.inicializarDatosDetalle = function(datos) {
     if (datos.repuestos) window.DetalleConfig.catalogoRepuestos = datos.repuestos;
     if (datos.festivos) window.DetalleConfig.FESTIVOS_DB = datos.festivos;
+    if (datos.novedades) window.DetalleConfig.listaNovedades = datos.novedades;
     if (datos.clientes) window.DetalleConfig.listaClientes = datos.clientes;
     if (datos.tecnicos) window.DetalleConfig.listaTecnicos = datos.tecnicos;
     if (datos.mantos) window.DetalleConfig.listaMantos = datos.mantos;
@@ -55,3 +58,4 @@ window.DetalleConfig.isEmpty = function(str) {
 // Esto soluciona el problema de orden de carga
 if (typeof catalogoRepuestos !== 'undefined') window.DetalleConfig.catalogoRepuestos = catalogoRepuestos;
 if (typeof FESTIVOS_DB !== 'undefined') window.DetalleConfig.FESTIVOS_DB = FESTIVOS_DB;
+if (typeof listaNovedades !== 'undefined') window.DetalleConfig.listaNovedades = listaNovedades;

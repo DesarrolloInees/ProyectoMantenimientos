@@ -1,5 +1,5 @@
 // ==========================================
-// EXPORTACIÓN A EXCEL
+// EXPORTACIÓN A EXCEL (ADAPTADA A BÚSQUEDA)
 // ==========================================
 
 /**
@@ -9,10 +9,15 @@ const ExcelUtils = {
     getSelectText: (fila, partialName) => {
         let sel = fila.querySelector(`select[name*="${partialName}"]`);
         if (!sel || sel.selectedIndex < 0) return "";
-        return (
-            sel.options[sel.selectedIndex].getAttribute("data-full") ||
-            sel.options[sel.selectedIndex].text.trim()
-        );
+        
+        // Intentar sacar del atributo data-full, sino del texto visible
+        let text = "";
+        if (sel.options[sel.selectedIndex].hasAttribute("data-full")) {
+            text = sel.options[sel.selectedIndex].getAttribute("data-full");
+        } else {
+            text = sel.options[sel.selectedIndex].text;
+        }
+        return text.trim();
     },
 
     getInputValue: (fila, partialName) => {
@@ -24,10 +29,38 @@ const ExcelUtils = {
         let txt = fila.querySelector(`textarea[name*="${partialName}"]`);
         return txt ? txt.value : "";
     },
+    
+    // Nueva utilidad para generar nombre de archivo dinámico
+    generarNombreArchivo: (prefijo) => {
+        // 1. Verificamos si estamos en modo búsqueda (mirando los inputs del buscador)
+        const clienteSelect = document.getElementById('busqCliente');
+        const remisionInput = document.getElementById('busqRemision');
+        
+        let detalleNombre = "";
+
+        if (clienteSelect && clienteSelect.value) {
+            // Si hay cliente seleccionado, usamos su nombre
+            let nombreCliente = clienteSelect.options[clienteSelect.selectedIndex].text;
+            detalleNombre = `_${nombreCliente.replace(/[^a-zA-Z0-9]/g, "")}`; // Limpiar caracteres raros
+        } else if (remisionInput && remisionInput.value) {
+            // Si es por remisión
+            detalleNombre = `_Remision_${remisionInput.value}`;
+        } else {
+            // Si no es búsqueda, usamos la fecha como antes
+            let fechaUrl = new URLSearchParams(window.location.search).get("fecha");
+            if (!fechaUrl) {
+                const inputFecha = document.querySelector('input[name="fecha_origen"]');
+                if (inputFecha) fechaUrl = inputFecha.value;
+            }
+            detalleNombre = fechaUrl ? `_${fechaUrl}` : "_General";
+        }
+
+        return `${prefijo}${detalleNombre}.xlsx`;
+    }
 };
 
 /**
- * Exportar Excel Limpio
+ * Exportar Excel Limpio (Lo que se ve en pantalla)
  */
 function exportarExcelLimpio() {
     if (typeof XLSX === "undefined") {
@@ -36,15 +69,19 @@ function exportarExcelLimpio() {
     }
 
     let tabla = document.getElementById("tablaEdicion");
-    let filas = Array.from(tabla.querySelectorAll("tbody tr"));
+    // 🔥 CLAVE: Esto solo toma las filas que existen en la tabla en ese momento.
+    // Si filtraste por búsqueda, solo habrá esas filas.
+    let filas = Array.from(tabla.querySelectorAll("tbody tr")); 
     let serviciosPorDelegacion = {};
+    let contadorFilas = 0;
 
     filas.forEach((fila) => {
         if (!fila.id.startsWith("fila_")) return;
 
+        contadorFilas++;
         let idFila = fila.id.replace("fila_", "");
 
-        // Extraer datos
+        // --- Extracción de datos (Idéntico a tu lógica anterior) ---
         let txtRemision = ExcelUtils.getInputValue(fila, "[remision]");
         let txtFecha = ExcelUtils.getInputValue(fila, "[fecha_individual]");
         let obs = ExcelUtils.getTextareaValue(fila, "[obs]");
@@ -57,108 +94,61 @@ function exportarExcelLimpio() {
         let estado = ExcelUtils.getSelectText(fila, "[id_estado]");
         let calif = ExcelUtils.getSelectText(fila, "[id_calif]");
 
-        // Máquina
         let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
         let device_id = "";
         if (selMaq && selMaq.selectedIndex >= 0) {
-            device_id = selMaq.options[selMaq.selectedIndex].text
-                .split("(")[0]
-                .trim();
+            device_id = selMaq.options[selMaq.selectedIndex].text.split("(")[0].trim();
         }
 
         let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
         let tipoMaquinatxt = divTipo ? divTipo.innerText : "";
 
-        // Delegación
         let divDelegacion = document.getElementById(`td_delegacion_${idFila}`);
         let delegacion = divDelegacion ? divDelegacion.innerText : "SIN ASIGNAR";
 
-        // Checkboxes de tipo de servicio
+        // Checkboxes Lógicos
         let txtServicio = servicio.toLowerCase();
-        let esPrevBasico =
-            txtServicio.includes("basico") || txtServicio.includes("básico")
-                ? "X"
-                : "";
-        let esPrevProfundo =
-            txtServicio.includes("profundo") || txtServicio.includes("completo")
-                ? "X"
-                : "";
-        let esCorrectivo =
-            txtServicio.includes("correctivo") || txtServicio.includes("reparacion")
-                ? "X"
-                : "";
+        let esPrevBasico = (txtServicio.includes("basico") || txtServicio.includes("básico")) ? "X" : "";
+        let esPrevProfundo = (txtServicio.includes("profundo") || txtServicio.includes("completo")) ? "X" : "";
+        let esCorrectivo = (txtServicio.includes("correctivo") || txtServicio.includes("reparacion")) ? "X" : "";
 
-        if (
-            !esPrevBasico &&
-            !esPrevProfundo &&
-            !esCorrectivo &&
-            txtServicio.includes("preventivo")
-        ) {
+        if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes("preventivo")) {
             esPrevBasico = "X";
         }
 
-        // Valor (con comas)
+        // Valores Numéricos
         let inputValor = fila.querySelector('input[name*="[valor]"]');
         let valorRaw = inputValor ? inputValor.value : "0";
-
-        // --- CORRECCIÓN DE NÚMERO ---
-        // Quitamos los puntos de mil (50.000 -> 50000) para que sea un número real
-        // Y cambiamos la coma decimal por punto si fuera necesario
         let valorLimpio = valorRaw.toString().replace(/\./g, "").replace(",", ".");
         let valorExcel = parseFloat(valorLimpio) || 0;
 
-
-        // Horas
+        // Tiempos
         let inputEntrada = fila.querySelector('input[name*="[entrada]"]');
         let inputSalida = fila.querySelector('input[name*="[salida]"]');
         let horaEntrada = inputEntrada ? inputEntrada.value : "";
         let horaSalida = inputSalida ? inputSalida.value : "";
-        let duracion = window.DetalleFechaUtils.calcularDuracion(
-            horaEntrada,
-            horaSalida
-        );
+        
+        // Aseguramos que DetalleFechaUtils exista
+        let duracion = "";
+        if(window.DetalleFechaUtils && window.DetalleFechaUtils.calcularDuracion){
+             duracion = window.DetalleFechaUtils.calcularDuracion(horaEntrada, horaSalida);
+        }
 
         let spanDesplaz = document.getElementById(`desplazamiento_${idFila}`);
-        let desplazamiento = spanDesplaz
-            ? spanDesplaz.innerText.replace("Err H.", "")
-            : "";
+        let desplazamiento = spanDesplaz ? spanDesplaz.innerText.replace("Err H.", "") : "";
 
         // Repuestos
         let inputRepDB = document.getElementById(`input_db_${idFila}`);
         let repuestos = inputRepDB ? inputRepDB.value : "";
-
-        if (
-            repuestos.match(
-                /Gest\. Repuestos|Items|sin repuestos|ninguno|n\/a|vacío/i
-            )
-        ) {
+        if (repuestos.match(/Gest\. Repuestos|Items|sin repuestos|ninguno|n\/a|vacío/i)) {
             repuestos = "";
         }
 
-        // Objeto de datos
         let datos = {
-            device_id,
-            txtRemision,
-            cliente,
-            punto,
-            esPrevBasico,
-            esPrevProfundo,
-            esCorrectivo,
-            valor: valorExcel,
-            obs,
-            delegacion,
-            fecha: txtFecha,
-            tecnico,
-            tipoMaquina: tipoMaquinatxt,
-            servicio,
-            horaEntrada,
-            horaSalida,
-            duracion,
-            desplazamiento,
-            repuestos,
-            estado,
-            calificacion: calif,
-            modalidad,
+            device_id, txtRemision, cliente, punto, esPrevBasico, esPrevProfundo, esCorrectivo,
+            valor: valorExcel, obs, delegacion, fecha: txtFecha, tecnico, tipoMaquina: tipoMaquinatxt,
+            servicio, horaEntrada, horaSalida, duracion, desplazamiento, repuestos, estado,
+            calificacion: calif, modalidad
         };
 
         if (!serviciosPorDelegacion[delegacion]) {
@@ -167,151 +157,148 @@ function exportarExcelLimpio() {
         serviciosPorDelegacion[delegacion].push(datos);
     });
 
-    // Generar Excel
-    let workbook = XLSX.utils.book_new();
-    let hayDatos = Object.keys(serviciosPorDelegacion).length > 0;
-
-    if (!hayDatos) {
-        alert("No hay datos válidos para exportar.");
+    if (contadorFilas === 0) {
+        alert("⚠️ No hay datos visibles para exportar. Realiza una búsqueda primero.");
         return;
     }
 
+    let workbook = XLSX.utils.book_new();
+
     for (let delegacion in serviciosPorDelegacion) {
         let lista = serviciosPorDelegacion[delegacion];
-        let matriz = [
-            [
-                "Device_id",
-                "Número de Remisión",
-                "Cliente",
-                "Nombre Punto",
-                "Preventivo Básico",
-                "Preventivo Profundo",
-                "Correctivo",
-                "Tarifa",
-                "Observaciones",
-                "Delegación",
-                "Fecha",
-                "Técnico",
-                "Tipo de Máquina",
-                "Tipo de Servicio",
-                "Hora Entrada",
-                "Hora Salida",
-                "Duración",
-                "Desplazamiento",
-                "Repuestos",
-                "Estado de la Máquina",
-                "Calificación del Servicio",
-                "Modalidad Operativa",
-            ],
-        ];
+        let matriz = [[
+            "Device_id", "Número de Remisión", "Cliente", "Nombre Punto", "Preventivo Básico",
+            "Preventivo Profundo", "Correctivo", "Tarifa", "Observaciones", "Delegación", "Fecha",
+            "Técnico", "Tipo de Máquina", "Tipo de Servicio", "Hora Entrada", "Hora Salida",
+            "Duración", "Desplazamiento", "Repuestos", "Estado de la Máquina", "Calificación del Servicio",
+            "Modalidad Operativa"
+        ]];
 
         lista.forEach((d) => {
             matriz.push([
-                d.device_id,
-                d.txtRemision,
-                d.cliente,
-                d.punto,
-                d.esPrevBasico,
-                d.esPrevProfundo,
-                d.esCorrectivo,
-                d.valor,
-                d.obs,
-                d.delegacion,
-                d.fecha,
-                d.tecnico,
-                d.tipoMaquina,
-                d.servicio,
-                d.horaEntrada,
-                d.horaSalida,
-                d.duracion,
-                d.desplazamiento,
-                d.repuestos,
-                d.estado,
-                d.calificacion,
-                d.modalidad,
+                d.device_id, d.txtRemision, d.cliente, d.punto, d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
+                d.valor, d.obs, d.delegacion, d.fecha, d.tecnico, d.tipoMaquina, d.servicio,
+                d.horaEntrada, d.horaSalida, d.duracion, d.desplazamiento, d.repuestos, d.estado,
+                d.calificacion, d.modalidad
             ]);
         });
 
         let ws = XLSX.utils.aoa_to_sheet(matriz);
-        // ==========================================
-        // CORRECCIÓN APLICADA: FORMATO CONTABILIDAD
-        // ==========================================
 
-        // 1. Formato exacto de contabilidad
+        // Formato Contabilidad
         const formatoContabilidad = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
-
-        // 2. Rango de la hoja
         const range = XLSX.utils.decode_range(ws['!ref']);
+        const colTarifa = 7; 
 
-        // 3. --- AQUÍ ESTABA EL ERROR ---
-        // La columna Tarifa es la 7 (contando desde 0)
-        const colTarifa = 7;
-
-        // 4. Recorremos
         for (let R = range.s.r + 1; R <= range.e.r; ++R) {
             let cellRef = XLSX.utils.encode_cell({ c: colTarifa, r: R });
-
             if (ws[cellRef]) {
-                ws[cellRef].t = 'n'; // Tipo Número
-                ws[cellRef].z = formatoContabilidad; // Formato Visual
+                ws[cellRef].t = 'n';
+                ws[cellRef].z = formatoContabilidad;
             }
         }
+        
+        // Anchos de columna
         ws["!cols"] = [
-            { wch: 15 },
-            { wch: 12 },
-            { wch: 25 },
-            { wch: 25 },
-            { wch: 8 },
-            { wch: 8 },
-            { wch: 8 },
-            { wch: 12 },
-            { wch: 35 },
-            { wch: 15 },
-            { wch: 12 },
-            { wch: 20 },
-            { wch: 15 },
-            { wch: 20 },
-            { wch: 10 },
-            { wch: 10 },
-            { wch: 10 },
-            { wch: 12 },
-            { wch: 40 },
-            { wch: 15 },
-            { wch: 15 },
-            { wch: 15 },
+            { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+            { wch: 12 }, { wch: 35 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 20 },
+            { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
         ];
 
-        let nombreHoja =
-            delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "General";
+        let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "General";
         XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
     }
 
-    // ==========================================
-    // CAMBIO APLICADO: NOMBRE DEL ARCHIVO
-    // ==========================================
-
-    // 1. Intentamos sacar la fecha de la URL
-    let nombreArchivo = new URLSearchParams(window.location.search).get("fecha");
-
-    // 2. Si no está en la URL, la sacamos del input oculto "fecha_origen" del formulario
-    if (!nombreArchivo) {
-        const inputFecha = document.querySelector('input[name="fecha_origen"]');
-        if (inputFecha && inputFecha.value) {
-            nombreArchivo = inputFecha.value;
-        }
-    }
-
-    // 3. Fallback por seguridad
-    if (!nombreArchivo) {
-        nombreArchivo = "reporte";
-    }
-
-    // Limpiamos espacios y generamos el archivo
-    XLSX.writeFile(workbook, `${nombreArchivo.trim()}.xlsx`);
+    // 🔥 NOMBRE DE ARCHIVO DINÁMICO
+    let nombreArchivo = ExcelUtils.generarNombreArchivo("Reporte");
+    XLSX.writeFile(workbook, nombreArchivo);
 }
 
 /**
- * Exportar Excel de Novedades
+ * Exportar Excel de Novedades (ADAPTADO A BÚSQUEDA)
+ */
+function exportarExcelNovedades() {
+    if (typeof XLSX === "undefined") {
+        alert("Librería SheetJS no cargada.");
+        return;
+    }
+
+    let tabla = document.getElementById("tablaEdicion");
+    let filas = Array.from(tabla.querySelectorAll("tbody tr"));
+    let listaNovedades = [];
+    const catalogoNovedades = window.DetalleConfig.listaNovedades || [];
+    let contadorNovedades = 0;
+
+    filas.forEach((fila) => {
+        if (!fila.id.startsWith("fila_")) return;
+        let idFila = fila.id.replace("fila_", "");
+
+        // Verificar si tiene novedad (solo filas visibles)
+        let inputTiene = document.getElementById(`hdn-tiene-${idFila}`);
+        if (!inputTiene || inputTiene.value != "1") return;
+
+        contadorNovedades++;
+
+        let inputTipo = document.getElementById(`hdn-tipo-${idFila}`);
+        let idTipo = inputTipo ? inputTipo.value : "";
+        
+        let nombreNovedad = "SIN ESPECIFICAR";
+        if (idTipo) {
+            let novEncontrada = catalogoNovedades.find(n => n.id_tipo_novedad == idTipo);
+            if (novEncontrada) nombreNovedad = novEncontrada.nombre_novedad;
+        }
+
+        let divDel = document.getElementById(`td_delegacion_${idFila}`);
+        let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
+        let cliente = ExcelUtils.getSelectText(fila, "[id_cliente]");
+        let punto = ExcelUtils.getSelectText(fila, "[id_punto]");
+        let tecnico = ExcelUtils.getSelectText(fila, "[id_tecnico]");
+        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
+        let deviceID = (selMaq && selMaq.selectedIndex >= 0) ? selMaq.options[selMaq.selectedIndex].text.split("(")[0].trim() : "";
+        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
+        let tipoMaq = divTipo ? divTipo.innerText : "";
+        let inputRem = fila.querySelector('input[name*="[remision]"]');
+        let remision = inputRem ? inputRem.value : "";
+        let txtObs = fila.querySelector('textarea[name*="[obs]"]');
+        let obsServicio = txtObs ? txtObs.value : "";
+        let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
+        let fecha = inputFecha ? inputFecha.value : "";
+
+        listaNovedades.push({
+            "Fecha": fecha, "Delegación": delegacion, "Cliente": cliente, "Punto": punto,
+            "Técnico": tecnico, "Motivo Novedad": nombreNovedad, "Device ID": deviceID,
+            "Tipo Máquina": tipoMaq, "Remisión": remision, "Obs. Servicio": obsServicio
+        });
+    });
+
+    if (listaNovedades.length === 0) {
+        alert("⚠️ No se encontraron novedades en los resultados actuales.");
+        return;
+    }
+
+    let wb = XLSX.utils.book_new();
+    let ws = XLSX.utils.json_to_sheet(listaNovedades);
+
+    ws["!cols"] = [
+        { wch: 12 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 },
+        { wch: 25 }, { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 40 }
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, ws, "Novedades");
+
+    // 🔥 NOMBRE DE ARCHIVO DINÁMICO
+    let nombreArchivo = ExcelUtils.generarNombreArchivo("Novedades");
+    XLSX.writeFile(workbook, nombreArchivo);
+}
+
+// Exportar al objeto global
+window.DetalleExcel = { exportarExcelLimpio, exportarExcelNovedades };
+window.exportarExcelLimpio = exportarExcelLimpio;
+window.exportarExcelNovedades = exportarExcelNovedades;
+
+
+/**
+ * Exportar Excel de Novedades (LÓGICA ACTUALIZADA)
  */
 function exportarExcelNovedades() {
     if (typeof XLSX === "undefined") {
@@ -323,15 +310,35 @@ function exportarExcelNovedades() {
     let filas = Array.from(tabla.querySelectorAll("tbody tr"));
     let listaNovedades = [];
 
+    // Obtenemos el catálogo de novedades para traducir ID -> NOMBRE
+    const catalogoNovedades = window.DetalleConfig.listaNovedades || [];
+
     filas.forEach((fila) => {
         if (!fila.id.startsWith("fila_")) return;
 
         let idFila = fila.id.replace("fila_", "");
-        let inputNovedad = document.getElementById(`input_novedad_${idFila}`);
 
-        if (!inputNovedad || inputNovedad.value != "1") return;
+        // --- CORRECCIÓN CLAVE: Usar los nuevos inputs ocultos ---
+        let inputTiene = document.getElementById(`hdn-tiene-${idFila}`);
+        
+        // Si no existe el input o su valor no es "1", saltamos la fila
+        if (!inputTiene || inputTiene.value != "1") return;
 
-        // Extraer datos
+        // Recuperar el ID del tipo de novedad
+        let inputTipo = document.getElementById(`hdn-tipo-${idFila}`);
+        let idTipo = inputTipo ? inputTipo.value : "";
+        
+        // Buscar el NOMBRE de la novedad en el catálogo
+        let nombreNovedad = "SIN ESPECIFICAR";
+        if (idTipo) {
+            let novEncontrada = catalogoNovedades.find(n => n.id_tipo_novedad == idTipo);
+            if (novEncontrada) {
+                nombreNovedad = novEncontrada.nombre_novedad;
+            }
+        }
+        // --------------------------------------------------------
+
+        // Extraer resto de datos (Igual que antes)
         let divDel = document.getElementById(`td_delegacion_${idFila}`);
         let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
 
@@ -351,71 +358,61 @@ function exportarExcelNovedades() {
         let inputRem = fila.querySelector('input[name*="[remision]"]');
         let remision = inputRem ? inputRem.value : "";
 
+        // Esta es la observación GENERAL del servicio (ya quitamos la específica de novedad)
         let txtObs = fila.querySelector('textarea[name*="[obs]"]');
-        let obs = txtObs ? txtObs.value : "";
+        let obsServicio = txtObs ? txtObs.value : "";
 
         let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
         let fecha = inputFecha ? inputFecha.value : "";
 
         listaNovedades.push({
-            Delegación: delegacion,
-            Cliente: cliente,
-            Punto: punto,
+            "Fecha": fecha,
+            "Delegación": delegacion,
+            "Cliente": cliente,
+            "Punto": punto,
+            "Técnico": tecnico,
+            "Motivo Novedad": nombreNovedad, // <--- CAMPO NUEVO
             "Device ID": deviceID,
             "Tipo Máquina": tipoMaq,
-            Remisión: remision,
-            Técnico: tecnico,
-            Observación: obs,
-            Fecha: fecha,
+            "Remisión": remision,
+            "Obs. Servicio": obsServicio
         });
     });
 
     if (listaNovedades.length === 0) {
-        alert("¡Excelente! No hay novedades marcadas para generar reporte.");
+        alert("No se encontraron servicios marcados con novedad.");
         return;
     }
 
     let wb = XLSX.utils.book_new();
     let ws = XLSX.utils.json_to_sheet(listaNovedades);
 
+    // Ajustar ancho de columnas
     ws["!cols"] = [
-        { wch: 15 },
-        { wch: 25 },
-        { wch: 25 },
-        { wch: 15 },
-        { wch: 15 },
-        { wch: 12 },
-        { wch: 20 },
-        { wch: 50 },
-        { wch: 12 },
+        { wch: 12 }, // Fecha
+        { wch: 15 }, // Delegación
+        { wch: 25 }, // Cliente
+        { wch: 25 }, // Punto
+        { wch: 20 }, // Técnico
+        { wch: 25 }, // Motivo Novedad (IMPORTANTE)
+        { wch: 12 }, // Device ID
+        { wch: 20 }, // Tipo Maquina
+        { wch: 12 }, // Remisión
+        { wch: 40 }, // Obs Servicio
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, "Novedades");
 
-    // ==========================================
-    // LÓGICA DE NOMBRE DE ARCHIVO MEJORADA
-    // ==========================================
-
-    // 1. Intentamos sacar la fecha de la URL
+    // Generar nombre de archivo
     let fechaNombre = new URLSearchParams(window.location.search).get("fecha");
-
-    // 2. Si no está en la URL, la sacamos del input oculto "fecha_origen" del formulario
     if (!fechaNombre) {
         const inputFecha = document.querySelector('input[name="fecha_origen"]');
-        if (inputFecha && inputFecha.value) {
-            fechaNombre = inputFecha.value;
-        }
+        if (inputFecha && inputFecha.value) fechaNombre = inputFecha.value;
     }
+    if (!fechaNombre) fechaNombre = "Reporte";
 
-    // 3. Fallback por seguridad
-    if (!fechaNombre) {
-        fechaNombre = "SinFecha";
-    }
-
-    // Generamos el archivo con el prefijo "Novedades_" + la fecha encontrada
     XLSX.writeFile(wb, `Novedades_${fechaNombre.trim()}.xlsx`);
 }
-
 // Exportar
 window.DetalleExcel = {
     exportarExcelLimpio,

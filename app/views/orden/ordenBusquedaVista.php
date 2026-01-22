@@ -85,6 +85,17 @@
                     <i class="fas fa-search"></i> BUSCAR
                 </button>
             </div>
+
+            <div class="space-x-2">
+        <button type="button" onclick="exportarExcelLimpio()"
+            class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow text-sm">
+            <i class="fas fa-file-excel mr-2"></i> Excel
+        </button>
+
+        <a href="<?= BASE_URL ?>ordenDetalle"
+            class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600 text-sm">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
         </div>
     </div>
 
@@ -161,11 +172,13 @@
 </div>
 
 <?php include __DIR__ . '/partials/modalRepuestos.php'; ?>
+<?php include __DIR__ . '/partials/modalNovedades.php'; ?>
 
 <script>
     window.DetalleConfig = window.DetalleConfig || {};
     window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
     window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
+    window.DetalleConfig.listaNovedades = <?= json_encode($listaNovedades ?? []) ?>;
 
     // Configuración para la paginación (10 filas por página)
     window.DetalleConfig.filasPorPagina = 10;

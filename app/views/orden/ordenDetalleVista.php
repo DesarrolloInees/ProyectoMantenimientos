@@ -222,6 +222,7 @@
 
 <!-- MODAL DE REPUESTOS -->
 <?php include __DIR__ . '/partials/modalRepuestos.php'; ?>
+<?php include __DIR__ . '/partials/modalNovedades.php'; ?>
 
 <!-- ============================================== -->
 <!-- INYECCIÓN DE DATOS PHP A JAVASCRIPT -->
@@ -234,6 +235,7 @@
     // Usamos 'window.' en lugar de 'const' para evitar errores de "Identifier already declared"
     window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
     window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
+    window.DetalleConfig.listaNovedades    = <?= json_encode($listaNovedades ?? []) ?>;
 
     // Debug para verificar carga
     console.log("✅ Datos PHP inyectados:", window.DetalleConfig);
@@ -244,7 +246,7 @@
 <script src="<?php echo BASE_URL; ?>js/orden/ordenDetalle/detalleFechaUtils.js"></script>
 <script src="<?php echo BASE_URL; ?>js/orden/ordenDetalle/detalleExcel.js"></script>
 <script src="<?php echo BASE_URL; ?>js/orden/ordenDetalle/detalleRepuestos.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenDetalle/detalleNovedades.js"></script>
+<script src="<?= BASE_URL ?>js/orden/ordenDetalle/detalleNovedades.js?v=<?= time() ?>"></script>
 <script src="<?php echo BASE_URL; ?>js/orden/ordenDetalle/detalleDesplazamientos.js"></script>
 <script src="<?php echo BASE_URL; ?>js/orden/ordenDetalle/detallePaginacion.js"></script>
 <script src="<?php echo BASE_URL; ?>js/orden/ordenDetalle/detalleNotificaciones.js"></script>

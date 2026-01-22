@@ -159,3 +159,8 @@
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
     <i class="fa-solid fa-traffic-light mr-3 w-6 text-center"></i> Remisiones Salteadas
 </a>
+
+<a href="<?= BASE_URL ?>informacionBaseDatos"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
+    <i class="fa-solid fa-server mr-3 w-6 text-center"></i> Información Base de Datos
+</a>
