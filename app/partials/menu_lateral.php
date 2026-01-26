@@ -45,6 +45,11 @@
     <i class="fa-solid fa-screwdriver-wrench mr-3 w-6 text-center"></i> Reporte Repuestos
 </a>
 
+<a href="<?= BASE_URL ?>reporteMaquinas"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">
+    <i class="fa-solid fa-cash-register mr-3 w-6 text-center"></i> Reporte Máquinas
+</a>
+
 <a href="<?= BASE_URL ?>reporteEjecutivo"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-blue-500 transition flex items-center">
     <i class="fa-solid fa-chart-line mr-3 w-6 text-center"></i> Reporte Ejecutivo
@@ -163,4 +168,9 @@
 <a href="<?= BASE_URL ?>informacionBaseDatos"
     class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
     <i class="fa-solid fa-server mr-3 w-6 text-center"></i> Información Base de Datos
+</a>
+
+<a href="<?= BASE_URL ?>tipoNovedadVer"
+    class="block py-3 px-6 hover:bg-gray-800 border-l-4 border-transparent hover:border-yellow-500 transition flex items-center">
+    <i class="fa-solid fa-folder-tree mr-3 w-6 text-center"></i> Administrar Tipos de Novedades
 </a>

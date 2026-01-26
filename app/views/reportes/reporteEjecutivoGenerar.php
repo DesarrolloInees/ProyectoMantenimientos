@@ -1,509 +1,309 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <title>Reporte Ejecutivo</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        @page {
-            margin: 0.5cm;
-            size: A4 landscape;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f7fa;
-            color: #2c3e50;
-            font-size: 11px;
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Fondo gris suave */
+            /* IMPORTANTE: Obliga a imprimir colores de fondo y gradientes */
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
-        .slide {
-            width: 100%;
-            height: 19.5cm;
-            page-break-after: always;
+        /* CLASES UTILITARIAS PARA PDF */
+        .page-break { page-break-after: always; }
+        .break-inside-avoid { break-inside: avoid; }
+
+        /* ESTILOS DE TARJETAS */
+        .card {
+            background-color: white;
+            border-radius: 16px; /* Bordes muy redondos */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #f3f4f6;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* PORTADA */
+        .portada-container {
+            height: 190mm; /* Altura ajustada para A4 Landscape */
+            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); /* Gradiente Azul-Indigo */
             position: relative;
-            background: white;
             overflow: hidden;
         }
 
-        .slide:last-child {
-            page-break-after: avoid;
-        }
-
-        /* PÁGINA DE PORTADA */
-        .cover-slide {
-            background: #667eea;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            color: white;
-            position: relative;
-        }
-
-        .cover-content {
-            padding: 40px;
-            width: 100%;
-        }
-
-        .cover-icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-        }
-
-        .cover-title {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 15px;
-            letter-spacing: -1px;
-        }
-
-        .cover-subtitle {
-            font-size: 24px;
-            margin-bottom: 40px;
-            font-weight: 300;
-        }
-
-        .cover-period {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 18px;
-            margin: 0 auto 20px auto;
-            display: inline-block;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .cover-kpis {
-            margin: 40px auto;
-            max-width: 800px;
-            display: table;
-            width: 100%;
-        }
-
-        .cover-kpi {
-            display: table-cell;
-            padding: 20px;
-            text-align: center;
-            border-right: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .cover-kpi:last-child {
-            border-right: none;
-        }
-
-        .cover-kpi-value {
-            font-size: 40px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .cover-kpi-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .cover-date {
-            font-size: 14px;
-            margin-top: 40px;
-        }
-
-        .cover-footer {
-            position: absolute;
-            bottom: 30px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            padding-top: 20px;
-        }
-
-        /* PÁGINAS INTERNAS */
-        .content-slide {
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ENCABEZADO COMPACTO */
-        .header {
-            background: #667eea;
-            padding: 10px 20px;
-            margin: -15px -15px 10px -15px;
-            border-radius: 0;
-            color: white;
-            position: relative;
-        }
-
-        .header-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0;
-            position: relative;
-        }
-
-        .header-meta {
-            margin-top: 3px;
-            font-size: 10px;
-            position: relative;
-        }
-
-        /* GRID DE KPIS COMPACTO */
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin: 8px 0;
-        }
-
-        .kpi-card {
-            background: white;
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            position: relative;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            overflow: hidden;
-        }
-
-        .kpi-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--kpi-color, #667eea);
-        }
-
-        .kpi-icon {
-            font-size: 22px;
-            margin-bottom: 4px;
-            opacity: 0.8;
-        }
-
-        .kpi-value {
-            font-size: 26px;
-            font-weight: 700;
-            color: var(--kpi-color, #667eea);
-            display: block;
-            margin: 4px 0;
-            line-height: 1;
-        }
-
-        .kpi-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            color: #7f8c8d;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            margin-top: 4px;
-        }
-
-        .kpi-sub {
-            font-size: 8px;
-            color: #95a5a6;
-            margin-top: 2px;
-            display: block;
-        }
-
-        /* SECCIÓN DE GRÁFICAS COMPACTA */
-        .section-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: #2c3e50;
-            margin: 8px 0 6px 0;
-            padding-bottom: 4px;
-            border-bottom: 2px solid #667eea;
-            display: inline-block;
-        }
-
-        .chart-container {
-            background: white;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
-        .chart-title {
-            color: #34495e;
-            font-size: 11px;
-            margin-bottom: 6px;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .chart-img {
-            width: 100%;
-            max-width: 100%;
-            height: 100%;
-            max-height: 100%;
-            border-radius: 6px;
-            object-fit: contain;
-        }
-
-        .chart-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 8px;
-            flex: 1;
-            min-height: 0;
-        }
-
-        /* CONTENEDOR PARA GRÁFICA GRANDE */
-        .chart-full {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
-        /* PIE DE PÁGINA */
-        .footer {
-            position: absolute;
-            bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            text-align: center;
-            font-size: 9px;
-            color: #95a5a6;
-            padding: 5px 12px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-            white-space: nowrap;
-        }
-
-        /* BADGE DE PÁGINA */
-        .page-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #667eea;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-size: 9px;
-            font-weight: 600;
-            z-index: 10;
-        }
-
-        /* ESPACIADO FLEXIBLE */
-        .content-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            overflow: hidden;
+        /* Patrón de fondo sutil */
+        .bg-pattern {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
         }
     </style>
 </head>
+<body class="p-8 text-slate-800">
 
-<body>
-
-
-
-    <!-- PÁGINA 1: TENDENCIAS -->
-    <div class="slide content-slide">
-        <div class="page-badge">1/5</div>
-
-        <div class="header">
-            <div class="header-title"> Tendencias y Evolución</div>
-            <div class="header-meta">
-                Análisis temporal del período
+    <?php if ($this->seccionActiva('portada')): ?>
+    <div class="portada-container w-full rounded-3xl shadow-2xl flex flex-col items-center justify-center text-white relative mb-8">
+        <div class="absolute inset-0 bg-pattern opacity-50"></div>
+        
+        <div class="z-10 text-center">
+            <div class="uppercase tracking-[0.3em] text-sm opacity-80 mb-4">Documento Confidencial</div>
+            <h1 class="text-7xl font-extrabold mb-2 tracking-tight">Reporte Ejecutivo</h1>
+            <p class="text-3xl font-light opacity-90 text-blue-100">Operaciones & Mantenimiento</p>
+            
+            <div class="mt-12 inline-block bg-white/10 backdrop-blur-md border border-white/20 px-8 py-3 rounded-full">
+                <span class="text-lg font-mono">📅 Periodo: <?= date('d/m/Y', strtotime($inicio)) ?> — <?= date('d/m/Y', strtotime($fin)) ?></span>
             </div>
         </div>
 
-        <div class="content-wrapper">
-
-
-            <div class="section-title">Evolución Diaria de Servicios</div>
-            <div class="chart-container chart-full">
-                <div class="chart-title">Servicios realizados por día en el período analizado</div>
-                <img src="<?= $graficas['dias'] ?>" class="chart-img">
-            </div>
-        </div>
-
-        <div class="footer">Reporte Ejecutivo | Confidencial</div>
-    </div>
-
-    <!-- PÁGINA 2: ANÁLISIS DE MANTENIMIENTO -->
-    <div class="slide content-slide">
-        <div class="page-badge">2/5</div>
-
-        <div class="header">
-            <div class="header-title"> Análisis de Mantenimiento y Estados</div>
-            <div class="header-meta">
-                Distribución por tipo y estado final
-            </div>
-        </div>
-
-        <div class="content-wrapper">
-            <div class="section-title"> Distribución y Estados</div>
-            <div class="chart-grid">
-                <div class="chart-container">
-                    <div class="chart-title">Distribución por Tipo de Servicio</div>
-                    <img src="<?= $graficas['tipo'] ?>" class="chart-img">
+        <div class="absolute bottom-12 w-full px-16">
+            <div class="grid grid-cols-4 gap-6">
+                <div class="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl text-center">
+                    <div class="text-5xl font-bold mb-1"><?= number_format($totalServicios) ?></div>
+                    <div class="text-xs uppercase tracking-wider opacity-75">Servicios Totales</div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">Estado Final de Servicios</div>
-                    <img src="<?= $graficas['estados'] ?>" class="chart-img">
+                <div class="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl text-center">
+                    <div class="text-5xl font-bold mb-1"><?= $mediaDiaria ?></div>
+                    <div class="text-xs uppercase tracking-wider opacity-75">Promedio Diario</div>
                 </div>
-            </div>
-
-            <div class="section-title"> Top Delegaciones Intervenidas</div>
-            <div class="chart-container chart-full">
-                <div class="chart-title">Delegaciones con mayor número de intervenciones</div>
-                <img src="<?= $graficas['delegaciones'] ?>" class="chart-img">
-            </div>
-        </div>
-
-        <div class="footer">Reporte Ejecutivo | Confidencial</div>
-    </div>
-
-    <!-- PÁGINA 3: PRODUCTIVIDAD -->
-    <div class="slide content-slide">
-        <div class="page-badge">3/5</div>
-
-        <div class="header">
-            <div class="header-title"> Productividad Técnica y Recursos</div>
-            <div class="header-meta">
-                Rendimiento del equipo y uso de repuestos
-            </div>
-        </div>
-
-        <div class="content-wrapper">
-            <div class="section-title"> Rendimiento del Equipo Técnico</div>
-            <div class="chart-container" style="flex: 1.5;">
-                <div class="chart-title">Top 15 Técnicos por Número de Servicios Realizados</div>
-                <img src="<?= $graficas['tecnicos'] ?>" class="chart-img">
-            </div>
-
-            <div class="section-title"> Gestión de Repuestos</div>
-            <div class="chart-container" style="flex: 1;">
-                <div style="max-width: 400px; margin: 0 auto; height: 100%;">
-                    <div class="chart-title">Distribución de Repuestos por Origen</div>
-                    <img src="<?= $graficas['repuestos'] ?>" class="chart-img">
+                <div class="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl text-center">
+                    <div class="text-5xl font-bold mb-1 text-red-200"><?= number_format($datosNovedad['con_novedad'] ?? 0) ?></div>
+                    <div class="text-xs uppercase tracking-wider opacity-75">Con Novedades</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl text-center">
+                    <div class="text-5xl font-bold mb-1 text-green-200"><?= count($datosDelegacion) ?></div>
+                    <div class="text-xs uppercase tracking-wider opacity-75">Delegaciones</div>
                 </div>
             </div>
         </div>
-
-        <div class="footer">Reporte Ejecutivo | Confidencial</div>
     </div>
+    <div class="page-break"></div>
+    <?php endif; ?>
 
-    <!-- PÁGINA 4: ANÁLISIS DE PUNTOS -->
-    <div class="slide content-slide">
-        <div class="page-badge">4/5</div>
 
-        <div class="header">
-            <div class="header-title"> Análisis de Puntos Críticos</div>
-            <div class="header-meta">
-                Puntos con mayor actividad y problemas recurrentes
+    <div class="grid grid-cols-2 gap-8">
+
+        <div class="flex flex-col gap-6">
+
+            <?php if ($this->seccionActiva('tendencias')): ?>
+            <div class="card break-inside-avoid">
+                <div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xl">📈</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Evolución Diaria</h3>
+                        <p class="text-xs text-slate-400">Volumen de servicios por día</p>
+                    </div>
+                </div>
+
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-slate-400 text-xs uppercase tracking-wider text-left">
+                            <th class="pb-3 font-semibold">Fecha</th>
+                            <th class="pb-3 text-right font-semibold">Total</th>
+                            <th class="pb-3 pl-4 font-semibold w-1/2">Visualización</th>
+                        </tr>
+                    </thead>
+                    <tbody class="space-y-3">
+                        <?php 
+                        $max = !empty($datosDia) ? max(array_column($datosDia, 'total')) : 1;
+                        foreach ($datosDia as $d): 
+                            $pct = ($d['total'] / $max) * 100;
+                        ?>
+                        <tr class="group">
+                            <td class="py-2 text-slate-600 font-medium"><?= date('d/m', strtotime($d['fecha_visita'])) ?></td>
+                            <td class="py-2 text-right font-bold text-slate-800"><?= $d['total'] ?></td>
+                            <td class="py-2 pl-4">
+                                <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-blue-500 rounded-full" style="width: <?= $pct ?>%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
+            <?php endif; ?>
+
+            <?php if ($this->seccionActiva('mantenimiento')): ?>
+            <div class="card break-inside-avoid">
+                <div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+                    <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 text-xl">🔧</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Tipos de Mantenimiento</h3>
+                        <p class="text-xs text-slate-400">Distribución operativa</p>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <?php 
+                    $totalT = array_sum(array_column($datosTipo, 'total'));
+                    foreach ($datosTipo as $t): 
+                        $pct = $totalT > 0 ? round(($t['total'] / $totalT) * 100, 1) : 0;
+                    ?>
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-slate-700"><?= $t['tipo'] ?></span>
+                            <span class="text-xs font-bold bg-purple-50 text-purple-700 px-2 py-1 rounded-md"><?= $t['total'] ?> (<?= $pct ?>%)</span>
+                        </div>
+                        <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-purple-500 to-indigo-500" style="width: <?= $pct ?>%"></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($this->seccionActiva('puntos_fallidos')): ?>
+            <div class="card break-inside-avoid border-l-4 border-l-red-500">
+                <div class="flex items-center gap-3 mb-6 pb-2">
+                    <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600 text-xl">⚠️</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Puntos Críticos</h3>
+                        <p class="text-xs text-slate-400">Top fallas recurrentes</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    <?php 
+                    $max = !empty($datosPuntosFallidos) ? max(array_column($datosPuntosFallidos, 'total_fallidos')) : 1;
+                    foreach (array_slice($datosPuntosFallidos, 0, 7) as $pf): 
+                        $pct = ($pf['total_fallidos'] / $max) * 100;
+                    ?>
+                    <div class="flex items-center gap-3">
+                        <div class="w-1/2 text-xs font-medium text-slate-600 truncate"><?= $pf['nombre_punto'] ?></div>
+                        <div class="w-1/2 flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-red-50 rounded-full overflow-hidden">
+                                <div class="h-full bg-red-500" style="width: <?= $pct ?>%"></div>
+                            </div>
+                            <span class="text-xs font-bold text-red-700 w-6 text-right"><?= $pf['total_fallidos'] ?></span>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
         </div>
 
-        <div class="content-wrapper">
-            <div class="section-title"> Puntos Más Visitados ( Más de 3 servicios)</div>
-            <div class="chart-container" style="flex: 1;">
-                <div class="chart-title">Puntos que requirieron 3 o más servicios en el período</div>
-                <img src="<?= $graficas['puntos_visitados'] ?>" class="chart-img">
-            </div>
+        <div class="flex flex-col gap-6">
 
-            <div class="section-title"> Puntos con Servicios Fallidos ( Más de 2 fallidos)</div>
-            <div class="chart-container" style="flex: 1;">
-                <div class="chart-title">Puntos con 2 o más servicios fallidos - Requieren atención prioritaria</div>
-                <img src="<?= $graficas['puntos_fallidos'] ?>" class="chart-img">
+            <?php if ($this->seccionActiva('tecnicos')): ?>
+            <div class="card break-inside-avoid">
+                <div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+                    <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl">👷</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Productividad Técnica</h3>
+                        <p class="text-xs text-slate-400">Top Rendimiento (Servicios vs Horas)</p>
+                    </div>
+                </div>
+
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-slate-400 text-xs uppercase tracking-wider text-left">
+                            <th class="pb-3 font-semibold">Técnico</th>
+                            <th class="pb-3 text-right font-semibold">Srv.</th>
+                            <th class="pb-3 text-right font-semibold">Hrs.</th>
+                            <th class="pb-3 pl-3 font-semibold w-1/3">Eficacia</th>
+                        </tr>
+                    </thead>
+                    <tbody class="space-y-2">
+                        <?php 
+                        $max = !empty($topTecnicos) ? max(array_column($topTecnicos, 'total_servicios')) : 1;
+                        foreach (array_slice($topTecnicos, 0, 12) as $t): 
+                            $pct = ($t['total_servicios'] / $max) * 100;
+                        ?>
+                        <tr class="border-b border-slate-50 last:border-0">
+                            <td class="py-2 text-slate-700 font-medium text-xs truncate max-w-[120px]"><?= $t['nombre_tecnico'] ?></td>
+                            <td class="py-2 text-right font-bold text-emerald-600"><?= $t['total_servicios'] ?></td>
+                            <td class="py-2 text-right text-slate-400 text-xs"><?= number_format($t['total_horas'], 1) ?></td>
+                            <td class="py-2 pl-3">
+                                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-emerald-500" style="width: <?= $pct ?>%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
+            <?php endif; ?>
+
+            <?php if ($this->seccionActiva('delegaciones')): ?>
+            <div class="card break-inside-avoid">
+                <div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+                    <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl">🏢</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Top Delegaciones</h3>
+                        <p class="text-xs text-slate-400">Intervenciones por zona</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-3">
+                    <?php 
+                    $max = !empty($datosDelegacion) ? max(array_column($datosDelegacion, 'total')) : 1;
+                    foreach (array_slice($datosDelegacion, 0, 8) as $d): 
+                        $pct = ($d['total'] / $max) * 100;
+                    ?>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-slate-600 w-1/3 truncate"><?= $d['nombre_delegacion'] ?></span>
+                        <div class="w-2/3 flex items-center gap-2">
+                             <div class="flex-1 h-4 bg-indigo-50 rounded text-center relative overflow-hidden">
+                                 <div class="absolute top-0 left-0 h-full bg-indigo-500 opacity-20" style="width: <?= $pct ?>%"></div>
+                                 <span class="relative text-[10px] font-bold text-indigo-700 leading-4 block"><?= $d['total'] ?></span>
+                             </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <?php if ($this->seccionActiva('calificaciones')): ?>
+            <div class="card break-inside-avoid border-l-4 border-l-amber-400">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 text-xl">⭐</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Satisfacción</h3>
+                        <p class="text-xs text-slate-400">Calidad percíbida</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <?php 
+                    $total = array_sum(array_column($datosCalificaciones, 'total'));
+                    // Ordenar por estrellas si es posible
+                    foreach ($datosCalificaciones as $c): 
+                        $pct = $total > 0 ? round(($c['total'] / $total) * 100, 1) : 0;
+                    ?>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="font-bold text-amber-600"><?= $c['calificacion'] ?></span>
+                            <span class="text-slate-500"><?= $pct ?>%</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-amber-400" style="width: <?= $pct ?>%"></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
         </div>
-
-        <div class="footer">Reporte Ejecutivo | Confidencial</div>
     </div>
-
-    <!-- PÁGINA 5: CALIDAD Y SATISFACCIÓN -->
-    <div class="slide content-slide">
-        <div class="page-badge">5/5</div>
-
-        <div class="header">
-            <div class="header-title"> Calidad y Análisis de Fallas</div>
-            <div class="header-meta">
-                Calificaciones de servicio y delegaciones con más fallas
-            </div>
-        </div>
-
-        <div class="content-wrapper">
-            <div class="section-title"> Calificaciones del Servicio</div>
-            <div class="chart-container" style="flex: 1;">
-                <div class="chart-title">Distribución de calificaciones otorgadas por los clientes</div>
-                <img src="<?= $graficas['calificaciones'] ?>" class="chart-img">
-            </div>
-
-            <div class="section-title"> Top Delegaciones con Servicios Fallidos</div>
-            <div class="chart-container" style="flex: 1;">
-                <div class="chart-title">Delegaciones que registraron mayor cantidad de servicios fallidos</div>
-                <img src="<?= $graficas['fallidos_delegacion'] ?>" class="chart-img">
-            </div>
-        </div>
-
-        <div class="footer">Reporte Ejecutivo | Confidencial</div>
-    </div>
-
-    <!-- PÁGINA 0: PORTADA -->
-    <div class="slide cover-slide">
-        <div class="cover-content">
-            <div class="cover-icon"></div>
-            <h1 class="cover-title">Reporte Ejecutivo</h1>
-            <p class="cover-subtitle">Operaciones y Productividad</p>
-
-            <div class="cover-period">
-                <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
-            </div>
-
-            <table class="cover-kpis">
-                <tr>
-                    <td class="cover-kpi">
-                        <div class="cover-kpi-value"><?= number_format($totalServicios) ?></div>
-                        <div class="cover-kpi-label">Servicios</div>
-                    </td>
-                    <td class="cover-kpi">
-                        <div class="cover-kpi-value"><?= $mediaDiaria ?></div>
-                        <div class="cover-kpi-label">Media Diaria</div>
-                    </td>
-                    <td class="cover-kpi">
-                        <div class="cover-kpi-value"><?= number_format($datosNovedad['con_novedad'] ?? 0) ?></div>
-                        <div class="cover-kpi-label">Novedades</div>
-                    </td>
-                    <td class="cover-kpi">
-                        <div class="cover-kpi-value"><?= count($datosDelegacion) ?></div>
-                        <div class="cover-kpi-label">Delegaciones</div>
-                    </td>
-                </tr>
-            </table>
-
-            <div class="cover-date">
-                Generado: <?= date('d/m/Y H:i') ?>
-            </div>
-        </div>
-
-        <div class="cover-footer">
-            Documento Confidencial
-        </div>
+    
+    <div class="mt-8 text-center border-t border-slate-200 pt-4">
+        <p class="text-xs text-slate-400">
+            Reporte generado automáticamente por el Sistema de Gestión | <?= date('d/m/Y H:i:s') ?>
+        </p>
     </div>
 
 </body>
-
 </html>

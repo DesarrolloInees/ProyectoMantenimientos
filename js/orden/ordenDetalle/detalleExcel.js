@@ -297,8 +297,9 @@ window.exportarExcelLimpio = exportarExcelLimpio;
 window.exportarExcelNovedades = exportarExcelNovedades;
 
 
+
 /**
- * Exportar Excel de Novedades (LÓGICA ACTUALIZADA)
+ * Exportar Excel de Novedades (ORDEN CORREGIDO: TIPO -> OBS -> DETALLES)
  */
 function exportarExcelNovedades() {
     if (typeof XLSX === "undefined") {
@@ -318,17 +319,14 @@ function exportarExcelNovedades() {
 
         let idFila = fila.id.replace("fila_", "");
 
-        // --- CORRECCIÓN CLAVE: Usar los nuevos inputs ocultos ---
+        // 1. Verificamos si tiene novedad marcada
         let inputTiene = document.getElementById(`hdn-tiene-${idFila}`);
-        
-        // Si no existe el input o su valor no es "1", saltamos la fila
         if (!inputTiene || inputTiene.value != "1") return;
 
-        // Recuperar el ID del tipo de novedad
+        // 2. Recuperar el ID y Nombre del tipo de novedad
         let inputTipo = document.getElementById(`hdn-tipo-${idFila}`);
         let idTipo = inputTipo ? inputTipo.value : "";
         
-        // Buscar el NOMBRE de la novedad en el catálogo
         let nombreNovedad = "SIN ESPECIFICAR";
         if (idTipo) {
             let novEncontrada = catalogoNovedades.find(n => n.id_tipo_novedad == idTipo);
@@ -336,9 +334,8 @@ function exportarExcelNovedades() {
                 nombreNovedad = novEncontrada.nombre_novedad;
             }
         }
-        // --------------------------------------------------------
 
-        // Extraer resto de datos (Igual que antes)
+        // 3. Extraer resto de datos
         let divDel = document.getElementById(`td_delegacion_${idFila}`);
         let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
 
@@ -358,52 +355,56 @@ function exportarExcelNovedades() {
         let inputRem = fila.querySelector('input[name*="[remision]"]');
         let remision = inputRem ? inputRem.value : "";
 
-        // Esta es la observación GENERAL del servicio (ya quitamos la específica de novedad)
         let txtObs = fila.querySelector('textarea[name*="[obs]"]');
         let obsServicio = txtObs ? txtObs.value : "";
 
         let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
         let fecha = inputFecha ? inputFecha.value : "";
 
+        // --- AQUÍ ESTÁ EL CAMBIO DE ORDEN ---
+        // Columna 1: Tipo Novedad
+        // Columna 2: Observación
+        // Resto: Contexto
         listaNovedades.push({
-            "Fecha": fecha,
-            "Delegación": delegacion,
+            "Tipo de Novedad": nombreNovedad,      // COLUMNA 1
+            "Observación / Qué se hizo": obsServicio, // COLUMNA 2
+            "Remisión": remision,
+            "Técnico": tecnico,
             "Cliente": cliente,
             "Punto": punto,
-            "Técnico": tecnico,
-            "Motivo Novedad": nombreNovedad, // <--- CAMPO NUEVO
+            "Delegación": delegacion,
             "Device ID": deviceID,
             "Tipo Máquina": tipoMaq,
-            "Remisión": remision,
-            "Obs. Servicio": obsServicio
+            "Fecha": fecha
+            
         });
     });
 
     if (listaNovedades.length === 0) {
-        alert("No se encontraron servicios marcados con novedad.");
+        alert("No se encontraron servicios marcados con novedad en la tabla visible.");
         return;
     }
 
     let wb = XLSX.utils.book_new();
     let ws = XLSX.utils.json_to_sheet(listaNovedades);
 
-    // Ajustar ancho de columnas
+    // Ajustar ancho de columnas (Indices actualizados al nuevo orden)
     ws["!cols"] = [
-        { wch: 12 }, // Fecha
-        { wch: 15 }, // Delegación
-        { wch: 25 }, // Cliente
-        { wch: 25 }, // Punto
-        { wch: 20 }, // Técnico
-        { wch: 25 }, // Motivo Novedad (IMPORTANTE)
-        { wch: 12 }, // Device ID
-        { wch: 20 }, // Tipo Maquina
-        { wch: 12 }, // Remisión
-        { wch: 40 }, // Obs Servicio
+        { wch: 30 }, // A: Tipo de Novedad (Ancho generoso)
+        { wch: 50 }, // B: Observación (Muy ancho para leer bien)
+        { wch: 12 }, // C: Fecha
+        { wch: 20 }, // D: Técnico
+        { wch: 25 }, // E: Cliente
+        { wch: 25 }, // F: Punto
+        { wch: 15 }, // G: Delegación
+        { wch: 15 }, // H: Device ID
+        { wch: 20 }, // I: Tipo Maquina
+        { wch: 12 }  // J: Remisión
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, "Novedades");
 
-    // Generar nombre de archivo
+    // Nombre del archivo
     let fechaNombre = new URLSearchParams(window.location.search).get("fecha");
     if (!fechaNombre) {
         const inputFecha = document.querySelector('input[name="fecha_origen"]');

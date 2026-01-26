@@ -51,53 +51,70 @@
     }
 </style>
 
-<div class="bg-white p-4 rounded shadow-lg w-full min-w-0 overflow-hidden" style="max-width: 100%;">
+<div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+    
+    <div class="col-span-1">
+        <label class="block text-xs font-bold text-gray-700">Remisión:</label>
+        <input type="text" id="busqRemision" class="w-full border p-1 rounded text-sm" placeholder="# Remisión">
+    </div>
 
-    <div class="mb-6 border-b pb-4">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">🔍 Buscador Individual de Servicios</h2>
+    <div class="col-span-1">
+        <label class="block text-xs font-bold text-gray-700">Cliente:</label>
+        <select id="busqCliente" class="w-full border p-1 rounded select2-basic text-sm">
+            <option value="">Todos</option>
+            <?php foreach ($listaClientes as $c): ?>
+                <option value="<?= $c['id_cliente'] ?>"><?= $c['nombre_cliente'] ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div>
-                <label class="block text-sm font-bold text-gray-700">Remisión:</label>
-                <input type="text" id="busqRemision" class="w-full border p-2 rounded" placeholder="Ej: 12345">
-            </div>
+    <div class="col-span-1">
+        <label class="block text-xs font-bold text-gray-700">Delegación:</label>
+        <select id="busqDelegacion" class="w-full border p-1 rounded select2-basic text-sm">
+            <option value="">Todas</option>
+            <?php foreach ($listaDelegaciones as $d): ?>
+                <option value="<?= $d['id_delegacion'] ?>"><?= $d['nombre_delegacion'] ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
 
-            <div>
-                <label class="block text-sm font-bold text-gray-700">Cliente:</label>
-                <select id="busqCliente" class="w-full border p-2 rounded select2-basic">
-                    <option value="">Todos</option>
-                    <?php foreach ($listaClientes as $c): ?>
-                        <option value="<?= $c['id_cliente'] ?>"><?= $c['nombre_cliente'] ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-bold text-gray-700">Punto:</label>
-                <select id="busqPunto" class="w-full border p-2 rounded select2-basic">
-                    <option value="">Seleccione Cliente primero...</option>
-                </select>
-            </div>
-
-            <div>
-                <button type="button" onclick="realizarBusqueda()"
-                    class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded hover:bg-indigo-700 shadow-lg transform active:scale-95 transition">
-                    <i class="fas fa-search"></i> BUSCAR
-                </button>
-            </div>
-
-            <div class="space-x-2">
-        <button type="button" onclick="exportarExcelLimpio()"
-            class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow text-sm">
-            <i class="fas fa-file-excel mr-2"></i> Excel
-        </button>
-
-        <a href="<?= BASE_URL ?>ordenDetalle"
-            class="bg-gray-500 text-white px-4 py-2 rounded font-bold hover:bg-gray-600 text-sm">
-            <i class="fas fa-arrow-left"></i> Volver
-        </a>
+    <div class="col-span-2 flex gap-2">
+        <div class="w-1/2">
+            <label class="block text-xs font-bold text-gray-700">Desde:</label>
+            <input type="date" id="busqFechaInicio" class="w-full border p-1 rounded text-sm">
+        </div>
+        <div class="w-1/2">
+            <label class="block text-xs font-bold text-gray-700">Hasta:</label>
+            <input type="date" id="busqFechaFin" class="w-full border p-1 rounded text-sm">
         </div>
     </div>
+
+    <div class="col-span-1 flex gap-2">
+        <button type="button" onclick="realizarBusqueda()"
+            class="flex-1 bg-indigo-600 text-white font-bold py-1.5 px-2 rounded hover:bg-indigo-700 shadow-lg text-sm flex justify-center items-center gap-1">
+            <i class="fas fa-search"></i>
+        </button>
+
+        <button type="button" onclick="exportarExcelLimpio()"
+            class="bg-green-600 text-white font-bold py-1.5 px-3 rounded hover:bg-green-700 shadow-lg text-sm"
+            title="Descargar Reporte General">
+            <i class="fas fa-file-excel"></i>
+        </button>
+
+        <button type="button" onclick="exportarExcelNovedades()"
+            class="bg-orange-500 text-white font-bold py-1.5 px-3 rounded hover:bg-orange-600 shadow-lg text-sm"
+            title="Descargar Solo Novedades">
+            <i class="fas fa-exclamation-triangle"></i>
+        </button>
+    </div>
+</div>
+
+<div class="mt-2 w-1/3">
+    <label class="block text-xs font-bold text-gray-700">Punto (Opcional):</label>
+    <select id="busqPunto" class="w-full border p-1 rounded select2-basic text-sm">
+        <option value="">Seleccione Cliente...</option>
+    </select>
+</div>
 
     <div class="flex justify-between items-center mb-4 bg-gray-100 p-3 rounded border">
         <div class="text-sm font-bold text-gray-700">
@@ -248,37 +265,52 @@
     });
 
     function realizarBusqueda() {
+        // Capturar valores
         let remision = $('#busqRemision').val();
         let cliente = $('#busqCliente').val();
         let punto = $('#busqPunto').val();
+        
+        // --- NUEVOS VALORES ---
+        let delegacion = $('#busqDelegacion').val();
+        let fechaInicio = $('#busqFechaInicio').val();
+        let fechaFin = $('#busqFechaFin').val();
 
-        if (remision === '' && cliente === '' && punto === '') {
-            alert("⚠️ Por favor ingrese al menos un filtro.");
+        // Validación simple: Que al menos haya un filtro puesto
+        if (remision === '' && cliente === '' && punto === '' && delegacion === '' && fechaInicio === '' && fechaFin === '') {
+            alert("⚠️ Por favor ingrese al menos un filtro (Fecha, Cliente, Delegación, etc).");
+            return;
+        }
+
+        // Validar lógica de fechas (opcional pero recomendada)
+        if(fechaInicio !== '' && fechaFin !== '' && fechaInicio > fechaFin) {
+            alert("⚠️ La fecha de inicio no puede ser mayor a la fecha fin.");
             return;
         }
 
         $('#resultadosBusqueda').html('<tr><td colspan="16" class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> Buscando...</td></tr>');
 
+        // Enviar por AJAX
         $.post('<?= BASE_URL ?>ordenDetalle', {
             accion: 'ajaxBuscarOrdenes',
             remision: remision,
             id_cliente: cliente,
-            id_punto: punto
+            id_punto: punto,
+            // Enviamos los nuevos
+            id_delegacion: delegacion,
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin
         }, function(htmlRespuesta) {
 
-            // 1. Pegar filas
             $('#resultadosBusqueda').html(htmlRespuesta);
 
-            // 2. Reiniciar Select2 de la tabla
+            // Reinicializar componentes
             $('#resultadosBusqueda .select2-container').remove();
             $('#resultadosBusqueda select').select2();
 
-            // 3. Reiniciar App
             if (window.DetalleApp && window.DetalleApp.init) {
                 window.DetalleApp.init();
             }
 
-            // 4. Reiniciar Paginación (Importante para que se actualicen los botones)
             window.DetalleConfig.paginaActual = 1;
             if (typeof iniciarPaginacion === 'function') iniciarPaginacion();
 

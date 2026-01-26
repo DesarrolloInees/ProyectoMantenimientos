@@ -584,7 +584,7 @@ class ordenDetalleModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE 1=1 ";
-
+                // Empezamos la parte de los filtros despues del WHERE 1=1
         $params = [];
 
         // Filtro por Remisión
@@ -607,20 +607,43 @@ class ordenDetalleModelo
             $params[] = $filtros['id_punto'];
         }
 
-        // Orden descendente por fecha
-        $sql .= " ORDER BY o.fecha_visita DESC, o.id_ordenes_servicio DESC LIMIT 50";
+        // --- NUEVOS FILTROS (LO QUE PEDISTE) ---
+
+        // 1. Rango de Fechas (Desde - Hasta)
+        if (!empty($filtros['fecha_inicio'])) {
+            $sql .= " AND o.fecha_visita >= ?";
+            $params[] = $filtros['fecha_inicio'];
+        }
+
+        if (!empty($filtros['fecha_fin'])) {
+            // 🔥 TRUCO: Concatenamos la hora final del día para que incluya todo ese día
+            $sql .= " AND o.fecha_visita <= ?";
+            $params[] = $filtros['fecha_fin'] . ' 23:59:59'; 
+        }
+
+        // 2. Delegación (Bogotá, Medellín, etc.)
+        // Verificamos tanto en el punto directo como en el punto de la máquina
+        if (!empty($filtros['id_delegacion'])) {
+            $sql .= " AND (p_directo.id_delegacion = ? OR p_maq.id_delegacion = ?)";
+            $params[] = $filtros['id_delegacion'];
+            $params[] = $filtros['id_delegacion'];
+        }
+
+        // Ordenar y Limitar (Ojo: Si buscas por fecha, a veces querrás ver más de 50)
+        $sql .= " ORDER BY o.fecha_visita DESC, o.id_ordenes_servicio DESC LIMIT 100";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute($params);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Procesar repuestos JSON
+        // ... (Mantén el foreach que procesa el JSON de repuestos igual) ...
         foreach ($resultados as &$row) {
             $idOrden = $row['id_ordenes_servicio'];
+            // ... (tu lógica de repuestos json) ...
             $sqlRep = "SELECT r.id_repuesto as id, r.nombre_repuesto as nombre, osr.origen, osr.cantidad 
-                       FROM orden_servicio_repuesto osr
-                       JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
-                       WHERE osr.id_orden_servicio = ?";
+                        FROM orden_servicio_repuesto osr
+                        JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                        WHERE osr.id_orden_servicio = ?";
             $stmtRep = $this->conn->prepare($sqlRep);
             $stmtRep->execute([$idOrden]);
             $row['repuestos_json'] = json_encode($stmtRep->fetchAll(PDO::FETCH_ASSOC));
@@ -648,7 +671,7 @@ class ordenDetalleModelo
             if ($origen === 'INEES') {
                 // 1. Verificar Stock Disponible
                 $sqlStock = "SELECT cantidad_actual FROM inventario_tecnico 
-                             WHERE id_tecnico = ? AND id_repuesto = ? FOR UPDATE";
+                                WHERE id_tecnico = ? AND id_repuesto = ? FOR UPDATE";
                 $stmt = $this->conn->prepare($sqlStock);
                 $stmt->execute([$idTecnico, $idRepuesto]);
                 $stockActual = $stmt->fetchColumn();
@@ -660,8 +683,8 @@ class ordenDetalleModelo
 
                 // 2. Descontar del Inventario Técnico
                 $sqlUpdInv = "UPDATE inventario_tecnico 
-                              SET cantidad_actual = cantidad_actual - ? 
-                              WHERE id_tecnico = ? AND id_repuesto = ?";
+                                SET cantidad_actual = cantidad_actual - ? 
+                                WHERE id_tecnico = ? AND id_repuesto = ?";
                 $this->conn->prepare($sqlUpdInv)->execute([$cantidad, $idTecnico, $idRepuesto]);
 
                 $nuevoStockVisual = $stockActual - $cantidad;
@@ -819,5 +842,12 @@ class ordenDetalleModelo
             // error_log("Error al eliminar novedad: " . $e->getMessage());
             return false;
         }
+    }
+
+
+    // A. NUEVA FUNCIÓN: Obtener lista de delegaciones
+    public function obtenerDelegaciones()
+    {
+        return $this->conn->query("SELECT id_delegacion, nombre_delegacion FROM delegacion ORDER BY nombre_delegacion ASC")->fetchAll(PDO::FETCH_ASSOC);
     }
 }

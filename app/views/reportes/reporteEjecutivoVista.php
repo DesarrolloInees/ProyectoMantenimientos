@@ -12,10 +12,9 @@
             </div>
 
             <?php if (!empty($datosDia)): ?>
-                <a href="<?= BASE_URL ?>generarReporte?inicio=<?= $filtros['fecha_inicio'] ?>&fin=<?= $filtros['fecha_fin'] ?>"
-                    target="_blank"
-                    class="bg-red-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-red-700 shadow flex items-center gap-2 transform hover:scale-105 transition text-sm">
-                    <i class="fas fa-file-pdf"></i> Descargar PDF
+                <a href="<?= BASE_URL ?>generarReporte?accion=configurar&inicio=<?= $filtros['fecha_inicio'] ?>&fin=<?= $filtros['fecha_fin'] ?>"
+                    class="bg-purple-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-purple-700 shadow flex items-center gap-2 transform hover:scale-105 transition text-sm">
+                    <i class="fas fa-cogs"></i> Configurar PDF
                 </a>
             <?php endif; ?>
         </div>

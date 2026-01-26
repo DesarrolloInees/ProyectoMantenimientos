@@ -33,6 +33,7 @@ class ordenDetalleBuscarControlador
         // 2. Cargamos las listas para los SELECTS del Buscador
         $listaClientes  = $this->modelo->obtenerTodosLosClientes();
         $listaTecnicos  = $this->modelo->obtenerTodosLosTecnicos();
+        $listaDelegaciones = $this->modelo->obtenerDelegaciones();
         // Estas otras listas son necesarias porque se usan dentro de la tabla (detalleFila.php)
         // cuando pintamos los resultados via AJAX, pero es bueno tenerlas a mano.
         $listaMantos    = $this->modelo->obtenerTiposMantenimiento();

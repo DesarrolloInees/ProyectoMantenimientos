@@ -280,7 +280,11 @@ class ordenDetalleControlador
             $filtros = [
                 'remision'   => $_POST['remision'] ?? '',
                 'id_cliente' => $_POST['id_cliente'] ?? '',
-                'id_punto'   => $_POST['id_punto'] ?? ''
+                'id_punto'   => $_POST['id_punto'] ?? '',
+                // 🔥 AGREGAR ESTAS 3 LÍNEAS NUEVAS:
+                'id_delegacion' => $_POST['id_delegacion'] ?? '',
+                'fecha_inicio'  => $_POST['fecha_inicio'] ?? '',
+                'fecha_fin'     => $_POST['fecha_fin'] ?? ''
             ];
 
             $servicios = $this->modelo->buscarOrdenesFiltros($filtros);

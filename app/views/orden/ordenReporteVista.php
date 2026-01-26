@@ -3,39 +3,50 @@
 
 <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-xl mt-10">
     <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-800">📊 Generador de Reportes Excel</h1>
-        <p class="text-gray-500 mt-2">Selecciona el rango de fechas para descargar el consolidado.</p>
+        <h1 class="text-3xl font-bold text-gray-800">📊 Centro de Reportes</h1>
+        <p class="text-gray-500 mt-2">Selecciona un rango de fechas y elige qué tipo de informe necesitas.</p>
     </div>
 
-    <form id="formReporte" class="space-y-6 border p-6 rounded bg-gray-50">
+    <div class="space-y-6 border p-6 rounded bg-gray-50">
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Fecha Inicio:</label>
-                <input type="date" id="fecha_inicio" name="fecha_inicio"
+                <input type="date" id="fecha_inicio"
                     class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    value="<?= date('Y-m-01') ?>" required>
+                    value="<?= date('Y-m-01') ?>">
             </div>
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Fecha Fin:</label>
-                <input type="date" id="fecha_fin" name="fecha_fin"
+                <input type="date" id="fecha_fin"
                     class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    value="<?= date('Y-m-d') ?>" required>
+                    value="<?= date('Y-m-d') ?>">
             </div>
         </div>
 
-        <div class="flex justify-center gap-4 mt-6">
-            <a href="<?= BASE_URL ?>inicio" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded transition">
-                <i class="fas fa-arrow-left mr-2"></i> Volver
-            </a>
+        <hr class="border-gray-200">
 
-            <button type="submit" id="btnDescargar" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded shadow-lg transform hover:scale-105 transition flex items-center">
-                <i class="fas fa-file-excel mr-2 text-xl"></i>
-                <span>Descargar Reporte</span>
+        <div class="flex flex-col md:flex-row justify-center gap-6 mt-6">
+            <button type="button" id="btnServicios" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transform hover:scale-105 transition flex flex-col items-center justify-center gap-2">
+                <i class="fas fa-tools text-2xl"></i>
+                <span>Reporte de Servicios</span>
+                <span class="text-xs font-normal opacity-80">(Por Delegaciones)</span>
+            </button>
+
+            <button type="button" id="btnNovedades" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transform hover:scale-105 transition flex flex-col items-center justify-center gap-2">
+                <i class="fas fa-exclamation-triangle text-2xl"></i>
+                <span>Reporte de Novedades</span>
+                <span class="text-xs font-normal opacity-80">(Solo incidencias)</span>
             </button>
         </div>
-    </form>
+
+        <div class="text-center mt-4">
+            <a href="<?= BASE_URL ?>inicio" class="text-gray-500 hover:text-gray-700 underline text-sm">
+                <i class="fas fa-arrow-left mr-1"></i> Volver al inicio
+            </a>
+        </div>
+    </div>
 
     <div id="mensajeEstado" class="hidden mt-4 p-4 rounded text-center font-bold"></div>
 </div>
@@ -43,39 +54,46 @@
 <script>
     $(document).ready(function() {
 
-        // --- IMPORTAR LÓGICA DE DURACIÓN ---
-        // (Pequeña función auxiliar para calcular horas si no vienen de la BD)
+        // --- FUNCIÓN AUXILIAR PARA CALCULAR HORAS (Faltaba esta) ---
         function calcularDuracion(entrada, salida) {
             if (!entrada || !salida) return "00:00";
             let start = new Date("2000-01-01 " + entrada);
             let end = new Date("2000-01-01 " + salida);
-            if (end < start) end.setDate(end.getDate() + 1);
+            if (end < start) end.setDate(end.getDate() + 1); // Si pasa de medianoche
             let diff = end - start;
             let hours = Math.floor(diff / 3600000);
             let minutes = Math.floor((diff % 3600000) / 60000);
             return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
         }
 
-        $('#formReporte').on('submit', function(e) {
-            e.preventDefault();
+        // --- BOTÓN 1: SERVICIOS ---
+        $('#btnServicios').on('click', function() {
+            descargarData('ajaxDescargarServicios', 'servicios');
+        });
 
+        // --- BOTÓN 2: NOVEDADES ---
+        $('#btnNovedades').on('click', function() {
+            descargarData('ajaxDescargarNovedades', 'novedades');
+        });
+
+        // Función Genérica de Petición AJAX
+        function descargarData(accion, tipo) {
             let fInicio = $('#fecha_inicio').val();
             let fFin = $('#fecha_fin').val();
-            let btn = $('#btnDescargar');
             let msg = $('#mensajeEstado');
+            let btnActivo = (tipo === 'servicios') ? $('#btnServicios') : $('#btnNovedades');
+            let btnInactivo = (tipo === 'servicios') ? $('#btnNovedades') : $('#btnServicios');
 
-            // UI Loading
-            btn.prop('disabled', true).addClass('opacity-50').html('<i class="fas fa-spinner fa-spin mr-2"></i> Procesando...');
+            // UI Loading (Bloqueamos botones)
+            btnInactivo.prop('disabled', true).addClass('opacity-50');
+            btnActivo.prop('disabled', true).addClass('opacity-75').html('<i class="fas fa-spinner fa-spin text-2xl"></i><span>Generando...</span>');
             msg.removeClass('hidden bg-red-100 text-red-700 bg-green-100 text-green-700').text('');
 
             $.ajax({
-                // ANTES DECÍA: url: '<?= BASE_URL ?>ordenDetalle',
-                // AHORA DEBE DECIR (Para que llame a tu nuevo archivo):
                 url: '<?= BASE_URL ?>ordenReporte',
-
                 method: 'POST',
                 data: {
-                    accion: 'ajaxDescargarReporte', // Esto coincide con el IF del controlador
+                    accion: accion,
                     fecha_inicio: fInicio,
                     fecha_fin: fFin
                 },
@@ -85,27 +103,38 @@
                         if (response.datos.length === 0) {
                             msg.addClass('bg-red-100 text-red-700').removeClass('hidden').text('No se encontraron registros en este rango.');
                         } else {
-                            // 🔥 AQUÍ GENERAMOS EL EXCEL
-                            generarExcelDesdeJSON(response.datos, fInicio, fFin);
-                            msg.addClass('bg-green-100 text-green-700').removeClass('hidden').text('¡Reporte generado con éxito! (' + response.datos.length + ' registros)');
+                            // AQUÍ ESTABA EL ERROR DE NOMBRE: Ahora llamamos a la función correcta
+                            if (tipo === 'servicios') {
+                                generarExcelServicios(response.datos, fInicio, fFin);
+                            } else {
+                                generarExcelNovedades(response.datos, fInicio, fFin);
+                            }
+                            msg.addClass('bg-green-100 text-green-700').removeClass('hidden').text('¡Descarga iniciada! (' + response.datos.length + ' registros)');
                         }
                     } else {
                         msg.addClass('bg-red-100 text-red-700').removeClass('hidden').text(response.msg);
                     }
                 },
-                error: function() {
-                    msg.addClass('bg-red-100 text-red-700').removeClass('hidden').text('Error de conexión con el servidor.');
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    msg.addClass('bg-red-100 text-red-700').removeClass('hidden').text('Error de conexión.');
                 },
                 complete: function() {
-                    btn.prop('disabled', false).removeClass('opacity-50').html('<i class="fas fa-file-excel mr-2 text-xl"></i> <span>Descargar Reporte</span>');
+                    // Restaurar botones a su estado original
+                    $('#btnServicios').prop('disabled', false).removeClass('opacity-50 opacity-75').html('<i class="fas fa-tools text-2xl"></i><span>Reporte de Servicios</span><span class="text-xs font-normal opacity-80">(Por Delegaciones)</span>');
+                    $('#btnNovedades').prop('disabled', false).removeClass('opacity-50 opacity-75').html('<i class="fas fa-exclamation-triangle text-2xl"></i><span>Reporte de Novedades</span><span class="text-xs font-normal opacity-80">(Solo incidencias)</span>');
                 }
             });
-        });
+        }
 
         // ===============================================
         // 🔥 LÓGICA DE GENERACIÓN DE EXCEL (ADAPTADA)
         // ===============================================
-        function generarExcelDesdeJSON(datos, inicio, fin) {
+        // ===============================================
+        // 1. EXCEL SERVICIOS (Complejo - Por Hojas)
+        // ===============================================
+        // IMPORTANTE: Le cambié el nombre de generarExcelDesdeJSON a generarExcelServicios
+        function generarExcelServicios(datos, inicio, fin) {
             let wb = XLSX.utils.book_new();
             let serviciosPorDelegacion = {};
 
@@ -116,24 +145,22 @@
                     serviciosPorDelegacion[delegacion] = [];
                 }
 
-                // Lógica de checks (Basico/Profundo/Correctivo)
-                let txtServicio = (d.tipo_servicio || "").toLowerCase();
+                // Lógica de checks
+                let txtServicio = (d.txt_servicio || "").toLowerCase();
                 let esPrevBasico = (txtServicio.includes("basico") || txtServicio.includes("básico")) ? "X" : "";
                 let esPrevProfundo = (txtServicio.includes("profundo") || txtServicio.includes("completo")) ? "X" : "";
                 let esCorrectivo = (txtServicio.includes("correctivo") || txtServicio.includes("reparacion")) ? "X" : "";
 
-                // Fallback si dice solo preventivo
                 if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes("preventivo")) {
                     esPrevBasico = "X";
                 }
 
-                // Calcular Duración si viene vacía de BD
+                // Calcular Duración (Ahora sí funciona porque agregamos la función arriba)
                 let duracion = d.tiempo_servicio;
                 if (!duracion || duracion === '00:00:00') {
                     duracion = calcularDuracion(d.hora_entrada, d.hora_salida);
                 }
 
-                // Preparar fila limpia
                 serviciosPorDelegacion[delegacion].push({
                     device_id: d.device_id,
                     remision: d.numero_remision,
@@ -143,12 +170,12 @@
                     prev_profundo: esPrevProfundo,
                     correctivo: esCorrectivo,
                     valor: parseFloat(d.valor_servicio) || 0,
-                    obs: d.que_se_hizo, // Usamos 'que_se_hizo' como observación o puedes agregar columna Novedad
+                    obs: d.que_se_hizo,
                     delegacion: delegacion,
                     fecha: d.fecha_visita,
                     tecnico: d.nombre_tecnico,
                     tipo_maquina: d.nombre_tipo_maquina,
-                    tipo_servicio: d.tipo_servicio,
+                    tipo_servicio: d.txt_servicio,
                     hora_entrada: d.hora_entrada,
                     hora_salida: d.hora_salida,
                     duracion: duracion,
@@ -163,7 +190,6 @@
             for (let del in serviciosPorDelegacion) {
                 let filas = serviciosPorDelegacion[del];
 
-                // Encabezados
                 let matriz = [
                     [
                         "Device_id", "Número de Remisión", "Cliente", "Nombre Punto",
@@ -174,7 +200,6 @@
                     ]
                 ];
 
-                // Datos
                 filas.forEach(f => {
                     matriz.push([
                         f.device_id, f.remision, f.cliente, f.punto,
@@ -187,22 +212,23 @@
 
                 let ws = XLSX.utils.aoa_to_sheet(matriz);
 
-                // 3. Formato Moneda (Columna H -> índice 7)
+                // Formato Moneda
                 const formatoContabilidad = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                const colTarifa = 7;
-
-                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                    let cellRef = XLSX.utils.encode_cell({
-                        c: colTarifa,
-                        r: R
-                    });
-                    if (!ws[cellRef]) ws[cellRef] = {
-                        t: 'n',
-                        v: 0
-                    }; // Crear celda si no existe
-                    ws[cellRef].t = 'n';
-                    ws[cellRef].z = formatoContabilidad;
+                if (ws['!ref']) {
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    const colTarifa = 7;
+                    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                        let cellRef = XLSX.utils.encode_cell({
+                            c: colTarifa,
+                            r: R
+                        });
+                        if (!ws[cellRef]) ws[cellRef] = {
+                            t: 'n',
+                            v: 0
+                        };
+                        ws[cellRef].t = 'n';
+                        ws[cellRef].z = formatoContabilidad;
+                    }
                 }
 
                 // Ancho columnas
@@ -258,9 +284,57 @@
                 let nombreHoja = del.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Data";
                 XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
             }
-
-            // 4. Descargar
             XLSX.writeFile(wb, `Reporte_Servicios_${inicio}_a_${fin}.xlsx`);
+        }
+
+
+        // ==========================================
+        // 2. EXCEL NOVEDADES (Plano - Nuevo Orden)
+        // ==========================================
+        function generarExcelNovedades(datos, inicio, fin) {
+            let lista = datos.map(d => ({
+                "Tipo de Novedad": d.nombre_novedad,
+                "Observación / Qué se hizo": d.observacion,
+                "Fecha": d.fecha_visita,
+                "Técnico": d.nombre_tecnico,
+                "Cliente": d.nombre_cliente,
+                "Punto": d.nombre_punto,
+                "Delegación": d.delegacion,
+                "Device ID": d.device_id,
+                "Tipo Máquina": d.nombre_tipo_maquina,
+                "Remisión": d.numero_remision
+            }));
+
+            let wb = XLSX.utils.book_new();
+            let ws = XLSX.utils.json_to_sheet(lista);
+
+            ws["!cols"] = [{
+                    wch: 30
+                }, {
+                    wch: 50
+                }, {
+                    wch: 12
+                }, {
+                    wch: 20
+                },
+                {
+                    wch: 25
+                }, {
+                    wch: 25
+                }, {
+                    wch: 15
+                }, {
+                    wch: 15
+                },
+                {
+                    wch: 20
+                }, {
+                    wch: 12
+                }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Novedades");
+            XLSX.writeFile(wb, `Novedades_${inicio}_a_${fin}.xlsx`);
         }
     });
 </script>
