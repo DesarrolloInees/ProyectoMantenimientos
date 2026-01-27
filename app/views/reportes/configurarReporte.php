@@ -264,7 +264,6 @@
         <div class="content">
             <form id="reportForm" method="GET" action="<?= BASE_URL ?>generarReporte" target="_blank">
                 
-                <!-- Fechas -->
                 <div class="section">
                     <div class="section-title">📅 Período del Reporte</div>
                     <div class="date-inputs">
@@ -283,7 +282,6 @@
                     ⚠️ Por favor selecciona al menos una sección para generar el reporte
                 </div>
 
-                <!-- Secciones -->
                 <div class="section">
                     <div class="section-title">📋 Secciones del Reporte</div>
                     <button type="button" class="select-all-btn" onclick="toggleAll()">
@@ -319,6 +317,15 @@
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="maquinas" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">🏧 Matriz Máquinas</div>
+                            </div>
+                            <div class="section-card-desc">Tipos de máquina por delegación</div>
+                        </div>
+
+                        <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="delegaciones" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
@@ -346,15 +353,6 @@
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
-                            <input type="checkbox" name="secciones[]" value="puntos_visitados" checked>
-                            <div class="section-card-header">
-                                <div class="checkbox-custom"></div>
-                                <div class="section-card-title">📍 Puntos Visitados</div>
-                            </div>
-                            <div class="section-card-desc">Puntos con mayor frecuencia (3+ servicios)</div>
-                        </div>
-
-                        <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="puntos_fallidos" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
@@ -372,18 +370,9 @@
                             <div class="section-card-desc">Satisfacción del cliente</div>
                         </div>
 
-                        <div class="section-card selected" onclick="toggleSection(this)">
-                            <input type="checkbox" name="secciones[]" value="fallidos_delegacion" checked>
-                            <div class="section-card-header">
-                                <div class="checkbox-custom"></div>
-                                <div class="section-card-title">❌ Fallas por Delegación</div>
-                            </div>
-                            <div class="section-card-desc">Delegaciones con más servicios fallidos</div>
-                        </div>
                     </div>
                 </div>
 
-                <!-- Acciones -->
                 <div class="actions">
                     <button type="button" class="btn btn-secondary" onclick="window.history.back()">
                         ← Cancelar
