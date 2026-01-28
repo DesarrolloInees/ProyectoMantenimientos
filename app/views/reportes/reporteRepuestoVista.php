@@ -235,17 +235,18 @@
 
         let workbook = XLSX.utils.book_new();
 
-        // 1. Encabezados (Orden Solicitado)
+        // 1. Encabezados (Agregamos DELEGACIÓN)
         let matriz = [
             ['REPORTE DETALLADO DE REPUESTOS - INEES'],
             [],
             [
                 'CLIENTE',
                 'PUNTO / SEDE',
+                'DELEGACIÓN', // <--- NUEVA COLUMNA
                 'MÁQUINA (ID)',
-                'TIPO MÁQUINA', // Columna 4
+                'TIPO MÁQUINA',
                 'REMISIÓN',
-                'OBSERVACIÓN', // Columna 6 (A la izquierda de repuestos)
+                'DESCRIPCIÓN DEL SERVICIO',
                 'REPUESTO',
                 'CANT.'
             ]
@@ -253,15 +254,14 @@
 
         // 2. Llenar filas
         datosInees.forEach(d => {
-            // Nota: Con esta librería básica no existe "Wrap Text" automático,
-            // pero organizamos las columnas y el ancho para que sea legible.
             matriz.push([
                 d.nombre_cliente,
                 d.nombre_punto,
+                d.nombre_delegacion || 'N/A', // <--- Mapeamos el dato (o N/A si viene vacío)
                 d.device_id,
                 d.nombre_tipo_maquina || 'N/A',
                 d.numero_remision,
-                d.observacion, // Observación
+                d.observacion,
                 d.nombre_repuesto,
                 parseInt(d.cantidad)
             ]);
@@ -270,13 +270,16 @@
         // 3. Crear hoja
         let ws = XLSX.utils.aoa_to_sheet(matriz);
 
-        // 4. Ajustar anchos (Visualización)
+        // 4. Ajustar anchos (Agregamos el ancho para la nueva columna)
         ws['!cols'] = [{
                 wch: 30
             }, // Cliente
             {
                 wch: 25
             }, // Punto
+            {
+                wch: 20
+            }, // Delegación (NUEVO ANCHO)
             {
                 wch: 15
             }, // Máquina
@@ -288,7 +291,7 @@
             }, // Remisión
             {
                 wch: 50
-            }, // Observación (Ancho grande para que quepa texto)
+            }, // Observación
             {
                 wch: 35
             }, // Repuesto

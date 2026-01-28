@@ -119,7 +119,7 @@
                     </div>
 
                     <div class="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl text-left h-48 overflow-hidden">
-                        <div class="text-xs uppercase opacity-75 mb-3 border-b border-white/20 pb-2">Zonas Activas</div>
+                        <div class="text-xs uppercase opacity-75 mb-3 border-b border-white/20 pb-2">Delegaciones Atendidas</div>
                         <div class="flex flex-wrap gap-2 content-start">
                             <?php foreach ($kpisDelegacion as $k): ?>
                                 <span class="bg-indigo-500/30 border border-indigo-300/30 px-2 py-1 rounded text-[10px]">

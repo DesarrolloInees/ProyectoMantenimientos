@@ -289,49 +289,78 @@
 
 
         // ==========================================
-        // 2. EXCEL NOVEDADES (Plano - Nuevo Orden)
+        // 2. EXCEL NOVEDADES (Con Auto-Ajuste de Columnas)
         // ==========================================
         function generarExcelNovedades(datos, inicio, fin) {
+
+            // 1. Mapear datos (Orden 1-10)
             let lista = datos.map(d => ({
                 "Tipo de Novedad": d.nombre_novedad,
-                "Observación / Qué se hizo": d.observacion,
-                "Fecha": d.fecha_visita,
-                "Técnico": d.nombre_tecnico,
+                "Descripción del Servicio": d.observacion,
                 "Cliente": d.nombre_cliente,
                 "Punto": d.nombre_punto,
                 "Delegación": d.delegacion,
-                "Device ID": d.device_id,
-                "Tipo Máquina": d.nombre_tipo_maquina,
-                "Remisión": d.numero_remision
+                "Tipo de Máquina": d.nombre_tipo_maquina,
+                "Device_id": d.device_id,
+                "Número de Remisión": d.numero_remision,
+                "Fecha del Servicio": d.fecha_visita,
+                "Nombre del Técnico": d.nombre_tecnico
             }));
+
+            if (lista.length === 0) {
+                alert("No hay datos para exportar.");
+                return;
+            }
 
             let wb = XLSX.utils.book_new();
             let ws = XLSX.utils.json_to_sheet(lista);
 
-            ws["!cols"] = [{
-                    wch: 30
-                }, {
-                    wch: 50
-                }, {
-                    wch: 12
-                }, {
-                    wch: 20
-                },
-                {
-                    wch: 25
-                }, {
-                    wch: 25
-                }, {
-                    wch: 15
-                }, {
-                    wch: 15
-                },
-                {
-                    wch: 20
-                }, {
-                    wch: 12
+            // 2. ALGORITMO DE AUTO-AJUSTE DE ANCHO
+            // Recorremos cada columna para encontrar el texto más largo
+            let propiedades = Object.keys(lista[0]);
+            let wscols = propiedades.map(key => {
+                // Empezamos asumiendo que el ancho es el largo del título
+                let maxLen = key.length;
+
+                // Revisamos todas las filas de esa columna
+                lista.forEach(row => {
+                    let valor = row[key] ? String(row[key]) : "";
+                    // Si encontramos un texto más largo, actualizamos el máximo
+                    if (valor.length > maxLen) {
+                        maxLen = valor.length;
+                    }
+                });
+
+                // REGLAS DE LÍMITES:
+                // - Mínimo 10 caracteres (para que no quede muy flaca)
+                // - Máximo 70 caracteres (para que la descripción no ocupe 3 pantallas)
+                if (maxLen > 70) maxLen = 70;
+
+                return {
+                    wch: maxLen + 2
+                }; // Le sumamos 2 espacios de "aire"
+            });
+
+            // Aplicamos los anchos calculados
+            ws['!cols'] = wscols;
+
+            // 3. (Opcional) Intentar activar Wrap Text para lo que pase de 70 caracteres
+            // Nota: Esto depende de la versión de SheetJS, pero no hace daño dejarlo.
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    let cell_ref = XLSX.utils.encode_cell({
+                        r: R,
+                        c: C
+                    });
+                    if (!ws[cell_ref]) continue;
+                    if (!ws[cell_ref].s) ws[cell_ref].s = {};
+                    ws[cell_ref].s.alignment = {
+                        wrapText: true,
+                        vertical: "center"
+                    };
                 }
-            ];
+            }
 
             XLSX.utils.book_append_sheet(wb, ws, "Novedades");
             XLSX.writeFile(wb, `Novedades_${inicio}_a_${fin}.xlsx`);

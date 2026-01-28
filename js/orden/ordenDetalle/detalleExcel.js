@@ -214,93 +214,12 @@ function exportarExcelLimpio() {
     XLSX.writeFile(workbook, nombreArchivo);
 }
 
-/**
- * Exportar Excel de Novedades (ADAPTADO A BÚSQUEDA)
- */
-function exportarExcelNovedades() {
-    if (typeof XLSX === "undefined") {
-        alert("Librería SheetJS no cargada.");
-        return;
-    }
-
-    let tabla = document.getElementById("tablaEdicion");
-    let filas = Array.from(tabla.querySelectorAll("tbody tr"));
-    let listaNovedades = [];
-    const catalogoNovedades = window.DetalleConfig.listaNovedades || [];
-    let contadorNovedades = 0;
-
-    filas.forEach((fila) => {
-        if (!fila.id.startsWith("fila_")) return;
-        let idFila = fila.id.replace("fila_", "");
-
-        // Verificar si tiene novedad (solo filas visibles)
-        let inputTiene = document.getElementById(`hdn-tiene-${idFila}`);
-        if (!inputTiene || inputTiene.value != "1") return;
-
-        contadorNovedades++;
-
-        let inputTipo = document.getElementById(`hdn-tipo-${idFila}`);
-        let idTipo = inputTipo ? inputTipo.value : "";
-        
-        let nombreNovedad = "SIN ESPECIFICAR";
-        if (idTipo) {
-            let novEncontrada = catalogoNovedades.find(n => n.id_tipo_novedad == idTipo);
-            if (novEncontrada) nombreNovedad = novEncontrada.nombre_novedad;
-        }
-
-        let divDel = document.getElementById(`td_delegacion_${idFila}`);
-        let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
-        let cliente = ExcelUtils.getSelectText(fila, "[id_cliente]");
-        let punto = ExcelUtils.getSelectText(fila, "[id_punto]");
-        let tecnico = ExcelUtils.getSelectText(fila, "[id_tecnico]");
-        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
-        let deviceID = (selMaq && selMaq.selectedIndex >= 0) ? selMaq.options[selMaq.selectedIndex].text.split("(")[0].trim() : "";
-        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
-        let tipoMaq = divTipo ? divTipo.innerText : "";
-        let inputRem = fila.querySelector('input[name*="[remision]"]');
-        let remision = inputRem ? inputRem.value : "";
-        let txtObs = fila.querySelector('textarea[name*="[obs]"]');
-        let obsServicio = txtObs ? txtObs.value : "";
-        let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
-        let fecha = inputFecha ? inputFecha.value : "";
-
-        listaNovedades.push({
-            "Fecha": fecha, "Delegación": delegacion, "Cliente": cliente, "Punto": punto,
-            "Técnico": tecnico, "Motivo Novedad": nombreNovedad, "Device ID": deviceID,
-            "Tipo Máquina": tipoMaq, "Remisión": remision, "Obs. Servicio": obsServicio
-        });
-    });
-
-    if (listaNovedades.length === 0) {
-        alert("⚠️ No se encontraron novedades en los resultados actuales.");
-        return;
-    }
-
-    let wb = XLSX.utils.book_new();
-    let ws = XLSX.utils.json_to_sheet(listaNovedades);
-
-    ws["!cols"] = [
-        { wch: 12 }, { wch: 15 }, { wch: 25 }, { wch: 25 }, { wch: 20 },
-        { wch: 25 }, { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 40 }
-    ];
-
-    XLSX.utils.book_append_sheet(workbook, ws, "Novedades");
-
-    // 🔥 NOMBRE DE ARCHIVO DINÁMICO
-    let nombreArchivo = ExcelUtils.generarNombreArchivo("Novedades");
-    XLSX.writeFile(workbook, nombreArchivo);
-}
-
-// Exportar al objeto global
-window.DetalleExcel = { exportarExcelLimpio, exportarExcelNovedades };
-window.exportarExcelLimpio = exportarExcelLimpio;
-window.exportarExcelNovedades = exportarExcelNovedades;
 
 
 
-/**
- * Exportar Excel de Novedades (ORDEN CORREGIDO: TIPO -> OBS -> DETALLES)
- */
+// ==========================================
+// 2. FUNCIÓN EXPORTAR NOVEDADES (ORDENADO 1-10 + AUTO-ANCHO COLUMNAS)
+// ==========================================
 function exportarExcelNovedades() {
     if (typeof XLSX === "undefined") {
         alert("Librería SheetJS no cargada.");
@@ -319,23 +238,22 @@ function exportarExcelNovedades() {
 
         let idFila = fila.id.replace("fila_", "");
 
-        // 1. Verificamos si tiene novedad marcada
+        // --- VALIDACIÓN: SOLO FILAS CON NOVEDAD ---
         let inputTiene = document.getElementById(`hdn-tiene-${idFila}`);
         if (!inputTiene || inputTiene.value != "1") return;
 
-        // 2. Recuperar el ID y Nombre del tipo de novedad
+        // --- DATOS ---
+        
+        // Tipo Novedad
         let inputTipo = document.getElementById(`hdn-tipo-${idFila}`);
         let idTipo = inputTipo ? inputTipo.value : "";
-        
         let nombreNovedad = "SIN ESPECIFICAR";
         if (idTipo) {
             let novEncontrada = catalogoNovedades.find(n => n.id_tipo_novedad == idTipo);
-            if (novEncontrada) {
-                nombreNovedad = novEncontrada.nombre_novedad;
-            }
+            if (novEncontrada) nombreNovedad = novEncontrada.nombre_novedad;
         }
 
-        // 3. Extraer resto de datos
+        // Contexto
         let divDel = document.getElementById(`td_delegacion_${idFila}`);
         let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
 
@@ -343,6 +261,7 @@ function exportarExcelNovedades() {
         let punto = ExcelUtils.getSelectText(fila, "[id_punto]");
         let tecnico = ExcelUtils.getSelectText(fila, "[id_tecnico]");
 
+        // Device ID
         let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
         let deviceID = "";
         if (selMaq && selMaq.selectedIndex >= 0) {
@@ -361,22 +280,18 @@ function exportarExcelNovedades() {
         let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
         let fecha = inputFecha ? inputFecha.value : "";
 
-        // --- AQUÍ ESTÁ EL CAMBIO DE ORDEN ---
-        // Columna 1: Tipo Novedad
-        // Columna 2: Observación
-        // Resto: Contexto
+        // --- CONSTRUCCIÓN DEL OBJETO (ORDEN SOLICITADO) ---
         listaNovedades.push({
-            "Tipo de Novedad": nombreNovedad,      // COLUMNA 1
-            "Observación / Qué se hizo": obsServicio, // COLUMNA 2
-            "Remisión": remision,
-            "Técnico": tecnico,
-            "Cliente": cliente,
-            "Punto": punto,
-            "Delegación": delegacion,
-            "Device ID": deviceID,
-            "Tipo Máquina": tipoMaq,
-            "Fecha": fecha
-            
+            "Tipo de Novedad": nombreNovedad,          // 1
+            "Descripción del Servicio": obsServicio,   // 2
+            "Cliente": cliente,                        // 3
+            "Punto": punto,                            // 4
+            "Delegación": delegacion,                  // 5
+            "Tipo de Máquina": tipoMaq,                // 6
+            "Device_id": deviceID,                     // 7
+            "Número de Remisión": remision,            // 8
+            "Fecha del Servicio": fecha,               // 9
+            "Nombre del Técnico": tecnico              // 10
         });
     });
 
@@ -388,19 +303,46 @@ function exportarExcelNovedades() {
     let wb = XLSX.utils.book_new();
     let ws = XLSX.utils.json_to_sheet(listaNovedades);
 
-    // Ajustar ancho de columnas (Indices actualizados al nuevo orden)
-    ws["!cols"] = [
-        { wch: 30 }, // A: Tipo de Novedad (Ancho generoso)
-        { wch: 50 }, // B: Observación (Muy ancho para leer bien)
-        { wch: 12 }, // C: Fecha
-        { wch: 20 }, // D: Técnico
-        { wch: 25 }, // E: Cliente
-        { wch: 25 }, // F: Punto
-        { wch: 15 }, // G: Delegación
-        { wch: 15 }, // H: Device ID
-        { wch: 20 }, // I: Tipo Maquina
-        { wch: 12 }  // J: Remisión
-    ];
+    // --- ALGORITMO DE AUTO-AJUSTE DE ANCHO DE COLUMNAS ---
+    // Recorremos las claves (encabezados) para calcular el ancho ideal
+    let headers = Object.keys(listaNovedades[0]);
+    let wscols = headers.map(header => {
+        // Empezamos con la longitud del encabezado
+        let maxLen = header.length;
+
+        // Revisamos todas las filas para esa columna
+        listaNovedades.forEach(row => {
+            let val = row[header] ? String(row[header]) : "";
+            if (val.length > maxLen) {
+                maxLen = val.length;
+            }
+        });
+
+        // REGLAS: 
+        // 1. Si es gigante, lo cortamos visualmente en 60 para no hacer un Excel infinito
+        if (maxLen > 60) maxLen = 60;
+        // 2. Mínimo 10 para que no quede muy apretado
+        if (maxLen < 10) maxLen = 10;
+
+        return { wch: maxLen + 2 }; // +2 para un poco de "aire"
+    });
+
+    // Aplicamos los anchos calculados a la hoja
+    ws["!cols"] = wscols;
+
+    // (Opcional) Activamos Wrap Text para que si cortamos el ancho, el texto baje
+    // Pero NO tocamos la altura de fila (!rows), dejamos que Excel se encargue.
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            let cell_ref = XLSX.utils.encode_cell({r: R, c: C});
+            if (!ws[cell_ref]) continue;
+            if (!ws[cell_ref].s) ws[cell_ref].s = {};
+            
+            // Alineación superior y ajuste de texto, pero sin forzar altura
+            ws[cell_ref].s.alignment = { wrapText: true, vertical: "top" };
+        }
+    }
 
     XLSX.utils.book_append_sheet(wb, ws, "Novedades");
 
@@ -414,12 +356,15 @@ function exportarExcelNovedades() {
 
     XLSX.writeFile(wb, `Novedades_${fechaNombre.trim()}.xlsx`);
 }
-// Exportar
+
+// ==========================================
+// 3. EXPORTAR AL OBJETO GLOBAL (PARA QUE LOS BOTONES FUNCIONEN)
+// ==========================================
 window.DetalleExcel = {
     exportarExcelLimpio,
-    exportarExcelNovedades,
+    exportarExcelNovedades
 };
 
-// Retrocompatibilidad
+// Retrocompatibilidad por si se llaman directamente desde el HTML
 window.exportarExcelLimpio = exportarExcelLimpio;
 window.exportarExcelNovedades = exportarExcelNovedades;
