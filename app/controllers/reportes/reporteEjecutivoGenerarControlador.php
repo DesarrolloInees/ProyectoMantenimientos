@@ -114,8 +114,16 @@ class generarReporteControlador
         $datosCalificaciones = $this->modelo->getCalificacionesServicio($inicio, $fin);
         $datosNovedad = $this->modelo->getDistribucionNovedades($inicio, $fin);
         
+        
         // Matriz Mantenimiento (La que ya tenías)
         $todosTiposMant = $this->modelo->getAllTiposMantenimiento();
+        // REPUESTOS POR ORIGEN
+        $datosOrigenRepuestos = $this->modelo->getOrigenRepuestos($inicio, $fin);
+
+        // ---------------------------------------------
+        // ESTADOS FINALES (OPERATIVIDAD)
+        // ---------------------------------------------
+        $datosEstadosFinales = $this->modelo->getDistribucionEstados($inicio, $fin);
         $datosRawMant = $this->modelo->getDatosMatrizMantenimiento($inicio, $fin);
         $matrizMant = [];
         $delegacionesMantNames = [];
@@ -127,6 +135,21 @@ class generarReporteControlador
         }
         $delegacionesListaMant = array_keys($delegacionesMantNames);
         sort($delegacionesListaMant);
+
+        // Reusamos $tiposMaquinaCols del paso anterior porque las columnas son iguales
+        $datosRawPuntosTipo = $this->modelo->getDatosMatrizPuntosPorTipo($inicio, $fin);
+
+        $matrizPuntosTipo = [];
+        // Usamos la misma lista de delegaciones o creamos una nueva si quieres ser estricto
+        // Reusaremos $delegacionesListaMaquina para que las tablas se vean alineadas
+
+        if ($datosRawPuntosTipo) {
+            foreach ($datosRawPuntosTipo as $row) {
+                $matrizPuntosTipo[$row['nombre_delegacion']][$row['nombre_tipo_maquina']] = $row['total'];
+            }
+        }
+
+
 
         // KPIs Portada
         $rawKpis = $this->modelo->getKpisPorDelegacion($inicio, $fin);
@@ -145,6 +168,8 @@ class generarReporteControlador
                 $kpisDelegacion[] = [
                     'delegacion' => $kpi['nombre_delegacion'],
                     'total' => $kpi['total_servicios'],
+                    'num_tecnicos' => $kpi['total_tecnicos'],
+                    
                     'porcentaje' => ($totalGlobalServicios > 0) ? round(($kpi['total_servicios'] / $totalGlobalServicios) * 100, 1) : 0,
                     'novedades' => $kpi['total_novedades'],
                     'promedio_diario' => round($promedioDiario, 2) // Ahora sí dará un número real (ej. 4.5 servicios/día)

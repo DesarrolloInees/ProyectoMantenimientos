@@ -347,7 +347,7 @@ class ordenDetalleModelo
             $this->conn->beginTransaction();
 
             // -----------------------------------------------------------------
-            // 🕵️ PASO 0: GESTIÓN INTELIGENTE DE REMISIONES (SE MANTIENE ✅)
+            // 🕵️ PASO 0: GESTIÓN INTELIGENTE DE REMISIONES (CORREGIDO PARA NUEVA BD)
             // -----------------------------------------------------------------
             $sqlCheck = "SELECT numero_remision, id_tecnico FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
@@ -358,15 +358,21 @@ class ordenDetalleModelo
             if ($actual && ($actual['numero_remision'] != $datos['remision'] || $actual['id_tecnico'] != $datos['id_tecnico'])) {
 
                 // A. LIBERAR LA VIEJA
+                // CAMBIO: Usamos id_estado con subconsulta para 'DISPONIBLE'
                 $sqlLiberar = "UPDATE control_remisiones 
-                               SET estado = 'DISPONIBLE', id_orden_servicio = NULL, fecha_uso = NULL 
+                               SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1), 
+                                   id_orden_servicio = NULL, 
+                                   fecha_uso = NULL 
                                WHERE id_orden_servicio = ?";
                 $this->conn->prepare($sqlLiberar)->execute([$id]);
 
                 // B. OCUPAR LA NUEVA
                 if (!empty($datos['remision'])) {
+                    // CAMBIO: Usamos id_estado con subconsulta para 'USADA'
                     $sqlOcupar = "UPDATE control_remisiones 
-                                  SET estado = 'USADA', id_orden_servicio = ?, fecha_uso = ? 
+                                  SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
+                                      id_orden_servicio = ?, 
+                                      fecha_uso = ? 
                                   WHERE numero_remision = ? AND id_tecnico = ?";
 
                     $fechaUso = $datos['fecha_individual'] . ' ' . ($datos['entrada'] ?: '00:00:00');
@@ -381,7 +387,7 @@ class ordenDetalleModelo
             // -----------------------------------------------------------------
 
             // ---------------------------------------------------------
-            // 1. ACTUALIZAR TABLA PRINCIPAL (ORDENES)
+            // 1. ACTUALIZAR TABLA PRINCIPAL (ORDENES) - (ESTO NO CAMBIA)
             // ---------------------------------------------------------
             $sql = "UPDATE ordenes_servicio SET 
                         id_cliente = ?, id_punto = ?, id_maquina = ?, id_modalidad = ?,
@@ -411,11 +417,6 @@ class ordenDetalleModelo
                 $datos['fecha_individual'],
                 $id
             ]);
-
-            // ---------------------------------------------------------
-            // 🛑 PASO 2: ACTUALIZAR REPUESTOS -> ELIMINADO ❌
-            // No tocamos la tabla orden_servicio_repuesto aquí.
-            // ---------------------------------------------------------
 
             // 3. ACTUALIZAR INFO MANTENIMIENTO EN PUNTO
             $this->actualizarInfoMantenimientoPunto($datos['id_punto']);

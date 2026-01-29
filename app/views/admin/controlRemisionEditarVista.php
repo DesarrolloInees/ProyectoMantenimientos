@@ -3,14 +3,12 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <style>
-    /* Ajuste para que Select2 combine con el estilo de Tailwind que ya tienes */
     .select2-container--default .select2-selection--single {
         height: 46px !important;
         padding: 8px !important;
         border-color: #d1d5db !important;
         border-radius: 0.5rem !important;
     }
-
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 44px !important;
     }
@@ -56,13 +54,32 @@
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Estado</label>
-                <select name="estado" class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
-                    <option value="DISPONIBLE" <?= ($datos['estado'] == 'DISPONIBLE') ? 'selected' : '' ?>>DISPONIBLE</option>
-                    <option value="ANULADA" <?= ($datos['estado'] == 'ANULADA') ? 'selected' : '' ?>>ANULADA</option>
-                    <?php if ($datos['estado'] == 'USADA'): ?>
-                        <option value="USADA" selected disabled>USADA (No editable)</option>
+                <select name="id_estado" class="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500">
+                    
+                    <?php 
+                    // Verificamos si es USADA usando el nombre que trajimos con el JOIN
+                    if (isset($datos['nombre_estado']) && $datos['nombre_estado'] == 'USADA'): 
+                    ?>
+                        <option value="<?= $datos['id_estado'] ?>" selected>USADA (Asignada a Orden)</option>
+                    
+                    <?php else: ?>
+                    
+                        <?php foreach ($listaEstados as $estado): ?>
+                            <?php 
+                                // Omitimos 'USADA' de la lista seleccionable manual si quieres restringirlo
+                                if ($estado['nombre_estado'] == 'USADA') continue; 
+                                
+                                $selected = ($datos['id_estado'] == $estado['id_estado']) ? 'selected' : '';
+                            ?>
+                            <option value="<?= $estado['id_estado'] ?>" <?= $selected ?>>
+                                <?= htmlspecialchars($estado['nombre_estado']) ?>
+                            </option>
+                        <?php endforeach; ?>
+
                     <?php endif; ?>
+
                 </select>
+                <p class="text-xs text-gray-500 mt-1">Seleccione el estado actual de la remisión física.</p>
             </div>
 
             <div class="pt-6 border-t flex justify-end space-x-4">
@@ -81,11 +98,10 @@
 
 <script>
     $(document).ready(function() {
-        // Inicializamos Select2 en el campo de técnicos
         $('#select-tecnico').select2({
             placeholder: "Seleccione un técnico",
             allowClear: true,
-            width: '100%' // Asegura que ocupe todo el ancho de Tailwind
+            width: '100%'
         });
     });
 </script>

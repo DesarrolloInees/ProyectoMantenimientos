@@ -149,8 +149,7 @@
             </div>
         </nav>
 
-        <main class="flex-1 pt-20 pb-8 px-4 md:px-8 w-full max-w-[1600px] mx-auto z-0 relative">
-
+        <main class="flex-1 pt-20 pb-8 px-2 md:px-4 w-full z-0 relative">
             <div class="mb-6 border-b border-gray-300 pb-2 flex flex-col md:flex-row justify-between md:items-end gap-2">
                 <h2 class="text-2xl font-bold text-gray-800">
                     <?= isset($titulo) ? $titulo : 'Panel de Control' ?>

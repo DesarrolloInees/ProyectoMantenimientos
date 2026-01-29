@@ -326,6 +326,24 @@
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="puntos_atendidos" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">📍 Cobertura Puntos</div>
+                            </div>
+                            <div class="section-card-desc">Matriz de puntos únicos atendidos</div>
+                        </div>
+
+                        <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="estados" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">✅ Estados Finales</div>
+                            </div>
+                            <div class="section-card-desc">Gráfica de operatividad y fallas</div>
+                        </div>
+
+                        <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="delegaciones" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>

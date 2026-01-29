@@ -315,41 +315,49 @@ class ordenCrearModels
     }
 
     // 1. Obtener las remisiones que el técnico tiene libres
+    // 1. Obtener las remisiones que el técnico tiene libres
     public function obtenerRemisionesDisponibles($idTecnico)
     {
+        // CAMBIO: Usamos una subconsulta para obtener el ID de 'DISPONIBLE'
+        // y filtramos por 'id_estado' en lugar de 'estado'
         $sql = "SELECT id_control, numero_remision 
-            FROM control_remisiones 
-            WHERE id_tecnico = ? AND estado = 'DISPONIBLE' 
-            ORDER BY numero_remision ASC";
+                FROM control_remisiones 
+                WHERE id_tecnico = ? 
+                AND id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1)
+                ORDER BY CAST(numero_remision AS UNSIGNED) ASC";
+        
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([$idTecnico]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // 2. Método auxiliar para "Quemar" la remisión (ACTUALIZADO PARA DUPLICADOS)
+    // 2. Método para "Quemar" la remisión
     public function marcarRemisionComoUsada($numeroRemision, $idOrden, $idTecnico)
     {
-        // 🔥 AGREGAMOS "AND id_tecnico = ?" PARA QUE NO QUEME LA DEL OTRO MAN
+        // CAMBIO: 
+        // 1. SET id_estado = (Subconsulta para buscar el ID de 'USADA')
+        // 2. Ya no usamos SET estado = 'USADA'
         $sql = "UPDATE control_remisiones 
-                SET estado = 'USADA', 
+                SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
                     id_orden_servicio = ?, 
                     fecha_uso = NOW() 
                 WHERE numero_remision = ? AND id_tecnico = ?";
 
         $stmt = $this->conn->prepare($sql);
-        // Ojo al orden de los parámetros: Orden, Numero, Tecnico
         $stmt->execute([$idOrden, $numeroRemision, $idTecnico]);
     }
 
     public function verificarRemisionDisponible($numeroRemision, $idTecnico)
     {
         try {
-            // Verificar si existe en control_remisiones
-            $sql = "SELECT estado, id_orden_servicio 
-                FROM control_remisiones 
-                WHERE numero_remision = :remision 
-                AND id_tecnico = :tecnico 
-                LIMIT 1";
+            // CAMBIO: Hacemos JOIN con estados_remision para obtener el 'nombre_estado'
+            $sql = "SELECT e.nombre_estado, cr.id_orden_servicio 
+                    FROM control_remisiones cr
+                    INNER JOIN estados_remision e ON cr.id_estado = e.id_estado
+                    WHERE cr.numero_remision = :remision 
+                    AND cr.id_tecnico = :tecnico 
+                    LIMIT 1";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
@@ -366,10 +374,19 @@ class ordenCrearModels
                 ];
             }
 
-            if ($resultado['estado'] === 'USADA') {
+            // AHORA SÍ podemos comparar con texto porque trajimos 'nombre_estado'
+            if ($resultado['nombre_estado'] === 'USADA') {
                 return [
                     'disponible' => false,
                     'mensaje' => 'Remisión ya fue usada en orden #' . $resultado['id_orden_servicio']
+                ];
+            }
+
+            // Opcional: Validar si está ANULADA o ELIMINADA
+            if ($resultado['nombre_estado'] === 'ANULADA' || $resultado['nombre_estado'] === 'ELIMINADO') {
+                return [
+                    'disponible' => false,
+                    'mensaje' => 'Esta remisión está ' . $resultado['nombre_estado']
                 ];
             }
 

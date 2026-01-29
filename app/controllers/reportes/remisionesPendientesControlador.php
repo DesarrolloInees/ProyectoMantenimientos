@@ -29,20 +29,20 @@ class RemisionesPendientesControlador
 
     public function cambiarEstado()
     {
-        // Depuración rápida: si algo falla, descomenta esto para ver qué llega
-        // var_dump($_GET); die(); 
-
         if (isset($_GET['id']) && isset($_GET['estado'])) {
             $id = $_GET['id'];
             $estado = $_GET['estado'];
-            $estadosPermitidos = ['ANULADA', 'USADA', 'FALTANTE', 'ELIMINADO'];
+            
+            // AGREGADO: 'DISPONIBLE' por seguridad si necesitas revertir
+            // Asegúrate de que estos nombres sean IDÉNTICOS a los de tu tabla 'estados_remision'
+            $estadosPermitidos = ['ANULADA', 'USADA', 'FALTANTE', 'ELIMINADO', 'DISPONIBLE']; 
 
             if (in_array($estado, $estadosPermitidos)) {
+                // Ahora esto funcionará porque el modelo traducirá el texto a ID
                 $this->modelo->actualizarEstadoRapido($id, $estado);
             }
         }
 
-        // Redirección segura usando ?pagina=
         header('Location: ' . BASE_URL . 'remisionesPendientes');
         exit();
     }

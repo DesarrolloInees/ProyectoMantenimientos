@@ -38,6 +38,23 @@
     }
 </style>
 
+
+<div class="w-full max-w-7xl mx-auto">
+    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-100">
+
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">
+                    <i class="fas fa-boxes text-indigo-600 mr-2"></i> Inventario de Remisiones
+                </h1>
+                <p class="text-gray-500 mt-1">Gestiona el inventario de Remisiones.</p>
+            </div>
+            <a href="<?= BASE_URL ?>controlRemisionCrear" class="mt-4 sm:mt-0 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+                <i class="fas fa-plus-circle"></i>
+                <span>Nuevas Remisiones</span>
+            </a>
+        </div>
+
 <div class="w-full max-w-7xl mx-auto">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 overflow-hidden">
         <table id="tablaRemisiones" class="w-full text-sm text-left text-gray-500">
@@ -56,12 +73,19 @@
                         <td class="px-6 py-4 font-bold text-gray-900"><?= $r['numero_remision'] ?></td>
                         <td class="px-6 py-4"><?= $r['nombre_tecnico'] ?></td>
                         <td class="px-6 py-4">
-                            <?php if ($r['estado'] == 'DISPONIBLE'): ?>
+                            <?php if ($r['nombre_estado'] == 'DISPONIBLE'): ?>
                                 <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Disponible</span>
-                            <?php elseif ($r['estado'] == 'USADA'): ?>
+                            
+                            <?php elseif ($r['nombre_estado'] == 'USADA'): ?>
                                 <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Usada</span>
-                            <?php else: ?>
+                            
+                            <?php elseif ($r['nombre_estado'] == 'ANULADA'): ?>
                                 <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Anulada</span>
+                            
+                            <?php else: ?>
+                                <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                    <?= htmlspecialchars($r['nombre_estado']) ?>
+                                </span>
                             <?php endif; ?>
                         </td>
                         
@@ -85,7 +109,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-center">
-                            <?php if ($r['estado'] != 'USADA'): ?>
+                            <?php if ($r['nombre_estado'] != 'USADA'): ?>
                                 <a href="<?= BASE_URL ?>controlRemisionEditar&id=<?= $r['id_control'] ?>" class="text-indigo-600 hover:text-indigo-900 mx-2" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>

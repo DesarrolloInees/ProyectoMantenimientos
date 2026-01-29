@@ -12,17 +12,20 @@ class ControlRemisionVerModelo
 
     public function listarRemisiones()
     {
-        // Agregamos cr.fecha_uso a la selección
+        // CAMBIO: Hacemos JOIN con 'estados_remision' (alias 'e')
+        // Seleccionamos 'e.nombre_estado' para poder mostrar el texto en la tabla
         $sql = "SELECT 
                     cr.id_control,
                     cr.numero_remision,
-                    cr.estado,
+                    cr.id_estado,            -- Traemos el ID por si acaso
+                    e.nombre_estado,         -- Traemos el NOMBRE (Ej: DISPONIBLE)
                     cr.fecha_asignacion,
                     cr.fecha_uso, 
                     t.nombre_tecnico
                 FROM control_remisiones cr
                 INNER JOIN tecnico t ON cr.id_tecnico = t.id_tecnico
-                WHERE cr.estado != 'ELIMINADO' 
+                INNER JOIN estados_remision e ON cr.id_estado = e.id_estado
+                WHERE e.nombre_estado != 'ELIMINADO' 
                 ORDER BY cr.id_control DESC";
 
         $stmt = $this->conn->prepare($sql);
@@ -30,39 +33,36 @@ class ControlRemisionVerModelo
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // ... dentro de class ControlRemisionVerModelo ...
-
     public function obtenerSalteadasSandwich()
     {
-        // LÓGICA STRICT SANDWICH:
-        // Busca una remisión DISPONIBLE que tenga:
-        // - Inmediatamente atrás (-1): Una USADA
-        // - Inmediatamente adelante (+1): Una USADA
+        // CAMBIO: Para filtrar por 'USADA' o 'DISPONIBLE', usamos subconsultas
+        // Esto es más limpio que hacer 3 JOINs extra a la tabla de estados
         
         $sql = "SELECT 
                     curr.id_control,
                     curr.numero_remision,
-                    curr.estado,
+                    e_curr.nombre_estado,
                     curr.fecha_asignacion,
                     t.nombre_tecnico,
                     prev.numero_remision as anterior,
                     next.numero_remision as siguiente
                 FROM control_remisiones curr
                 INNER JOIN tecnico t ON curr.id_tecnico = t.id_tecnico
+                INNER JOIN estados_remision e_curr ON curr.id_estado = e_curr.id_estado
                 
                 -- JOIN para asegurar que existe la ANTERIOR usada
                 INNER JOIN control_remisiones prev 
                     ON curr.id_tecnico = prev.id_tecnico 
                     AND CAST(prev.numero_remision AS UNSIGNED) = CAST(curr.numero_remision AS UNSIGNED) - 1
-                    AND prev.estado = 'USADA'
+                    AND prev.id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1)
                 
                 -- JOIN para asegurar que existe la SIGUIENTE usada
                 INNER JOIN control_remisiones next 
                     ON curr.id_tecnico = next.id_tecnico 
                     AND CAST(next.numero_remision AS UNSIGNED) = CAST(curr.numero_remision AS UNSIGNED) + 1
-                    AND next.estado = 'USADA'
+                    AND next.id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1)
                 
-                WHERE curr.estado = 'DISPONIBLE'
+                WHERE e_curr.nombre_estado = 'DISPONIBLE'
                 ORDER BY t.nombre_tecnico ASC, CAST(curr.numero_remision AS UNSIGNED) ASC";
 
         $stmt = $this->conn->prepare($sql);
@@ -71,17 +71,23 @@ class ControlRemisionVerModelo
     }
 
     // Método para actualizar el estado (usado por el botón)
-    public function actualizarEstadoRapido($id, $nuevoEstado)
+   // Método para actualizar el estado (usado por el botón de Remisiones Pendientes/Salteadas)
+    public function actualizarEstadoRapido($idRemision, $nombreEstado)
     {
         try {
-            $sql = "UPDATE control_remisiones SET estado = :estado WHERE id_control = :id";
+            // CAMBIO: En lugar de guardar el valor directo, hacemos una SUBCONSULTA
+            // Buscamos cuál es el ID que corresponde al texto (Ej: 'ANULADA' -> ID 3)
+            $sql = "UPDATE control_remisiones 
+                    SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = :estado LIMIT 1) 
+                    WHERE id_control = :id";
+            
             $stmt = $this->conn->prepare($sql);
-            $stmt->bindParam(':estado', $nuevoEstado);
-            $stmt->bindParam(':id', $id);
+            $stmt->bindParam(':estado', $nombreEstado); // Pasamos 'ANULADA', 'USADA', etc.
+            $stmt->bindParam(':id', $idRemision);
+            
             return $stmt->execute();
         } catch (PDOException $e) {
             return false;
         }
     }
 }
-

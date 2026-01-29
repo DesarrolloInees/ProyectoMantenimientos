@@ -22,7 +22,6 @@ class controlRemisionEditarControlador
         $errores = [];
         $id = $_GET['id'] ?? null;
 
-        // Validar que venga el ID
         if (!$id) {
             header("Location: " . BASE_URL . "controlRemisionVer");
             exit();
@@ -30,10 +29,12 @@ class controlRemisionEditarControlador
 
         // Obtener datos actuales
         $datos = $this->modelo->obtenerRemisionPorId($id);
+        
+        // CAMBIO: Obtenemos las listas desde la base de datos
         $listaTecnicos = $this->modelo->obtenerTecnicos();
+        $listaEstados = $this->modelo->obtenerEstados(); // <--- NUEVO
 
         if (!$datos) {
-            // Si el ID no existe en BD
             header("Location: " . BASE_URL . "controlRemisionVer");
             exit();
         }
@@ -45,12 +46,13 @@ class controlRemisionEditarControlador
                 'id_control'      => $id,
                 'numero_remision' => trim($_POST['numero_remision'] ?? ''),
                 'id_tecnico'      => $_POST['id_tecnico'] ?? '',
-                'estado'          => $_POST['estado'] ?? ''
+                'id_estado'       => $_POST['id_estado'] ?? '' // CAMBIO: Ahora recibimos id_estado
             ];
 
             // Validaciones
             if (empty($datosForm['numero_remision'])) $errores[] = "El número es obligatorio.";
             if (empty($datosForm['id_tecnico'])) $errores[] = "El técnico es obligatorio.";
+            if (empty($datosForm['id_estado'])) $errores[] = "El estado es obligatorio.";
 
             if (empty($errores)) {
                 $resp = $this->modelo->actualizarRemision($datosForm);
@@ -64,7 +66,7 @@ class controlRemisionEditarControlador
                     $errores[] = "Error al actualizar en la base de datos.";
                 }
             }
-            // Actualizamos la variable $datos para que el formulario no pierda lo que escribió el usuario si hubo error
+            // Actualizamos la variable $datos para que el formulario no pierda lo que escribió el usuario
             $datos = array_merge($datos, $datosForm);
         }
 
