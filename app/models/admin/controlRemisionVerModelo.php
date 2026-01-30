@@ -35,39 +35,73 @@ class ControlRemisionVerModelo
 
     public function obtenerSalteadasSandwich()
     {
-        // CAMBIO: Para filtrar por 'USADA' o 'DISPONIBLE', usamos subconsultas
-        // Esto es más limpio que hacer 3 JOINs extra a la tabla de estados
-        
+        // 1. OBTENER TODO DE UNA VEZ (Consulta ligera y rápida)
+        // Traemos solo USADA y DISPONIBLE, ordenadas por técnico y número
         $sql = "SELECT 
-                    curr.id_control,
-                    curr.numero_remision,
-                    e_curr.nombre_estado,
-                    curr.fecha_asignacion,
-                    t.nombre_tecnico,
-                    prev.numero_remision as anterior,
-                    next.numero_remision as siguiente
-                FROM control_remisiones curr
-                INNER JOIN tecnico t ON curr.id_tecnico = t.id_tecnico
-                INNER JOIN estados_remision e_curr ON curr.id_estado = e_curr.id_estado
-                
-                -- JOIN para asegurar que existe la ANTERIOR usada
-                INNER JOIN control_remisiones prev 
-                    ON curr.id_tecnico = prev.id_tecnico 
-                    AND CAST(prev.numero_remision AS UNSIGNED) = CAST(curr.numero_remision AS UNSIGNED) - 1
-                    AND prev.id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1)
-                
-                -- JOIN para asegurar que existe la SIGUIENTE usada
-                INNER JOIN control_remisiones next 
-                    ON curr.id_tecnico = next.id_tecnico 
-                    AND CAST(next.numero_remision AS UNSIGNED) = CAST(curr.numero_remision AS UNSIGNED) + 1
-                    AND next.id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1)
-                
-                WHERE e_curr.nombre_estado = 'DISPONIBLE'
-                ORDER BY t.nombre_tecnico ASC, CAST(curr.numero_remision AS UNSIGNED) ASC";
+                    cr.id_control,
+                    cr.numero_remision,
+                    e.nombre_estado,
+                    cr.fecha_asignacion,
+                    cr.id_tecnico,
+                    t.nombre_tecnico
+                FROM control_remisiones cr
+                INNER JOIN tecnico t ON cr.id_tecnico = t.id_tecnico
+                INNER JOIN estados_remision e ON cr.id_estado = e.id_estado
+                WHERE e.nombre_estado IN ('USADA', 'DISPONIBLE')
+                ORDER BY cr.id_tecnico ASC, CAST(cr.numero_remision AS UNSIGNED) ASC";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $todas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $detectadas = [];
+        $total = count($todas);
+
+        // 2. PROCESAR EN PHP (Esto es instantáneo)
+        // Recorremos desde el segundo elemento hasta el penúltimo
+        for ($i = 1; $i < $total - 1; $i++) {
+            
+            $curr = $todas[$i];     // Actual
+            $prev = $todas[$i - 1]; // Anterior
+            $next = $todas[$i + 1]; // Siguiente
+
+            // CONDICIÓN 1: La actual debe estar DISPONIBLE
+            if ($curr['nombre_estado'] !== 'DISPONIBLE') {
+                continue;
+            }
+
+            // CONDICIÓN 2: Deben ser del MISMO TÉCNICO
+            if ($curr['id_tecnico'] != $prev['id_tecnico'] || $curr['id_tecnico'] != $next['id_tecnico']) {
+                continue;
+            }
+
+            // CONDICIÓN 3: La Anterior y la Siguiente deben estar USADAS
+            if ($prev['nombre_estado'] !== 'USADA' || $next['nombre_estado'] !== 'USADA') {
+                continue;
+            }
+
+            // CONDICIÓN 4: Secuencia numérica exacta (Ej: 100, 101, 102)
+            // Convertimos a entero para comparar matemáticamente
+            $numPrev = intval($prev['numero_remision']);
+            $numCurr = intval($curr['numero_remision']);
+            $numNext = intval($next['numero_remision']);
+
+            if (($numPrev == $numCurr - 1) && ($numNext == $numCurr + 1)) {
+                // ¡SÁNDWICH DETECTADO! 🥪
+                // Agregamos los datos que necesita la vista
+                $detectadas[] = [
+                    'id_control'       => $curr['id_control'],
+                    'numero_remision'  => $curr['numero_remision'],
+                    'nombre_estado'    => $curr['nombre_estado'],
+                    'fecha_asignacion' => $curr['fecha_asignacion'],
+                    'nombre_tecnico'   => $curr['nombre_tecnico'],
+                    'anterior'         => $prev['numero_remision'],
+                    'siguiente'        => $next['numero_remision']
+                ];
+            }
+        }
+
+        return $detectadas;
     }
 
     // Método para actualizar el estado (usado por el botón)
