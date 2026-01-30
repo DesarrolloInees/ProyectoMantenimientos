@@ -6,6 +6,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 // Importamos lo necesario
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/orden/ordenDetalleModelo.php';
+require_once __DIR__ .'/ordenDetalleControlador.php';
 
 class ordenDetalleBuscarControlador
 {

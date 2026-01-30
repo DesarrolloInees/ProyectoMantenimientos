@@ -19,19 +19,18 @@ class ReporteEjecutivoControlador
     public function index()
     {
         // Inicializar variables
-        $datosDia        = [];
-        $datosDelegacion = [];
-        $datosHoras      = [];
-        $datosTipo       = [];
-        $datosNovedad    = [];
-        $datosEstado     = [];
-        $datosRepuestos  = [];
+        $datosDia          = [];
+        $datosDelegacion   = [];
+        $datosHoras        = [];
+        $datosTipo         = [];
+        $datosNovedad      = [];
+        $datosPuntosCriticos = []; // Nueva variable para los fallidos
+        $datosRepuestos    = [];
 
         // Inicializar KPIs
         $totalServicios = 0;
-        $mediaServicios = 0; // Media Global
-        $mediaDiaria    = 0; // Media Diaria (La nueva)
-        $numTecnicos    = 0;
+        $mediaGlobal    = 0;
+        $mediaDiaria    = 0;
 
         // Filtros por defecto
         $filtros = [
@@ -50,37 +49,38 @@ class ReporteEjecutivoControlador
         // Ejecutar consultas
         if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
 
-            // 1. PRIMERO OBTENEMOS LOS DATOS DE LA BD (Esto estaba abajo antes)
-            $datosDia        = $this->modelo->getServiciosPorDia($filtros['fecha_inicio'], $filtros['fecha_fin']);
-            $datosDelegacion = $this->modelo->getDelegacionesIntervenidas($filtros['fecha_inicio'], $filtros['fecha_fin']);
-            $datosHoras      = $this->modelo->getHorasVsServicios($filtros['fecha_inicio'], $filtros['fecha_fin']);
-            $datosTipo       = $this->modelo->getPorTipoMantenimiento($filtros['fecha_inicio'], $filtros['fecha_fin']);
-            $datosNovedad    = $this->modelo->getDistribucionNovedades($filtros['fecha_inicio'], $filtros['fecha_fin']);
-            $datosEstado     = $this->modelo->getServiciosFallidos($filtros['fecha_inicio'], $filtros['fecha_fin']);
-            $datosRepuestos  = $this->modelo->getComparativaRepuestos($filtros['fecha_inicio'], $filtros['fecha_fin']);
+            $inicio = $filtros['fecha_inicio'];
+            $fin    = $filtros['fecha_fin'];
 
-            // 2. AHORA SI CALCULAMOS (Ya tenemos datos)
+            // 1. OBTENEMOS LOS DATOS (Usando las funciones corregidas del PDF)
+            $datosDia          = $this->modelo->getServiciosPorDia($inicio, $fin);
 
-            // A. Calcular Total Servicios
-            foreach ($datosDia as $d) {
-                $totalServicios += $d['total'];
+            // KPI Delegaciones (Usamos la misma del PDF para consistencia)
+            $rawKpis           = $this->modelo->getKpisPorDelegacion($inicio, $fin);
+            // Transformamos para gráfico simple de barras
+            foreach ($rawKpis as $k) {
+                $datosDelegacion[] = ['nombre_delegacion' => $k['nombre_delegacion'], 'total' => $k['total_servicios']];
             }
 
-            // B. Calcular Días del Rango
-            $fecha1 = new DateTime($filtros['fecha_inicio']);
-            $fecha2 = new DateTime($filtros['fecha_fin']);
-            $diferencia = $fecha1->diff($fecha2);
-            $cantidadDias = $diferencia->days + 1; // +1 para incluir el día final
+            $datosHoras        = $this->modelo->getHorasVsServicios($inicio, $fin);
+            $datosTipo         = $this->modelo->getPorTipoMantenimiento($inicio, $fin);
+            $datosNovedad      = $this->modelo->getDistribucionNovedades($inicio, $fin);
 
+            // AQUI ESTA LA CLAVE: Usamos la nueva función de > 2 fallidos
+            $datosPuntosCriticos = $this->modelo->getPuntosConMasFallidos($inicio, $fin);
+
+            // AQUI TAMBIÉN: Usamos la de origen (INEES vs PROSEGUR)
+            $datosRepuestos    = $this->modelo->getOrigenRepuestos($inicio, $fin);
+
+            // 2. CALCULOS KPI
+            foreach ($datosDia as $d) $totalServicios += $d['total'];
+
+            $fecha1 = new DateTime($inicio);
+            $fecha2 = new DateTime($fin);
+            $cantidadDias = $fecha1->diff($fecha2)->days + 1;
             $numTecnicos = count($datosHoras);
 
-            // C. Calcular Medias
-            // Media Global (Total / Técnicos)
             $mediaGlobal = $numTecnicos > 0 ? round($totalServicios / $numTecnicos, 1) : 0;
-            // Variable para la vista (por compatibilidad con código anterior)
-            $mediaServicios = $mediaGlobal;
-
-            // Media Diaria ( (Total / Técnicos) / Días )
             $mediaDiaria = ($numTecnicos > 0 && $cantidadDias > 0)
                 ? round(($totalServicios / $numTecnicos) / $cantidadDias, 2)
                 : 0;

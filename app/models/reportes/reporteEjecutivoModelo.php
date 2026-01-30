@@ -17,16 +17,22 @@ class ReporteEjecutivoModelo
     public function getServiciosPorDia($fecha_inicio, $fecha_fin)
     {
         try {
-            $sql = "SELECT fecha_visita, COUNT(*) as total 
-                    FROM ordenes_servicio 
-                    WHERE fecha_visita BETWEEN :inicio AND :fin 
-                    GROUP BY fecha_visita ORDER BY fecha_visita ASC";
+            // AGREGAMOS: , COUNT(DISTINCT id_tecnico) as num_tecnicos
+            $sql = "SELECT fecha_visita, 
+                        COUNT(*) as total, 
+                        COUNT(DISTINCT id_tecnico) as num_tecnicos
+                FROM ordenes_servicio 
+                WHERE fecha_visita BETWEEN :inicio AND :fin 
+                GROUP BY fecha_visita ORDER BY fecha_visita ASC";
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getDelegacionesIntervenidas($fecha_inicio, $fecha_fin)
@@ -47,7 +53,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // ESTA ERA LA QUE FALTABA Y CAUSABA EL ERROR
@@ -67,7 +75,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getPorTipoMantenimiento($fecha_inicio, $fecha_fin)
@@ -83,7 +93,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getDistribucionNovedades($fecha_inicio, $fecha_fin)
@@ -97,7 +109,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getServiciosFallidos($fecha_inicio, $fecha_fin)
@@ -113,7 +127,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getComparativaRepuestos($fecha_inicio, $fecha_fin)
@@ -129,7 +145,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // ==========================================
@@ -152,7 +170,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // Matriz: Tipo de Máquina por Delegación (CORREGIDA CON TUS TABLAS)
@@ -169,16 +189,19 @@ class ReporteEjecutivoModelo
                     WHERE os.fecha_visita BETWEEN :inicio AND :fin
                     AND m.estado = 1 
                     GROUP BY d.nombre_delegacion, tm.nombre_tipo_maquina";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // Repuestos: Top usados por delegación (CORREGIDA CON TUS TABLAS)
+    // Repuestos: Top usados por delegación (SOLO INEES)
     public function getRepuestosPorDelegacion($fecha_inicio, $fecha_fin)
     {
         try {
@@ -190,15 +213,23 @@ class ReporteEjecutivoModelo
                     INNER JOIN punto p ON os.id_punto = p.id_punto
                     INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
                     INNER JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                    
                     WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    
+                    -- AGREGAMOS ESTA LÍNEA PARA FILTRAR SOLO INEES:
+                    AND (osr.origen LIKE '%INEES%' OR osr.origen = 'INEES')
+
                     GROUP BY d.nombre_delegacion, r.nombre_repuesto
                     ORDER BY d.nombre_delegacion ASC, cantidad_usada DESC";
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getAllTiposMantenimiento()
@@ -208,7 +239,9 @@ class ReporteEjecutivoModelo
             $stmt = $this->conn->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getDatosMatrizMantenimiento($fecha_inicio, $fecha_fin)
@@ -226,7 +259,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // ==========================================
@@ -251,7 +286,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     public function getServiciosPorSemana($fecha_inicio, $fecha_fin)
@@ -267,58 +304,112 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // 2. CORREGIDA: Puntos Críticos (Más robusta)
-    public function getPuntosConFallidos($fecha_inicio, $fecha_fin, $minFallidos = 2) 
+    // Reemplaza tu función getPuntosConFallidos por esta:
+    public function getPuntosMasVisitados($fecha_inicio, $fecha_fin)
     {
         try {
-            // EN LUGAR DE BUSCAR POR NOMBRE, VAMOS A EXCLUIR LOS BUENOS
-            // Es más seguro decir "Todo lo que NO sea Operativo es Falla"
-            $sql = "SELECT p.nombre_punto, d.nombre_delegacion, COUNT(os.id_ordenes_servicio) as total_fallidos
+            $sql = "SELECT 
+                    d.nombre_delegacion, 
+                    p.nombre_punto, 
+                    tm.nombre_tipo_maquina, -- Necesario para la vista
+                    COUNT(os.id_ordenes_servicio) as total_visitas
+                FROM ordenes_servicio os
+                INNER JOIN punto p ON os.id_punto = p.id_punto
+                INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                
+                -- JOIN para saber qué máquina es
+                LEFT JOIN maquina m ON p.id_punto = m.id_punto AND m.estado = 1
+                LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
+                
+                WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                
+                -- Ya NO filtramos por estado, queremos todas las visitas
+                
+                GROUP BY d.nombre_delegacion, p.id_punto, p.nombre_punto, tm.nombre_tipo_maquina
+                
+                ORDER BY d.nombre_delegacion ASC, total_visitas DESC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':inicio', $fecha_inicio);
+            $stmt->bindParam(':fin', $fecha_fin);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    public function getPuntosConMasFallidos($fecha_inicio, $fecha_fin)
+    {
+        try {
+            $sql = "SELECT 
+                        p.nombre_punto, 
+                        d.nombre_delegacion, 
+                        COUNT(os.id_ordenes_servicio) as total_fallidos
                     FROM ordenes_servicio os
                     INNER JOIN punto p ON os.id_punto = p.id_punto
                     INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
-                    INNER JOIN estado_maquina em ON os.id_estado_maquina = em.id_estado
+                    -- CAMBIO CLAVE: Unimos con tipo_mantenimiento
+                    INNER JOIN tipo_mantenimiento tm ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                    
                     WHERE os.fecha_visita BETWEEN :inicio AND :fin 
                     
-                    -- AQUÍ ESTÁ EL CAMBIO CLAVE:
-                    -- Filtramos para que cuente todo lo que NO sea 'Operativo' ni 'Bueno' ni 'Funcional'
-                    AND em.nombre_estado NOT LIKE '%Operativo%' 
-                    AND em.nombre_estado NOT LIKE '%Buen%' 
-                    AND em.nombre_estado NOT LIKE '%Funcional%'
+                    -- FILTRO: Buscamos que el tipo de mantenimiento sea 'Fallido' o 'Visita Fallida'
+                    -- Ajusta el texto '%Fallid%' si en tu BD se llama diferente (ej: 'Servicio Fallido')
+                    AND tm.nombre_completo LIKE '%Fallid%' 
                     
                     GROUP BY p.id_punto, p.nombre_punto, d.nombre_delegacion 
-                    HAVING total_fallidos >= :min
-                    ORDER BY total_fallidos DESC LIMIT 15";
-            
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bindParam(':inicio', $fecha_inicio);
-            $stmt->bindParam(':fin', $fecha_fin);
-            $stmt->bindParam(':min', $minFallidos, PDO::PARAM_INT);
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
-    }
+                    
+                    -- REGLA DE ORO: Más de 2 servicios (> 2)
+                    HAVING total_fallidos >= 2
+                    
+                    ORDER BY d.nombre_delegacion ASC, total_fallidos DESC";
 
-    public function getCalificacionesServicio($fecha_inicio, $fecha_fin) 
-    {
-        try {
-            $sql = "SELECT cs.nombre_calificacion as calificacion, COUNT(os.id_ordenes_servicio) as total
-                    FROM ordenes_servicio os
-                    INNER JOIN calificacion_servicio cs ON os.id_calificacion = cs.id_calificacion
-                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
-                    GROUP BY cs.nombre_calificacion, cs.id_calificacion ORDER BY cs.id_calificacion DESC";
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
-    public function getKpisPorDelegacion($fecha_inicio, $fecha_fin) 
+    public function getCalificacionesServicio($fecha_inicio, $fecha_fin)
+{
+    try {
+        $sql = "SELECT d.nombre_delegacion, 
+                        cs.nombre_calificacion, 
+                        COUNT(os.id_ordenes_servicio) as total
+                FROM ordenes_servicio os
+                INNER JOIN calificacion_servicio cs ON os.id_calificacion = cs.id_calificacion
+                INNER JOIN punto p ON os.id_punto = p.id_punto
+                INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                
+                -- Agrupamos por Delegación y luego por Calificación
+                GROUP BY d.nombre_delegacion, cs.nombre_calificacion, cs.id_calificacion
+                
+                -- Ordenamos por nombre de delegación y luego por relevancia de la calificación
+                ORDER BY d.nombre_delegacion ASC, cs.id_calificacion DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':inicio', $fecha_inicio);
+        $stmt->bindParam(':fin', $fecha_fin);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+    public function getKpisPorDelegacion($fecha_inicio, $fecha_fin)
     {
         try {
             // AGREGAMOS LA LÍNEA DE 'dias_efectivos'
@@ -332,23 +423,28 @@ class ReporteEjecutivoModelo
                     INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
                     WHERE os.fecha_visita BETWEEN :inicio AND :fin
                     GROUP BY d.nombre_delegacion ORDER BY total_servicios DESC";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
-    
+
     // Función auxiliar que podría necesitar el controlador antiguo si lo usaba
-    public function getAllTiposMaquina() {
+    public function getAllTiposMaquina()
+    {
         try {
             $sql = "SELECT nombre_tipo_maquina FROM tipo_maquina ORDER BY nombre_tipo_maquina ASC";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
 
@@ -365,13 +461,15 @@ class ReporteEjecutivoModelo
                     INNER JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina 
                     WHERE os.fecha_visita BETWEEN :inicio AND :fin
                     GROUP BY d.nombre_delegacion, tm.nombre_tipo_maquina";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // Obtener distribución de estados finales (Operativo, Fuera de Servicio, etc.)
@@ -389,7 +487,9 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 
     // 1. NUEVA: Distribución de Repuestos por Origen (INEES vs PROSEGUR)
@@ -408,6 +508,32 @@ class ReporteEjecutivoModelo
             $stmt->bindParam(':fin', $fecha_fin);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { return []; }
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+
+    // Obtener desglose: Cuántos servicios de cada tipo hizo cada técnico
+    public function getDesgloseMantenimientoPorTecnico($fecha_inicio, $fecha_fin)
+    {
+        try {
+            $sql = "SELECT t.nombre_tecnico, 
+                           tm.nombre_completo as tipo, 
+                           COUNT(os.id_ordenes_servicio) as cantidad
+                    FROM ordenes_servicio os
+                    INNER JOIN tecnico t ON os.id_tecnico = t.id_tecnico
+                    INNER JOIN tipo_mantenimiento tm ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    GROUP BY t.nombre_tecnico, tm.nombre_completo";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':inicio', $fecha_inicio);
+            $stmt->bindParam(':fin', $fecha_fin);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 }

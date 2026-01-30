@@ -155,56 +155,70 @@
 <?php include __DIR__ . '/partials/modalNovedades.php'; ?>
 
 <script>
-    // Inicialización de Variables Globales
-    window.DetalleConfig = window.DetalleConfig || {};
-    window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
-    window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
-    window.DetalleConfig.listaNovedades = <?= json_encode($listaNovedades ?? []) ?>;
-    window.DetalleConfig.filasPorPagina = 10;
-    window.DetalleConfig.paginaActual = 1;
-
     $(document).ready(function() {
-        // Inicializar Select2 en filtros
-        $('.select2-basic').select2();
+        // 1. Inicializar Select2
+        $('.select2-basic').select2({
+            width: '100%',
+            language: "es" // Opcional si tienes el idioma cargado
+        });
 
-        // Inicializar App Lógica
-        if (window.DetalleApp && window.DetalleApp.init) {
-            window.DetalleApp.init();
-        }
-
-        // --- AJAX PUNTOS ---
+        // 2. Lógica de Puntos en Cascada
         $('#busqCliente').on('change', function() {
             let idCliente = $(this).val();
             let $selectPunto = $('#busqPunto');
 
-            $selectPunto.empty().append('<option value="">Cargando...</option>');
+            // Limpiar y mostrar "Cargando..."
+            $selectPunto.empty().append('<option value="">Cargando puntos...</option>').trigger('change');
 
+            // Si no hay cliente seleccionado, resetear
             if (!idCliente) {
-                $selectPunto.empty().append('<option value="">Seleccione Cliente primero...</option>');
+                $selectPunto.empty().append('<option value="">Seleccione Cliente...</option>').trigger('change');
                 return;
             }
 
+            console.log("🔍 Buscando puntos para cliente ID:", idCliente);
+
+            // Petición AJAX
             $.post('<?= BASE_URL ?>ordenDetalle', {
                 accion: 'ajaxObtenerPuntos',
                 id_cliente: idCliente
             }, function(data) {
-                $selectPunto.empty().append('<option value="">Todos</option>');
+                console.log("✅ Puntos recibidos:", data);
+
+                $selectPunto.empty(); // Limpiar de nuevo
+
                 if (data && data.length > 0) {
+                    $selectPunto.append('<option value="">Todos los puntos</option>'); // Opción vacía por defecto
+                    
+                    // Llenar el select
                     data.forEach(p => {
-                        $selectPunto.append(new Option(p.nombre_punto, p.id_punto));
+                        // Crear opción compatible con Select2 y nativo
+                        let option = new Option(p.nombre_punto, p.id_punto, false, false);
+                        $selectPunto.append(option);
                     });
                 } else {
                     $selectPunto.append('<option value="">Sin puntos asignados</option>');
                 }
-                $selectPunto.trigger('change.select2');
-            }, 'json').fail(function() {
-                $selectPunto.empty().append('<option value="">Error al cargar</option>');
+
+                // 🔥 IMPORTANTE: Avisar a Select2 que los datos cambiaron
+                $selectPunto.trigger('change');
+
+            }, 'json').fail(function(jqXHR, textStatus, errorThrown) {
+                console.error("❌ Error AJAX:", textStatus, errorThrown);
+                console.log("Respuesta del servidor:", jqXHR.responseText); // Para depurar si devuelve HTML de error
+                $selectPunto.empty().append('<option value="">Error al cargar</option>').trigger('change');
             });
         });
+
+        // (Opcional) Inicializar Apps globales si existen
+        if (window.DetalleApp && window.DetalleApp.init) {
+            window.DetalleApp.init();
+        }
     });
 
-    // Función de Búsqueda AJAX
+    // Función de búsqueda (Mantener igual)
     function realizarBusqueda() {
+        // ... tu código de búsqueda ...
         let remision = $('#busqRemision').val();
         let cliente = $('#busqCliente').val();
         let punto = $('#busqPunto').val();
@@ -212,12 +226,7 @@
         let fechaInicio = $('#busqFechaInicio').val();
         let fechaFin = $('#busqFechaFin').val();
 
-        if (remision === '' && cliente === '' && punto === '' && delegacion === '' && fechaInicio === '' && fechaFin === '') {
-            alert("⚠️ Por favor ingrese al menos un filtro.");
-            return;
-        }
-
-        $('#resultadosBusqueda').html('<tr><td colspan="16" class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> Buscando...</td></tr>');
+        $('#resultadosBusqueda').html('<tr><td colspan="16" class="text-center p-4"><i class="fas fa-spinner fa-spin text-blue-600 text-2xl"></i><br>Buscando órdenes...</td></tr>');
 
         $.post('<?= BASE_URL ?>ordenDetalle', {
             accion: 'ajaxBuscarOrdenes',
@@ -229,15 +238,13 @@
             fecha_fin: fechaFin
         }, function(htmlRespuesta) {
             $('#resultadosBusqueda').html(htmlRespuesta);
-
-            // Re-inicializar plugins visuales para los resultados nuevos
-            $('#resultadosBusqueda select').select2();
-
-            if (window.DetalleApp && window.DetalleApp.init) {
-                window.DetalleApp.init();
+            
+            // Re-inicializar componentes visuales si es necesario
+            if(jQuery().select2) {
+                 $('#resultadosBusqueda select').select2();
             }
         }).fail(function() {
-            $('#resultadosBusqueda').html('<tr><td colspan="16" class="text-center text-red-500 font-bold">Error de conexión.</td></tr>');
+            $('#resultadosBusqueda').html('<tr><td colspan="16" class="text-center text-red-500 font-bold">Error de conexión con el servidor.</td></tr>');
         });
     }
 </script>

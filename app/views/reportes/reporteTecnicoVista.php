@@ -155,7 +155,6 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
-
 <script>
     // Recibimos los datos COMPLETOS de PHP
     const datosServicios = <?= json_encode($datosExcel ?? []) ?>;
@@ -179,7 +178,7 @@
     });
 
     // =========================================================
-    // FUNCIÓN: EXCEL CON HOJA DE RESUMEN Y SIN CÁLCULO DE HORAS
+    // FUNCIÓN: EXCEL CON DESGLOSE POR TIPO DE MANTENIMIENTO
     // =========================================================
     function exportarExcelTecnico() {
         if (typeof XLSX === 'undefined') {
@@ -193,142 +192,155 @@
 
         let workbook = XLSX.utils.book_new();
 
-        // 1. AGRUPAR DATOS: Técnico -> Fecha -> Objeto con Datos
+        // ---------------------------------------------------------
+        // PASO 1: DETECTAR TODOS LOS TIPOS DE MANTENIMIENTO ÚNICOS
+        // ---------------------------------------------------------
+        // Esto sirve para crear las columnas dinámicamente (Ej: Preventivo, Correctivo, etc.)
+        let tiposMantenimientoSet = new Set();
+        datosServicios.forEach(item => {
+            let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
+            tiposMantenimientoSet.add(tipo);
+        });
+        // Convertimos el Set a Array y lo ordenamos alfabéticamente
+        let columnasTipos = Array.from(tiposMantenimientoSet).sort();
+
+
+        // ---------------------------------------------------------
+        // PASO 2: AGRUPAR DATOS
+        // ---------------------------------------------------------
+        // Estructura: resumen[tecnico] = { fechas: {}, contadoresTipos: { 'Preventivo': 5, ... } }
         let resumen = {};
 
         datosServicios.forEach(item => {
             let tecnico = item.nombre_tecnico || "Sin Nombre";
-            let fecha = item.fecha_visita.split(' ')[0]; // Solo fecha YYYY-MM-DD
-
-            // Datos de hora (asumiendo formato HH:MM:SS en BD)
+            let fecha = item.fecha_visita.split(' ')[0];
             let horaEnt = item.hora_entrada;
             let horaSal = item.hora_salida;
+            let tipoMant = item.tipo_mantenimiento || "SIN ESPECIFICAR";
 
-            if (!resumen[tecnico]) resumen[tecnico] = {};
+            if (!resumen[tecnico]) {
+                resumen[tecnico] = {
+                    fechas: {}, // Para el detalle por días
+                    contadoresTipos: {} // Para el resumen general (NUEVO)
+                };
+                // Inicializamos contadores en 0 para este técnico
+                columnasTipos.forEach(t => resumen[tecnico].contadoresTipos[t] = 0);
+            }
 
-            // Inicializar fecha si no existe
-            if (!resumen[tecnico][fecha]) {
-                resumen[tecnico][fecha] = {
+            // --- Lógica del detalle por Fechas (Existente) ---
+            if (!resumen[tecnico].fechas[fecha]) {
+                resumen[tecnico].fechas[fecha] = {
                     cantidad: 0,
                     primera_entrada: "23:59:59",
                     ultima_salida: "00:00:00"
                 };
             }
+            resumen[tecnico].fechas[fecha].cantidad++;
 
-            // Aumentar contador
-            resumen[tecnico][fecha].cantidad++;
-
-            // Calcular Primera Entrada (Mínima)
-            if (horaEnt && horaEnt < resumen[tecnico][fecha].primera_entrada) {
-                resumen[tecnico][fecha].primera_entrada = horaEnt;
+            if (horaEnt && horaEnt < resumen[tecnico].fechas[fecha].primera_entrada) {
+                resumen[tecnico].fechas[fecha].primera_entrada = horaEnt;
+            }
+            if (horaSal && horaSal > resumen[tecnico].fechas[fecha].ultima_salida) {
+                resumen[tecnico].fechas[fecha].ultima_salida = horaSal;
             }
 
-            // Calcular Última Salida (Máxima)
-            if (horaSal && horaSal > resumen[tecnico][fecha].ultima_salida) {
-                resumen[tecnico][fecha].ultima_salida = horaSal;
-            }
+            // --- Lógica de Contadores por Tipo (NUEVO) ---
+            resumen[tecnico].contadoresTipos[tipoMant]++;
         });
 
         // ---------------------------------------------------------
-        // NUEVO: CREAR HOJA 1 - RESUMEN GENERAL (TABLA DE TÉCNICOS)
+        // PASO 3: CREAR HOJA 1 - RESUMEN GENERAL CON TIPOS
         // ---------------------------------------------------------
-        let matrizResumenGeneral = [
-            ['NOMBRE DEL TÉCNICO', 'TOTAL SERVICIOS REALIZADOS']
-        ];
+
+        // Encabezados dinámicos: Nombre, Total, [Tipo 1], [Tipo 2], ...
+        let encabezadosResumen = ['NOMBRE DEL TÉCNICO', 'TOTAL SERVICIOS'];
+        columnasTipos.forEach(tipo => encabezadosResumen.push(tipo.toUpperCase())); // Agregamos las columnas dinámicas
+
+        let matrizResumenGeneral = [encabezadosResumen];
         let hayDatos = false;
 
-        // Recorremos el objeto resumen para llenar la primera hoja
-        for (const [nombreTecnico, fechasObj] of Object.entries(resumen)) {
+        for (const [nombreTecnico, datos] of Object.entries(resumen)) {
             hayDatos = true;
-            // Sumar todas las cantidades de todas las fechas de este técnico
-            let totalTecnico = Object.values(fechasObj).reduce((a, b) => a + b.cantidad, 0);
-            matrizResumenGeneral.push([nombreTecnico, totalTecnico]);
+
+            // Calculamos total general sumando los tipos
+            let totalTecnico = Object.values(datos.contadoresTipos).reduce((a, b) => a + b, 0);
+
+            // Fila del técnico
+            let fila = [nombreTecnico, totalTecnico];
+
+            // Agregamos la cantidad de cada tipo en el orden de las columnas
+            columnasTipos.forEach(tipo => {
+                fila.push(datos.contadoresTipos[tipo]);
+            });
+
+            matrizResumenGeneral.push(fila);
         }
 
-        // Crear y agregar la hoja de Resumen al principio
         let wsResumen = XLSX.utils.aoa_to_sheet(matrizResumenGeneral);
-        wsResumen['!cols'] = [{
+
+        // Ajustar anchos de columnas (Nombre + Total + Columnas dinámicas)
+        let wscols = [{
             wch: 40
         }, {
-            wch: 25
-        }]; // Ajustar ancho de columnas
+            wch: 15
+        }];
+        columnasTipos.forEach(() => wscols.push({
+            wch: 20
+        })); // Ancho para las columnas de tipos
+        wsResumen['!cols'] = wscols;
+
         XLSX.utils.book_append_sheet(workbook, wsResumen, "RESUMEN GENERAL");
 
 
         // ---------------------------------------------------------
-        // CREAR HOJAS INDIVIDUALES POR TÉCNICO
+        // PASO 4: CREAR HOJAS INDIVIDUALES (Igual que antes)
         // ---------------------------------------------------------
-        for (const [nombreTecnico, fechasObj] of Object.entries(resumen)) {
+        for (const [nombreTecnico, datos] of Object.entries(resumen)) {
+            let fechasObj = datos.fechas; // Accedemos a la propiedad fechas
             let fechasOrdenadas = Object.keys(fechasObj).sort();
+
+            // Total calculado desde las fechas
             let totalServiciosTecnico = Object.values(fechasObj).reduce((a, b) => a + b.cantidad, 0);
 
-            // === CONSTRUIR MATRIZ EXCEL ===
             let matriz = [];
-
-            // Encabezados (Eliminada la columna "TIEMPO TRABAJO")
-            matriz.push([
-                'FECHA',
-                'PRIMERA ENTRADA',
-                'ÚLTIMA SALIDA',
-                'CANTIDAD',
-                'CALIDAD',
-                'OTROS',
-                'KISAN',
-                'CRP',
-                'TOTAL SERVICIOS'
-            ]);
-
-            // Título Técnico
+            matriz.push(['FECHA', 'PRIMERA ENTRADA', 'ÚLTIMA SALIDA', 'CANTIDAD', 'CALIDAD', 'OTROS', 'KISAN', 'CRP', 'TOTAL SERVICIOS']);
             matriz.push([nombreTecnico.toUpperCase(), '', '', '', '', '', '', '', totalServiciosTecnico]);
 
             fechasOrdenadas.forEach(fecha => {
                 let dataDia = fechasObj[fecha];
-
                 let hIn = (dataDia.primera_entrada === "23:59:59") ? "--" : dataDia.primera_entrada;
                 let hOut = (dataDia.ultima_salida === "00:00:00") ? "--" : dataDia.ultima_salida;
 
-                // NOTA: Se eliminó el cálculo de diferencia de horas aquí
-
                 matriz.push([
                     fecha,
-                    hIn, // Primera Entrada
-                    hOut, // Última Salida
-                    dataDia.cantidad, // Cantidad
-                    '', '', '', '', // Columnas vacías para llenado manual
-                    dataDia.cantidad // Total repetido
+                    hIn,
+                    hOut,
+                    dataDia.cantidad,
+                    '', '', '', '', // Vacíos
+                    dataDia.cantidad
                 ]);
             });
 
             let ws = XLSX.utils.aoa_to_sheet(matriz);
-
-            // Ajustar anchos (Se eliminó una columna, ajustamos índices)
             ws['!cols'] = [{
-                    wch: 12
-                }, // Fecha
-                {
-                    wch: 18
-                }, // Primera Entrada
-                {
-                    wch: 18
-                }, // Última Salida
-                {
-                    wch: 10
-                }, // Cantidad
-                {
-                    wch: 10
-                }, {
-                    wch: 10
-                }, {
-                    wch: 10
-                }, {
-                    wch: 10
-                }, // Vacíos
-                {
-                    wch: 20
-                } // Total
-            ];
-
-            // Combinar celdas del título (ajustado a 8 columnas)
+                wch: 12
+            }, {
+                wch: 18
+            }, {
+                wch: 18
+            }, {
+                wch: 10
+            }, {
+                wch: 10
+            }, {
+                wch: 10
+            }, {
+                wch: 10
+            }, {
+                wch: 10
+            }, {
+                wch: 20
+            }];
             ws['!merges'] = [{
                 s: {
                     r: 1,
@@ -346,7 +358,7 @@
 
         if (hayDatos) {
             let fechaHoy = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-            XLSX.writeFile(workbook, `Reporte_Servicios_${fechaHoy}.xlsx`);
+            XLSX.writeFile(workbook, `Reporte_Servicios_Detallado_${fechaHoy}.xlsx`);
         }
     }
 </script>

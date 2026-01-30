@@ -299,6 +299,15 @@
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="delegaciones" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">🏢 Delegaciones</div>
+                            </div>
+                            <div class="section-card-desc">Top delegaciones intervenidas</div>
+                        </div>
+
+                        <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="tendencias" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
@@ -320,18 +329,9 @@
                             <input type="checkbox" name="secciones[]" value="maquinas" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
-                                <div class="section-card-title">🏧 Matriz Máquinas</div>
+                                <div class="section-card-title">🏧 Tipos de Máquinas</div>
                             </div>
                             <div class="section-card-desc">Tipos de máquina por delegación</div>
-                        </div>
-
-                        <div class="section-card selected" onclick="toggleSection(this)">
-                            <input type="checkbox" name="secciones[]" value="puntos_atendidos" checked>
-                            <div class="section-card-header">
-                                <div class="checkbox-custom"></div>
-                                <div class="section-card-title">📍 Cobertura Puntos</div>
-                            </div>
-                            <div class="section-card-desc">Matriz de puntos únicos atendidos</div>
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
@@ -344,22 +344,23 @@
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
-                            <input type="checkbox" name="secciones[]" value="delegaciones" checked>
+                            <input type="checkbox" name="secciones[]" value="puntos_atendidos" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
-                                <div class="section-card-title">🏢 Delegaciones</div>
+                                <div class="section-card-title">📍 Cobertura Puntos</div>
                             </div>
-                            <div class="section-card-desc">Top delegaciones intervenidas</div>
+                            <div class="section-card-desc">Matriz de puntos únicos atendidos</div>
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
-                            <input type="checkbox" name="secciones[]" value="tecnicos" checked>
+                            <input type="checkbox" name="secciones[]" value="puntos_fallidos" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
-                                <div class="section-card-title">👷 Técnicos</div>
+                                <div class="section-card-title">⚠️ Puntos Más Visitados</div>
                             </div>
-                            <div class="section-card-desc">Productividad del equipo técnico</div>
+                            <div class="section-card-desc">Puntos con Más Servicios</div>
                         </div>
+
 
                         <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="repuestos" checked>
@@ -371,15 +372,6 @@
                         </div>
 
                         <div class="section-card selected" onclick="toggleSection(this)">
-                            <input type="checkbox" name="secciones[]" value="puntos_fallidos" checked>
-                            <div class="section-card-header">
-                                <div class="checkbox-custom"></div>
-                                <div class="section-card-title">⚠️ Puntos Críticos</div>
-                            </div>
-                            <div class="section-card-desc">Puntos con servicios fallidos (2+ fallas)</div>
-                        </div>
-
-                        <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="calificaciones" checked>
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
@@ -387,6 +379,28 @@
                             </div>
                             <div class="section-card-desc">Satisfacción del cliente</div>
                         </div>
+
+                        
+
+                        <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="puntos_mas_fallidos" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">⚠️ Puntos Fallidos</div>
+                            </div>
+                            <div class="section-card-desc">Puntos con servicios fallidos (2+ fallas)</div>
+                        </div>
+
+                        <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="tecnicos" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">👷 Técnicos</div>
+                            </div>
+                            <div class="section-card-desc">Productividad del equipo técnico</div>
+                        </div>
+
+                        
 
                     </div>
                 </div>

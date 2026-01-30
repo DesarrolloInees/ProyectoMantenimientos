@@ -360,20 +360,20 @@ class ordenDetalleModelo
                 // A. LIBERAR LA VIEJA
                 // CAMBIO: Usamos id_estado con subconsulta para 'DISPONIBLE'
                 $sqlLiberar = "UPDATE control_remisiones 
-                               SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1), 
-                                   id_orden_servicio = NULL, 
-                                   fecha_uso = NULL 
-                               WHERE id_orden_servicio = ?";
+                                SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1), 
+                                    id_orden_servicio = NULL, 
+                                    fecha_uso = NULL 
+                                WHERE id_orden_servicio = ?";
                 $this->conn->prepare($sqlLiberar)->execute([$id]);
 
                 // B. OCUPAR LA NUEVA
                 if (!empty($datos['remision'])) {
                     // CAMBIO: Usamos id_estado con subconsulta para 'USADA'
                     $sqlOcupar = "UPDATE control_remisiones 
-                                  SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
-                                      id_orden_servicio = ?, 
-                                      fecha_uso = ? 
-                                  WHERE numero_remision = ? AND id_tecnico = ?";
+                                    SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
+                                        id_orden_servicio = ?, 
+                                        fecha_uso = ? 
+                                    WHERE numero_remision = ? AND id_tecnico = ?";
 
                     $fechaUso = $datos['fecha_individual'] . ' ' . ($datos['entrada'] ?: '00:00:00');
                     $this->conn->prepare($sqlOcupar)->execute([
@@ -585,7 +585,7 @@ class ordenDetalleModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE 1=1 ";
-                // Empezamos la parte de los filtros despues del WHERE 1=1
+        // Empezamos la parte de los filtros despues del WHERE 1=1
         $params = [];
 
         // Filtro por Remisión
@@ -619,7 +619,7 @@ class ordenDetalleModelo
         if (!empty($filtros['fecha_fin'])) {
             // 🔥 TRUCO: Concatenamos la hora final del día para que incluya todo ese día
             $sql .= " AND o.fecha_visita <= ?";
-            $params[] = $filtros['fecha_fin'] . ' 23:59:59'; 
+            $params[] = $filtros['fecha_fin'] . ' 23:59:59';
         }
 
         // 2. Delegación (Bogotá, Medellín, etc.)
@@ -694,7 +694,7 @@ class ordenDetalleModelo
 
             // 3. Agregar o Actualizar en la Orden (ESTO SIEMPRE SE HACE)
             $sqlCheck = "SELECT cantidad FROM orden_servicio_repuesto 
-                         WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
+                            WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
             $stmtCheck->execute([$idOrden, $idRepuesto, $origen]);
             $cantOrden = $stmtCheck->fetchColumn();

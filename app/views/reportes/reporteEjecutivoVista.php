@@ -8,20 +8,19 @@
         <div class="mb-6 border-b pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-chart-line text-blue-600 mr-2"></i> Reporte Ejecutivo Operativo</h1>
-                <p class="text-gray-500 text-sm">Análisis gráfico de mantenimiento y servicios.</p>
+                <p class="text-gray-500 text-sm">Dashboard sincronizado con Reporte PDF (Fallidos & KPIs).</p>
             </div>
 
             <?php if (!empty($datosDia)): ?>
                 <a href="<?= BASE_URL ?>generarReporte?accion=configurar&inicio=<?= $filtros['fecha_inicio'] ?>&fin=<?= $filtros['fecha_fin'] ?>"
-                    class="bg-purple-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-purple-700 shadow flex items-center gap-2 transform hover:scale-105 transition text-sm">
-                    <i class="fas fa-cogs"></i> Configurar PDF
+                    class="bg-gray-800 text-white px-5 py-2 rounded-lg font-bold hover:bg-gray-900 shadow flex items-center gap-2 transform hover:scale-105 transition text-sm">
+                    <i class="fas fa-file-pdf"></i> Generar PDF
                 </a>
             <?php endif; ?>
         </div>
 
         <form action="<?= BASE_URL ?>reporteEjecutivo" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div class="hidden md:block"></div>
-
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Desde</label>
                 <input type="date" name="fecha_inicio" value="<?= $filtros['fecha_inicio'] ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700">
@@ -32,7 +31,7 @@
             </div>
             <div>
                 <button type="submit" class="w-full py-2 px-4 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition-all">
-                    <i class="fas fa-filter mr-2"></i> Filtrar Datos
+                    <i class="fas fa-filter mr-2"></i> Actualizar
                 </button>
             </div>
         </form>
@@ -40,12 +39,7 @@
 
     <?php if (!empty($mensaje)): ?>
         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm mb-6">
-            <div class="flex">
-                <div class="flex-shrink-0"><i class="fas fa-exclamation-circle text-yellow-400"></i></div>
-                <div class="ml-3">
-                    <p class="text-sm text-yellow-700"><?= htmlspecialchars($mensaje) ?></p>
-                </div>
-            </div>
+            <p class="text-sm text-yellow-700"><i class="fas fa-info-circle mr-1"></i> <?= htmlspecialchars($mensaje) ?></p>
         </div>
     <?php endif; ?>
 
@@ -56,20 +50,16 @@
                 <p class="text-3xl font-extrabold text-blue-600 mt-1"><?= number_format($totalServicios) ?></p>
             </div>
 
-            <div class="bg-white p-4 rounded-xl shadow border-l-4 border-indigo-500 flex flex-col items-center justify-center">
-                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider text-center">Promedio Diario x Técnico</p>
-                <p class="text-3xl font-extrabold text-indigo-600 mt-1"><?= $mediaDiaria ?></p>
-                <span class="text-xs text-gray-400 mt-1">(Global periodo: <?= $mediaGlobal ?>)</span>
-            </div>
+            
 
             <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500 flex flex-col items-center justify-center">
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider"> Servicios Con Novedad</p>
                 <p class="text-3xl font-extrabold text-red-600 mt-1"><?= number_format($datosNovedad['con_novedad'] ?? 0) ?></p>
             </div>
 
-            <div class="bg-white p-4 rounded-xl shadow border-l-4 border-green-500 flex flex-col items-center justify-center">
-                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Delegaciones</p>
-                <p class="text-3xl font-extrabold text-green-600 mt-1"><?= count($datosDelegacion) ?></p>
+            <div class="bg-white p-4 rounded-xl shadow border-l-4 border-rose-600 flex flex-col items-center justify-center">
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Puntos Críticos (>2 Fallos)</p>
+                <p class="text-3xl font-extrabold text-rose-600 mt-1"><?= count($datosPuntosCriticos) ?></p>
             </div>
         </div>
 
@@ -82,22 +72,25 @@
                 </div>
             </div>
 
+            <div class="bg-white p-5 rounded-xl shadow-md border border-rose-100">
+                <div class="flex justify-between items-center mb-4 border-b border-rose-100 pb-2">
+                    <h3 class="text-rose-700 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Top Puntos Críticos</h3>
+                    <span class="text-[10px] bg-rose-100 text-rose-600 px-2 py-1 rounded-full font-bold">Tipo: Fallido (> 2)</span>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="chartPuntosCriticos"></canvas>
+                </div>
+            </div>
+
             <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-                <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Preventivo vs Correctivo</h3>
+                <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Distribución por Tipo de Servicio</h3>
                 <div class="relative h-64 w-full flex justify-center">
                     <canvas id="chartTipo"></canvas>
                 </div>
             </div>
 
             <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-                <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Estado Final del Servicio</h3>
-                <div class="relative h-64 w-full flex justify-center">
-                    <canvas id="chartEstado"></canvas>
-                </div>
-            </div>
-
-            <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-                <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Top Delegaciones</h3>
+                <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Participación por Delegación</h3>
                 <div class="relative h-64 w-full">
                     <canvas id="chartDelegacion"></canvas>
                 </div>
@@ -111,7 +104,7 @@
             </div>
 
             <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100 lg:col-span-2">
-                <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Distribución de Repuestos (Origen)</h3>
+                <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Gestión de Repuestos (Origen)</h3>
                 <div class="relative h-64 w-full flex justify-center">
                     <canvas id="chartRepuestos"></canvas>
                 </div>
@@ -123,19 +116,24 @@
 </div>
 
 <script>
-    // 1. Convertir PHP Arrays a JS Objects
+    // DATOS DESDE PHP
     const dataDias = <?= json_encode($datosDia ?? []) ?>;
     const dataTipo = <?= json_encode($datosTipo ?? []) ?>;
-    const dataEstado = <?= json_encode($datosEstado ?? []) ?>;
+    
+    // AQUI: Usamos los datos de puntos críticos filtrados (> 2 fallidos)
+    // Limitamos a Top 10 para que la gráfica no explote si hay muchos
+    const dataPuntosRaw = <?= json_encode($datosPuntosCriticos ?? []) ?>;
+    const dataPuntosCriticos = dataPuntosRaw.slice(0, 10); 
+
     const dataDelegacion = <?= json_encode($datosDelegacion ?? []) ?>;
     const dataTecnico = <?= json_encode($datosHoras ?? []) ?>;
     const dataRepuestos = <?= json_encode($datosRepuestos ?? []) ?>;
 
-    // Configuración Global de Fuente para ChartJS
-    Chart.defaults.font.family = "'Segoe UI', 'Helvetica', 'Arial', sans-serif";
-    Chart.defaults.color = '#4b5563';
+    // Configuración Global
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
+    Chart.defaults.color = '#64748b';
 
-    // A. GRÁFICO DIAS (Línea)
+    // A. DIAS (Línea)
     if (document.getElementById('chartDias')) {
         new Chart(document.getElementById('chartDias'), {
             type: 'line',
@@ -144,62 +142,72 @@
                 datasets: [{
                     label: 'Servicios',
                     data: dataDias.map(i => i.total),
-                    borderColor: '#2563eb', // Blue-600
-                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     fill: true,
                     tension: 0.3,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#2563eb',
-                    borderWidth: 2
+                    borderWidth: 2,
+                    pointRadius: 3
                 }]
             },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true
-            }
+            options: { maintainAspectRatio: false, responsive: true }
         });
     }
 
-    // B. TIPO MANTENIMIENTO (Pie)
+    // B. PUNTOS CRÍTICOS (Barra Horizontal - Reemplaza al Doughnut de Estado)
+    if (document.getElementById('chartPuntosCriticos')) {
+        if(dataPuntosCriticos.length > 0){
+            new Chart(document.getElementById('chartPuntosCriticos'), {
+                type: 'bar',
+                data: {
+                    labels: dataPuntosCriticos.map(i => i.nombre_punto),
+                    datasets: [{
+                        label: 'Cant. Fallidos',
+                        data: dataPuntosCriticos.map(i => i.total_fallidos),
+                        backgroundColor: '#f43f5e', // Rose-500
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Barra Horizontal
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        x: { beginAtZero: true, grid: { display: true } },
+                        y: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        } else {
+            // Mensaje si no hay datos
+            const ctx = document.getElementById('chartPuntosCriticos').getContext('2d');
+            ctx.font = "14px Arial";
+            ctx.fillStyle = "#9ca3af";
+            ctx.textAlign = "center";
+            ctx.fillText("¡Excelente! No hay puntos críticos (> 2 fallos)", ctx.canvas.width/2, ctx.canvas.height/2);
+        }
+    }
+
+    // C. TIPO SERVICIO (Pie)
     if (document.getElementById('chartTipo')) {
         new Chart(document.getElementById('chartTipo'), {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: dataTipo.map(i => i.tipo),
                 datasets: [{
                     data: dataTipo.map(i => i.total),
-                    backgroundColor: ['#3b82f6', '#ef4444', '#f59e0b', '#10b981'],
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
                     borderWidth: 0
                 }]
             },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true
-            }
+            options: { maintainAspectRatio: false, responsive: true }
         });
     }
 
-    // C. ESTADO (Doughnut)
-    if (document.getElementById('chartEstado')) {
-        new Chart(document.getElementById('chartEstado'), {
-            type: 'doughnut',
-            data: {
-                labels: dataEstado.map(i => i.nombre_estado),
-                datasets: [{
-                    data: dataEstado.map(i => i.total),
-                    backgroundColor: ['#10b981', '#ef4444', '#6b7280', '#f59e0b'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true
-            }
-        });
-    }
-
-    // D. DELEGACIONES (Bar Horizontal)
+    // D. DELEGACIONES (Bar)
     if (document.getElementById('chartDelegacion')) {
         new Chart(document.getElementById('chartDelegacion'), {
             type: 'bar',
@@ -208,24 +216,21 @@
                 datasets: [{
                     label: 'Intervenciones',
                     data: dataDelegacion.map(i => i.total),
-                    backgroundColor: '#8b5cf6', // Violet
+                    backgroundColor: '#8b5cf6',
                     borderRadius: 4
                 }]
             },
             options: {
-                indexAxis: 'y',
                 maintainAspectRatio: false,
                 responsive: true,
                 scales: {
-                    x: {
-                        beginAtZero: true
-                    }
+                    y: { beginAtZero: true }
                 }
             }
         });
     }
 
-    // E. TÉCNICOS (Bar Vertical)
+    // E. TECNICOS
     if (document.getElementById('chartTecnico')) {
         new Chart(document.getElementById('chartTecnico'), {
             type: 'bar',
@@ -234,56 +239,38 @@
                 datasets: [{
                     label: 'Servicios',
                     data: dataTecnico.map(i => i.total_servicios),
-                    backgroundColor: '#374151', // Gray-700
+                    backgroundColor: '#334155',
                     borderRadius: 4,
-                    order: 1
+                    order: 2
                 }, {
-                    // Si quisieras poner las horas como línea superpuesta (Opcional)
-                    label: 'Horas (aprox)',
+                    label: 'Horas',
                     data: dataTecnico.map(i => i.total_horas),
                     type: 'line',
-                    borderColor: '#f59e0b',
+                    borderColor: '#fbbf24', // Amber
                     borderWidth: 2,
-                    order: 0,
+                    order: 1,
                     yAxisID: 'y1'
                 }]
             },
             options: {
                 maintainAspectRatio: false,
                 responsive: true,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Cant. Servicios'
-                        }
-                    },
-                    y1: {
-                        position: 'right',
-                        grid: {
-                            drawOnChartArea: false
-                        },
-                        title: {
-                            display: true,
-                            text: 'Horas'
-                        }
-                    }
+                    y: { beginAtZero: true },
+                    y1: { position: 'right', grid: { drawOnChartArea: false } }
                 }
             }
         });
     }
 
-    // F. REPUESTOS (Pie)
+    // F. REPUESTOS (Pie - Origen)
     if (document.getElementById('chartRepuestos')) {
-        // Validación para evitar gráfico vacío
-        const labelsRep = dataRepuestos.length ? dataRepuestos.map(i => i.origen) : ['Sin Datos'];
-        const valuesRep = dataRepuestos.length ? dataRepuestos.map(i => i.total) : [1];
-        const colorsRep = dataRepuestos.length ? ['#f97316', '#0ea5e9'] : ['#e5e7eb'];
+        // Mapeo especial para ORIGEN
+        const labelsRep = dataRepuestos.map(i => i.origen.toUpperCase());
+        const valuesRep = dataRepuestos.map(i => i.total);
+        
+        // Colores específicos: INEES (Naranja), PROSEGUR (Azul)
+        const colorsRep = labelsRep.map(l => l.includes('INEES') ? '#f97316' : '#3b82f6');
 
         new Chart(document.getElementById('chartRepuestos'), {
             type: 'pie',
@@ -292,13 +279,11 @@
                 datasets: [{
                     data: valuesRep,
                     backgroundColor: colorsRep,
-                    borderWidth: 0
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
                 }]
             },
-            options: {
-                maintainAspectRatio: false,
-                responsive: true
-            }
+            options: { maintainAspectRatio: false, responsive: true }
         });
     }
 </script>

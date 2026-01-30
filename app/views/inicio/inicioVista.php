@@ -21,7 +21,7 @@
                 <i class="fas fa-plus-circle fa-6x"></i>
             </div>
             <div class="relative z-10">
-                <h3 class="text-2xl font-bold mb-2">Crear Nueva Orden</h3>
+                <h3 class="text-2xl font-bold mb-2">Crear Nuevos Servicios</h3>
                 <p class="text-blue-100 text-sm mb-4">Registrar un nuevo servicio de mantenimiento.</p>
                 <span class="inline-block bg-white text-blue-700 font-bold px-4 py-2 rounded-lg text-sm group-hover:bg-blue-50 transition">
                     Acceder <i class="fas fa-arrow-right ml-1"></i>
@@ -34,7 +34,7 @@
                 <div class="bg-blue-50 p-3 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition">
                     <i class="fas fa-list-alt fa-2x"></i>
                 </div>
-                <h3 class="ml-4 text-xl font-bold text-gray-800">Gestionar Órdenes</h3>
+                <h3 class="ml-4 text-xl font-bold text-gray-800">Gestionar Órdenes de Servicios</h3>
             </div>
             <p class="text-gray-500 text-sm">Ver listado completo, editar estados y asignar técnicos.</p>
         </a>

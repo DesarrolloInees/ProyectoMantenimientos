@@ -14,6 +14,8 @@
             background-color: #f3f4f6;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            /* Un padding inferior general ayuda */
+            padding-bottom: 50px;
         }
 
         .page-break {
@@ -38,8 +40,10 @@
 
         /* ESTILO NUEVO: AHORRO DE TINTA */
         .portada-container {
-            min-height: 190mm; /* Crecera si es necesario */
-            height: auto;      /* Importante para adaptarse */
+            min-height: 190mm;
+            /* Crecera si es necesario */
+            height: auto;
+            /* Importante para adaptarse */
             background-color: #ffffff;
             height: 190mm;
             /* Fondo blanco */
@@ -76,22 +80,86 @@
             /* Toque técnico */
             white-space: nowrap;
         }
+
+        /* === ESTILOS PARA PIE DE PÁGINA === */
+        /* === ESTILOS PARA PIE DE PÁGINA === */
+        .footer-page {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 32px;
+            background: white;
+            /* Importante que tenga fondo para que se lea bien */
+            border-top: 1px solid #e2e8f0;
+            z-index: 100;
+            /* Z-index bajo */
+        }
+
+        @media print {
+            .footer-page {
+                position: fixed;
+                bottom: 0;
+            }
+
+            /* Agrega margen inferior al body para que el contenido no se solape con el footer */
+            body {
+                margin-bottom: 20mm;
+            }
+        }
+
+        /* === ESTILOS PARA NUMERACIÓN DE PÁGINAS === */
+        .page-number {
+            counter-increment: page;
+        }
+
+        .page-number::after {
+            content: counter(page);
+        }
+
+        /* Reinicia el contador en la primera página después de la portada */
+        .reset-page-counter {
+            counter-reset: page 1;
+        }
+
+        .portada-container {
+            min-height: 100vh;
+            /* Forzar altura completa */
+            height: 100vh;
+        }
+
+        /* === OCULTA EL PIE DE PÁGINA EN LA PORTADA === */
+        .portada-container~.footer-page {
+            display: none;
+        }
+
+        @media print {
+            @page {
+                margin-bottom: 20mm;
+            }
+        }
     </style>
 </head>
 
 <body class="p-8 text-slate-800">
 
+
+
     <?php if ($this->seccionActiva('portada')): ?>
         <div class="portada-container w-full rounded-none flex flex-col items-center justify-between py-12 relative mb-8 card-wrapper" style="min-height: 190mm; height: auto;">
-            
+
             <div class="z-10 text-center flex-shrink-0 mb-8">
-                <div class="uppercase tracking-[0.4em] text-xs font-bold text-slate-400 mb-4">Documento Confidencial</div>
-                
-                <h1 class="text-6xl font-black text-slate-800 mb-2 tracking-tight leading-none">
+
+                <div class="mb-6 flex justify-center">
+                    <img src="<?= $logoBase64 ?>" class="h-20 object-contain  opacity-80" alt="Logo Empresa">
+                </div>
+
+
+                <h1 class="text-6xl font-black text-green-600 mb-2 tracking-tight leading-none">
                     REPORTE<br>
                     <span class="text-blue-600">EJECUTIVO</span>
                 </h1>
-                
+
                 <div class="w-24 h-2 bg-blue-600 mx-auto my-6 rounded-full"></div>
 
                 <div class="mt-2 inline-block bg-slate-50 border border-slate-200 px-8 py-3 rounded-full">
@@ -100,8 +168,11 @@
             </div>
 
             <div class="w-full px-8 mb-4 flex-1 flex items-end">
+            </div>
+
+            <div class="w-full px-8 mb-4 flex-1 flex items-end">
                 <div class="grid grid-cols-4 gap-4 w-full items-stretch">
-                    
+
                     <div class="bg-white border border-slate-200 p-4 rounded-xl text-left flex flex-col shadow-sm min-h-[12rem]">
                         <div class="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
                             <div class="text-xs uppercase font-bold text-slate-400">Total Servicios</div>
@@ -170,10 +241,26 @@
                 </div>
             </div>
         </div>
+
+
+
+
+
+
+
+
         <div class="page-break"></div>
     <?php endif; ?>
 
+
+
+
+
+    <!-- REINICIA EL CONTADOR DE PÁGINAS DESPUÉS DE LA PORTADA -->
+    <div class="reset-page-counter"></div>
+
     <div class="columns-1 md:columns-2 gap-8 space-y-8">
+
 
 
 
@@ -188,15 +275,16 @@
                                 <p class="text-[9px] text-slate-400">Volumen, % Global y Fuerza Técnica</p>
                             </div>
                         </div>
-                        <div class="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100">
-                            <?= date('d/m/y', strtotime($inicio)) ?> - <?= date('d/m/y', strtotime($fin)) ?>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
                         </div>
                     </div>
 
                     <div class="relative h-44 w-full pl-8 pr-2 pt-6 pb-12 border-l border-b border-slate-200 mx-auto">
 
                         <div class="absolute inset-0 pl-8 pointer-events-none flex flex-col justify-between opacity-10">
-                            <?php for ($i = 0; $i < 3; $i++): ?> <div class="w-full border-t border-slate-400 border-dashed h-0"></div>
+                            <?php for ($i = 0; $i < 3; $i++): ?>
+                                <div class="w-full border-t border-slate-400 border-dashed h-0"></div>
                             <?php endfor; ?>
                             <div class="w-full h-0"></div>
                         </div>
@@ -280,7 +368,9 @@
                                 <p class="text-[9px] text-slate-400">Detalle por semanas operativas</p>
                             </div>
                         </div>
-                        <div class="text-[10px] font-bold text-slate-500"><?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?></div>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-3 gap-2 text-[9px]">
@@ -293,7 +383,12 @@
                         foreach ($semanasGroup as $nombreSemana => $dias): ?>
                             <div class="bg-slate-50 border border-slate-100 rounded-lg p-2">
                                 <h4 class="font-bold text-blue-600 uppercase mb-1.5 border-b border-blue-100 pb-1 text-[8px]"><?= $nombreSemana ?></h4>
-                                <div class="space-y-1.5"> <?php foreach ($dias as $d): $pct = ($d['total'] / $maxVal) * 100; ?>
+                                <div class="space-y-1.5">
+                                    <?php foreach ($dias as $d):
+                                        $pct = ($d['total'] / $maxVal) * 100;
+                                        // NUEVO: Número de técnicos que trabajaron ese día
+                                        $numTecnicosDia = $d['num_tecnicos'] ?? 0;
+                                    ?>
                                         <div class="flex items-center gap-1.5">
                                             <div class="w-7 font-medium text-slate-500 leading-none">
                                                 <?= $d['dia_nombre'] ?>
@@ -303,11 +398,22 @@
                                                 <div class="h-full bg-blue-400 rounded-full" style="width: <?= $pct ?>%"></div>
                                             </div>
                                             <div class="w-4 text-right font-bold text-slate-700 text-[8px]"><?= $d['total'] ?></div>
+                                            <!-- NUEVO: Icono de técnicos -->
+                                            <div class="flex items-center gap-0.5 text-[7px] text-slate-400" title="Técnicos trabajando">
+                                                <span>👷</span><?= $numTecnicosDia ?>
+                                            </div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
+                    </div>
+
+                    <!-- NUEVA LEYENDA EXPLICATIVA -->
+                    <div class="mt-3 flex justify-end items-center text-[7px] text-slate-400 bg-blue-50/30 px-2 py-1 rounded">
+                        <div class="flex items-center gap-1">
+                            <span>👷</span> = Técnicos activos ese día
+                        </div>
                     </div>
                 </div>
             </div>
@@ -322,11 +428,13 @@
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 text-lg">🔧</div>
                             <div>
-                                <h3 class="text-sm font-bold text-slate-800 leading-tight">Matriz de Servicio</h3>
+                                <h3 class="text-sm font-bold text-slate-800 leading-tight">Servicios por Tipo de Mantenimiento </h3>
                                 <p class="text-[9px] text-slate-400 leading-tight">Cantidades y porcentajes</p>
                             </div>
                         </div>
-                        <div class="text-[10px] font-bold text-slate-400"><?= date('d/m/y', strtotime($inicio)) ?> - <?= date('d/m/y', strtotime($fin)) ?></div>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
                     </div>
 
                     <?php
@@ -341,7 +449,7 @@
                         <table class="w-full text-[9px] text-center">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase">
                                 <tr>
-                                    <th class="px-1 py-1 text-left bg-slate-100 border-b border-slate-200">Deleg.</th>
+                                    <th class="px-1 py-1 text-left bg-slate-100 border-b border-slate-200">Delegación.</th>
                                     <?php foreach ($todosTiposMant as $t): ?>
                                         <th class="px-0.5 py-1 border-b border-slate-200 align-bottom">
                                             <div class="text-[6px] leading-none break-words w-10 mx-auto text-slate-500">
@@ -349,7 +457,7 @@
                                             </div>
                                         </th>
                                     <?php endforeach; ?>
-                                    <th class="px-1 py-1 border-b border-slate-200 bg-slate-50 font-bold">Tot.</th>
+                                    <th class="px-1 py-1 border-b border-slate-200 bg-slate-50 font-bold">Total.</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
@@ -361,7 +469,10 @@
                                 ?>
                                     <tr class="hover:bg-slate-50">
                                         <td class="px-1 py-0.5 text-left font-bold text-slate-700 bg-slate-50/50 text-[8px]">
-                                            <?= substr($del, 0, 8) ?>
+                                            <div class="truncate hover:text-clip hover:whitespace-normal transition-all duration-200"
+                                                title="<?= htmlspecialchars($del, ENT_QUOTES) ?>">
+                                                <?= $del ?>
+                                            </div>
                                         </td>
 
                                         <?php foreach ($todosTiposMant as $t):
@@ -424,7 +535,7 @@
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-xl">🏧</div>
                             <div>
-                                <h3 class="text-lg font-bold text-slate-800">Matriz: Tipos de Máquina</h3>
+                                <h3 class="text-lg font-bold text-slate-800">Servicios por Tipo de Máquina</h3>
                                 <p class="text-xs text-slate-400">Distribución de Delegaciones Atendidas</p>
                             </div>
                         </div>
@@ -489,19 +600,21 @@
 
         <?php if ($this->seccionActiva('estados')): ?>
             <div class="card-wrapper">
-                <div class="card">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl">✅</div>
+                <div class="card p-3"> <!-- Reducir padding -->
+                    <div class="flex justify-between items-start mb-3"> <!-- Reducir margen inferior -->
+                        <div class="flex items-center gap-2"> <!-- Reducir gap -->
+                            <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-lg">✅</div> <!-- Reducir tamaño -->
                             <div>
-                                <h3 class="text-lg font-bold text-slate-800">Estado Final</h3>
-                                <p class="text-xs text-slate-400">Resultado tras la intervención</p>
+                                <h3 class="text-sm font-bold text-slate-800 leading-tight">Estado Final de la Máquina</h3> <!-- Texto más pequeño -->
+                                <p class="text-[10px] text-slate-400 leading-tight">Resultado tras la intervención</p> <!-- Texto más pequeño -->
                             </div>
                         </div>
-                        <div class="date-badge text-lg font-bold text-slate-700"><?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?></div>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
                     </div>
 
-                    <div class="space-y-3">
+                    <div class="space-y-2"> <!-- Menor espacio entre elementos -->
                         <?php
                         $totalEstados = array_sum(array_column($datosEstadosFinales, 'total'));
 
@@ -511,32 +624,28 @@
                             $pct = $totalEstados > 0 ? round(($cantidad / $totalEstados) * 100, 1) : 0;
 
                             // LÓGICA DE COLORES INTELIGENTE
-                            // Convertimos a minúsculas para comparar fácil
                             $nombreMin = mb_strtolower($nombre);
 
                             if (strpos($nombreMin, 'operativ') !== false || strpos($nombreMin, 'funcional') !== false || strpos($nombreMin, 'buen') !== false) {
-                                // Verde para cosas buenas
                                 $colorBarra = 'bg-emerald-500';
                                 $colorTexto = 'text-emerald-700';
                             } elseif (strpos($nombreMin, 'limit') !== false || strpos($nombreMin, 'parcial') !== false || strpos($nombreMin, 'observacion') !== false) {
-                                // Amarillo/Naranja para advertencias
                                 $colorBarra = 'bg-amber-400';
                                 $colorTexto = 'text-amber-700';
                             } else {
-                                // Rojo para todo lo demás (Fallas, Fuera de servicio, etc.)
                                 $colorBarra = 'bg-red-500';
                                 $colorTexto = 'text-red-700';
                             }
                         ?>
                             <div>
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="font-bold text-slate-700"><?= $nombre ?></span>
-                                    <div class="flex gap-2">
+                                <div class="flex justify-between text-[10px] mb-0.5"> <!-- Texto más pequeño y menos margen -->
+                                    <span class="font-bold text-slate-700 truncate pr-2"><?= $nombre ?></span> <!-- Permitir truncado -->
+                                    <div class="flex gap-1 whitespace-nowrap"> <!-- Menor gap -->
                                         <span class="text-slate-400 font-normal">(<?= $cantidad ?>)</span>
                                         <span class="font-bold <?= $colorTexto ?>"><?= $pct ?>%</span>
                                     </div>
                                 </div>
-                                <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"> <!-- Barra más delgada -->
                                     <div class="h-full <?= $colorBarra ?>" style="width: <?= $pct ?>%"></div>
                                 </div>
                             </div>
@@ -545,11 +654,6 @@
                 </div>
             </div>
         <?php endif; ?>
-
-
-
-
-
 
 
 
@@ -630,76 +734,87 @@
 
 
         <?php if ($this->seccionActiva('puntos_fallidos')): ?>
-            <div class="card-wrapper">
-                <div class="card border-l-4 border-l-red-500">
-                    <div class="flex justify-between items-start mb-6 pb-2">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600 text-xl">⚠️</div>
+            <div class="card-wrapper mt-4">
+                <div class="card border-t-2 border-t-blue-500 p-3">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-base border border-blue-100">
+                                📍
+                            </div>
                             <div>
-                                <h3 class="text-lg font-bold text-slate-800">Puntos Críticos</h3>
-                                <p class="text-xs text-slate-400">Puntos Más Visitados</p>
+                                <h3 class="text-sm font-bold text-slate-800 leading-tight">Puntos Más Frecuentes</h3>
+                                <p class="text-[9px] text-slate-400 leading-tight">Global por delegación</p>
                             </div>
                         </div>
-                        <div class="date-badge text-lg font-bold text-slate-700"><?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?></div>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
                     </div>
 
-                    <div class="space-y-3">
-                        <?php
-                        $max = !empty($datosPuntosFallidos) ? max(array_column($datosPuntosFallidos, 'total_fallidos')) : 1;
-                        foreach (array_slice($datosPuntosFallidos, 0, 7) as $pf):
-                            $pct = ($pf['total_fallidos'] / $max) * 100;
-                        ?>
-                            <div class="flex items-center gap-3">
-                                <div class="w-1/2 text-xs font-medium text-slate-600 truncate"><?= $pf['nombre_punto'] ?></div>
-                                <div class="w-1/2 flex items-center gap-2">
-                                    <div class="flex-1 h-2 bg-red-50 rounded-full overflow-hidden">
-                                        <div class="h-full bg-red-500" style="width: <?= $pct ?>%"></div>
-                                    </div>
-                                    <span class="text-xs font-bold text-red-700 w-6 text-right"><?= $pf['total_fallidos'] ?></span>
+                    <div class="columns-2 md:columns-3 gap-3 space-y-3">
+                        <?php foreach ($puntosVisitadosAgrupados as $delegacion => $puntos): ?>
+                            <div class="break-inside-avoid bg-slate-50/50 rounded border border-slate-200 p-2">
+
+                                <!-- Encabezado delegación -->
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <h4 class="font-bold text-slate-700 text-[9px] uppercase truncate max-w-[70%]" title="<?= $delegacion ?>">
+                                        <?= strlen($delegacion) > 15 ? substr($delegacion, 0, 13) . '...' : $delegacion ?>
+                                    </h4>
+                                    <span class="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                        <?= count($puntos) ?> pts
+                                    </span>
                                 </div>
+
+                                <!-- Lista de puntos -->
+                                <div class="space-y-1.5">
+                                    <?php
+                                    $maxLocal = $puntos[0]['total'];
+                                    $puntosMostrar = array_slice($puntos, 0, 5); // Mostrar solo top 5 por delegación
+
+                                    foreach ($puntosMostrar as $p):
+                                        $ancho = ($p['total'] / $maxLocal) * 100;
+                                    ?>
+                                        <div class="flex flex-col">
+                                            <div class="flex justify-between items-center text-[8px] mb-0.5">
+                                                <div class="flex-1 min-w-0 pr-1">
+                                                    <div class="font-semibold text-slate-600 truncate leading-tight" title="<?= $p['punto'] ?>">
+                                                        <?= strlen($p['punto']) > 20 ? substr($p['punto'], 0, 18) . '...' : $p['punto'] ?>
+                                                    </div>
+                                                    <div class="text-[6px] text-slate-400 uppercase truncate">
+                                                        <?= $p['tipo'] ?>
+                                                    </div>
+                                                </div>
+                                                <div class="font-bold text-blue-600 text-[9px] shrink-0">
+                                                    <?= $p['total'] ?>
+                                                </div>
+                                            </div>
+
+                                            <!-- Barra de progreso -->
+                                            <div class="w-full h-0.5 bg-slate-200 rounded-full overflow-hidden">
+                                                <div class="h-full bg-blue-500 rounded-full" style="width: <?= $ancho ?>%"></div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+
+                                    <!-- Mostrar si hay más puntos -->
+                                    <?php if (count($puntos) > 5): ?>
+                                        <div class="text-center text-[7px] text-slate-400 pt-1 border-t border-slate-100">
+                                            +<?= count($puntos) - 5 ?> puntos más
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+
                             </div>
                         <?php endforeach; ?>
                     </div>
+
                 </div>
             </div>
         <?php endif; ?>
 
 
 
-        <?php if ($this->seccionActiva('calificaciones')): ?>
-            <div class="card-wrapper">
-                <div class="card border-l-4 border-l-amber-400">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 text-xl">⭐</div>
-                            <div>
-                                <h3 class="text-lg font-bold text-slate-800">Satisfacción</h3>
-                                <p class="text-xs text-slate-400">Calidad percíbida</p>
-                            </div>
-                        </div>
-                        <div class="date-badge text-lg font-bold text-slate-700"><?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?></div>
-                    </div>
 
-                    <div class="space-y-3">
-                        <?php
-                        $total = array_sum(array_column($datosCalificaciones, 'total'));
-                        foreach ($datosCalificaciones as $c):
-                            $pct = $total > 0 ? round(($c['total'] / $total) * 100, 1) : 0;
-                        ?>
-                            <div>
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="font-bold text-amber-600"><?= $c['calificacion'] ?></span>
-                                    <span class="text-slate-500"><?= $pct ?>%</span>
-                                </div>
-                                <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div class="h-full bg-amber-400" style="width: <?= $pct ?>%"></div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
 
 
 
@@ -711,10 +826,11 @@
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-lg">⚙️</div>
                             <div>
-                                <h3 class="text-base font-bold text-slate-800">Gestión de Repuestos</h3>
+                                <h3 class="text-base font-bold text-slate-800">Repuestos Usados en Servicios</h3>
                                 <p class="text-[10px] text-slate-400">Origen y Top 5 más usados</p>
                             </div>
                         </div>
+                        <div class="date-badge text-lg font-bold text-slate-700"><?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?></div>
                     </div>
 
                     <div class="grid grid-cols-3 gap-4">
@@ -773,7 +889,7 @@
                                     <div class="break-inside-avoid bg-white rounded-lg shadow-sm border border-slate-200 p-2">
                                         <div class="flex justify-between items-center mb-1.5 border-b border-slate-100 pb-1">
                                             <h4 class="font-bold text-slate-700 text-[9px] uppercase truncate max-w-[70%]"><?= $nomDelegacion ?></h4>
-                                            <span class="bg-orange-100 text-orange-700 text-[8px] px-1.5 py-0 rounded-full font-bold">Tot: <?= $datos['total_gral'] ?></span>
+                                            <span class="bg-orange-100 text-orange-700 text-[8px] px-1.5 py-0 rounded-full font-bold">Total: <?= $datos['total_gral'] ?></span>
                                         </div>
 
                                         <ul class="space-y-0.5">
@@ -800,6 +916,145 @@
 
 
 
+        <?php if ($this->seccionActiva('calificaciones')): ?>
+            <div class="card-wrapper mt-4">
+
+                <div class="flex justify-between items-center mb-4 px-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-lg border border-amber-200">⭐</div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Calidad de Atención</h3>
+                            <p class="text-[10px] text-slate-500">Satisfacción del cliente por Delegación</p>
+                        </div>
+                    </div>
+                    <div class="date-badge text-lg font-bold text-slate-700">
+                        <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                    </div>
+                </div>
+
+                <div class="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+                    <?php foreach ($calificacionesAgrupadas as $delegacion => $datos): ?>
+                        <div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+
+                            <div class="flex justify-between items-center mb-2 pb-1 border-b border-slate-100">
+                                <h4 class="font-bold text-slate-700 text-[10px] uppercase tracking-wide">
+                                    <?= $delegacion ?>
+                                </h4>
+                                <span class="bg-amber-50 text-amber-700 text-[8px] font-bold px-1.5 py-0.5 rounded border border-amber-100">
+                                    Total: <?= $datos['total_zona'] ?>
+                                </span>
+                            </div>
+
+                            <div class="space-y-2">
+                                <?php foreach ($datos['items'] as $item):
+                                    $totalZona = $datos['total_zona'];
+                                    $pct = ($totalZona > 0) ? round(($item['total'] / $totalZona) * 100, 1) : 0;
+
+                                    // Color dinámico según la calificación (Opcional, pero se ve pro)
+                                    // Asumiendo que 'Excelente' o 'Bueno' son los mejores
+                                    $colorBarra = 'bg-amber-400';
+                                    $colorTexto = 'text-amber-700';
+
+                                    $nombreMin = mb_strtolower($item['nombre']);
+                                    if (strpos($nombreMin, 'mal') !== false || strpos($nombreMin, 'pésim') !== false) {
+                                        $colorBarra = 'bg-red-400';
+                                        $colorTexto = 'text-red-700';
+                                    } elseif (strpos($nombreMin, 'excelente') !== false) {
+                                        $colorBarra = 'bg-emerald-400';
+                                        $colorTexto = 'text-emerald-700';
+                                    }
+                                ?>
+                                    <div>
+                                        <div class="flex justify-between text-[9px] mb-0.5">
+                                            <span class="font-medium text-slate-600"><?= $item['nombre'] ?></span>
+                                            <div class="flex gap-2">
+                                                <span class="text-slate-400">(<?= $item['total'] ?>)</span>
+                                                <span class="font-bold <?= $colorTexto ?>"><?= $pct ?>%</span>
+                                            </div>
+                                        </div>
+                                        <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                            <div class="h-full <?= $colorBarra ?>" style="width: <?= $pct ?>%"></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+            </div>
+        <?php endif; ?>
+
+
+
+        <?php if ($this->seccionActiva('puntos_mas_fallidos')): ?>
+            <div class="card-wrapper mt-4">
+                <div class="card bg-rose-50 border border-rose-200 p-4">
+
+                    <div class="flex justify-between items-start mb-4 border-b border-rose-200 pb-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-white border border-rose-200 flex items-center justify-center text-rose-600 text-lg shadow-sm">⚠️</div>
+                            <div>
+                                <h3 class="text-base font-bold text-rose-900">Puntos Fallidos </h3>
+                                <p class="text-[10px] text-rose-600">Puntos con <strong>>= 2 Visitas Fallidas</strong> </p>
+                            </div>
+                        </div>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
+                    </div>
+
+                    <div class="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+
+                        <?php foreach ($puntosFallidosPorDelegacion as $nomDelegacion => $datos): ?>
+                            <div class="break-inside-avoid bg-white rounded-lg shadow-sm border border-rose-100 p-3">
+
+                                <div class="flex justify-between items-center mb-2 border-b border-slate-50 pb-1">
+                                    <h4 class="font-bold text-slate-700 text-[10px] uppercase truncate max-w-[70%]">
+                                        <?= $nomDelegacion ?>
+                                    </h4>
+                                    <span class="bg-rose-100 text-rose-700 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                                        Tot: <?= $datos['total_zona'] ?>
+                                    </span>
+                                </div>
+
+                                <ul class="space-y-2">
+                                    <?php
+                                    // Top 5 puntos críticos de esta zona
+                                    foreach (array_slice($datos['items'], 0, 5) as $item):
+                                        // Barra visual (Escala: si tiene 5 fallos o más se llena la barra)
+                                        $ancho = min(($item['cantidad'] / 5) * 100, 100);
+                                    ?>
+                                        <li class="flex flex-col">
+                                            <div class="flex justify-between text-[9px] mb-0.5">
+                                                <span class="text-slate-600 font-medium truncate w-3/4" title="<?= $item['nombre'] ?>">
+                                                    <?= $item['nombre'] ?>
+                                                </span>
+                                                <span class="font-bold text-rose-600">
+                                                    <?= $item['cantidad'] ?>
+                                                </span>
+                                            </div>
+                                            <div class="w-full h-1 bg-rose-50 rounded-full overflow-hidden">
+                                                <div class="h-full bg-rose-500" style="width: <?= $ancho ?>%"></div>
+                                            </div>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php endforeach; ?>
+
+                    </div>
+
+                    <?php if (empty($puntosFallidosPorDelegacion)): ?>
+                        <div class="text-center py-6 text-xs text-slate-400 italic">
+                            Excelente gestión: Ningún punto supera los 2 servicios fallidos en este periodo.
+                        </div>
+                    <?php endif; ?>
+
+                </div>
+            </div>
+        <?php endif; ?>
 
 
 
@@ -807,88 +1062,109 @@
         <?php if ($this->seccionActiva('tecnicos')): ?>
             <div class="card-wrapper">
                 <div class="card pt-4 pb-4 px-5">
+
                     <div class="flex justify-between items-start mb-3 border-b border-gray-100 pb-2">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-lg">👷</div>
                             <div>
-                                <h3 class="text-base font-bold text-slate-800">Productividad Técnica</h3>
-                                <p class="text-[10px] text-slate-400">Promedio Diario (L-V y Sáb)</p>
+                                <h3 class="text-base font-bold text-slate-800">Productividad y Desglose</h3>
+                                <p class="text-[10px] text-slate-400">Servicios por Tipo y Promedios</p>
                             </div>
                         </div>
-                        <div class="date-badge text-lg font-bold text-slate-700"><?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?></div>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
                     </div>
 
                     <table class="w-full text-[9px]">
                         <thead>
-                            <tr class="text-slate-400 text-[8px] uppercase tracking-wider text-left">
-                                <th class="pb-1 font-semibold">Técnico</th>
-                                <th class="pb-1 text-center font-semibold w-16">Media L-V</th>
-                                <th class="pb-1 text-center font-semibold w-16">Media Sáb</th>
+                            <tr class="text-slate-400 text-[8px] uppercase tracking-wider text-left border-b border-slate-200 align-bottom">
+                                <th class="pb-2 font-semibold pl-1">Técnico</th>
+
+                                <?php foreach ($todosTiposMant as $tm): ?>
+                                    <th class="pb-2 text-center font-semibold text-emerald-600 bg-emerald-50/50 px-1 border-r border-white align-bottom">
+
+                                        <div class="w-16 mx-auto whitespace-normal break-words leading-none text-[7px] flex items-end justify-center h-full">
+                                            <?= $tm['nombre_completo'] ?>
+                                        </div>
+                                    </th>
+                                <?php endforeach; ?>
+
+                                <th class="pb-2 text-center font-semibold w-12 border-l border-slate-100 align-bottom">
+                                    <div class="w-10 mx-auto whitespace-normal leading-none">Media<br>L-V</div>
+                                </th>
+                                <th class="pb-2 text-center font-semibold w-12 align-bottom">
+                                    <div class="w-10 mx-auto whitespace-normal leading-none">Media<br>Sáb</div>
+                                </th>
+                                <th class="pb-2 text-center font-semibold w-10 text-slate-600 bg-slate-50 align-bottom">Total</th>
                             </tr>
                         </thead>
-                        <tbody class="space-y-0">
+                        <tbody class="divide-y divide-slate-50">
                             <?php
-                            // --- ORDENAMIENTO POR PRODUCTIVIDAD L-V DESCENDENTE ---
+                            // Ordenamiento por productividad
                             usort($topTecnicos, function ($a, $b) {
                                 $mediaA = ($a['dias_trabajados_lv'] > 0) ? ($a['servicios_lv'] / $a['dias_trabajados_lv']) : 0;
                                 $mediaB = ($b['dias_trabajados_lv'] > 0) ? ($b['servicios_lv'] / $b['dias_trabajados_lv']) : 0;
-
-                                // Si tienen el mismo promedio, desempatamos por total de servicios
-                                if (abs($mediaA - $mediaB) < 0.01) {
-                                    return $b['total_general'] - $a['total_general'];
-                                }
-
-                                return ($mediaA < $mediaB) ? 1 : -1; // Orden Descendente
+                                if (abs($mediaA - $mediaB) < 0.01) return $b['total_general'] - $a['total_general'];
+                                return ($mediaA < $mediaB) ? 1 : -1;
                             });
 
                             foreach ($topTecnicos as $t):
                                 $mediaLV = ($t['dias_trabajados_lv'] > 0) ? round($t['servicios_lv'] / $t['dias_trabajados_lv'], 1) : 0;
                                 $mediaSab = ($t['dias_trabajados_sab'] > 0) ? round($t['servicios_sab'] / $t['dias_trabajados_sab'], 1) : 0;
 
-                                // --- LÓGICA DE COLORES LUNES A VIERNES ---
+                                // --- LÓGICA DE COLORES LUNES A VIERNES (CORREGIDA) ---
                                 if ($mediaLV > 6) {
-                                    $colorLV = 'bg-emerald-500';
+                                    $colorLV = 'bg-emerald-500'; // Verde (> 6)
                                 } elseif ($mediaLV >= 5) {
-                                    $colorLV = 'bg-yellow-400';
+                                    $colorLV = 'bg-yellow-400';  // Amarillo (5 - 6)
                                 } elseif ($mediaLV >= 4) {
-                                    $colorLV = 'bg-orange-400';
+                                    $colorLV = 'bg-orange-400';  // Naranja (4 - 5)
                                 } else {
-                                    $colorLV = 'bg-red-500';
+                                    $colorLV = 'bg-red-500';     // Rojo (< 4)
                                 }
 
-                                // --- LÓGICA DE COLORES SÁBADO ---
+                                // --- LÓGICA DE COLORES SÁBADO (MEDIA JORNADA) ---
                                 if ($mediaSab > 3) {
-                                    $colorSab = 'bg-emerald-500';
+                                    $colorSab = 'bg-emerald-500'; // Verde (> 3)
                                 } elseif ($mediaSab >= 2.5) {
-                                    $colorSab = 'bg-yellow-400';
+                                    $colorSab = 'bg-yellow-400';  // Amarillo (2.5 - 3)
                                 } elseif ($mediaSab >= 2) {
-                                    $colorSab = 'bg-orange-400';
+                                    $colorSab = 'bg-orange-400';  // Naranja (2 - 2.5)
                                 } else {
-                                    $colorSab = 'bg-red-500';
+                                    $colorSab = 'bg-red-500';     // Rojo (< 2)
                                 }
                             ?>
-                                <tr class="border-b border-slate-50 last:border-0">
-                                    <td class="py-1.5 text-slate-700 font-medium">
-                                        <div class="truncate max-w-[120px] leading-tight"><?= $t['nombre_tecnico'] ?></div>
-                                        <div class="text-[8px] text-slate-400 leading-none">Tot: <?= $t['total_general'] ?></div>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-1.5 pl-1 text-slate-700 font-bold truncate max-w-[100px]">
+                                        <?= $t['nombre_tecnico'] ?>
                                     </td>
 
-                                    <td class="py-1.5 px-1">
-                                        <div class="flex flex-col items-center gap-0.5">
-                                            <span class="font-bold text-slate-700 leading-none"><?= $mediaLV ?></span>
-                                            <div class="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                                                <div class="h-full <?= $colorLV ?>" style="width: <?= min(($mediaLV / 8) * 100, 100) ?>%"></div>
-                                            </div>
+                                    <?php foreach ($todosTiposMant as $tm):
+                                        $cant = $t['desglose'][$tm['nombre_completo']] ?? 0;
+                                        $styleCell = $cant > 0 ? 'text-slate-700 font-bold' : 'text-slate-200';
+                                    ?>
+                                        <td class="py-1 text-center <?= $styleCell ?> border-r border-slate-50 text-[8px]">
+                                            <?= $cant > 0 ? $cant : '-' ?>
+                                        </td>
+                                    <?php endforeach; ?>
+
+                                    <td class="py-1 px-1 border-l border-slate-100">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <span class="font-bold text-slate-700"><?= $mediaLV ?></span>
+                                            <div class="w-1.5 h-1.5 rounded-full <?= $colorLV ?>"></div>
                                         </div>
                                     </td>
 
-                                    <td class="py-1.5 px-1">
-                                        <div class="flex flex-col items-center gap-0.5">
-                                            <span class="font-bold text-slate-700 leading-none"><?= $mediaSab ?></span>
-                                            <div class="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                                                <div class="h-full <?= $colorSab ?>" style="width: <?= min(($mediaSab / 5) * 100, 100) ?>%"></div>
-                                            </div>
+                                    <td class="py-1 px-1">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <span class="font-bold text-slate-700"><?= $mediaSab ?></span>
+                                            <div class="w-1.5 h-1.5 rounded-full <?= $colorSab ?>"></div>
                                         </div>
+                                    </td>
+
+                                    <td class="py-1 px-1 text-center font-black text-slate-800 bg-slate-50/50">
+                                        <?= $t['total_general'] ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -898,17 +1174,24 @@
             </div>
         <?php endif; ?>
 
+    </div>
 
+    <!-- === PIE DE PÁGINA GLOBAL (Aparece en todas las páginas excepto portada) === -->
+    <div class="footer-page">
+        <div class="flex justify-between items-center">
+            <div class="uppercase tracking-[0.4em] text-[10px] font-bold text-slate-400">
+                Documento Confidencial
+            </div>
 
+            <div class="text-[10px] font-bold text-slate-500">
+                <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+            </div>
 
-
-
-
-
-
-
-
-
+            <!-- NUMERACIÓN DE PÁGINA -->
+            <div class="text-[10px] font-mono font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded border border-slate-200">
+                Página <span class="page-number"></span>
+            </div>
+        </div>
     </div>
 
 </body>

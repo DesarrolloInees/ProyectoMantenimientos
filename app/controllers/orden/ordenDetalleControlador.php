@@ -188,6 +188,14 @@ class ordenDetalleControlador
     // ==========================================
     public function guardarCambios()
     {
+
+        // 🔥 INTERCEPCIÓN DE AJAX 🔥
+        // Si la petición trae una 'accion', NO es un guardado normal, es AJAX.
+        // La desviamos a procesarAjax() y detenemos la ejecución aquí.
+        if (isset($_POST['accion'])) {
+            $this->procesarAjax();
+            exit; // ¡Importante! Matamos el proceso aquí para que no intente guardar.
+        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $servicios = $_POST['servicios'] ?? [];
             $fechaOrigen = $_POST['fecha_origen'];
