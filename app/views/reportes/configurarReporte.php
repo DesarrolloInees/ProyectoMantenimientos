@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -254,6 +255,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -263,7 +265,7 @@
 
         <div class="content">
             <form id="reportForm" method="GET" action="<?= BASE_URL ?>generarReporte" target="_blank">
-                
+
                 <div class="section">
                     <div class="section-title">📅 Período del Reporte</div>
                     <div class="date-inputs">
@@ -287,7 +289,7 @@
                     <button type="button" class="select-all-btn" onclick="toggleAll()">
                         ✓ Seleccionar / Deseleccionar Todo
                     </button>
-                    
+
                     <div class="sections-grid">
                         <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="portada" checked>
@@ -354,11 +356,25 @@
 
                         <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="puntos_fallidos" checked>
+
                             <div class="section-card-header">
                                 <div class="checkbox-custom"></div>
                                 <div class="section-card-title">⚠️ Puntos Más Visitados</div>
                             </div>
-                            <div class="section-card-desc">Puntos con Más Servicios</div>
+
+                            <div class="section-card-desc">
+                                Puntos con mayor frecuencia de servicios.
+
+                                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc; display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-size: 11px; font-weight: bold; color: #555;">Mín. Visitas:</label>
+                                    <input type="number"
+                                        name="min_visitas"
+                                        value="2"
+                                        min="1"
+                                        style="width: 50px; padding: 2px 5px; border: 1px solid #999; border-radius: 4px; font-size: 12px;"
+                                        onclick="event.stopPropagation()">
+                                </div>
+                            </div>
                         </div>
 
 
@@ -380,7 +396,7 @@
                             <div class="section-card-desc">Satisfacción del cliente</div>
                         </div>
 
-                        
+
 
                         <div class="section-card selected" onclick="toggleSection(this)">
                             <input type="checkbox" name="secciones[]" value="puntos_mas_fallidos" checked>
@@ -400,7 +416,7 @@
                             <div class="section-card-desc">Productividad del equipo técnico</div>
                         </div>
 
-                        
+
 
                     </div>
                 </div>
@@ -424,7 +440,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const inicioParam = urlParams.get('inicio');
             const finParam = urlParams.get('fin');
-            
+
             // Si vienen fechas en la URL, usarlas
             if (inicioParam && finParam) {
                 document.getElementById('fechaInicio').value = inicioParam;
@@ -434,7 +450,7 @@
                 const hoy = new Date();
                 const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
                 const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-                
+
                 document.getElementById('fechaInicio').valueAsDate = primerDia;
                 document.getElementById('fechaFin').valueAsDate = ultimoDia;
             }
@@ -449,7 +465,7 @@
         function toggleAll() {
             const cards = document.querySelectorAll('.section-card');
             const allSelected = Array.from(cards).every(card => card.classList.contains('selected'));
-            
+
             cards.forEach(card => {
                 if (allSelected) {
                     card.classList.remove('selected');
@@ -473,4 +489,5 @@
         });
     </script>
 </body>
+
 </html>

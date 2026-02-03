@@ -103,7 +103,9 @@
     </div>
 
     <form action="<?= BASE_URL ?>ordenDetalle" method="POST">
+        
         <input type="hidden" name="accion" value="guardarCambios">
+        
         <input type="hidden" name="fecha_origen" value="<?= $fecha ?>">
 
         <div class="overflow-x-auto shadow-inner border rounded mt-4" style="max-height: 70vh;">

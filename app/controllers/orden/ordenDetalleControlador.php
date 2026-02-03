@@ -184,42 +184,37 @@ class ordenDetalleControlador
     }
 
     // ==========================================
-    // 3. GUARDAR CAMBIOS (LÓGICA LIMPIA)
+    // 3. GUARDAR CAMBIOS (ADAPTADO AL INDEX.PHP ORIGINAL)
     // ==========================================
     public function guardarCambios()
     {
+        // ---------------------------------------------------------
+        // 🚫 ELIMINAMOS EL BLOQUE QUE DESVIABA A AJAX 🚫
+        // (El index.php ya se encargó de llamarnos directamente)
+        // ---------------------------------------------------------
 
-        // 🔥 INTERCEPCIÓN DE AJAX 🔥
-        // Si la petición trae una 'accion', NO es un guardado normal, es AJAX.
-        // La desviamos a procesarAjax() y detenemos la ejecución aquí.
-        if (isset($_POST['accion'])) {
-            $this->procesarAjax();
-            exit; // ¡Importante! Matamos el proceso aquí para que no intente guardar.
-        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            
+            // Recoger datos
             $servicios = $_POST['servicios'] ?? [];
-            $fechaOrigen = $_POST['fecha_origen'];
-
-            // 1. DETECTAR SI VENIMOS DEL BUSCADOR
-            // (El input hidden 'es_busqueda' ya lo pusimos en la vista)
+            
+            // Si no viene fecha de origen, usamos la actual
+            $fechaOrigen = $_POST['fecha_origen'] ?? date('Y-m-d');
+            
+            // Detectar si venimos del buscador
             $esBusqueda = isset($_POST['es_busqueda']) && $_POST['es_busqueda'] == '1';
+
+            $errores = 0;
 
             foreach ($servicios as $id => $datos) {
 
-                // ---------------------------------------------------------
-                // 1. LIMPIEZA DE PRECIO
-                // ---------------------------------------------------------
+                // A. LIMPIEZA DE PRECIO
                 if (isset($datos['valor'])) {
-                    // Quitar puntos de miles (150.000 -> 150000)
                     $valorLimpio = str_replace('.', '', $datos['valor']);
-                    // (Opcional) Cambiar comas por puntos
-                    $valorLimpio = str_replace(',', '.', $valorLimpio);
-                    $datos['valor'] = $valorLimpio;
+                    $datos['valor'] = str_replace(',', '.', $valorLimpio);
                 }
 
-                // ---------------------------------------------------------
-                // 2. CALCULAR TIEMPO (Si no viene calculado)
-                // ---------------------------------------------------------
+                // B. CALCULAR TIEMPO
                 if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
                     $datos['tiempo'] = '00:00';
                     if (!empty($datos['entrada']) && !empty($datos['salida'])) {
@@ -228,33 +223,47 @@ class ordenDetalleControlador
                             $d2 = new DateTime($datos['salida']);
                             if ($d2 < $d1) $d2->modify('+1 day');
                             $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
-                        } catch (Exception $e) {
-                        }
+                        } catch (Exception $e) {}
                     }
                 }
 
-                // ---------------------------------------------------------
-                // 🛑 LÓGICA DE INVENTARIO ELIMINADA 
-                // Ya no calculamos diferencias aquí. El AJAX ya lo hizo.
-                // ---------------------------------------------------------
+                // C. FECHA INDIVIDUAL
+                if (empty($datos['fecha_individual'])) {
+                    $datos['fecha_individual'] = $fechaOrigen;
+                }
 
-                // 3. ACTUALIZAR LA ORDEN (CABECERA)
-                $this->modelo->actualizarOrdenFull($id, $datos);
+                // D. GUARDAR EN BD
+                // Usamos la función robusta que ya corregimos en el Modelo
+                $resultado = $this->modelo->actualizarOrdenFull($id, $datos);
+                
+                if (!$resultado) {
+                    $errores++;
+                }
             }
 
-            // 2. REDIRECCIÓN INTELIGENTE
+            // 2. REDIRECCIÓN
             if ($esBusqueda) {
-                // Si viene del buscador, recarga la vista del buscador
                 $urlDestino = BASE_URL . "ordenDetalleBuscar";
             } else {
-                // Si es la vista normal, vuelve a la fecha específica
                 $urlDestino = BASE_URL . "ordenDetalle/" . $fechaOrigen;
             }
 
-            echo "<script>
-                alert('¡Cambios guardados correctamente!');
-                window.location.href = '$urlDestino';
-            </script>";
+            if ($errores > 0) {
+                echo "<script>
+                    alert('Se guardaron los cambios, pero hubo errores en $errores filas.');
+                    window.location.href = '$urlDestino';
+                </script>";
+            } else {
+                echo "<script>
+                    alert('¡Cambios guardados correctamente!');
+                    window.location.href = '$urlDestino';
+                </script>";
+            }
+            exit; // Importante detener el script aquí
+        } else {
+            // Si intentan entrar directo por URL sin POST
+            header('Location: ' . BASE_URL . 'ordenDetalle');
+            exit;
         }
     }
 

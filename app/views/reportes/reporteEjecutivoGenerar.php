@@ -346,8 +346,11 @@
                                 👷 Técnicos Activos
                             </div>
                         </div>
-                        <div>
-                            Total Global: <strong class="text-slate-600"><?= number_format($totalGlobalServicios) ?></strong>
+                        <div class="flex flex-col">
+                            <span class="text-sm uppercase tracking-wide text-slate-500 font-semibold">Total Global</span>
+                            <strong class="text-xl text-slate-800 tracking-tight">
+                                <?= number_format($totalGlobalServicios) ?>
+                            </strong>
                         </div>
                     </div>
                 </div>
@@ -659,73 +662,133 @@
 
 
         <?php if ($this->seccionActiva('puntos_atendidos')): ?>
-            <div class="card-wrapper mt-8">
-                <div class="card">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 text-xl">📍</div>
-                            <div>
-                                <h3 class="text-lg font-bold text-slate-800">Cobertura de Puntos</h3>
-                                <p class="text-xs text-slate-400">Puntos únicos atendidos por Tipo de Máquina</p>
-                            </div>
+
+            <?php
+            // ==========================================
+            // 1. PRE-CÁLCULO DE TOTALES
+            // ==========================================
+            // Calculamos esto PRIMERO para tener el número 919 listo para el encabezado
+
+            $totalesColumnaPuntos = [];
+            $granTotalPuntos = 0; // Esta variable acumulará el 919
+
+            // Inicializamos totales en 0
+            foreach ($tiposMaquinaCols as $tm) {
+                $totalesColumnaPuntos[$tm['nombre_tipo_maquina']] = 0;
+            }
+
+            // Recorremos los datos para sumar
+            foreach ($delegacionesListaMaquina as $del) {
+                foreach ($tiposMaquinaCols as $tm) {
+                    $nombreTipo = $tm['nombre_tipo_maquina'];
+                    // Obtenemos el valor de la matriz o 0 si no existe
+                    $val = $matrizPuntosTipo[$del][$nombreTipo] ?? 0;
+
+                    // Sumamos
+                    $totalesColumnaPuntos[$nombreTipo] += $val;
+                    $granTotalPuntos += $val;
+                }
+            }
+            ?>
+
+            <div class="card-wrapper mt-3">
+                <div class="card p-2">
+                    <div class="flex items-center justify-between mb-2 pb-1 border-b border-slate-200">
+                        <div class="flex items-center gap-1">
+                            <div class="w-4 h-4 rounded bg-rose-50 flex items-center justify-center text-rose-500 text-[10px]">📍</div>
+                            <h3 class="text-xs font-bold text-slate-800 truncate">Puntos Atendidos</h3>
                         </div>
-                        <div class="date-badge text-lg font-bold text-slate-700"><?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?></div>
+                        <div class="date-badge text-lg font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
                     </div>
 
-                    <?php
-                    $totalesColumnaPuntos = [];
-                    foreach ($tiposMaquinaCols as $tm) {
-                        $totalesColumnaPuntos[$tm['nombre_tipo_maquina']] = 0;
-                    }
-                    $granTotalPuntos = 0;
-                    ?>
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1">
+                            <div class="flex items-center px-1 py-0.5 bg-white border border-slate-200 rounded text-[9px]">
+                                <span class="text-[9px] mr-0.5">🛠️</span>
+                                <span class="font-bold text-slate-800"><?= number_format($totalGlobalServicios ?? 0) ?></span>
+                                <span class="text-[6px] text-slate-500 ml-0.5">Servicios Atendidos</span>
+                            </div>
 
-                    <div class="overflow-hidden rounded-lg border border-slate-200">
-                        <table class="w-full text-[9px] text-center">
-                            <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider">
+                            <div class="flex items-center px-1 py-0.5 bg-white border border-rose-200 rounded text-[9px]">
+                                <span class="text-[9px] mr-0.5">📍</span>
+                                <span class="font-bold text-slate-800"><?= number_format($granTotalPuntos) ?></span>
+                                <span class="text-[6px] text-rose-500 ml-0.5">Puntos Atendidos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-sm border border-slate-200">
+                        <table class="w-full text-[7px] text-center border-collapse">
+                            <thead class="bg-slate-50 text-slate-600 font-semibold">
                                 <tr>
-                                    <th class="px-2 py-2 text-left bg-slate-100 border-b border-slate-200">Delegación</th>
+                                    <th class="px-1 py-2 text-left bg-slate-100 border-b border-slate-200 align-bottom w-24">
+                                        Delegación
+                                    </th>
+
                                     <?php foreach ($tiposMaquinaCols as $tm): ?>
-                                        <th class="px-1 py-2 border-b border-slate-200 max-w-[60px] truncate" title="<?= $tm['nombre_tipo_maquina'] ?>">
-                                            <?= substr($tm['nombre_tipo_maquina'], 0, 8) ?>
+                                        <th class="px-0.5 py-2 border-b border-slate-200 align-bottom w-[50px]">
+                                            <div class="whitespace-normal break-words text-[8px] leading-[1.1] uppercase text-center flex items-end justify-center h-full min-h-[25px]">
+                                                <?= $tm['nombre_tipo_maquina'] ?>
+                                            </div>
                                         </th>
                                     <?php endforeach; ?>
-                                    <th class="px-2 py-2 border-b border-slate-200 bg-slate-50 font-bold">Total</th>
+
+                                    <th class="px-1 py-2 border-b border-slate-200 bg-slate-50 font-bold align-bottom w-[40px]">
+                                        <div class="flex items-end justify-center h-full">TOTAL</div>
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <?php foreach ($delegacionesListaMaquina as $del): $rowT = 0; ?>
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="px-2 py-1 text-left font-bold text-slate-700 bg-slate-50/50"><?= $del ?></td>
+                            <tbody>
+                                <?php foreach ($delegacionesListaMaquina as $del):
+                                    $rowTotal = 0;
+                                ?>
+                                    <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0">
+                                        <td class="px-1 py-1 text-left font-bold text-slate-700 bg-slate-50/50 truncate max-w-[100px]" title="<?= $del ?>">
+                                            <?= $del ?>
+                                        </td>
+
                                         <?php foreach ($tiposMaquinaCols as $tm):
                                             $nombreTipo = $tm['nombre_tipo_maquina'];
-                                            // AQUI USAMOS LA NUEVA VARIABLE $matrizPuntosTipo
                                             $val = $matrizPuntosTipo[$del][$nombreTipo] ?? 0;
+                                            $rowTotal += $val;
 
-                                            $rowT += $val;
-                                            $totalesColumnaPuntos[$nombreTipo] += $val;
+                                            // Estilo: Verde si hay datos, gris claro si es 0
+                                            $bg = $val > 0 ? 'bg-green-50/40 text-green-700 font-bold' : 'text-slate-300';
+                                        ?>
+                                            <td class="px-0.5 py-1 <?= $bg ?> border-l border-slate-50 border-dashed">
+                                                <?= $val > 0 ? $val : '-' ?>
+                                            </td>
+                                        <?php endforeach; ?>
 
-                                            // Color Rose para diferenciar
-                                            $cls = $val == 0 ? 'text-slate-200' : 'text-rose-700 font-bold bg-rose-50';
-                                        ?>
-                                            <td class="px-1 py-1 <?= $cls ?>"><?= $val ?></td>
-                                        <?php endforeach;
-                                        $granTotalPuntos += $rowT;
-                                        ?>
-                                        <td class="px-2 py-1 font-bold bg-slate-100"><?= $rowT ?></td>
+                                        <td class="px-1 py-1 font-bold bg-slate-100 text-slate-800 border-l border-slate-200">
+                                            <?= $rowTotal ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
+
                             <tfoot class="bg-slate-100 font-bold text-slate-800 border-t-2 border-slate-200">
                                 <tr>
-                                    <td class="px-2 py-2 text-left">TOTALES</td>
-                                    <?php foreach ($tiposMaquinaCols as $tm): ?>
-                                        <td class="px-1 py-2"><?= $totalesColumnaPuntos[$tm['nombre_tipo_maquina']] ?></td>
+                                    <td class="px-1 py-1 text-left text-[8px]">TOTALES</td>
+                                    <?php foreach ($tiposMaquinaCols as $tm):
+                                        $val = $totalesColumnaPuntos[$tm['nombre_tipo_maquina']];
+                                    ?>
+                                        <td class="px-0.5 py-1 border-l border-slate-200 border-dashed">
+                                            <?= $val ?>
+                                        </td>
                                     <?php endforeach; ?>
-                                    <td class="px-2 py-2 bg-slate-200 text-rose-800"><?= $granTotalPuntos ?></td>
+                                    <td class="px-1 py-1 bg-slate-200 text-rose-800 border-l border-slate-300">
+                                        <?= $granTotalPuntos ?>
+                                    </td>
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+
+                    <div class="mt-1 pt-1 border-t border-slate-100 flex justify-between items-center">
+                        <p class="text-[6px] text-slate-400">(-) = Sin actividad</p>
                     </div>
                 </div>
             </div>
@@ -1028,7 +1091,7 @@
                                     ?>
                                         <li class="flex flex-col">
                                             <div class="flex justify-between text-[9px] mb-0.5">
-                                                <span class="text-slate-600 font-medium truncate w-3/4" title="<?= $item['nombre'] ?>">
+                                                <span class="text-slate-600 font-medium w-full pr-2 break-all leading-tight" title="<?= $item['nombre'] ?>">
                                                     <?= $item['nombre'] ?>
                                                 </span>
                                                 <span class="font-bold text-rose-600">
@@ -1067,7 +1130,7 @@
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-lg">👷</div>
                             <div>
-                                <h3 class="text-base font-bold text-slate-800">Productividad y Desglose</h3>
+                                <h3 class="text-base font-bold text-slate-800">Promedio Servicio por Técnico</h3>
                                 <p class="text-[10px] text-slate-400">Servicios por Tipo y Promedios</p>
                             </div>
                         </div>

@@ -346,49 +346,52 @@ class ordenDetalleModelo
             // Iniciamos transacción
             $this->conn->beginTransaction();
 
-            // -----------------------------------------------------------------
-            // 🕵️ PASO 0: GESTIÓN INTELIGENTE DE REMISIONES (CORREGIDO PARA NUEVA BD)
-            // -----------------------------------------------------------------
+            // 1. Obtener datos actuales para comparar remisión
             $sqlCheck = "SELECT numero_remision, id_tecnico FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
             $stmtCheck->execute([$id]);
             $actual = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
-            // Verificamos si cambió el Número de Remisión O el Técnico
-            if ($actual && ($actual['numero_remision'] != $datos['remision'] || $actual['id_tecnico'] != $datos['id_tecnico'])) {
+            // Sanitizar datos clave para evitar "Undefined array key"
+            $nuevaRemision = $datos['remision'] ?? '';
+            $nuevoTecnico  = $datos['id_tecnico'] ?? $actual['id_tecnico'];
+            $fechaUso      = ($datos['fecha_individual'] ?? date('Y-m-d')) . ' ' . ($datos['entrada'] ?? '00:00:00');
 
+            // -----------------------------------------------------------------
+            // 🕵️ GESTIÓN DE REMISIONES
+            // -----------------------------------------------------------------
+            if ($actual && ($actual['numero_remision'] != $nuevaRemision || $actual['id_tecnico'] != $nuevoTecnico)) {
+                
                 // A. LIBERAR LA VIEJA
-                // CAMBIO: Usamos id_estado con subconsulta para 'DISPONIBLE'
                 $sqlLiberar = "UPDATE control_remisiones 
-                                SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1), 
-                                    id_orden_servicio = NULL, 
-                                    fecha_uso = NULL 
-                                WHERE id_orden_servicio = ?";
+                               SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1), 
+                                   id_orden_servicio = NULL, 
+                                   fecha_uso = NULL 
+                               WHERE id_orden_servicio = ?";
                 $this->conn->prepare($sqlLiberar)->execute([$id]);
 
                 // B. OCUPAR LA NUEVA
-                if (!empty($datos['remision'])) {
-                    // CAMBIO: Usamos id_estado con subconsulta para 'USADA'
+                if (!empty($nuevaRemision)) {
                     $sqlOcupar = "UPDATE control_remisiones 
-                                    SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
-                                        id_orden_servicio = ?, 
-                                        fecha_uso = ? 
-                                    WHERE numero_remision = ? AND id_tecnico = ?";
-
-                    $fechaUso = $datos['fecha_individual'] . ' ' . ($datos['entrada'] ?: '00:00:00');
+                                  SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
+                                      id_orden_servicio = ?, 
+                                      fecha_uso = ? 
+                                  WHERE numero_remision = ? AND id_tecnico = ?";
+                    
                     $this->conn->prepare($sqlOcupar)->execute([
                         $id,
                         $fechaUso,
-                        $datos['remision'],
-                        $datos['id_tecnico']
+                        $nuevaRemision,
+                        $nuevoTecnico
                     ]);
                 }
             }
-            // -----------------------------------------------------------------
 
             // ---------------------------------------------------------
-            // 1. ACTUALIZAR TABLA PRINCIPAL (ORDENES) - (ESTO NO CAMBIA)
+            // 2. ACTUALIZAR TABLA PRINCIPAL (ORDENES)
             // ---------------------------------------------------------
+            // NOTA: Usamos '?? null' para evitar errores si el input no viene en el POST
+            
             $sql = "UPDATE ordenes_servicio SET 
                         id_cliente = ?, id_punto = ?, id_maquina = ?, id_modalidad = ?,
                         numero_remision = ?, id_tecnico = ?, id_tipo_mantenimiento = ?, 
@@ -398,34 +401,45 @@ class ordenDetalleModelo
                     WHERE id_ordenes_servicio = ?";
 
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute([
-                $datos['id_cliente'],
-                $datos['id_punto'],
-                $datos['id_maquina'],
-                $datos['id_modalidad'],
-                $datos['remision'],
-                $datos['id_tecnico'],
-                $datos['id_manto'],
-                $datos['id_estado'],
-                $datos['id_calif'],
-                $datos['entrada'],
-                $datos['salida'],
-                $datos['tiempo'],
-                $datos['valor'],
-                $datos['obs'],
+            
+            // 🔥 AQUÍ ESTABA EL ERROR: Si faltaba una clave, el script moría.
+            // Ahora usamos coalescencia nula (??) para proteger cada campo.
+            $ejecucion = $stmt->execute([
+                $datos['id_cliente'] ?? null,
+                $datos['id_punto'] ?? null,
+                $datos['id_maquina'] ?? null,
+                $datos['id_modalidad'] ?? 1,
+                $datos['remision'] ?? '',
+                $datos['id_tecnico'] ?? null,
+                $datos['id_manto'] ?? null,
+                $datos['id_estado'] ?? null,
+                $datos['id_calif'] ?? null,
+                $datos['entrada'] ?? '00:00',
+                $datos['salida'] ?? '00:00',
+                $datos['tiempo'] ?? '00:00',
+                $datos['valor'] ?? 0,
+                $datos['obs'] ?? '',
                 $datos['tiene_novedad'] ?? 0,
-                $datos['fecha_individual'],
+                $datos['fecha_individual'] ?? date('Y-m-d'), // Fallback de seguridad
                 $id
             ]);
 
+            if (!$ejecucion) {
+                throw new Exception("Error al ejecutar UPDATE en ordenes_servicio");
+            }
+
             // 3. ACTUALIZAR INFO MANTENIMIENTO EN PUNTO
-            $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
+            if (!empty($datos['id_punto'])) {
+                $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
+            }
 
             $this->conn->commit();
             return true;
+
         } catch (Exception $e) {
             $this->conn->rollBack();
-            error_log("Error actualizando orden: " . $e->getMessage());
+            // Esto escribe el error real en el archivo error.log de tu servidor (búscalo si falla)
+            error_log("CRITICAL ERROR actualizarOrdenFull: " . $e->getMessage()); 
             return false;
         }
     }

@@ -101,7 +101,9 @@
         </div>
 
         <form action="<?= BASE_URL ?>ordenDetalle" method="POST" class="block w-full">
+            
             <input type="hidden" name="accion" value="guardarCambios">
+            
             <input type="hidden" name="es_busqueda" value="1">
             <input type="hidden" name="fecha_origen" value="<?= date('Y-m-d') ?>">
 
@@ -153,6 +155,16 @@
 
 <?php include __DIR__ . '/partials/modalRepuestos.php'; ?>
 <?php include __DIR__ . '/partials/modalNovedades.php'; ?>
+
+
+<script>
+    window.DetalleConfig = window.DetalleConfig || {};
+    // Pasamos el catálogo de repuestos al JS
+    window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
+    // Pasamos festivos y novedades por si acaso
+    window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
+    window.DetalleConfig.listaNovedades = <?= json_encode($listaNovedades ?? []) ?>;
+</script>
 
 <script>
     $(document).ready(function() {
@@ -239,10 +251,19 @@
         }, function(htmlRespuesta) {
             $('#resultadosBusqueda').html(htmlRespuesta);
             
-            // Re-inicializar componentes visuales si es necesario
-            if(jQuery().select2) {
-                 $('#resultadosBusqueda select').select2();
+            // 🔥 CORRECCIÓN CRÍTICA: Inicializar Select2 en los nuevos elementos cargados
+            // Si no haces esto, los selects de la tabla se verán feos y no funcionarán bien
+            if (jQuery().select2) {
+                $('#resultadosBusqueda .select2-basic, #resultadosBusqueda select').select2({
+                    width: '100%',
+                    language: "es"
+                });
             }
+            
+            // Actualizar contador visual si tienes la función disponible
+            let total = $('#resultadosBusqueda tr').length;
+            $('#totalRegistros').text(total);
+
         }).fail(function() {
             $('#resultadosBusqueda').html('<tr><td colspan="16" class="text-center text-red-500 font-bold">Error de conexión con el servidor.</td></tr>');
         });

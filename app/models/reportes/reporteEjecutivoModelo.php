@@ -311,33 +311,36 @@ class ReporteEjecutivoModelo
 
     // 2. CORREGIDA: Puntos Críticos (Más robusta)
     // Reemplaza tu función getPuntosConFallidos por esta:
-    public function getPuntosMasVisitados($fecha_inicio, $fecha_fin)
+    public function getPuntosMasVisitados($fecha_inicio, $fecha_fin, $min_visitas = 2)
     {
         try {
             $sql = "SELECT 
                     d.nombre_delegacion, 
                     p.nombre_punto, 
-                    tm.nombre_tipo_maquina, -- Necesario para la vista
+                    tm.nombre_tipo_maquina, 
                     COUNT(os.id_ordenes_servicio) as total_visitas
                 FROM ordenes_servicio os
                 INNER JOIN punto p ON os.id_punto = p.id_punto
                 INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
-                
-                -- JOIN para saber qué máquina es
                 LEFT JOIN maquina m ON p.id_punto = m.id_punto AND m.estado = 1
                 LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
                 
                 WHERE os.fecha_visita BETWEEN :inicio AND :fin
                 
-                -- Ya NO filtramos por estado, queremos todas las visitas
-                
                 GROUP BY d.nombre_delegacion, p.id_punto, p.nombre_punto, tm.nombre_tipo_maquina
+                
+                -- AQUÍ ESTÁ EL FILTRO DINÁMICO
+                HAVING total_visitas >= :min_visitas
                 
                 ORDER BY d.nombre_delegacion ASC, total_visitas DESC";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
+
+            // Vinculamos el número que viene del input
+            $stmt->bindParam(':min_visitas', $min_visitas, PDO::PARAM_INT);
+
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -382,9 +385,9 @@ class ReporteEjecutivoModelo
     }
 
     public function getCalificacionesServicio($fecha_inicio, $fecha_fin)
-{
-    try {
-        $sql = "SELECT d.nombre_delegacion, 
+    {
+        try {
+            $sql = "SELECT d.nombre_delegacion, 
                         cs.nombre_calificacion, 
                         COUNT(os.id_ordenes_servicio) as total
                 FROM ordenes_servicio os
@@ -399,15 +402,15 @@ class ReporteEjecutivoModelo
                 -- Ordenamos por nombre de delegación y luego por relevancia de la calificación
                 ORDER BY d.nombre_delegacion ASC, cs.id_calificacion DESC";
 
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindParam(':inicio', $fecha_inicio);
-        $stmt->bindParam(':fin', $fecha_fin);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        return [];
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':inicio', $fecha_inicio);
+            $stmt->bindParam(':fin', $fecha_fin);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
     }
-}
 
     public function getKpisPorDelegacion($fecha_inicio, $fecha_fin)
     {

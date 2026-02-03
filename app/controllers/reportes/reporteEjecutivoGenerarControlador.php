@@ -106,7 +106,7 @@ class generarReporteControlador
         sort($delegacionesListaMaquina);
 
         // ---------------------------------------------
-        // 3. REPUESTOS (TOP 10 POR DELEGACIÓN)
+        // 3. REPUESTOS (TOP 5 POR DELEGACIÓN)
         // ---------------------------------------------
         $rawRepuestos = $this->modelo->getRepuestosPorDelegacion($inicio, $fin);
         $repuestosPorDelegacion = [];
@@ -129,13 +129,23 @@ class generarReporteControlador
             }
         }
 
-        // 1. Obtener datos (Usamos la nueva función o el nuevo nombre)
-        $rawVisitados = $this->modelo->getPuntosMasVisitados($inicio, $fin);
+        // 1. Obtener el número del formulario (si no envían nada, usamos 2 por defecto)
+        $minVisitas = isset($_GET['min_visitas']) && is_numeric($_GET['min_visitas']) ? (int)$_GET['min_visitas'] : 2;
 
-        // 2. Agrupar por Delegación
+        // 2. Llamar al modelo PASANDO la variable $minVisitas
+        // Nota: Usamos getPuntosMasVisitados que es la lógica de frecuencia
+        $rawVisitados = $this->modelo->getPuntosMasVisitados($inicio, $fin, $minVisitas);
+
         $puntosVisitadosAgrupados = [];
+        $totalPuntosUnicosGlobal = 0;
 
         if ($rawVisitados) {
+            // ---------------------------------------------------------
+            // AQUÍ ESTÁ EL CAMBIO:
+            // En vez de contar filas (count), sumamos la columna 'total_visitas'
+            // ---------------------------------------------------------
+            $totalPuntosUnicosGlobal = array_sum(array_column($rawVisitados, 'total_visitas'));
+
             foreach ($rawVisitados as $pv) {
                 $del = $pv['nombre_delegacion'];
 
@@ -143,14 +153,11 @@ class generarReporteControlador
                     $puntosVisitadosAgrupados[$del] = [];
                 }
 
-                // Top 5 por delegación para no llenar la hoja
-                if (count($puntosVisitadosAgrupados[$del]) < 5) {
-                    $puntosVisitadosAgrupados[$del][] = [
-                        'punto' => $pv['nombre_punto'],
-                        'tipo'  => $pv['nombre_tipo_maquina'] ?? 'S/D',
-                        'total' => $pv['total_visitas']
-                    ];
-                }
+                $puntosVisitadosAgrupados[$del][] = [
+                    'punto' => $pv['nombre_punto'],
+                    'tipo'  => $pv['nombre_tipo_maquina'] ?? 'S/D',
+                    'total' => $pv['total_visitas']
+                ];
             }
         }
 
@@ -186,7 +193,7 @@ class generarReporteControlador
         // ---------------------------------------------
         // 4. OTROS DATOS (Matriz Mantenimiento, KPIs, etc)
         // ---------------------------------------------
-        
+
         // 1. Obtenemos datos básicos
         $datosTecnicoDetallado = $this->modelo->getProductividadDetallada($inicio, $fin);
         $topTecnicos = array_slice($datosTecnicoDetallado, 0, 15); // Top 15
