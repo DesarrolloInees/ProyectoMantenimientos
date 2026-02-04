@@ -2,6 +2,7 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
 <style>
     /* Personalización para que DataTables se vea nativo de Tailwind */
@@ -60,10 +61,20 @@
                 </h1>
                 <p class="text-gray-500 mt-1">Gestiona el catálogo de componentes y sus referencias.</p>
             </div>
-            <a href="<?= BASE_URL ?>repuestoCrear" class="mt-4 sm:mt-0 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
-                <i class="fas fa-plus-circle"></i>
-                <span>Nuevo Repuesto</span>
-            </a>
+            
+            <div class="mt-4 sm:mt-0 flex flex-wrap gap-2">
+                <?php if (!empty($data['repuestos'])): ?>
+                    <button onclick="exportarExcel()" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+                        <i class="fas fa-file-excel"></i>
+                        <span>Excel</span>
+                    </button>
+                <?php endif; ?>
+
+                <a href="<?= BASE_URL ?>repuestoCrear" class="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 flex items-center space-x-2">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Nuevo Repuesto</span>
+                </a>
+            </div>
         </div>
 
         <?php if (!empty($data['repuestos'])): ?>
@@ -167,13 +178,45 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 
 <script>
+    // 1. CAPTURAMOS LOS DATOS DE PHP AQUI
+    const listaRepuestos = <?= json_encode($data['repuestos'] ?? []) ?>;
+
+    // 2. FUNCIÓN DE EXPORTAR
+    function exportarExcel() {
+        if (listaRepuestos.length === 0) {
+            alert("No hay datos para exportar");
+            return;
+        }
+
+        // Mapeamos los datos para que las columnas tengan nombres bonitos en el Excel
+        const datosExcel = listaRepuestos.map(r => ({
+            "ID": r.id_repuesto,
+            "Nombre Repuesto": r.nombre_repuesto,
+            "Código Referencia": r.codigo_referencia || "N/A",
+            "Estado": r.estado == 1 ? "Activo" : "Inactivo"
+        }));
+
+        // Crear hoja y libro
+        const ws = XLSX.utils.json_to_sheet(datosExcel);
+        const wb = XLSX.utils.book_new();
+
+        // Ajustar ancho de columnas (Opcional, para que se vea Pro)
+        ws['!cols'] = [{wch: 10}, {wch: 40}, {wch: 20}, {wch: 15}];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Repuestos");
+
+        // Descargar archivo con fecha
+        const fecha = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, `Repuestos_${fecha}.xlsx`);
+    }
+
+    // TU CÓDIGO EXISTENTE DE DATATABLES
     $(document).ready(function() {
         $('#repuestosTable').DataTable({
             responsive: true,
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
             },
-            // Opcional: Configuración para que se vea bonito con Tailwind
             dom: '<"flex flex-wrap justify-between items-center mb-4"lf>rt<"flex flex-wrap justify-between items-center mt-4"ip>'
         });
     });

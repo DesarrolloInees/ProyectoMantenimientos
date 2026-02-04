@@ -34,6 +34,7 @@ class puntoEditarControlador
                 'direccion' => trim($_POST['direccion']),
                 'codigo_1' => trim($_POST['codigo_1']),
                 'codigo_2' => trim($_POST['codigo_2']),
+                'zona' => trim($_POST['zona'] ?? ''),
                 'id_municipio' => $_POST['id_municipio'],
                 'id_delegacion' => $_POST['id_delegacion'],
                 'id_modalidad' => $_POST['id_modalidad'],

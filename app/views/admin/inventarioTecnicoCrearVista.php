@@ -50,11 +50,20 @@
         <form action="<?= BASE_URL ?>inventarioTecnicoCrear" method="POST" id="formInventario">
 
             <div class="bg-indigo-50 p-4 rounded-lg mb-6 border border-indigo-100">
-                <label class="block text-sm font-bold text-indigo-900 mb-1">Técnico Responsable (Destino)</label>
-                <select name="id_tecnico" class="select2-tecnico w-full" required>
-                    <option value="">- Seleccione Técnico -</option>
+                <label class="block text-sm font-bold text-indigo-900 mb-1">
+                    <i class="fas fa-users mr-1"></i> Técnicos Responsables (Destino)
+                </label>
+                <p class="text-xs text-indigo-600 mb-2">Puedes seleccionar varios técnicos a la vez.</p>
+
+                <select name="ids_tecnicos[]" class="select2-tecnico w-full" multiple="multiple" required>
                     <?php foreach ($listaTecnicos as $t): ?>
-                        <option value="<?= $t['id_tecnico'] ?>" <?= (isset($tecnicoSeleccionado) && $tecnicoSeleccionado == $t['id_tecnico']) ? 'selected' : '' ?>>
+                        <?php
+                        $selected = '';
+                        if (!empty($tecnicosSeleccionados) && in_array($t['id_tecnico'], $tecnicosSeleccionados)) {
+                            $selected = 'selected';
+                        }
+                        ?>
+                        <option value="<?= $t['id_tecnico'] ?>" <?= $selected ?>>
                             <?= $t['nombre_tecnico'] ?>
                         </option>
                     <?php endforeach; ?>
@@ -101,10 +110,12 @@
 
 <script>
     $(document).ready(function() {
-        // Inicializar Select del técnico
-        $('.select2-tecnico').select2({
-            width: '100%'
-        });
+    // Inicializar Select del técnico
+    $('.select2-tecnico').select2({
+        width: '100%',
+        placeholder: "Seleccione uno o varios técnicos", // Agrega un placeholder bonito
+        allowClear: true
+    });
 
         // Agregar la primera fila automáticamente al cargar
         agregarFila();

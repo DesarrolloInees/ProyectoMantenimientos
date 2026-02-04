@@ -41,7 +41,10 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+            </div>
 
+            <!-- SECCIÓN DE UBICACIÓN - AGREGAR CAMPO ZONA -->
+            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Municipio</label>
                     <select name="id_municipio" required class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white">
@@ -61,26 +64,39 @@
                     </select>
                 </div>
 
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Estado del Punto</label>
-                    <select name="estado" class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white">
-                        <option value="1" <?= $datos['estado'] == 1 ? 'selected' : '' ?>>Activo</option>
-                        <option value="0" <?= $datos['estado'] == 0 ? 'selected' : '' ?>>Inactivo</option>
-                    </select>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Zona</label>
+                    <input type="text" name="zona" placeholder="Ej: Zona Norte, Centro, etc."
+                        value="<?= htmlspecialchars($datos['zona'] ?? '') ?>"
+                        class="w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm">
                 </div>
 
                 <div class="md:col-span-2">
                     <label class="block text-sm font-bold text-gray-700 mb-1">Dirección</label>
-                    <input type="text" name="direccion" value="<?= htmlspecialchars($datos['direccion']) ?>" class="w-full px-3 py-3 border border-gray-300 rounded-lg">
+                    <input type="text" name="direccion" value="<?= htmlspecialchars($datos['direccion']) ?>" 
+                        class="w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm">
                 </div>
+            </div>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Código 1</label>
-                    <input type="text" name="codigo_1" value="<?= htmlspecialchars($datos['codigo_1']) ?>" class="w-full px-3 py-3 border border-gray-300 rounded-lg">
+                    <input type="text" name="codigo_1" value="<?= htmlspecialchars($datos['codigo_1']) ?>" 
+                        class="w-full px-3 py-3 border border-gray-300 rounded-lg">
                 </div>
+                
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Código 2</label>
-                    <input type="text" name="codigo_2" value="<?= htmlspecialchars($datos['codigo_2']) ?>" class="w-full px-3 py-3 border border-gray-300 rounded-lg">
+                    <input type="text" name="codigo_2" value="<?= htmlspecialchars($datos['codigo_2']) ?>" 
+                        class="w-full px-3 py-3 border border-gray-300 rounded-lg">
+                </div>
+                
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Estado del Punto</label>
+                    <select name="estado" class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white">
+                        <option value="1" <?= ($datos['estado'] ?? 1) == 1 ? 'selected' : '' ?>>Activo</option>
+                        <option value="0" <?= ($datos['estado'] ?? 1) == 0 ? 'selected' : '' ?>>Inactivo</option>
+                    </select>
                 </div>
             </div>
 

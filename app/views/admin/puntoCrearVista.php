@@ -57,13 +57,20 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Delegación (Opcional)</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Delegación </label>
                     <select name="id_delegacion" class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white">
                         <option value="">-- Ninguna --</option>
                         <?php foreach ($listaDelegaciones as $d): ?>
                             <option value="<?= $d['id_delegacion'] ?>" <?= ($datos['id_delegacion'] ?? '') == $d['id_delegacion'] ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre_delegacion']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Zona</label>
+                    <input type="text" name="zona" placeholder="Ej: Zona Norte, Centro, etc."
+                        value="<?= htmlspecialchars($datos['zona'] ?? '') ?>"
+                        class="w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm">
                 </div>
 
                 <div class="md:col-span-2">
@@ -76,11 +83,11 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Código Interno 1</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Código 1</label>
                     <input type="text" name="codigo_1" value="<?= htmlspecialchars($datos['codigo_1'] ?? '') ?>" class="w-full px-3 py-3 border border-gray-300 rounded-lg">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Código Interno 2</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Código 2</label>
                     <input type="text" name="codigo_2" value="<?= htmlspecialchars($datos['codigo_2'] ?? '') ?>" class="w-full px-3 py-3 border border-gray-300 rounded-lg">
                 </div>
             </div>

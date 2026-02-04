@@ -21,74 +21,79 @@ class InventarioTecnicoCrearControlador
     {
         $errores = [];
         $mensajeExito = "";
-        $tecnicoSeleccionado = "";
+        $tecnicosSeleccionados = []; // Ahora es un ARRAY
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $idTecnico = $_POST['id_tecnico'] ?? '';
-
-            // Ahora recibimos ARRAYS
+            
+            // 1. Recibimos el array de técnicos
+            $idsTecnicos = $_POST['ids_tecnicos'] ?? [];
+            
             $repuestos = $_POST['repuestos'] ?? [];
             $cantidades = $_POST['cantidades'] ?? [];
 
             // Validación básica
-            if (empty($idTecnico)) {
-                $errores[] = "Error crítico: No seleccionaste al técnico.";
+            if (empty($idsTecnicos) || !is_array($idsTecnicos)) {
+                $errores[] = "Error crítico: No seleccionaste ningún técnico.";
             }
 
             if (empty($repuestos) || count($repuestos) === 0) {
                 $errores[] = "No agregaste ningún repuesto a la lista.";
             }
 
-            // Si no hay errores iniciales, procesamos la lista
+            // Si no hay errores iniciales
             if (empty($errores)) {
 
-                $itemsGuardados = 0;
+                $totalAsignaciones = 0;
+                $tecnicosProcesados = 0;
 
-                // Iniciamos una transacción para que sea todo o nada (Opcional, pero recomendado)
                 $this->db->beginTransaction();
 
                 try {
-                    // Recorremos el array de repuestos
-                    // $i es el índice (0, 1, 2...) que coincide con la cantidad
-                    foreach ($repuestos as $i => $idRepuesto) {
+                    // --- BUCLE EXTERNO: Recorremos cada técnico seleccionado ---
+                    foreach ($idsTecnicos as $idTecnico) {
+                        
+                        $tecnicosProcesados++;
 
-                        $cantidad = intval($cantidades[$i] ?? 0);
+                        // --- BUCLE INTERNO: Recorremos los repuestos para ESTE técnico ---
+                        foreach ($repuestos as $i => $idRepuesto) {
+                            $cantidad = intval($cantidades[$i] ?? 0);
 
-                        // Validar cada línea
-                        if (!empty($idRepuesto) && $cantidad > 0) {
+                            if (!empty($idRepuesto) && $cantidad > 0) {
+                                // Llamamos al modelo (que NO cambia, porque el modelo sabe guardar 1 a 1)
+                                $res = $this->modelo->asignarStock($idTecnico, $idRepuesto, $cantidad);
 
-                            // Llamamos al modelo para ESTE item
-                            $res = $this->modelo->asignarStock($idTecnico, $idRepuesto, $cantidad);
-
-                            if (!$res) {
-                                throw new Exception("Error al guardar el repuesto ID: $idRepuesto");
+                                if (!$res) {
+                                    throw new Exception("Error al asignar repuesto ID $idRepuesto al técnico $idTecnico");
+                                }
+                                $totalAsignaciones++;
                             }
-                            $itemsGuardados++;
                         }
                     }
 
-                    // Si todo salió bien, confirmamos los cambios en la BD
                     $this->db->commit();
-                    $mensajeExito = "¡Proceso completado! Se asignaron $itemsGuardados tipos de repuestos al técnico.";
-                    $tecnicoSeleccionado = $idTecnico; // Mantener seleccionado por si acaso
+                    
+                    // Mensaje más informativo
+                    $mensajeExito = "¡Éxito! Se asignaron repuestos a <b>$tecnicosProcesados técnicos</b> (Total movimientos: $totalAsignaciones).";
+                    
+                    // Limpiamos la selección si fue exitoso
+                    $tecnicosSeleccionados = []; 
 
                 } catch (Exception $e) {
-                    // Si algo falló, deshacemos todo
                     $this->db->rollBack();
-                    $errores[] = "Ocurrió un error y no se guardó nada: " . $e->getMessage();
-                    $tecnicoSeleccionado = $idTecnico;
+                    $errores[] = "Error en el proceso: " . $e->getMessage();
+                    // Mantenemos la selección para que el usuario no tenga que volver a elegir
+                    $tecnicosSeleccionados = $idsTecnicos;
                 }
             } else {
-                $tecnicoSeleccionado = $idTecnico;
+                $tecnicosSeleccionados = $idsTecnicos;
             }
         }
 
         // Cargar listas
         $listaTecnicos = $this->modelo->obtenerTecnicos();
-        $listaRepuestos = $this->modelo->obtenerRepuestos(); // Se enviará a JS
+        $listaRepuestos = $this->modelo->obtenerRepuestos();
 
         $titulo = "Asignación Masiva de Stock";
-        // Asegúrate de actualizar el nombre de la vista si cambiaste el archivo
         $vistaContenido = "app/views/admin/inventarioTecnicoCrearVista.php";
         include "app/views/plantillaVista.php";
     }

@@ -28,13 +28,14 @@ class puntoCrearControlador
                 'direccion'    => trim($_POST['direccion'] ?? ''),
                 'codigo_1'     => trim($_POST['codigo_1'] ?? ''),
                 'codigo_2'     => trim($_POST['codigo_2'] ?? ''),
+                'zona'         => trim($_POST['zona'] ?? ''), // Nuevo campo
                 'id_municipio' => $_POST['id_municipio'] ?? '',
                 'id_delegacion' => $_POST['id_delegacion'] ?? '',
                 'id_modalidad' => $_POST['id_modalidad'] ?? '',
                 'id_cliente'   => $_POST['id_cliente'] ?? ''
             ];
 
-            // Validaciones
+            // Validaciones (las mismas)
             if (empty($datos['nombre_punto'])) $errores[] = "El nombre del punto es obligatorio.";
             if (empty($datos['id_cliente'])) $errores[] = "Debes asignar un cliente.";
             if (empty($datos['id_municipio'])) $errores[] = "Debes seleccionar un municipio.";
@@ -50,7 +51,7 @@ class puntoCrearControlador
             }
         }
 
-        // Cargar listas
+        // Cargar listas (igual)
         $listaClientes = $this->modelo->obtenerClientes();
         $listaMunicipios = $this->modelo->obtenerMunicipios();
         $listaDelegaciones = $this->modelo->obtenerDelegaciones();

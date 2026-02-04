@@ -22,9 +22,17 @@ class PuntoEditarModelo
     {
         try {
             $sql = "UPDATE punto SET 
-                    nombre_punto = :nombre, direccion = :dir, codigo_1 = :cod1, codigo_2 = :cod2,
-                    id_municipio = :mun, id_delegacion = :del, id_modalidad = :mod, id_cliente = :cli, estado = :est
-                    WHERE id_punto = :id";
+                nombre_punto = :nombre, 
+                direccion = :dir, 
+                codigo_1 = :cod1, 
+                codigo_2 = :cod2,
+                id_municipio = :mun, 
+                id_delegacion = :del, 
+                zona = :zona, 
+                id_modalidad = :mod, 
+                id_cliente = :cli, 
+                estado = :est
+                WHERE id_punto = :id";
 
             $stmt = $this->conn->prepare($sql);
 
@@ -37,6 +45,9 @@ class PuntoEditarModelo
             $del = !empty($datos['id_delegacion']) ? $datos['id_delegacion'] : null;
             $stmt->bindParam(':del', $del);
 
+            $zona = !empty($datos['zona']) ? $datos['zona'] : null;
+            $stmt->bindParam(':zona', $zona);
+
             $stmt->bindParam(':mod', $datos['id_modalidad'], PDO::PARAM_INT);
             $stmt->bindParam(':cli', $datos['id_cliente'], PDO::PARAM_INT);
             $stmt->bindParam(':est', $datos['estado'], PDO::PARAM_INT);
@@ -44,6 +55,7 @@ class PuntoEditarModelo
 
             return $stmt->execute();
         } catch (PDOException $e) {
+            error_log("Error editar punto: " . $e->getMessage());
             return false;
         }
     }

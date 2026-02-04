@@ -14,12 +14,12 @@ class PuntoCrearModelo
     {
         try {
             $sql = "INSERT INTO punto (
-                        nombre_punto, direccion, codigo_1, codigo_2, 
-                        id_municipio, id_delegacion, id_modalidad, id_cliente, estado
-                    ) VALUES (
-                        :nombre, :dir, :cod1, :cod2, 
-                        :mun, :del, :mod, :cli, 1
-                    )";
+                    nombre_punto, direccion, codigo_1, codigo_2, 
+                    id_municipio, id_delegacion, zona, id_modalidad, id_cliente, estado
+                ) VALUES (
+                    :nombre, :dir, :cod1, :cod2, 
+                    :mun, :del, :zona, :mod, :cli, 1
+                )";
 
             $stmt = $this->conn->prepare($sql);
 
@@ -32,6 +32,10 @@ class PuntoCrearModelo
             // Delegación puede ser NULL
             $del = !empty($datos['id_delegacion']) ? $datos['id_delegacion'] : null;
             $stmt->bindParam(':del', $del);
+
+            // Zona puede ser NULL
+            $zona = !empty($datos['zona']) ? $datos['zona'] : null;
+            $stmt->bindParam(':zona', $zona);
 
             $stmt->bindParam(':mod', $datos['id_modalidad'], PDO::PARAM_INT);
             $stmt->bindParam(':cli', $datos['id_cliente'], PDO::PARAM_INT);
