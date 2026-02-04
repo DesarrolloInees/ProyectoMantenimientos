@@ -393,8 +393,21 @@ class generarReporteControlador
 
             $pdfContent = $browsershot->pdf();
 
+            // -----------------------------------------------------
+            // CAMBIO: Generar nombre dinámico con fechas
+            // -----------------------------------------------------
+            // Formateamos a d-m-Y para evitar las barras '/' que rompen el nombre de archivo
+            $fInicioNombre = date('d-m-Y', strtotime($inicio));
+            $fFinNombre = date('d-m-Y', strtotime($fin));
+            
+            // Creamos el nombre: Reporte_Ejecutivo_01-01-2026_al_31-01-2026.pdf
+            $nombreArchivo = "Reporte_Ejecutivo_{$fInicioNombre}_al_{$fFinNombre}.pdf";
+
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="Reporte_Ejecutivo.pdf"');
+            
+            // Aquí inyectamos la variable $nombreArchivo
+            header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');
+            
             header('Content-Length: ' . strlen($pdfContent));
             echo $pdfContent;
             exit;

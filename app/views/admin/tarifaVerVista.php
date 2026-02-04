@@ -57,9 +57,16 @@
                 <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-tags text-green-600 mr-2"></i> Tarifas</h1>
                 <p class="text-gray-500">Precios configurados por servicio y máquina.</p>
             </div>
-            <a href="<?= BASE_URL ?>tarifaCrear" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700 transition flex items-center space-x-2">
-                <i class="fas fa-plus-circle"></i> <span>Nueva Tarifa</span>
-            </a>
+
+            <div class="flex gap-2">
+                <a href="<?= BASE_URL ?>tarifaCrear" class="px-5 py-2.5 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700 transition flex items-center space-x-2">
+                    <i class="fas fa-plus-circle"></i> <span>Nueva Tarifa</span>
+                </a>
+
+                <a href="<?= BASE_URL ?>tarifaMasiva" class="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition flex items-center space-x-2">
+                    <i class="fas fa-th-list"></i> <span>Edición Masiva</span>
+                </a>
+            </div>
         </div>
 
         <?php if (!empty($data['tarifas'])): ?>
