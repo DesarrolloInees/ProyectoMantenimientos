@@ -24,7 +24,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
             <span class="text-sm text-gray-500">Formato de salida: Excel Original (.xlsx)</span>
             <a href="<?php echo BASE_URL; ?>" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
@@ -57,26 +57,26 @@
             // 2. Preparar datos (Limpiando hora desde el origen)
             const datosFormateados = datos.map(fila => {
                 let fechaObjeto = null;
-                
+
                 // Validar que no sea null y no sea fecha cero
                 if (fila.fecha_ultima_visita && !fila.fecha_ultima_visita.startsWith('0000')) {
                     try {
                         // Cortamos cualquier hora que venga del servidor: "2025-12-01 15:30" -> "2025-12-01"
-                        let soloFecha = fila.fecha_ultima_visita.split(' ')[0]; 
-                        let partes = soloFecha.split('-'); 
-                        
+                        let soloFecha = fila.fecha_ultima_visita.split(' ')[0];
+                        let partes = soloFecha.split('-');
+
                         if (partes.length === 3) {
                             const anio = parseInt(partes[0]);
-                            const mes = parseInt(partes[1]) - 1; 
+                            const mes = parseInt(partes[1]) - 1;
                             const dia = parseInt(partes[2]);
-                            
+
                             // Validar año lógico (>1990) para evitar fechas "1969"
                             if (!isNaN(anio) && anio > 1990 && !isNaN(mes) && !isNaN(dia)) {
                                 fechaObjeto = new Date(anio, mes, dia);
                             }
                         }
                     } catch (e) {
-                        fechaObjeto = null; 
+                        fechaObjeto = null;
                     }
                 }
 
@@ -85,16 +85,23 @@
                     "Cliente": fila.nombre_cliente || "",
                     "Nombre del Punto": fila.nombre_punto,
                     "Dirección": fila.direccion,
+
+                    // CORRECCIÓN AQUÍ: Usar 'nombre_municipio' en lugar de 'municipio'
+                    "Municipio": fila.nombre_municipio || "",
+
+                    "Zona": fila.zona || "",
                     "Delegación": fila.nombre_delegacion || "Sin Asignar",
                     "ID Dispositivo (Device)": fila.device_id,
-                    "Fecha Última Visita": fechaObjeto, 
+                    "Fecha Última Visita": fechaObjeto,
                     "Último Mantenimiento": fila.nombre_mantenimiento || ""
                 };
             });
 
             // 3. Crear Libro
             const workbook = XLSX.utils.book_new();
-            const worksheet = XLSX.utils.json_to_sheet(datosFormateados, { cellDates: true });
+            const worksheet = XLSX.utils.json_to_sheet(datosFormateados, {
+                cellDates: true
+            });
 
             // 4. 🔥 ELIMINAR HORA VISUALMENTE 🔥
             if (worksheet['!ref']) {
@@ -102,13 +109,16 @@
                 const columnaFechaIndex = 6; // Columna G (La 7ma columna, índice 6)
 
                 for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                    const address = XLSX.utils.encode_cell({r: R, c: columnaFechaIndex});
-                    
+                    const address = XLSX.utils.encode_cell({
+                        r: R,
+                        c: columnaFechaIndex
+                    });
+
                     // Si la celda existe y es de tipo Fecha ('d')
                     if (worksheet[address] && worksheet[address].t === 'd') {
                         // Forzamos el formato estricto de solo fecha
-                        worksheet[address].z = 'dd/mm/yyyy'; 
-                        
+                        worksheet[address].z = 'dd/mm/yyyy';
+
                         // Opcional: Si lo anterior no basta, usa el numFmt 14 (Fecha corta estándar)
                         // worksheet[address].z = 'm/d/yy'; 
                     }
@@ -116,9 +126,36 @@
             }
 
             // 5. Ajustar anchos
-            worksheet['!cols'] = [
-                { wch: 15 }, { wch: 35 }, { wch: 30 }, { wch: 40 }, 
-                { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 25 }
+            worksheet['!cols'] = [{
+                    wch: 15
+                }, // Codigo
+                {
+                    wch: 35
+                }, // Cliente
+                {
+                    wch: 30
+                }, // Punto
+                {
+                    wch: 40
+                }, // Direccion
+                {
+                    wch: 25
+                }, // Municipio (NUEVO)
+                {
+                    wch: 20
+                }, // Zona (NUEVO)
+                {
+                    wch: 20
+                }, // Delegacion
+                {
+                    wch: 25
+                }, // Device
+                {
+                    wch: 15
+                }, // Fecha
+                {
+                    wch: 25
+                } // Mantenimiento
             ];
 
             // 6. Descargar

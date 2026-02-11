@@ -539,4 +539,139 @@ class ReporteEjecutivoModelo
             return [];
         }
     }
+
+    public function getListadoCostosOperativos($fecha_inicio, $fecha_fin)
+    {
+        try {
+            $mes_inicio = date('Y-m-01', strtotime($fecha_inicio));
+            $mes_fin = date('Y-m-01', strtotime($fecha_fin));
+
+            $sql = "SELECT 
+                    COALESCE(t.nombre_tecnico, u.nombre) as beneficiario,
+                    COALESCE(u.cargo, 'Técnico Motorizado') as rol,
+                    c.salario, c.horas_extra, c.bono_meta, 
+                    c.gasolina, c.auxilio_comunicacion, c.auxilio_rodamiento,
+                    (c.salario + c.horas_extra + c.bono_meta + c.gasolina + c.auxilio_comunicacion + c.auxilio_rodamiento) as subtotal
+                FROM costos_operativos c
+                LEFT JOIN tecnico t ON c.id_tecnico = t.id_tecnico
+                LEFT JOIN usuarios u ON c.id_usuario = u.usuario_id
+                WHERE c.mes_reporte BETWEEN :mes_inicio AND :mes_fin
+                ORDER BY subtotal DESC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':mes_inicio', $mes_inicio);
+            $stmt->bindParam(':mes_fin', $mes_fin);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    // NUEVO MÉTODO: Traer gastos generales (Software, Arriendos, etc.)
+    public function getListadoGastosGenerales($fecha_inicio, $fecha_fin)
+    {
+        try {
+            // Ajustamos las fechas al primer día del mes para coincidir con como guardamos (YYYY-MM-01)
+            $mes_inicio = date('Y-m-01', strtotime($fecha_inicio));
+            $mes_fin = date('Y-m-01', strtotime($fecha_fin));
+
+            $sql = "SELECT categoria, concepto, valor, mes_reporte
+                    FROM gastos_administrativos 
+                    WHERE mes_reporte BETWEEN :mes_inicio AND :mes_fin
+                    ORDER BY valor DESC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':mes_inicio', $mes_inicio);
+            $stmt->bindParam(':mes_fin', $mes_fin);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    /**
+ * Obtiene el desglose de ingresos por tipo de mantenimiento
+ * Retorna un array con los valores de cada tipo + repuestos
+ */
+public function getDesgloseIngresosPorTipo($fecha_inicio, $fecha_fin)
+{
+    try {
+        if (empty($fecha_inicio) || empty($fecha_fin)) {
+            return [];
+        }
+
+        // Query para obtener ingresos agrupados por tipo de mantenimiento
+        $sql = "SELECT 
+                    tm.id_tipo_mantenimiento,
+                    tm.nombre_completo as tipo,
+                    COALESCE(SUM(os.valor_servicio), 0) as total_ingresos,
+                    COUNT(os.id_ordenes_servicio) as cantidad_servicios
+                FROM ordenes_servicio os
+                INNER JOIN tipo_mantenimiento tm 
+                    ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                AND os.estado = 1
+                GROUP BY tm.id_tipo_mantenimiento, tm.nombre_completo
+                ORDER BY tm.id_tipo_mantenimiento";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':inicio', $fecha_inicio);
+        $stmt->bindParam(':fin', $fecha_fin);
+        $stmt->execute();
+        
+        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Crear array asociativo para fácil acceso
+        $desglose = [];
+        foreach ($resultados as $row) {
+            $desglose[$row['id_tipo_mantenimiento']] = [
+                'tipo' => $row['tipo'],
+                'total' => (float) $row['total_ingresos'],
+                'cantidad' => (int) $row['cantidad_servicios']
+            ];
+        }
+        
+        return $desglose;
+        
+    } catch (PDOException $e) {
+        error_log("Error en getDesgloseIngresosPorTipo: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Obtiene el total de ingresos SOLO por repuestos (sin duplicar servicios)
+ */
+public function getTotalIngresosRepuestos($fecha_inicio, $fecha_fin)
+{
+    try {
+        if (empty($fecha_inicio) || empty($fecha_fin)) {
+            return 0;
+        }
+
+        $sql = "SELECT COALESCE(SUM(osr.cantidad * osr.valor_unitario), 0) as total
+                FROM orden_servicio_repuesto osr
+                INNER JOIN ordenes_servicio os 
+                    ON osr.id_orden_servicio = os.id_ordenes_servicio
+                WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                AND os.estado = 1";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':inicio', $fecha_inicio);
+        $stmt->bindParam(':fin', $fecha_fin);
+        $stmt->execute();
+        
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (float) $result['total'];
+        
+    } catch (PDOException $e) {
+        error_log("Error en getTotalIngresosRepuestos: " . $e->getMessage());
+        return 0;
+    }
+}
+
+
+
 }

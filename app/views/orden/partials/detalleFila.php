@@ -143,6 +143,7 @@
             id="input_valor_<?= $idFila ?>"
             value="<?= number_format($s['valor_servicio'], 0, ',', '.') ?>"
             class="w-full border rounded text-right font-bold text-green-700 text-sm">
+            <input type="hidden" id="viaticos_<?= $idFila ?>" value="<?= $s['valor_viaticos'] ?? 0 ?>">
     </td>
 
     <!-- 11. REPUESTOS -->

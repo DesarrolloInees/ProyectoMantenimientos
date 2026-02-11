@@ -50,12 +50,13 @@ class ReporteRepuestosModelo
             $sql = "SELECT 
                     c.nombre_cliente,
                     p.nombre_punto,
-                    d.nombre_delegacion, /* <--- 1. NUEVO CAMPO */
+                    d.nombre_delegacion,
                     m.device_id,
                     tm.nombre_tipo_maquina,
                     os.numero_remision,
                     os.actividades_realizadas as observacion,
                     r.nombre_repuesto,
+                    r.codigo_referencia, /* <--- ¡OJO AQUÍ! AGREGAMOS ESTE CAMPO */
                     osr.cantidad,
                     os.fecha_visita
                 FROM orden_servicio_repuesto osr
@@ -64,7 +65,6 @@ class ReporteRepuestosModelo
                 INNER JOIN cliente c ON os.id_cliente = c.id_cliente
                 INNER JOIN punto p ON os.id_punto = p.id_punto
                 INNER JOIN maquina m ON os.id_maquina = m.id_maquina
-                /* 2. JOIN CON DELEGACIÓN (Verifica si tus tablas se llaman así) */
                 LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion 
                 LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
                 WHERE osr.origen = 'INEES' 

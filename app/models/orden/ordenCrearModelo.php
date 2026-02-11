@@ -108,12 +108,11 @@ class ordenCrearModels
             // 🔥 AQUÍ ESTÁ EL TRUCO:
             // Si $res es false, significa que NO HAY TARIFA CREADA -> Devolvemos -1
             if ($res === false) {
-                return -1; 
+                return -1;
             }
 
             // Si existe (incluso si es 0), devolvemos el precio
             return $res['precio'];
-
         } catch (PDOException $e) {
             error_log("Error en consultarTarifa: " . $e->getMessage());
             return -1; // Ante error de conexión, también asumimos error
@@ -149,54 +148,106 @@ class ordenCrearModels
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 10: GUARDAR ORDEN (CORREGIDO: Con cálculo de tiempo) ---
+    // --- 10: GUARDAR ORDEN (MODIFICADO CON VIÁTICOS) ---
     public function guardarOrden($datos)
     {
         try {
             $this->conn->beginTransaction();
 
-            // 1. CALCULAR TIEMPO DE SERVICIO EN PHP (Más seguro)
+            // =============================================================
+            // 1. LÓGICA DE VIÁTICOS INTELIGENTE (SOLO 1 COBRO POR DÍA)
+            // =============================================================
+            $esFueraDelegacion = 0;
+            $diasViaticos = 0;
+            $valorViaticos = 0; // Por defecto 0
+
+            // IDs de las bases principales (NO COBRAN)
+            $delegacionesPrincipales = [1, 2, 3, 4];
+
+            // Obtenemos la delegación del PUNTO
+            $idDelegacionPunto = $this->obtenerIdDelegacionPunto($datos['id_punto']);
+
+            // A. ¿ESTAMOS EN ZONA FORÁNEA?
+            if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
+
+                $esFueraDelegacion = 1;
+
+                // B. REVISAR SI YA COBRÓ VIÁTICOS HOY (Para este técnico y esta fecha)
+                // Buscamos si existe AL MENOS UNA orden de este técnico, en esta fecha, que tenga valor > 0
+                $sqlCheck = "SELECT count(*) as total 
+                             FROM ordenes_servicio 
+                             WHERE id_tecnico = :id_tec 
+                               AND fecha_visita = :fecha 
+                               AND valor_viaticos > 0";
+
+                $stmtCheck = $this->conn->prepare($sqlCheck);
+                $stmtCheck->execute([
+                    ':id_tec' => $datos['id_tecnico'],
+                    ':fecha'  => $datos['fecha']
+                ]);
+                $yaCobroHoy = $stmtCheck->fetch(PDO::FETCH_ASSOC)['total'];
+
+                // C. DECISIÓN FINAL
+                if ($yaCobroHoy > 0) {
+                    // Ya hay un servicio pago hoy. Este va GRATIS de viáticos.
+                    $diasViaticos = 0;
+                    $valorViaticos = 0;
+                } else {
+                    // Es el primero del día. ¡A este se le carga la tarifa!
+                    $diasViaticos = isset($datos['dias_viaticos']) ? intval($datos['dias_viaticos']) : 1;
+                    $tarifa = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
+                    $valorViaticos = $diasViaticos * $tarifa;
+                }
+            }
+            // =============================================================
+
+
+            // 2. CALCULAR TIEMPO
             $tiempoCalculado = "00:00";
             if (!empty($datos['hora_entrada']) && !empty($datos['hora_salida'])) {
                 try {
                     $d1 = new DateTime($datos['hora_entrada']);
                     $d2 = new DateTime($datos['hora_salida']);
-
-                    // Si la salida es menor que la entrada (ej: 11pm a 1am), sumamos un día
                     if ($d2 < $d1) {
                         $d2->modify('+1 day');
                     }
-
                     $intervalo = $d1->diff($d2);
-                    $tiempoCalculado = $intervalo->format('%H:%I'); // Formato 02:30
+                    $tiempoCalculado = $intervalo->format('%H:%I');
                 } catch (Exception $e) {
-                    $tiempoCalculado = "00:00"; // Fallback por si las horas vienen mal
+                    $tiempoCalculado = "00:00";
                 }
             }
 
-            // 2. INSERT ACTUALIZADO
-            // Agregamos 'tiempo_servicio' en las columnas y ':tiempo' en los values
+            // 3. INSERTAR
             $sql = "INSERT INTO ordenes_servicio 
                     (id_cliente, id_punto, id_modalidad, numero_remision, fecha_visita, id_maquina, id_tecnico, id_tipo_mantenimiento, 
-                        valor_servicio, hora_entrada, hora_salida, tiempo_servicio, id_estado_maquina, id_calificacion, actividades_realizadas) 
+                     valor_servicio, es_fuera_delegacion, dias_viaticos, valor_viaticos, 
+                     hora_entrada, hora_salida, tiempo_servicio, id_estado_maquina, id_calificacion, actividades_realizadas) 
                     VALUES 
                     (:id_cliente, :id_punto, :id_modalidad, :remision, :fecha, :id_maquina, :id_tecnico, :id_manto, 
-                        :valor, :entrada, :salida, :tiempo, :id_estado, :id_calif, :actividades)";
+                     :valor, :es_fuera, :dias, :val_viaticos, 
+                     :entrada, :salida, :tiempo, :id_estado, :id_calif, :actividades)";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
                 ':id_cliente' => $datos['id_cliente'],
                 ':id_punto'   => $datos['id_punto'],
-                'id_modalidad' => $datos['id_modalidad'],
+                ':id_modalidad' => $datos['id_modalidad'],
                 ':remision'   => $datos['remision'],
                 ':fecha'      => $datos['fecha'],
                 ':id_maquina' => $datos['id_maquina'],
-                ':id_tecnico' => $datos['id_tecnico'] ?? 1,
+                ':id_tecnico' => $datos['id_tecnico'], // ¡Ya no se nos olvida!
                 ':id_manto'   => $datos['tipo_servicio'],
                 ':valor'      => $datos['valor'],
+
+                // NUEVOS VALORES CALCULADOS
+                ':es_fuera'     => $esFueraDelegacion,
+                ':dias'         => $diasViaticos,
+                ':val_viaticos' => $valorViaticos,
+
                 ':entrada'    => $datos['hora_entrada'],
                 ':salida'     => $datos['hora_salida'],
-                ':tiempo'     => $tiempoCalculado, // <--- AQUÍ GUARDAMOS EL CÁLCULO
+                ':tiempo'     => $tiempoCalculado,
                 ':id_estado'  => $datos['estado'],
                 ':id_calif'   => $datos['calif'],
                 ':actividades' => $datos['obs']
@@ -263,7 +314,8 @@ class ordenCrearModels
             return $idOrden;
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            error_log("Error guardarOrden: " . $e->getMessage());
+            // Esto detendrá el código y te mostrará el error exacto en la pantalla
+            die("ERROR SQL: " . $e->getMessage());
             return false;
         }
     }
@@ -325,7 +377,7 @@ class ordenCrearModels
                 WHERE id_tecnico = ? 
                 AND id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1)
                 ORDER BY CAST(numero_remision AS UNSIGNED) ASC";
-        
+
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([$idTecnico]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -454,12 +506,32 @@ class ordenCrearModels
         }
     }
 
-    // --- OPCIONAL: OBTENER LISTA GLOBAL (Para repuestos de PROSEGUR/Cliente) ---
-    public function obtenerTodosLosRepuestos()
+    // --- AUXILIAR: Obtener ID Delegación del Punto ---
+    private function obtenerIdDelegacionPunto($idPunto)
     {
-        $sql = "SELECT id_repuesto, nombre_repuesto FROM repuesto WHERE estado = 1 ORDER BY nombre_repuesto ASC";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            // Asegúrate que tu tabla punto tenga la columna id_delegacion
+            $sql = "SELECT id_delegacion FROM punto WHERE id_punto = :id LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id' => $idPunto]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $res ? intval($res['id_delegacion']) : 0;
+        } catch (PDOException $e) {
+            return 0;
+        }
+    }
+
+    // --- AUXILIAR: Obtener valor del parametro ---
+    private function obtenerValorParametro($clave)
+    {
+        try {
+            $sql = "SELECT valor FROM parametros WHERE clave = :clave LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':clave' => $clave]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $res ? floatval($res['valor']) : 0;
+        } catch (PDOException $e) {
+            return 0;
+        }
     }
 }

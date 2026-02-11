@@ -221,11 +221,7 @@
     }
 
     // ==========================================
-    // NUEVO: EXPORTAR DETALLE INEES (BOTÓN AZUL)
-    // ==========================================
-
-    // ==========================================
-    // EXPORTAR DETALLE INEES (CORREGIDO)
+    // EXPORTAR DETALLE INEES (ACTUALIZADO CON CÓDIGO, VALOR Y SUBTOTAL)
     // ==========================================
     function exportarDetalleInees() {
         if (!datosInees || datosInees.length === 0) {
@@ -235,20 +231,23 @@
 
         let workbook = XLSX.utils.book_new();
 
-        // 1. Encabezados (Agregamos DELEGACIÓN)
+        // 1. Encabezados
         let matriz = [
             ['REPORTE DETALLADO DE REPUESTOS - INEES'],
-            [],
+            [], // Fila vacía de separación
             [
                 'CLIENTE',
                 'PUNTO / SEDE',
-                'DELEGACIÓN', // <--- NUEVA COLUMNA
+                'DELEGACIÓN',
                 'MÁQUINA (ID)',
                 'TIPO MÁQUINA',
                 'REMISIÓN',
                 'DESCRIPCIÓN DEL SERVICIO',
                 'REPUESTO',
-                'CANT.'
+                'CÓDIGO', // <--- NUEVO
+                'VALOR', // <--- NUEVO (VACÍO)
+                'CANT.',
+                'SUBTOTAL' // <--- NUEVO (VACÍO)
             ]
         ];
 
@@ -257,20 +256,23 @@
             matriz.push([
                 d.nombre_cliente,
                 d.nombre_punto,
-                d.nombre_delegacion || 'N/A', // <--- Mapeamos el dato (o N/A si viene vacío)
+                d.nombre_delegacion || 'N/A',
                 d.device_id,
                 d.nombre_tipo_maquina || 'N/A',
                 d.numero_remision,
                 d.observacion,
                 d.nombre_repuesto,
-                parseInt(d.cantidad)
+                d.codigo_referencia || 'S/C', // <--- Aquí va el código (S/C si no tiene)
+                "", // <--- VALOR (Celda vacía para llenar manual)
+                parseInt(d.cantidad),
+                "" // <--- SUBTOTAL (Celda vacía para formula manual)
             ]);
         });
 
         // 3. Crear hoja
         let ws = XLSX.utils.aoa_to_sheet(matriz);
 
-        // 4. Ajustar anchos (Agregamos el ancho para la nueva columna)
+        // 4. Ajustar anchos de columnas
         ws['!cols'] = [{
                 wch: 30
             }, // Cliente
@@ -279,7 +281,7 @@
             }, // Punto
             {
                 wch: 20
-            }, // Delegación (NUEVO ANCHO)
+            }, // Delegación
             {
                 wch: 15
             }, // Máquina
@@ -296,8 +298,17 @@
                 wch: 35
             }, // Repuesto
             {
+                wch: 15
+            }, // CÓDIGO (Nuevo ancho)
+            {
+                wch: 12
+            }, // VALOR (Nuevo ancho)
+            {
                 wch: 8
-            } // Cantidad
+            }, // Cantidad
+            {
+                wch: 12
+            } // SUBTOTAL (Nuevo ancho)
         ];
 
         XLSX.utils.book_append_sheet(workbook, ws, "Detalle INEES");

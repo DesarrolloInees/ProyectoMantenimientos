@@ -313,6 +313,69 @@ class generarReporteControlador
                 ];
             }
         }
+        // =========================================================
+        // 5. CÁLCULOS FINANCIEROS - DESGLOSE POR TIPO
+        // =========================================================
+
+        // A. INGRESOS DESGLOSADOS: Llamamos a la nueva función
+        // ---------------------------------------------------------
+        $desgloseTipos = $this->modelo->getDesgloseIngresosPorTipo($inicio, $fin);
+        $ingresoRepuestos = $this->modelo->getTotalIngresosRepuestos($inicio, $fin);
+
+        // Extraemos los valores individuales (asumiendo IDs estándar)
+        // Ajusta los IDs según tu base de datos
+        $ingresoPreventivo = $desgloseTipos[1]['total'] ?? 0;  // ID 1
+        $ingresoPreventivoProf = $desgloseTipos[2]['total'] ?? 0;  // ID 2
+        $ingresoCorrectivo = $desgloseTipos[3]['total'] ?? 0;  // ID 3
+        $ingresoFallido = $desgloseTipos[4]['total'] ?? 0;  // ID 4
+        $ingresoGarantia = $desgloseTipos[5]['total'] ??0; // ID 5
+
+
+        // NUEVO: Extraemos la cantidad de servicios
+        $cantPrev  = $desgloseTipos[1]['cantidad'] ?? 0;
+        $cantProf  = $desgloseTipos[2]['cantidad'] ?? 0;
+        $cantCorr  = $desgloseTipos[3]['cantidad'] ?? 0;
+        $cantFall  = $desgloseTipos[4]['cantidad'] ?? 0;
+        $cantGaran = $desgloseTipos[5]['cantidad'] ?? 0;
+        
+
+        // Calculamos el total de servicios 
+        $ingresoServicios = $ingresoPreventivo + $ingresoPreventivoProf +
+            $ingresoCorrectivo + $ingresoFallido + $ingresoGarantia;
+
+        // B. EGRESOS: (Tu código existente)
+        // ---------------------------------------------------------
+        $listaCostos = $this->modelo->getListadoCostosOperativos($inicio, $fin);
+
+        $listaMotorizados = [];
+        $listaNominaAdmin = [];
+        $totalMotorizados = 0;
+        $totalNominaAdmin = 0;
+
+        if (!empty($listaCostos)) {
+            foreach ($listaCostos as $c) {
+                $valor = isset($c['subtotal']) ? (float)$c['subtotal'] : 0;
+
+                if (strpos($c['rol'], 'Técnico') !== false) {
+                    $listaMotorizados[] = $c;
+                    $totalMotorizados += $valor;
+                } else {
+                    $listaNominaAdmin[] = $c;
+                    $totalNominaAdmin += $valor;
+                }
+            }
+        }
+
+        $listaGastosGenerales = $this->modelo->getListadoGastosGenerales($inicio, $fin);
+        $totalGastosGral = 0;
+
+        if (!empty($listaGastosGenerales)) {
+            foreach ($listaGastosGenerales as $g) {
+                $totalGastosGral += isset($g['valor']) ? (float)$g['valor'] : 0;
+            }
+        }
+
+
         // ---------------------------------------------------------
         // 4. GENERACIÓN DE PDF
         // ---------------------------------------------------------
@@ -399,15 +462,15 @@ class generarReporteControlador
             // Formateamos a d-m-Y para evitar las barras '/' que rompen el nombre de archivo
             $fInicioNombre = date('d-m-Y', strtotime($inicio));
             $fFinNombre = date('d-m-Y', strtotime($fin));
-            
+
             // Creamos el nombre: Reporte_Ejecutivo_01-01-2026_al_31-01-2026.pdf
             $nombreArchivo = "Reporte_Ejecutivo_{$fInicioNombre}_al_{$fFinNombre}.pdf";
 
             header('Content-Type: application/pdf');
-            
+
             // Aquí inyectamos la variable $nombreArchivo
             header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');
-            
+
             header('Content-Length: ' . strlen($pdfContent));
             echo $pdfContent;
             exit;

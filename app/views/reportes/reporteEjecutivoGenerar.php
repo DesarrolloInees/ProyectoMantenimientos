@@ -1239,23 +1239,539 @@
 
     </div>
 
-    <!-- === PIE DE PÁGINA GLOBAL (Aparece en todas las páginas excepto portada) === -->
-    <div class="footer-page">
-        <div class="flex justify-between items-center">
-            <div class="uppercase tracking-[0.4em] text-[10px] font-bold text-slate-400">
-                Documento Confidencial
+
+
+    <?php
+    // ══════════════════════════════════════════════════════════════
+    // BLOQUE COMPARTIDO — Se calcula siempre, lo usan ambas secciones
+    // ══════════════════════════════════════════════════════════════
+    $listaMotorizados = [];
+    $listaNominaAdmin = [];
+    $totalMotorizados = 0;
+    $totalNominaAdmin = 0;
+    $totalGastosGral  = 0;
+
+    if (!empty($listaCostos)) {
+        foreach ($listaCostos as $c) {
+            if (strpos($c['rol'], 'Técnico') !== false) {
+                $listaMotorizados[] = $c;
+                $totalMotorizados  += $c['subtotal'];
+            } else {
+                $listaNominaAdmin[] = $c;
+                $totalNominaAdmin  += $c['subtotal'];
+            }
+        }
+    }
+    if (!empty($listaGastosGenerales)) {
+        foreach ($listaGastosGenerales as $g) {
+            $totalGastosGral += $g['valor'];
+        }
+    }
+
+    $granTotal    = $totalMotorizados + $totalNominaAdmin + $totalGastosGral;
+    $baseCalculo  = $granTotal > 0 ? $granTotal : 1;
+    $pctMotorizados = round(($totalMotorizados / $baseCalculo) * 100, 1);
+    $pctAdmin       = round(($totalNominaAdmin  / $baseCalculo) * 100, 1);
+    $pctGastos      = round(($totalGastosGral   / $baseCalculo) * 100, 1);
+
+    // Balance
+    $valPreventivo     = $ingresoPreventivo     ?? 0;
+    $valPreventivoProf = $ingresoPreventivoProf ?? 0;
+    $valCorrectivo     = $ingresoCorrectivo     ?? 0;
+    $valFallido        = $ingresoFallido        ?? 0;
+    $valGarantia       = $ingresoGarantia       ?? 0;
+    $valRepuestos      = $ingresoRepuestos      ?? 0;
+
+    $totalIngresosBrutos    = $valPreventivo + $valPreventivoProf + $valCorrectivo + $valFallido + $valGarantia + $valRepuestos;
+    $totalEgresosOperativos = $totalMotorizados + $totalNominaAdmin + $totalGastosGral;
+    $utilidadNeta    = $totalIngresosBrutos - $totalEgresosOperativos;
+    $margenUtilidad  = ($totalIngresosBrutos > 0) ? round(($utilidadNeta / $totalIngresosBrutos) * 100, 1) : 0;
+
+    $pctPrev     = ($totalIngresosBrutos > 0) ? ($valPreventivo     / $totalIngresosBrutos) * 100 : 0;
+    $pctPrevProf = ($totalIngresosBrutos > 0) ? ($valPreventivoProf / $totalIngresosBrutos) * 100 : 0;
+    $pctCorr     = ($totalIngresosBrutos > 0) ? ($valCorrectivo     / $totalIngresosBrutos) * 100 : 0;
+    $pctFall     = ($totalIngresosBrutos > 0) ? ($valFallido        / $totalIngresosBrutos) * 100 : 0;
+    $pctGaran    = ($totalIngresosBrutos > 0) ? ($valGarantia       / $totalIngresosBrutos) * 100 : 0;
+    $pctRep      = ($totalIngresosBrutos > 0) ? ($valRepuestos      / $totalIngresosBrutos) * 100 : 0;
+
+    $pctMoto = ($totalEgresosOperativos > 0) ? ($totalMotorizados / $totalEgresosOperativos) * 100 : 0;
+    $pctAdm  = ($totalEgresosOperativos > 0) ? ($totalNominaAdmin / $totalEgresosOperativos) * 100 : 0;
+    $pctGral = ($totalEgresosOperativos > 0) ? ($totalGastosGral  / $totalEgresosOperativos) * 100 : 0;
+    ?>
+
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+    SECCIÓN 1 — REPORTE DE COSTOS OPERATIVOS  (página propia)
+══════════════════════════════════════════════════════════════ -->
+    <?php if ($this->seccionActiva('costos')): ?>
+
+        <div class="w-full mt-4" style="break-inside: avoid;">
+
+            <!-- Encabezado -->
+            <div class="flex justify-between items-center mb-1.5 border-b border-gray-200 pb-1">
+                <h2 class="text-sm font-black text-gray-800 uppercase tracking-tight">Reporte de Costos Operativos</h2>
+                <div class="text-[8px] font-bold text-gray-400">
+                    <?= date('d/m/Y', strtotime($inicio)) ?> — <?= date('d/m/Y', strtotime($fin)) ?>
+                </div>
             </div>
 
-            <div class="text-[10px] font-bold text-slate-500">
-                <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+            <!-- Tarjetas resumen + barra proporcional en una fila -->
+            <div class="flex gap-2 mb-1.5 items-stretch">
+
+                <div class="flex-1 bg-white p-1.5 rounded-lg shadow-sm border border-emerald-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[7px] text-emerald-600 font-bold uppercase mb-0.5">Gastos Motorizados</p>
+                            <h3 class="text-xs font-bold text-gray-800">$ <?= number_format($totalMotorizados, 0, ',', '.') ?></h3>
+                        </div>
+                        <span class="text-sm">🏍️</span>
+                    </div>
+                    <div class="w-full bg-emerald-100 h-0.5 mt-1 rounded-full">
+                        <div style="width:<?= $pctMotorizados ?>%" class="h-full bg-emerald-500 rounded-full"></div>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white p-1.5 rounded-lg shadow-sm border border-blue-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[7px] text-blue-600 font-bold uppercase mb-0.5">Nómina Administrativa</p>
+                            <h3 class="text-xs font-bold text-gray-800">$ <?= number_format($totalNominaAdmin, 0, ',', '.') ?></h3>
+                        </div>
+                        <span class="text-sm">👥</span>
+                    </div>
+                    <div class="w-full bg-blue-100 h-0.5 mt-1 rounded-full">
+                        <div style="width:<?= $pctAdmin ?>%" class="h-full bg-blue-500 rounded-full"></div>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white p-1.5 rounded-lg shadow-sm border border-orange-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[7px] text-orange-600 font-bold uppercase mb-0.5">Gastos Administrativos</p>
+                            <h3 class="text-xs font-bold text-gray-800">$ <?= number_format($totalGastosGral, 0, ',', '.') ?></h3>
+                        </div>
+                        <span class="text-sm">🧾</span>
+                    </div>
+                    <div class="w-full bg-orange-100 h-0.5 mt-1 rounded-full">
+                        <div style="width:<?= $pctGastos ?>%" class="h-full bg-orange-500 rounded-full"></div>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white p-1.5 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-center">
+                    <div class="w-full h-4 bg-gray-100 rounded-md overflow-hidden flex shadow-inner border border-gray-200">
+                        <div style="width: <?= $pctMotorizados ?>%" class="h-full bg-emerald-500 flex items-center justify-center text-[6px] font-bold text-white">
+                            <?= $pctMotorizados > 8 ? $pctMotorizados . '%' : '' ?>
+                        </div>
+                        <div style="width: <?= $pctAdmin ?>%" class="h-full bg-blue-500 flex items-center justify-center text-[6px] font-bold text-white">
+                            <?= $pctAdmin > 8 ? $pctAdmin . '%' : '' ?>
+                        </div>
+                        <div style="width: <?= $pctGastos ?>%" class="h-full bg-orange-500 flex items-center justify-center text-[6px] font-bold text-white">
+                            <?= $pctGastos > 8 ? $pctGastos . '%' : '' ?>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mt-1 px-0.5">
+                        <div class="flex gap-2">
+                            <div class="flex items-center gap-0.5 text-[6px] text-gray-500">
+                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Motorizados
+                            </div>
+                            <div class="flex items-center gap-0.5 text-[6px] text-gray-500">
+                                <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Nomina Administrativa
+                            </div>
+                            <div class="flex items-center gap-0.5 text-[6px] text-gray-500">
+                                <div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div> Gastos Administrativos
+                            </div>
+                        </div>
+                        <div class="text-[7px] font-bold text-slate-800">100%</div>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- NUMERACIÓN DE PÁGINA -->
-            <div class="text-[10px] font-mono font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded border border-slate-200">
-                Página <span class="page-number"></span>
+            <!-- Tres tablas en columnas -->
+            <div class="grid grid-cols-3 gap-2 mb-1.5">
+
+                <!-- Tabla Motorizados -->
+                <div class="bg-white rounded-lg shadow-sm border border-emerald-100 overflow-hidden">
+                    <div class="bg-emerald-50 px-2 py-1 border-b border-emerald-100 flex items-center gap-1">
+                        <span class="text-emerald-600 text-xs">🏍️</span>
+                        <h3 class="text-[8px] font-bold text-emerald-800 uppercase">1. Gastos Motorizados</h3>
+                    </div>
+                    <div class="p-1">
+                        <table class="w-full text-[6px]">
+                            <thead>
+                                <tr class="text-gray-400 uppercase border-b border-emerald-50">
+                                    <th class="text-left py-0.5 pl-0.5">Técnico</th>
+                                    <th class="text-right py-0.5">Sal.</th>
+                                    <th class="text-right py-0.5">Ext.</th>
+                                    <th class="text-right py-0.5">Bon.</th>
+                                    <th class="text-right py-0.5">Rod.</th>
+                                    <th class="text-right py-0.5">Gas.</th>
+                                    <th class="text-right py-0.5">Com.</th>
+                                    <th class="text-right py-0.5 pr-0.5 font-bold text-emerald-700">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <?php if (!empty($listaMotorizados)): ?>
+                                    <?php foreach ($listaMotorizados as $m): ?>
+                                        <tr>
+                                            <td class="py-0.5 pl-0.5 font-medium text-gray-700 truncate max-w-[50px]"><?= $m['beneficiario'] ?></td>
+                                            <td class="py-0.5 text-right text-gray-500"><?= $m['salario'] > 0 ? '$' . number_format($m['salario'], 0) : '-' ?></td>
+                                            <td class="py-0.5 text-right text-gray-500"><?= $m['horas_extra'] > 0 ? '$' . number_format($m['horas_extra'], 0) : '-' ?></td>
+                                            <td class="py-0.5 text-right text-gray-500"><?= $m['bono_meta'] > 0 ? '$' . number_format($m['bono_meta'], 0) : '-' ?></td>
+                                            <td class="py-0.5 text-right text-gray-500"><?= $m['auxilio_rodamiento'] > 0 ? '$' . number_format($m['auxilio_rodamiento'], 0) : '-' ?></td>
+                                            <td class="py-0.5 text-right text-gray-500"><?= $m['gasolina'] > 0 ? '$' . number_format($m['gasolina'], 0) : '-' ?></td>
+                                            <td class="py-0.5 text-right text-gray-500"><?= $m['auxilio_comunicacion'] > 0 ? '$' . number_format($m['auxilio_comunicacion'], 0) : '-' ?></td>
+                                            <td class="py-0.5 pr-0.5 text-right font-bold text-emerald-600">$<?= number_format($m['subtotal'], 0) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <tr class="bg-emerald-50 border-t border-emerald-100">
+                                        <td colspan="7" class="text-right py-1 font-bold text-emerald-700 text-[7px]">SUBTOTAL:</td>
+                                        <td class="text-right py-1 pr-0.5 font-black text-emerald-800 text-[7px]">$ <?= number_format($totalMotorizados, 0) ?></td>
+                                    </tr>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="8" class="text-center py-1 text-gray-300">Sin registros</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla Nómina Admin -->
+                <div class="bg-white rounded-lg shadow-sm border border-blue-100 overflow-hidden">
+                    <div class="bg-blue-50 px-2 py-1 border-b border-blue-100 flex items-center gap-1">
+                        <span class="text-blue-600 text-xs">👥</span>
+                        <h3 class="text-[8px] font-bold text-blue-800 uppercase">2. Nómina Admin</h3>
+                    </div>
+                    <div class="p-1">
+                        <table class="w-full text-[6px]">
+                            <thead>
+                                <tr class="text-gray-400 uppercase border-b border-blue-50">
+                                    <th class="text-left py-0.5 pl-0.5">Colaborador</th>
+                                    <th class="text-left py-0.5">Cargo</th>
+                                    <th class="text-right py-0.5">Salario</th>
+                                    <th class="text-right py-0.5">H. Extra</th>
+                                    <th class="text-right py-0.5">Bono</th>
+                                    <th class="text-right py-0.5 pr-0.5">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <?php if (!empty($listaNominaAdmin)): ?>
+                                    <?php foreach ($listaNominaAdmin as $a): ?>
+                                        <tr>
+                                            <td class="py-0.5 pl-0.5 font-medium text-gray-700 truncate max-w-[60px]"><?= $a['beneficiario'] ?></td>
+                                            <td class="py-0.5 text-gray-400 uppercase truncate max-w-[50px]"><?= $a['rol'] ?></td>
+                                            <td class="py-0.5 text-right text-gray-500">$<?= number_format($a['salario'] ?? 0, 0) ?></td>
+                                            <td class="py-0.5 text-right text-gray-500">$<?= number_format($a['horas_extra'] ?? 0, 0) ?></td>
+                                            <td class="py-0.5 text-right text-gray-500">$<?= number_format($a['bono_meta'] ?? 0, 0) ?></td>
+                                            <td class="py-0.5 pr-0.5 text-right font-bold text-blue-600">$<?= number_format($a['subtotal'] ?? 0, 0) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <tr class="bg-blue-50 border-t border-blue-100">
+                                        <td colspan="5" class="text-right py-1 font-bold text-blue-700 text-[7px]">SUBTOTAL:</td>
+                                        <td class="text-right py-1 pr-0.5 font-black text-blue-800 text-[7px]">$ <?= number_format($totalNominaAdmin, 0) ?></td>
+                                    </tr>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-1 text-gray-300">Sin registros</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla Gastos Grales + Gran Total -->
+                <div class="flex flex-col gap-2">
+
+                    <div class="bg-white rounded-lg shadow-sm border border-orange-100 overflow-hidden">
+                        <div class="bg-orange-50 px-2 py-1 border-b border-orange-100 flex items-center gap-1">
+                            <span class="text-orange-600 text-xs">🧾</span>
+                            <h3 class="text-[8px] font-bold text-orange-800 uppercase">3. Gastos Administrativos</h3>
+                        </div>
+                        <div class="p-1">
+                            <table class="w-full text-[6px]">
+                                <thead>
+                                    <tr class="text-gray-400 uppercase border-b border-orange-50">
+                                        <th class="text-left py-0.5 pl-0.5">Concepto</th>
+                                        <th class="text-left py-0.5">Categoría</th>
+                                        <th class="text-right py-0.5 pr-0.5">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-50">
+                                    <?php if (!empty($listaGastosGenerales)): ?>
+                                        <?php foreach ($listaGastosGenerales as $g): ?>
+                                            <tr>
+                                                <td class="py-0.5 pl-0.5 font-medium text-gray-700 truncate max-w-[80px]"><?= $g['concepto'] ?></td>
+                                                <td class="py-0.5"><span class="bg-gray-100 text-gray-500 px-0.5 rounded"><?= $g['categoria'] ?></span></td>
+                                                <td class="py-0.5 pr-0.5 text-right font-bold text-orange-600">$<?= number_format($g['valor'], 0) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        <tr class="bg-orange-50 border-t border-orange-100">
+                                            <td colspan="2" class="text-right py-1 font-bold text-orange-700 text-[7px]">SUBTOTAL:</td>
+                                            <td class="text-right py-1 pr-0.5 font-black text-orange-800 text-[7px]">$ <?= number_format($totalGastosGral, 0) ?></td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="3" class="text-center py-1 text-gray-300">Sin registros</td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Gran Total -->
+                    <div class="bg-slate-800 rounded-md shadow border border-slate-700 py-1 px-2 text-white flex justify-between items-center mt-2">
+                        <div class="text-left">
+                            <p class="text-[6px] font-medium text-slate-300 uppercase tracking-widest leading-none">Total de Gatos</p>
+                            <p class="text-[6px] text-slate-400 leading-none mt-0.5">(Motorizados + Nómina Administrativa + Gastos Administrativos)</p>
+                        </div>
+                        <h2 class="text-sm font-black text-white leading-none">$ <?= number_format($granTotal, 0, ',', '.') ?></h2>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    <?php endif; ?>
+
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+        SECCIÓN 2 — ESTADO DE RESULTADOS  (página propia)
+══════════════════════════════════════════════════════════════ -->
+    <?php if ($this->seccionActiva('balance')): ?>
+
+        <div class="mt-4 break-inside-avoid">
+
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+
+                <!-- Header -->
+                <div class="bg-slate-800 px-3 py-2 flex justify-between items-center text-white">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-slate-700 p-1 rounded-md text-base">💰</div>
+                        <div>
+                            <h3 class="font-bold text-sm uppercase tracking-wide text-emerald-400">Estado de Resultados</h3>
+                            <p class="text-[8px] text-slate-400">Vista detallada por Columnas</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[7px] uppercase tracking-widest text-slate-400">VALOR TOTAL DESPUES DE LA RESTA DE LOS COSTOS</div>
+                        <div class="text-xl font-black <?= $utilidadNeta >= 0 ? 'text-emerald-400' : 'text-rose-400' ?>">
+                            $ <?= number_format($utilidadNeta, 0, ',', '.') ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3">
+
+                    <!-- Ingresos + Egresos en dos columnas -->
+                    <div class="flex flex-col gap-3 mt-2">
+
+                        <div class="w-full">
+                            <div class="flex justify-between items-end mb-1 border-b border-emerald-100 pb-0.5">
+                                <h4 class="font-bold text-emerald-700 uppercase text-[8px] flex items-center gap-1">
+                                    <span class="text-xs">💰</span> Desglose de Ingresos
+                                </h4>
+                                <span class="font-black text-emerald-800 text-xs">$ <?= number_format($totalIngresosBrutos, 0) ?></span>
+                            </div>
+
+                            <div class="grid grid-cols-6 gap-1">
+
+                                <div class="bg-emerald-50 border border-emerald-100 rounded p-1 flex flex-col justify-between text-center">
+                                    <div>
+                                        <div class="text-[6px] uppercase font-bold text-emerald-600 mb-0.5">Preventivo</div>
+                                        <div class="text-[9px] font-black text-slate-700 leading-tight">$<?= number_format($valPreventivo, 0, ',', '.') ?></div>
+                                        <div class="w-full bg-emerald-200 h-0.5 mt-0.5 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctPrev ?>%" class="h-full bg-emerald-500"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center w-full mt-1 px-0.5">
+                                        <span class="text-[6px] font-bold text-emerald-700 bg-emerald-100 px-0.5 rounded"><?= $cantPrev ?> Serv.</span>
+                                        <span class="text-[6px] font-bold text-emerald-500"><?= round($pctPrev, 1) ?>%</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-teal-50 border border-teal-100 rounded p-1 flex flex-col justify-between text-center">
+                                    <div>
+                                        <div class="text-[6px] uppercase font-bold text-teal-600 mb-0.5">Profundo</div>
+                                        <div class="text-[9px] font-black text-slate-700 leading-tight">$<?= number_format($valPreventivoProf, 0, ',', '.') ?></div>
+                                        <div class="w-full bg-teal-200 h-0.5 mt-0.5 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctPrevProf ?>%" class="h-full bg-teal-500"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center w-full mt-1 px-0.5">
+                                        <span class="text-[6px] font-bold text-teal-700 bg-teal-100 px-0.5 rounded"><?= $cantProf ?> Serv.</span>
+                                        <span class="text-[6px] font-bold text-teal-500"><?= round($pctPrevProf, 1) ?>%</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-blue-50 border border-blue-100 rounded p-1 flex flex-col justify-between text-center">
+                                    <div>
+                                        <div class="text-[6px] uppercase font-bold text-blue-600 mb-0.5">Correctivo</div>
+                                        <div class="text-[9px] font-black text-slate-700 leading-tight">$<?= number_format($valCorrectivo, 0, ',', '.') ?></div>
+                                        <div class="w-full bg-blue-200 h-0.5 mt-0.5 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctCorr ?>%" class="h-full bg-blue-500"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center w-full mt-1 px-0.5">
+                                        <span class="text-[6px] font-bold text-blue-700 bg-blue-100 px-0.5 rounded"><?= $cantCorr ?> Serv.</span>
+                                        <span class="text-[6px] font-bold text-blue-500"><?= round($pctCorr, 1) ?>%</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-orange-50 border border-orange-100 rounded p-1 flex flex-col justify-between text-center">
+                                    <div>
+                                        <div class="text-[6px] uppercase font-bold text-orange-600 mb-0.5">Fallido</div>
+                                        <div class="text-[9px] font-black text-slate-700 leading-tight">$<?= number_format($valFallido, 0, ',', '.') ?></div>
+                                        <div class="w-full bg-orange-200 h-0.5 mt-0.5 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctFall ?>%" class="h-full bg-orange-500"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center w-full mt-1 px-0.5">
+                                        <span class="text-[6px] font-bold text-orange-700 bg-orange-100 px-0.5 rounded"><?= $cantFall ?> Serv.</span>
+                                        <span class="text-[6px] font-bold text-orange-500"><?= round($pctFall, 1) ?>%</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-rose-50 border border-rose-100 rounded p-1 flex flex-col justify-between text-center">
+                                    <div>
+                                        <div class="text-[6px] uppercase font-bold text-rose-600 mb-0.5">Garantía</div>
+                                        <div class="text-[9px] font-black text-slate-700 leading-tight">$<?= number_format($valGarantia, 0, ',', '.') ?></div>
+                                        <div class="w-full bg-rose-200 h-0.5 mt-0.5 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctGaran ?>%" class="h-full bg-rose-500"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center w-full mt-1 px-0.5">
+                                        <span class="text-[6px] font-bold text-rose-700 bg-rose-100 px-0.5 rounded"><?= $cantGaran ?> Serv.</span>
+                                        <span class="text-[6px] font-bold text-rose-500"><?= round($pctGaran, 1) ?>%</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-violet-50 border border-violet-100 rounded p-1 flex flex-col justify-between text-center">
+                                    <div>
+                                        <div class="text-[6px] uppercase font-bold text-violet-600 mb-0.5">Repuestos</div>
+                                        <div class="text-[9px] font-black text-slate-700 leading-tight">$<?= number_format($valRepuestos, 0, ',', '.') ?></div>
+                                        <div class="w-full bg-violet-200 h-0.5 mt-0.5 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctRep ?>%" class="h-full bg-violet-500"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center w-full mt-1 px-0.5">
+                                        <span class="text-[6px] font-bold text-violet-700 bg-violet-100 px-0.5 rounded">-</span>
+                                        <span class="text-[6px] font-bold text-violet-500"><?= round($pctRep, 1) ?>%</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+
+                        <div class="w-full">
+                            <div class="flex justify-between items-end mb-1 border-b border-rose-100 pb-0.5">
+                                <h4 class="font-bold text-rose-700 uppercase text-[8px] flex items-center gap-1">
+                                    <span class="text-xs">📉</span> Desglose de Costos
+                                </h4>
+                                <span class="font-black text-rose-800 text-xs">$ <?= number_format($totalEgresosOperativos, 0) ?></span>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-1">
+
+                                <div class="bg-white border border-emerald-100 shadow-sm rounded p-1.5 flex flex-col justify-between relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-8 h-8 bg-emerald-50 rounded-bl-full -mr-2 -mt-2 z-0"></div>
+                                    <div class="relative z-10">
+                                        <div class="text-[6px] uppercase font-bold text-emerald-600 mb-0.5">Personal Motorizado</div>
+                                        <div class="text-xs font-black text-slate-700">$<?= number_format($totalMotorizados, 0, ',', '.') ?></div>
+                                    </div>
+                                    <div class="flex items-center gap-1 mt-1 relative z-10">
+                                        <div class="flex-1 bg-gray-100 h-1 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctMoto ?>%" class="h-full bg-emerald-500"></div>
+                                        </div>
+                                        <div class="text-[7px] font-bold text-emerald-600"><?= round($pctMoto, 1) ?>%</div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white border border-blue-100 shadow-sm rounded p-1.5 flex flex-col justify-between relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-8 h-8 bg-blue-50 rounded-bl-full -mr-2 -mt-2 z-0"></div>
+                                    <div class="relative z-10">
+                                        <div class="text-[6px] uppercase font-bold text-blue-600 mb-0.5">Nómina Administrativa</div>
+                                        <div class="text-xs font-black text-slate-700">$<?= number_format($totalNominaAdmin, 0, ',', '.') ?></div>
+                                    </div>
+                                    <div class="flex items-center gap-1 mt-1 relative z-10">
+                                        <div class="flex-1 bg-gray-100 h-1 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctAdm ?>%" class="h-full bg-blue-500"></div>
+                                        </div>
+                                        <div class="text-[7px] font-bold text-blue-600"><?= round($pctAdm, 1) ?>%</div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white border border-orange-100 shadow-sm rounded p-1.5 flex flex-col justify-between relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 w-8 h-8 bg-orange-50 rounded-bl-full -mr-2 -mt-2 z-0"></div>
+                                    <div class="relative z-10">
+                                        <div class="text-[6px] uppercase font-bold text-orange-600 mb-0.5">Gastos Administrativos</div>
+                                        <div class="text-xs font-black text-slate-700">$<?= number_format($totalGastosGral, 0, ',', '.') ?></div>
+                                    </div>
+                                    <div class="flex items-center gap-1 mt-1 relative z-10">
+                                        <div class="flex-1 bg-gray-100 h-1 rounded-full overflow-hidden">
+                                            <div style="width: <?= $pctGral ?>%" class="h-full bg-orange-500"></div>
+                                        </div>
+                                        <div class="text-[7px] font-bold text-orange-600"><?= round($pctGral, 1) ?>%</div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Footer rentabilidad -->
+                    <div class="bg-slate-50 px-3 py-1 border-t border-slate-200 flex justify-between items-center">
+                        <p class="text-[7px] text-slate-400 italic">* La utilidad neta se calcula antes de impuestos.</p>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[8px] font-bold text-slate-500 uppercase">Rentabilidad:</span>
+                            <span class="text-[9px] font-black px-1.5 py-0.5 rounded border <?= $margenUtilidad >= 0 ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-rose-100 text-rose-600 border-rose-200' ?>">
+                                <?= $margenUtilidad ?>%
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        <?php endif; ?>
+
+
+
+
+
+
+
+
+
+        </div>
+
+        <!-- === PIE DE PÁGINA GLOBAL (Aparece en todas las páginas excepto portada) === -->
+        <div class="footer-page">
+            <div class="flex justify-between items-center">
+                <div class="uppercase tracking-[0.4em] text-[10px] font-bold text-slate-400">
+                    Documento Confidencial
+                </div>
+
+                <div class="text-[10px] font-bold text-slate-500">
+                    <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                </div>
+
+                <!-- NUMERACIÓN DE PÁGINA -->
+                <div class="text-[10px] font-mono font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded border border-slate-200">
+                    Página <span class="page-number"></span>
+                </div>
             </div>
         </div>
-    </div>
 
 </body>
 

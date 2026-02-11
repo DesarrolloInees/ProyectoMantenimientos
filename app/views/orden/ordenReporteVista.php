@@ -128,24 +128,23 @@
         }
 
         // ===============================================
-        // 🔥 LÓGICA DE GENERACIÓN DE EXCEL (ADAPTADA)
+        // 1. EXCEL SERVICIOS (Corregido: Viáticos al final del bloque)
         // ===============================================
-        // ===============================================
-        // 1. EXCEL SERVICIOS (Complejo - Por Hojas)
-        // ===============================================
-        // IMPORTANTE: Le cambié el nombre de generarExcelDesdeJSON a generarExcelServicios
         function generarExcelServicios(datos, inicio, fin) {
             let wb = XLSX.utils.book_new();
             let serviciosPorDelegacion = {};
+            
+            // Variable temporal para retener el viático hasta el final del día del técnico
+            let viaticoPendiente = null;
 
-            // 1. Agrupar datos por delegación
-            datos.forEach(d => {
+            // Iteramos usando el índice para poder "mirar el siguiente"
+            datos.forEach((d, index) => {
                 let delegacion = d.delegacion || "SIN ASIGNAR";
                 if (!serviciosPorDelegacion[delegacion]) {
                     serviciosPorDelegacion[delegacion] = [];
                 }
 
-                // Lógica de checks
+                // --- Lógica de Textos y Checks (Igual que antes) ---
                 let txtServicio = (d.txt_servicio || "").toLowerCase();
                 let esPrevBasico = (txtServicio.includes("basico") || txtServicio.includes("básico")) ? "X" : "";
                 let esPrevProfundo = (txtServicio.includes("profundo") || txtServicio.includes("completo")) ? "X" : "";
@@ -155,12 +154,15 @@
                     esPrevBasico = "X";
                 }
 
-                // Calcular Duración (Ahora sí funciona porque agregamos la función arriba)
                 let duracion = d.tiempo_servicio;
                 if (!duracion || duracion === '00:00:00') {
                     duracion = calcularDuracion(d.hora_entrada, d.hora_salida);
                 }
 
+                let valorServicio = parseFloat(d.valor_servicio) || 0;
+                let valorViaticos = parseFloat(d.valor_viaticos) || 0;
+
+                // 1. INSERTAR SIEMPRE LA FILA DEL SERVICIO
                 serviciosPorDelegacion[delegacion].push({
                     device_id: d.device_id,
                     remision: d.numero_remision,
@@ -169,7 +171,7 @@
                     prev_basico: esPrevBasico,
                     prev_profundo: esPrevProfundo,
                     correctivo: esCorrectivo,
-                    valor: parseFloat(d.valor_servicio) || 0,
+                    valor: valorServicio,
                     obs: d.que_se_hizo,
                     delegacion: delegacion,
                     fecha: d.fecha_visita,
@@ -184,9 +186,50 @@
                     calificacion: d.nombre_calificacion,
                     modalidad: d.tipo_zona
                 });
+
+                // 2. ¿ESTE SERVICIO TRAJO VIÁTICO? SI ES ASÍ, LO GUARDAMOS (NO LO INSERTAMOS AÚN)
+                if (valorViaticos > 0) {
+                    viaticoPendiente = {
+                        device_id: "", remision: "", cliente: "", punto: "",
+                        prev_basico: "", prev_profundo: "", correctivo: "",
+                        
+                        valor: valorViaticos, // Valor en la columna correcta
+                        
+                        obs: "TARIFA ADICIONAL POR DÍA ", 
+                        delegacion: "", fecha: "", tecnico: "", 
+                        tipo_maquina: "", tipo_servicio: "VIÁTICOS",
+                        hora_entrada: "", hora_salida: "", duracion: "", 
+                        repuestos: "", estado: "", calificacion: "", modalidad: ""
+                    };
+                }
+
+                // 3. LOGICA "LOOK AHEAD" (MIRAR ADELANTE)
+                // Verificamos si aquí termina el bloque de este técnico en esta fecha.
+                let siguienteItem = datos[index + 1];
+                let cerrarGrupo = false;
+
+                if (!siguienteItem) {
+                    // Es el último registro de todo el array
+                    cerrarGrupo = true;
+                } else {
+                    // Verificamos si cambia algo importante en el siguiente registro
+                    let siguienteDel = siguienteItem.delegacion || "SIN ASIGNAR";
+                    
+                    if (siguienteItem.fecha_visita !== d.fecha_visita || // Cambió la fecha
+                        siguienteItem.nombre_tecnico !== d.nombre_tecnico || // Cambió el técnico
+                        siguienteDel !== delegacion) { // Cambió la delegación (raro pero posible)
+                        cerrarGrupo = true;
+                    }
+                }
+
+                // 4. SI SE CIERRA EL GRUPO Y TENÍAMOS UN VIÁTICO PENDIENTE, LO SOLTAMOS AHORA
+                if (cerrarGrupo && viaticoPendiente) {
+                    serviciosPorDelegacion[delegacion].push(viaticoPendiente);
+                    viaticoPendiente = null; // Limpiamos para el siguiente grupo
+                }
             });
 
-            // 2. Crear hojas por delegación
+            // --- GENERACIÓN DEL ARCHIVO (ESTO SIGUE IGUAL) ---
             for (let del in serviciosPorDelegacion) {
                 let filas = serviciosPorDelegacion[del];
 
@@ -218,67 +261,21 @@
                     const range = XLSX.utils.decode_range(ws['!ref']);
                     const colTarifa = 7;
                     for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                        let cellRef = XLSX.utils.encode_cell({
-                            c: colTarifa,
-                            r: R
-                        });
-                        if (!ws[cellRef]) ws[cellRef] = {
-                            t: 'n',
-                            v: 0
-                        };
+                        let cellRef = XLSX.utils.encode_cell({ c: colTarifa, r: R });
+                        if (!ws[cellRef]) ws[cellRef] = { t: 'n', v: 0 };
                         ws[cellRef].t = 'n';
                         ws[cellRef].z = formatoContabilidad;
                     }
                 }
 
                 // Ancho columnas
-                ws["!cols"] = [{
-                        wch: 15
-                    }, {
-                        wch: 12
-                    }, {
-                        wch: 25
-                    }, {
-                        wch: 25
-                    },
-                    {
-                        wch: 8
-                    }, {
-                        wch: 8
-                    }, {
-                        wch: 8
-                    }, {
-                        wch: 12
-                    },
-                    {
-                        wch: 40
-                    }, {
-                        wch: 15
-                    }, {
-                        wch: 12
-                    }, {
-                        wch: 20
-                    },
-                    {
-                        wch: 15
-                    }, {
-                        wch: 20
-                    }, {
-                        wch: 10
-                    }, {
-                        wch: 10
-                    },
-                    {
-                        wch: 10
-                    }, {
-                        wch: 30
-                    }, {
-                        wch: 15
-                    }, {
-                        wch: 15
-                    }, {
-                        wch: 15
-                    }
+                ws["!cols"] = [
+                    { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 },
+                    { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 15 }, 
+                    { wch: 50 }, // Observaciones amplia
+                    { wch: 15 }, { wch: 12 }, { wch: 20 },
+                    { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
+                    { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
                 ];
 
                 let nombreHoja = del.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Data";

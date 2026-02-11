@@ -23,6 +23,8 @@ class ordenDetalleModelo
                 o.hora_salida,
                 o.tiempo_servicio,
                 o.valor_servicio,
+                o.valor_viaticos,       -- ¡CRÍTICO! Sin esto, el Excel no sabe cuánto cobrar
+                o.es_fuera_delegacion,  -- Opcional, pero útil
                 o.actividades_realizadas as que_se_hizo,
                 o.tiene_novedad,
                 o.id_tipo_novedad,
@@ -537,6 +539,8 @@ class ordenDetalleModelo
                 o.hora_salida,
                 o.tiempo_servicio,
                 o.valor_servicio,
+                o.valor_viaticos,
+                o.es_fuera_delegacion,
                 o.actividades_realizadas as que_se_hizo,
                 o.tiene_novedad,
                 

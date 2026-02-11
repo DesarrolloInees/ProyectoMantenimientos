@@ -16,6 +16,7 @@ class ordenReporteModelo
         $sql = "SELECT 
                 o.id_ordenes_servicio, o.numero_remision, o.fecha_visita,
                 o.hora_entrada, o.hora_salida, o.tiempo_servicio, o.valor_servicio,
+                o.valor_viaticos,
                 o.actividades_realizadas as que_se_hizo,
                 
                 -- CORRECCIÓN AQUÍ: 

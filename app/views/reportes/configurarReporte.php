@@ -416,6 +416,24 @@
                             <div class="section-card-desc">Productividad del equipo técnico</div>
                         </div>
 
+                        <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="costos" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">🪙 Costos Operación</div>
+                            </div>
+                            <div class="section-card-desc">Costos Operación Motorizados</div>
+                        </div>
+
+                        <div class="section-card selected" onclick="toggleSection(this)">
+                            <input type="checkbox" name="secciones[]" value="balance" checked>
+                            <div class="section-card-header">
+                                <div class="checkbox-custom"></div>
+                                <div class="section-card-title">💵 Balance Ingresos, Egresos</div>
+                            </div>
+                            <div class="section-card-desc">Resta de Egresos e Ingresos</div>
+                        </div>
+
 
 
                     </div>
