@@ -117,18 +117,16 @@ function manejarCambioFecha() {
 
     if (!inputFechaGlobal) return;
 
+    // Usamos 'change' y también 'input' por si acaso
     inputFechaGlobal.addEventListener('change', function () {
         const fechaSeleccionada = this.value;
-        const esFestivo = esDiaEspecial(fechaSeleccionada); //
+        const esFestivo = esDiaEspecial(fechaSeleccionada);
 
         console.log(`📅 Fecha: ${fechaSeleccionada} | Festivo: ${esFestivo}`);
 
         if (esFestivo) {
-            // Notificar al usuario
             if (window.UIUtils && window.UIUtils.mostrarNotificacion) {
-                window.UIUtils.mostrarNotificacion("Fecha Domingo/Festivo. Modalidad cambiada a INTERURBANO.", 'warning');
-            } else {
-                alert("📅 Fecha Domingo/Festivo.\n\nSe cambiará modalidad a INTERURBANO automáticamente.");
+                window.UIUtils.mostrarNotificacion("Fecha Domingo/Festivo. Cambiando a INTERURBANO.", 'warning');
             }
         }
 
@@ -136,29 +134,57 @@ function manejarCambioFecha() {
         const filas = document.querySelectorAll('#contenedorFilas tr');
 
         filas.forEach(tr => {
+            // Obtenemos el ID de la fila (ej: "fila_1" -> "1")
             const idFila = tr.id.replace('fila_', '');
             const selectModalidad = document.getElementById(`select_modalidad_${idFila}`);
 
             if (selectModalidad) {
-                // Lógica de negocio: Si es festivo, forzar Interurbano (ID 2), si no, dejar como estaba o Resetear
-                // Nota: Esto depende de tu regla de negocio exacta.
+                // ========================================================
+                // 🔥 AQUÍ ESTÁ LA CORRECCIÓN DE LA LÓGICA
+                // ========================================================
+                
                 if (esFestivo) {
-                    selectModalidad.value = "2"; // Asumiendo 2 = Interurbano
-                    selectModalidad.classList.add('bg-yellow-100', 'border-yellow-500');
-                    // Disparar evento change para recalcular precios si es necesario
-                    if (typeof $ !== 'undefined') $(selectModalidad).trigger('change');
-                } else {
-                    selectModalidad.classList.remove('bg-yellow-100', 'border-yellow-500');
-                }
-            }
+                    // 1. Si es festivo -> Forzamos INTERURBANO (2)
+                    if (selectModalidad.value !== "2") {
+                        selectModalidad.value = "2"; 
+                        // Guardamos una marca para saber que fue cambiado por script
+                        selectModalidad.dataset.cambioAutomatico = "true";
+                    }
+                    
+                    // Aplicamos estilos visuales de advertencia
+                    selectModalidad.classList.add('bg-yellow-100', 'border-yellow-500', 'text-yellow-800', 'font-bold');
 
-            if (window.AjaxUtils) {
-                window.AjaxUtils.calcularPrecio(idFila);
+                } else {
+                    // 2. Si YA NO es festivo (es Lunes, Martes, etc.)
+                    
+                    // Solo regresamos a URBANO (1) si la modalidad actual es INTERURBANO (2)
+                    // Esto evita romper configuraciones manuales si usaras otras modalidades (ej: ID 3)
+                    if (selectModalidad.value === "2") {
+                         selectModalidad.value = "1"; // Vuelve a Urbano
+                         delete selectModalidad.dataset.cambioAutomatico;
+                    }
+
+                    // Limpiamos los estilos
+                    selectModalidad.classList.remove('bg-yellow-100', 'border-yellow-500', 'text-yellow-800', 'font-bold');
+                }
+
+                // ========================================================
+                // ⚡ IMPORTANTE: FORZAR RECALCULO DE PRECIO
+                // ========================================================
+                // Al cambiar el valor por JS, el evento 'change' no se dispara solo.
+                // Debemos dispararlo manualmente para que AJAX recalcule la tarifa.
+                
+                if (typeof $ !== 'undefined') {
+                    $(selectModalidad).trigger('change');
+                } else {
+                    // Versión JS Nativo por si jQuery falla
+                    const event = new Event('change', { bubbles: true });
+                    selectModalidad.dispatchEvent(event);
+                }
             }
         });
     });
 }
-
 /**
  * Inicializar gestión de tiempos
  */

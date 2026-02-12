@@ -120,6 +120,9 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
             <a href="<?= BASE_URL ?>modalidadOperativaVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Típos de Modalidad Operativa</a>
             <a href="<?= BASE_URL ?>tipoNovedadVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Tipos de Novedades</a>
             <a href="<?= BASE_URL ?>tipoUsuarioVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Tipos Usuario</a>
+            <a href="<?= BASE_URL ?>costosVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Costos Motorizados</a>
+            <a href="<?= BASE_URL ?>costosAdministrativosVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Costos Administrativos</a>
+
             <a href="<?= BASE_URL ?>importarExcel" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 text-green-600 font-bold">Importar Excel Prosegur</a>
             <a href="<?= BASE_URL ?>importarMunicipios" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 text-green-600 font-bold">Importar Zonas Geográficas</a>
         </div>

@@ -8,6 +8,8 @@
                 <i class="fas fa-chart-pie text-purple-600 mr-2"></i> Gestión Costos Administrativos
             </h1>
             <p class="text-gray-500 text-sm">Administra la nómina de oficina y otros gastos generales.</p>
+            <p class="text-red-500 text-s">Por favor guardar primero la Nómina Administrativa y posteriormente los Otros Gastos Generales.</p>
+
         </div>
         
         <form action="<?= BASE_URL ?>costosAdministrativosCrear" method="GET" class="flex items-center gap-2 bg-purple-50 p-2 rounded-lg border border-purple-100">

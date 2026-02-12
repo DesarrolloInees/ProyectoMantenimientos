@@ -27,4 +27,24 @@ class costosAdministrativosVerControlador
         
         include "app/views/plantillaVista.php";
     }
+
+
+
+    public function eliminarMes()
+    {
+        // 1. Verificamos que llegue el dato del mes (ej: 2023-10)
+        if (isset($_GET['mes'])) {
+            $mes = $_GET['mes'];
+            
+            // 2. Llamamos al modelo
+            $this->modelo->eliminarMesAdministrativoCompleto($mes);
+        }
+
+        // 3. Redireccionar siempre a la lista principal
+        header('Location: ' . BASE_URL . 'costosAdministrativosVer');
+        exit;
+    }
+
+
+
 }

@@ -190,13 +190,13 @@
 
 <!-- NOTA: Cambia estas rutas según tu estructura de archivos -->
 <!-- Ejemplo: Si los guardas en /assets/js/modulos/ -->
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/config.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/ajaxUtils.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/uiUtils.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/timeManager.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/filaManager.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/repuestosManager.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/storageManager.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/app.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/crearNotificaciones.js"></script>
-<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/validadorRemisiones.js"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/config.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/ajaxUtils.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/uiUtils.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/timeManager.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/filaManager.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/repuestosManager.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/storageManager.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/app.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/crearNotificaciones.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/validadorRemisiones.js?v=<?php echo time(); ?>"></script>

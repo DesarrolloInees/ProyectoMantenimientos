@@ -71,4 +71,43 @@ class CostosVerModelo
             return [];
         }
     }
+
+    /**
+     * Borrado lógico: Cambia el estado de 1 a 0
+     */
+    public function eliminarCosto($id_costo)
+    {
+        try {
+            // No borramos, actualizamos estado = 0
+            $sql = "UPDATE costos_operativos 
+                    SET estado = 0, 
+                        fecha_actualizacion = NOW() 
+                    WHERE id_costo = :id";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id', $id_costo, PDO::PARAM_INT);
+            
+            return $stmt->execute();
+
+        } catch (PDOException $e) {
+            error_log("Error en borrado lógico: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function eliminarMesCompleto($mes)
+    {
+        try {
+            // Borrado lógico de todo el mes
+            $sql = "UPDATE costos_operativos 
+                    SET estado = 0 
+                    WHERE DATE_FORMAT(mes_reporte, '%Y-%m') = :mes";
+            
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':mes', $mes);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
 }

@@ -141,6 +141,11 @@
                                         title="Ver y Editar">
                                         <i class="fas fa-eye"></i> <span>Ver / Editar</span>
                                     </a>
+                                    <a href="<?= BASE_URL ?>?pagina=costosVer&accion=eliminarMes&mes=<?= $fila['mes_reporte'] ?>"
+                                        onclick="return confirm('¿Estás seguro de eliminar todo el reporte del mes <?= $fila['mes_reporte'] ?>?');"
+                                        class="text-red-600 hover:text-red-900 ml-2" title="Eliminar Mes Completo">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

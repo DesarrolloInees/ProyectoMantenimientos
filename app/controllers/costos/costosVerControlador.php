@@ -46,4 +46,54 @@ class costosVerControlador
         $vistaContenido = "app/views/costos/costosEditarVista.php"; 
         include "app/views/plantillaVista.php";
     }
+
+    /**
+     * Procesa la eliminación lógica de un registro específico
+     * Se puede llamar vía GET: index.php?pagina=costosVer&accion=eliminar&id=123&mes=2023-10
+     */
+    public function eliminar()
+    {
+        // 1. Verificar si tenemos el ID
+        if (!isset($_GET['id'])) {
+            // Si no hay ID, devolvemos a la lista principal
+            header('Location: ' . BASE_URL . 'costosVer');
+            exit;
+        }
+
+        $id_costo = $_GET['id'];
+        
+        // 2. Ejecutar el borrado lógico en el modelo
+        $resultado = $this->modelo->eliminarCosto($id_costo);
+
+        // 3. Redireccionar
+        // Capturamos el mes para devolver al usuario a la vista de detalle de ese mes
+        $mesVolver = isset($_GET['mes']) ? $_GET['mes'] : null;
+
+        if ($resultado) {
+            // Opción A: Si usas sesiones para mensajes flash
+            // $_SESSION['mensaje'] = "Registro eliminado correctamente.";
+        } else {
+            // $_SESSION['error'] = "No se pudo eliminar el registro.";
+        }
+
+        if ($mesVolver) {
+            // Volver al detalle del mes
+            header('Location: ' . BASE_URL . 'costosVer/detalle/' . $mesVolver);
+        } else {
+            // Volver a la lista general
+            header('Location: ' . BASE_URL . 'costosVer');
+        }
+        exit;
+    }
+
+    public function eliminarMes()
+    {
+        $mes = $_GET['mes'] ?? null;
+        if($mes){
+            $this->modelo->eliminarMesCompleto($mes);
+        }
+        header('Location: ' . BASE_URL . 'costosVer');
+        exit;
+    }
+    
 }
