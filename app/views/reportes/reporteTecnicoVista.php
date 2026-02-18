@@ -159,6 +159,10 @@
     // Recibimos los datos COMPLETOS de PHP
     const datosServicios = <?= json_encode($datosExcel ?? []) ?>;
 
+    // RECIBIMOS EL PARAMETRO DESDE PHP
+    // Usamos parseFloat para asegurar que sea número decimal
+    const PESO_CORRECTIVO = parseFloat("<?= $valorCorrectivo ?>");
+
     $(document).ready(function() {
         $('.select2-search').select2({
             width: '100%',
@@ -206,9 +210,8 @@
 
 
         // ---------------------------------------------------------
-        // PASO 2: AGRUPAR DATOS
+        // PASO 2: AGRUPAR DATOS CON PONDERACIÓN (Lógica Modificada)
         // ---------------------------------------------------------
-        // Estructura: resumen[tecnico] = { fechas: {}, contadoresTipos: { 'Preventivo': 5, ... } }
         let resumen = {};
 
         datosServicios.forEach(item => {
@@ -218,24 +221,37 @@
             let horaSal = item.hora_salida;
             let tipoMant = item.tipo_mantenimiento || "SIN ESPECIFICAR";
 
+            // --- NUEVA LÓGICA: DEFINIR PESO DEL SERVICIO ---
+            // Si el tipo de mantenimiento incluye la palabra "Correctivo", vale 1.5.
+            // De lo contrario, vale 1.
+            // --- NUEVA LÓGICA PARAMETRIZABLE ---
+            let peso = 1; // Valor por defecto para Preventivos, etc.
+            
+            // Si es correctivo, usamos la constante que vino de la BD
+            if (tipoMant.toUpperCase().includes("CORRECTIVO")) {
+                peso = PESO_CORRECTIVO;
+            }
+
             if (!resumen[tecnico]) {
                 resumen[tecnico] = {
-                    fechas: {}, // Para el detalle por días
-                    contadoresTipos: {} // Para el resumen general (NUEVO)
+                    fechas: {}, 
+                    contadoresTipos: {} 
                 };
-                // Inicializamos contadores en 0 para este técnico
+                // Inicializamos contadores en 0
                 columnasTipos.forEach(t => resumen[tecnico].contadoresTipos[t] = 0);
             }
 
-            // --- Lógica del detalle por Fechas (Existente) ---
+            // --- Lógica del detalle por Fechas ---
             if (!resumen[tecnico].fechas[fecha]) {
                 resumen[tecnico].fechas[fecha] = {
-                    cantidad: 0,
+                    cantidad: 0, // Aquí se sumarán los 1 o 1.5
                     primera_entrada: "23:59:59",
                     ultima_salida: "00:00:00"
                 };
             }
-            resumen[tecnico].fechas[fecha].cantidad++;
+            
+            // APLICAMOS EL PESO (Antes era ++)
+            resumen[tecnico].fechas[fecha].cantidad += peso;
 
             if (horaEnt && horaEnt < resumen[tecnico].fechas[fecha].primera_entrada) {
                 resumen[tecnico].fechas[fecha].primera_entrada = horaEnt;
@@ -244,8 +260,9 @@
                 resumen[tecnico].fechas[fecha].ultima_salida = horaSal;
             }
 
-            // --- Lógica de Contadores por Tipo (NUEVO) ---
-            resumen[tecnico].contadoresTipos[tipoMant]++;
+            // --- Lógica de Contadores por Tipo ---
+            // APLICAMOS EL PESO TAMBIÉN EN EL RESUMEN GENERAL (Antes era ++)
+            resumen[tecnico].contadoresTipos[tipoMant] += peso;
         });
 
         // ---------------------------------------------------------

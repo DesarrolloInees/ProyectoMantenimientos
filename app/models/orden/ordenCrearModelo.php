@@ -148,37 +148,35 @@ class ordenCrearModels
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 10: GUARDAR ORDEN (MODIFICADO CON VIÁTICOS) ---
+    // --- 10: GUARDAR ORDEN (CORREGIDO: SIN updated_at) ---
     public function guardarOrden($datos)
     {
         try {
             $this->conn->beginTransaction();
 
             // =============================================================
-            // 1. LÓGICA DE VIÁTICOS INTELIGENTE (SOLO 1 COBRO POR DÍA)
+            // 1. LÓGICA DE VIÁTICOS INTELIGENTE
             // =============================================================
             $esFueraDelegacion = 0;
             $diasViaticos = 0;
-            $valorViaticos = 0; // Por defecto 0
+            $valorViaticos = 0;
 
-            // IDs de las bases principales (NO COBRAN)
             $delegacionesPrincipales = [1, 2, 3, 4];
-
-            // Obtenemos la delegación del PUNTO
             $idDelegacionPunto = $this->obtenerIdDelegacionPunto($datos['id_punto']);
 
-            // A. ¿ESTAMOS EN ZONA FORÁNEA?
             if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
-
                 $esFueraDelegacion = 1;
 
-                // B. REVISAR SI YA COBRÓ VIÁTICOS HOY (Para este técnico y esta fecha)
-                // Buscamos si existe AL MENOS UNA orden de este técnico, en esta fecha, que tenga valor > 0
+                // Validamos si ya cobró hoy (excluyendo la orden actual si es una edición)
                 $sqlCheck = "SELECT count(*) as total 
-                             FROM ordenes_servicio 
-                             WHERE id_tecnico = :id_tec 
-                               AND fecha_visita = :fecha 
-                               AND valor_viaticos > 0";
+                            FROM ordenes_servicio 
+                            WHERE id_tecnico = :id_tec 
+                                AND fecha_visita = :fecha 
+                                AND valor_viaticos > 0";
+
+                if (!empty($datos['id_orden_previa'])) {
+                    $sqlCheck .= " AND id_ordenes_servicio != " . intval($datos['id_orden_previa']);
+                }
 
                 $stmtCheck = $this->conn->prepare($sqlCheck);
                 $stmtCheck->execute([
@@ -187,20 +185,15 @@ class ordenCrearModels
                 ]);
                 $yaCobroHoy = $stmtCheck->fetch(PDO::FETCH_ASSOC)['total'];
 
-                // C. DECISIÓN FINAL
                 if ($yaCobroHoy > 0) {
-                    // Ya hay un servicio pago hoy. Este va GRATIS de viáticos.
                     $diasViaticos = 0;
                     $valorViaticos = 0;
                 } else {
-                    // Es el primero del día. ¡A este se le carga la tarifa!
                     $diasViaticos = isset($datos['dias_viaticos']) ? intval($datos['dias_viaticos']) : 1;
                     $tarifa = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
                     $valorViaticos = $diasViaticos * $tarifa;
                 }
             }
-            // =============================================================
-
 
             // 2. CALCULAR TIEMPO
             $tiempoCalculado = "00:00";
@@ -218,92 +211,125 @@ class ordenCrearModels
                 }
             }
 
-            // 3. INSERTAR
-            $sql = "INSERT INTO ordenes_servicio 
-                    (id_cliente, id_punto, id_modalidad, numero_remision, fecha_visita, id_maquina, id_tecnico, id_tipo_mantenimiento, 
-                     valor_servicio, es_fuera_delegacion, dias_viaticos, valor_viaticos, 
-                     hora_entrada, hora_salida, tiempo_servicio, id_estado_maquina, id_calificacion, actividades_realizadas) 
-                    VALUES 
-                    (:id_cliente, :id_punto, :id_modalidad, :remision, :fecha, :id_maquina, :id_tecnico, :id_manto, 
-                     :valor, :es_fuera, :dias, :val_viaticos, 
-                     :entrada, :salida, :tiempo, :id_estado, :id_calif, :actividades)";
+            // =============================================================
+            // 3. DECISIÓN: ¿ACTUALIZAR (UPDATE) O INSERTAR (INSERT)?
+            // =============================================================
 
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([
-                ':id_cliente' => $datos['id_cliente'],
-                ':id_punto'   => $datos['id_punto'],
-                ':id_modalidad' => $datos['id_modalidad'],
-                ':remision'   => $datos['remision'],
-                ':fecha'      => $datos['fecha'],
-                ':id_maquina' => $datos['id_maquina'],
-                ':id_tecnico' => $datos['id_tecnico'], // ¡Ya no se nos olvida!
-                ':id_manto'   => $datos['tipo_servicio'],
-                ':valor'      => $datos['valor'],
+            $idOrden = 0;
 
-                // NUEVOS VALORES CALCULADOS
-                ':es_fuera'     => $esFueraDelegacion,
-                ':dias'         => $diasViaticos,
-                ':val_viaticos' => $valorViaticos,
+            if (!empty($datos['id_orden_previa'])) {
 
-                ':entrada'    => $datos['hora_entrada'],
-                ':salida'     => $datos['hora_salida'],
-                ':tiempo'     => $tiempoCalculado,
-                ':id_estado'  => $datos['estado'],
-                ':id_calif'   => $datos['calif'],
-                ':actividades' => $datos['obs']
-            ]);
+                // === CASO A: ACTUALIZAR ORDEN PROGRAMADA (Estado 2 -> Estado 1) ===
+                // 🔥 CORRECCIÓN: Quitamos updated_at = NOW()
+                $sql = "UPDATE ordenes_servicio SET 
+                            id_modalidad = :id_modalidad,
+                            numero_remision = :remision,
+                            id_maquina = :id_maquina,
+                            id_tipo_mantenimiento = :id_manto,
+                            valor_servicio = :valor,
+                            es_fuera_delegacion = :es_fuera,
+                            dias_viaticos = :dias,
+                            valor_viaticos = :val_viaticos,
+                            hora_entrada = :entrada,
+                            hora_salida = :salida,
+                            tiempo_servicio = :tiempo,
+                            id_estado_maquina = :id_estado,
+                            id_calificacion = :id_calif,
+                            actividades_realizadas = :actividades,
+                            estado = 1 /* PASA A ESTADO EJECUTADO */
+                        WHERE id_ordenes_servicio = :id_orden";
 
-            $idOrden = $this->conn->lastInsertId();
+                $stmt = $this->conn->prepare($sql);
+                $stmt->execute([
+                    ':id_orden'     => $datos['id_orden_previa'],
+                    ':id_modalidad' => $datos['id_modalidad'],
+                    ':remision'     => $datos['remision'],
+                    ':id_maquina'   => $datos['id_maquina'],
+                    ':id_manto'     => $datos['tipo_servicio'],
+                    ':valor'        => $datos['valor'],
+                    ':es_fuera'     => $esFueraDelegacion,
+                    ':dias'         => $diasViaticos,
+                    ':val_viaticos' => $valorViaticos,
+                    ':entrada'      => $datos['hora_entrada'],
+                    ':salida'       => $datos['hora_salida'],
+                    ':tiempo'       => $tiempoCalculado,
+                    ':id_estado'    => $datos['estado'],
+                    ':id_calif'     => $datos['calif'],
+                    ':actividades'  => $datos['obs']
+                ]);
 
-            // =================================================================================
-            // 🔥 CORRECCIÓN CRÍTICA: PASAR TAMBIÉN EL ID TÉCNICO
-            // =================================================================================
+                $idOrden = $datos['id_orden_previa'];
+            } else {
+
+                // === CASO B: CREAR NUEVA ORDEN (INSERT) ===
+                $sql = "INSERT INTO ordenes_servicio 
+                        (id_cliente, id_punto, id_modalidad, numero_remision, fecha_visita, id_maquina, id_tecnico, id_tipo_mantenimiento, 
+                        valor_servicio, es_fuera_delegacion, dias_viaticos, valor_viaticos, 
+                        hora_entrada, hora_salida, tiempo_servicio, id_estado_maquina, id_calificacion, actividades_realizadas, estado, created_at) 
+                        VALUES 
+                        (:id_cliente, :id_punto, :id_modalidad, :remision, :fecha, :id_maquina, :id_tecnico, :id_manto, 
+                        :valor, :es_fuera, :dias, :val_viaticos, 
+                        :entrada, :salida, :tiempo, :id_estado, :id_calif, :actividades, 1, NOW())";
+
+                $stmt = $this->conn->prepare($sql);
+                $stmt->execute([
+                    ':id_cliente' => $datos['id_cliente'],
+                    ':id_punto'   => $datos['id_punto'],
+                    ':id_modalidad' => $datos['id_modalidad'],
+                    ':remision'   => $datos['remision'],
+                    ':fecha'      => $datos['fecha'],
+                    ':id_maquina' => $datos['id_maquina'],
+                    ':id_tecnico' => $datos['id_tecnico'],
+                    ':id_manto'   => $datos['tipo_servicio'],
+                    ':valor'      => $datos['valor'],
+                    ':es_fuera'   => $esFueraDelegacion,
+                    ':dias'       => $diasViaticos,
+                    ':val_viaticos' => $valorViaticos,
+                    ':entrada'    => $datos['hora_entrada'],
+                    ':salida'     => $datos['hora_salida'],
+                    ':tiempo'     => $tiempoCalculado,
+                    ':id_estado'  => $datos['estado'],
+                    ':id_calif'   => $datos['calif'],
+                    ':actividades' => $datos['obs']
+                ]);
+
+                $idOrden = $this->conn->lastInsertId();
+            }
+
+            // =============================================================
+            // ACCIONES POSTERIORES
+            // =============================================================
+
+            // 1. Marcar remisión como usada
             if (!empty($datos['remision'])) {
-                // Le pasamos el numero, el id de la orden Y EL ID DEL TÉCNICO
                 $this->marcarRemisionComoUsada($datos['remision'], $idOrden, $datos['id_tecnico']);
             }
-            // =================================================================================
 
-            // =================================================================================
-
-            // =================================================================================
-            // NUEVO BLOQUE: ACTUALIZAR EL PUNTO AQUÍ MISMO
-            // =================================================================================
-            // Usamos los mismos datos que llegaron en $datos
+            // 2. Actualizar fecha en Punto
             $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
-            // =================================================================================
 
-            // --- B. PROCESAR REPUESTOS ---
+            // 3. Procesar Repuestos
             if (!empty($datos['json_repuestos'])) {
                 $repuestos = json_decode($datos['json_repuestos'], true);
 
                 if (is_array($repuestos) && count($repuestos) > 0) {
-                    $sqlRep = "INSERT INTO orden_servicio_repuesto 
-                (id_orden_servicio, id_repuesto, origen, cantidad) 
-                VALUES (?, ?, ?, ?)";
+
+                    // Limpiamos anteriores si es UPDATE
+                    if (!empty($datos['id_orden_previa'])) {
+                        $stmtDel = $this->conn->prepare("DELETE FROM orden_servicio_repuesto WHERE id_orden_servicio = ?");
+                        $stmtDel->execute([$idOrden]);
+                    }
+
+                    $sqlRep = "INSERT INTO orden_servicio_repuesto (id_orden_servicio, id_repuesto, origen, cantidad) VALUES (?, ?, ?, ?)";
                     $stmtRep = $this->conn->prepare($sqlRep);
 
                     foreach ($repuestos as $rep) {
                         if (isset($rep['id']) && isset($rep['origen'])) {
-                            // Validación: Si no viene cantidad, asumimos 1
                             $cant = isset($rep['cantidad']) && $rep['cantidad'] > 0 ? $rep['cantidad'] : 1;
+                            $stmtRep->execute([$idOrden, $rep['id'], $rep['origen'], $cant]);
 
-                            // 1. INSERTAR EN TABLA INTERMEDIA
-                            $stmtRep->execute([
-                                $idOrden,
-                                $rep['id'],
-                                $rep['origen'],
-                                $cant
-                            ]);
-
-                            // 2. 🔥 NUEVO: DESCONTAR DEL INVENTARIO AQUÍ MISMO (Dentro de la transacción)
-                            // Solo si el origen es 'INEES' (o la lógica que uses para tu inventario propio)
-                            if ($rep['origen'] === 'INEES') {
-                                $this->descontarDelInventario(
-                                    $datos['id_tecnico'],
-                                    $rep['id'],
-                                    $cant
-                                );
+                            if (empty($datos['id_orden_previa']) && $rep['origen'] === 'INEES') {
+                                $this->descontarDelInventario($datos['id_tecnico'], $rep['id'], $cant);
                             }
                         }
                     }
@@ -314,8 +340,8 @@ class ordenCrearModels
             return $idOrden;
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            // Esto detendrá el código y te mostrará el error exacto en la pantalla
-            die("ERROR SQL: " . $e->getMessage());
+            error_log("ERROR SQL al guardar orden: " . $e->getMessage());
+            die("ERROR SQL: " . $e->getMessage()); // Esto nos mostrará el error en pantalla si pasa algo más
             return false;
         }
     }
@@ -532,6 +558,44 @@ class ordenCrearModels
             return $res ? floatval($res['valor']) : 0;
         } catch (PDOException $e) {
             return 0;
+        }
+    }
+
+
+
+    // 1. NUEVA FUNCIÓN: TRAER LO PROGRAMADO (Estado 2)
+    public function obtenerProgramacionDiaria($fecha)
+    {
+        try {
+            $sql = "SELECT 
+                        os.id_ordenes_servicio, 
+                        os.id_cliente, 
+                        os.id_punto, 
+                        os.id_tecnico, 
+                        os.id_maquina, 
+                        os.id_tipo_mantenimiento, 
+                        os.id_modalidad,
+                        os.fecha_visita,
+                        c.nombre_cliente,
+                        p.nombre_punto,
+                        t.nombre_tecnico,
+                        m.device_id,
+                        tm.nombre_tipo_maquina
+                    FROM ordenes_servicio os
+                    INNER JOIN cliente c ON os.id_cliente = c.id_cliente
+                    INNER JOIN punto p ON os.id_punto = p.id_punto
+                    INNER JOIN tecnico t ON os.id_tecnico = t.id_tecnico
+                    LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
+                    LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
+                    WHERE os.fecha_visita = :fecha 
+                    AND os.estado = 2  /* SOLO LAS PROGRAMADAS */
+                    ORDER BY t.nombre_tecnico ASC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':fecha' => $fecha]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
         }
     }
 }

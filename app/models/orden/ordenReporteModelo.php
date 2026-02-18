@@ -68,7 +68,8 @@ class ordenReporteModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE o.fecha_visita BETWEEN ? AND ?
-                ORDER BY delegacion ASC, o.fecha_visita ASC, t.nombre_tecnico ASC";
+                -- IMPORTANTE: Ordenar por Técnico -> Fecha -> Hora Entrada (para poder calcular desplazamiento)
+                ORDER BY t.nombre_tecnico ASC, o.fecha_visita ASC, o.hora_entrada ASC";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([$fechaInicio, $fechaFin]);

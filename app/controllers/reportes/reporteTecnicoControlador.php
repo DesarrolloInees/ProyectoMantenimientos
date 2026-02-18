@@ -30,6 +30,8 @@ class reporteTecnicoControlador
         $totalValor = 0;
         $mensaje = "";
 
+        
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filtros['id_tecnico'] = $_POST['id_tecnico'] ?? '';
             $filtros['fecha_inicio'] = $_POST['fecha_inicio'] ?? '';
@@ -64,6 +66,12 @@ class reporteTecnicoControlador
             } else {
                 $mensaje = "Por favor selecciona el rango de fechas.";
             }
+        }
+        // OBTENER EL PARAMETRO DE LA BD
+        $valorCorrectivo = $this->modelo->obtenerParametro('servicioCorrectivo');
+        // Validación: Si está vacío o no existe, usamos 1.5 por defecto para no romper nada
+        if (!$valorCorrectivo) {
+            $valorCorrectivo = 1.5; 
         }
 
         $listaTecnicos = $this->modelo->obtenerTecnicos();

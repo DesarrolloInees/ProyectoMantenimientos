@@ -202,8 +202,8 @@ function exportarExcelLimpio() {
                 matrizFinal.push([
                     "", "", "", "", "", "", "",
                     grupo.totalViatico,
-                    ">> TARIFA ADICIONAL POR DÍA (DESPLAZAMIENTO/VIÁTICOS)",
-                    delegacion, "", "", "", "VIÁTICOS",
+                    "TARIFA ADICIONAL POR DÍA",
+                    delegacion, "", "", "", "",
                     "", "", "", "", "", "", "", ""
                 ]);
             }
@@ -234,7 +234,7 @@ function exportarExcelLimpio() {
         XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
     }
 
-    let nombreArchivo = ExcelUtils.generarNombreArchivo("Reporte_Servicios_Agrupado");
+    let nombreArchivo = ExcelUtils.generarNombreArchivo("Reporte_Servicios");
     XLSX.writeFile(workbook, nombreArchivo);
 }
 

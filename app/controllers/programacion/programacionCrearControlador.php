@@ -1,175 +1,222 @@
 <?php
+// app/controllers/programacion/programacionCrearControlador.php
 if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
-
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/programacion/programacionCrearModelo.php';
 
 class programacionCrearControlador
 {
     private $modelo;
-    private $db;
 
     public function __construct()
     {
-        $conexionObj = new Conexion();
-        $this->db = $conexionObj->getConexion();
-        $this->modelo = new programacionCrearModelo($this->db);
+        $db = (new Conexion())->getConexion();
+        $this->modelo = new programacionCrearModelo($db);
     }
 
+    /**
+     * VISTA PRINCIPAL - Configuración de rutas semanales
+     */
     public function index()
     {
         $errores = [];
-        $datos = [];
+        $mensajeExito = "";
 
-        // Si se envía el formulario (Aquí meteremos la lógica matemática después)
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $datos = [
-                'id_delegacion' => $_POST['id_delegacion'] ?? '',
-                'fecha_inicio'  => $_POST['fecha_inicio'] ?? '',
-                'fecha_fin'     => $_POST['fecha_fin'] ?? '',
-                'tecnicos'      => $_POST['tecnicos'] ?? [], // Esto será un array
-                'meta_diaria'   => $_POST['meta_diaria'] ?? 8
-            ];
+        // Datos para la vista
+        $listaDelegaciones = $this->modelo->obtenerDelegaciones();
+        $listaTecnicos = $this->modelo->obtenerTecnicos();
+        $listaZonas = [];
+        $listaClientes = [];
+        $conteoZonas = [];
+        $propuesta = [];
 
-            // Validaciones básicas
-            if (empty($datos['id_delegacion'])) $errores[] = "Selecciona una delegación.";
-            if (empty($datos['fecha_inicio']) || empty($datos['fecha_fin'])) $errores[] = "Define el rango de fechas.";
-            if (empty($datos['tecnicos'])) $errores[] = "Debes seleccionar al menos un técnico.";
+        // Filtros
+        $delegacionSeleccionada = $_REQUEST['delegacion'] ?? '';
+        $clientesSeleccionados = $_REQUEST['clientes'] ?? [];
 
-            if (empty($errores)) {
-                // AQUÍ IRÁ LA MAGIA DEL ALGORITMO
-                // Por ahora, solo redirigimos o mostramos éxito
-                // $this->modelo->generarProgramacion($datos);
-                echo "<script>alert('Datos recibidos. Listo para procesar lógica.');</script>";
+        // Cargar clientes y zonas si hay delegación
+        if (!empty($delegacionSeleccionada)) {
+            $listaClientes = $this->modelo->obtenerClientesPorDelegacion($delegacionSeleccionada);
+            $listaZonas = $this->modelo->obtenerZonasPorDelegacion($delegacionSeleccionada);
+            
+            // Si no hay clientes seleccionados, seleccionar todos por defecto
+            if (empty($clientesSeleccionados)) {
+                $clientesSeleccionados = array_column($listaClientes, 'id_cliente');
             }
+            
+            // Contar puntos con el filtro de clientes
+            $conteoZonas = $this->modelo->contarPuntosPorZona($delegacionSeleccionada, $clientesSeleccionados);
         }
 
-        // Cargar listas para el formulario
-        $listaDelegaciones = $this->modelo->obtenerDelegaciones();
-        $listaTiposMantenimiento = $this->modelo->obtenerTiposMantenimiento();
-        $listaTecnicos = $this->modelo->obtenerTecnicos();
+        $titulo = "Programación de Rutas Semanales";
+        
+        // --- ERROR ANTERIOR ---
+        // require_once "app/views/programacion/programacionCrearVista.php"; // <--- ESTO IMPRIME ANTES DE TIEMPO
+        // include "app/views/plantillaVista.php";
 
-        // Configuración de la vista
-        $titulo = "Generar Programación";
-        // Ajusta la ruta según donde guardes tus vistas
+        // --- CORRECCIÓN ---
+        // Definimos la ruta de la vista interna
         $vistaContenido = "app/views/programacion/programacionCrearVista.php";
-
-        // Incluimos la plantilla maestra
+        
+        // Cargamos SOLO la plantilla (ella se encarga de incluir $vistaContenido)
         include "app/views/plantillaVista.php";
     }
 
-    
+    /**
+     * PREVISUALIZAR - Generar calendario semanal
+     */
+    public function previsualizar()
+    {
+        $errores = [];
+        $mensajeExito = "";
 
-    public function previsualizar() {
-    // Recoger datos del POST
-    $datos = [
-        'id_delegacion' => $_POST['id_delegacion'] ?? 0,
-        'fecha_inicio'  => $_POST['fecha_inicio'] ?? '',
-        'fecha_fin'     => $_POST['fecha_fin'] ?? '',
-        'zonas'         => $_POST['zonas'] ?? [],
-        'tecnicos'      => $_POST['tecnicos'] ?? [],
-        'meta_diaria'   => $_POST['meta_diaria'] ?? 8,
-        'solo_correctivos' => isset($_POST['solo_correctivos']),
-        'usar_sabados_buffer' => isset($_POST['usar_sabados_buffer'])
-    ];
-    
-    // Validaciones
-    $errores = [];
-    if (empty($datos['id_delegacion'])) $errores[] = "Selecciona una delegación";
-    if (empty($datos['fecha_inicio'])) $errores[] = "Selecciona fecha de inicio";
-    if (empty($datos['fecha_fin'])) $errores[] = "Selecciona fecha de fin";
-    if (empty($datos['tecnicos'])) $errores[] = "Selecciona al menos un técnico";
-    
-    if (!empty($errores)) {
-        // Si hay errores, volver al formulario
-        $_SESSION['errores_previsualizacion'] = $errores;
-        header('Location: ' . BASE_URL . 'programacionCrear');
-        exit;
-    }
-    
-    // SIMULACIÓN (Reemplaza esto con tu algoritmo real)
-    $simulacion = [];
-    
-    // Técnicos seleccionados
-    $tecnicosNombres = [
-        '1' => 'Juan Pérez',
-        '2' => 'María Gómez', 
-        '3' => 'Carlos López',
-        '4' => 'Ana Rodríguez',
-        '5' => 'Luis Martínez'
-    ];
-    
-    // Generar datos de prueba
-    $dias = (strtotime($datos['fecha_fin']) - strtotime($datos['fecha_inicio'])) / (60*60*24) + 1;
-    $contador = 0;
-    
-    for ($dia = 0; $dia < $dias; $dia++) {
-        $fechaActual = date('Y-m-d', strtotime($datos['fecha_inicio'] . " + $dia days"));
-        $esFinSemana = (date('N', strtotime($fechaActual)) >= 6);
-        
-        // Saltar fines de semana si no se usan como buffer
-        if ($esFinSemana && !$datos['usar_sabados_buffer']) {
-            continue;
+        // Datos para la vista
+        $listaDelegaciones = $this->modelo->obtenerDelegaciones();
+        $listaTecnicos = $this->modelo->obtenerTecnicos();
+        $listaZonas = [];
+        $listaClientes = [];
+        $conteoZonas = [];
+        $propuesta = [];
+
+        $delegacionSeleccionada = $_POST['delegacion'] ?? '';
+        $clientesSeleccionados = $_POST['clientes'] ?? [];
+
+        // Validaciones
+        if (empty($delegacionSeleccionada)) {
+            $errores[] = "Debe seleccionar una delegación.";
         }
+        if (empty($clientesSeleccionados)) {
+            $errores[] = "Debe seleccionar al menos un cliente para programar.";
+        }
+        if (empty($_POST['fecha_inicio'])) {
+            $errores[] = "Debe ingresar la fecha de inicio.";
+        }
+        if (empty($_POST['semanas']) || $_POST['semanas'] < 1) {
+            $errores[] = "Debe ingresar el número de semanas a programar.";
+        }
+
+        // Validar que al menos un día tenga configuración
+        $diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+        $hayConfiguracion = false;
         
-        foreach ($datos['tecnicos'] as $idTecnico) {
-            // Servicios por día por técnico (máximo la meta diaria)
-            $serviciosPorDia = rand(3, $datos['meta_diaria']);
-            
-            for ($i = 0; $i < $serviciosPorDia; $i++) {
-                $contador++;
-                $simulacion[] = [
-                    'tecnico' => $tecnicosNombres[$idTecnico] ?? "Técnico $idTecnico",
-                    'punto' => "Punto " . $contador,
-                    'direccion' => "Calle " . rand(1, 100) . " #" . rand(1, 50) . "-" . rand(1, 100),
-                    'zona' => !empty($datos['zonas']) ? $datos['zonas'][array_rand($datos['zonas'])] : 'General',
-                    'fecha' => $fechaActual,
-                    'tipo' => $datos['solo_correctivos'] ? 'Correctivo' : (rand(0, 1) ? 'Preventivo' : 'Correctivo')
-                ];
+        foreach ($diasSemana as $dia) {
+            if (!empty($_POST['tecnico_' . $dia]) && !empty($_POST['zonas_' . $dia])) {
+                $hayConfiguracion = true;
+                break;
             }
         }
-    }
-    
-    // Configurar variables para la vista
-    $titulo = "Previsualización de Programación";
-    
-    // Incluir la vista (corrige la ruta si es necesario)
-    require_once __DIR__ . '/../../views/programacion/programacionPrevisualizarVista.php';
-    exit;
-}
 
-// ESTE ES EL MÉTODO QUE LLAMA EL JS
-    // ESTE MÉTODO ES EL QUE DEBES LLAMAR
-    public function cargarDatosAuxiliares() {
-    header('Content-Type: application/json');
-    
-    $id_delegacion = $_POST['id_delegacion'] ?? 0;
-    $respuesta = [
-        'zonas' => [],
-        'tecnicos' => []
-    ];
-
-    if ($id_delegacion > 0) {
-        // 1. Zonas (sí depende de la delegación)
-        $respuesta['zonas'] = $this->modelo->obtenerZonasPorDelegacion($id_delegacion);
-        
-        // 2. Técnicos (NO dependen de delegación)
-        $tecnicosTodo = $this->modelo->obtenerTecnicos();
-        
-        // Como no tenemos delegación, podemos sugerir TODOS o usar otro criterio
-        foreach($tecnicosTodo as $tec){
-            // Opción A: Marcar todos como sugeridos
-            $tec['sugerido'] = true;
-            
-            // Opción B: Si tienes otra forma de saber qué técnicos van a esa zona
-            // $tec['sugerido'] = $this->esTecnicoDeZona($tec['id_tecnico'], $id_delegacion);
-            
-            $respuesta['tecnicos'][] = $tec;
+        if (!$hayConfiguracion) {
+            $errores[] = "Debe configurar al menos un día de la semana con técnico y zonas.";
         }
+
+        if (empty($errores)) {
+            // Construir calendario
+            $calendario = [];
+            
+            foreach ($diasSemana as $dia) {
+                $tecnico = $_POST['tecnico_' . $dia] ?? null;
+                $zonas = $_POST['zonas_' . $dia] ?? [];
+                
+                if (!empty($tecnico) && !empty($zonas)) {
+                    $calendario[$dia] = [
+                        'id_tecnico' => $tecnico,
+                        'zonas' => $zonas
+                    ];
+                }
+            }
+
+            // Configuración completa CON CLIENTES
+            $configuracion = [
+                'id_delegacion' => $delegacionSeleccionada,
+                'clientes_ids' => $clientesSeleccionados,  // ✅ FILTRO DE CLIENTES
+                'calendario' => $calendario,
+                'fecha_inicio' => $_POST['fecha_inicio'],
+                'semanas' => intval($_POST['semanas']),
+                'max_servicios_dia' => intval($_POST['max_servicios'] ?? 5),
+                'incluir_sabado_fallidos' => isset($_POST['sabado_fallidos'])
+            ];
+
+            // Generar propuesta
+            $propuesta = $this->modelo->generarProgramacionSemanal($configuracion);
+
+            if (empty($propuesta)) {
+                $errores[] = "No se pudo generar la programación. Verifique que haya puntos pendientes en las zonas y clientes seleccionados.";
+            }
+        }
+
+        // Recargar datos para mantener la vista
+        if (!empty($delegacionSeleccionada)) {
+            $listaClientes = $this->modelo->obtenerClientesPorDelegacion($delegacionSeleccionada);
+            $listaZonas = $this->modelo->obtenerZonasPorDelegacion($delegacionSeleccionada);
+            
+            // Si no hay clientes seleccionados, seleccionar todos
+            if (empty($clientesSeleccionados)) {
+                $clientesSeleccionados = array_column($listaClientes, 'id_cliente');
+            }
+            
+            $conteoZonas = $this->modelo->contarPuntosPorZona($delegacionSeleccionada, $clientesSeleccionados);
+        }
+
+        $titulo = "Programación de Rutas Semanales";
+
+        // --- CORRECCIÓN ---
+        $vistaContenido = "app/views/programacion/programacionCrearVista.php";
+        include "app/views/plantillaVista.php";
     }
 
-    echo json_encode($respuesta);
-    exit;
-}
+    /**
+     * GUARDAR - Aprobar y crear órdenes
+     */
+    public function guardar_definitivo()
+    {
+        $errores = [];
+        $mensajeExito = "";
 
+        // Datos para la vista
+        $listaDelegaciones = $this->modelo->obtenerDelegaciones();
+        $listaTecnicos = $this->modelo->obtenerTecnicos();
+        $listaZonas = [];
+        $conteoZonas = [];
+        $propuesta = [];
+
+        $delegacionSeleccionada = '';
+
+        if (!empty($_POST['final'])) {
+            $resultado = $this->modelo->guardarProgramacionDefinitiva($_POST['final']);
+            if ($resultado['status']) {
+                $mensajeExito = "¡Programación creada exitosamente! Se generaron " . $resultado['count'] . " órdenes de servicio.";
+            } else {
+                $errores[] = "Error al guardar: " . $resultado['msg'];
+            }
+        } else {
+            $errores[] = "No hay datos para guardar.";
+        }
+
+        $titulo = "Programación de Rutas Semanales";
+
+        // --- CORRECCIÓN ---
+        $vistaContenido = "app/views/programacion/programacionCrearVista.php";
+        include "app/views/plantillaVista.php";
+    }
+
+    /**
+     * AJAX - Obtener puntos de una zona específica
+     */
+    public function obtener_puntos_zona()
+    {
+        header('Content-Type: application/json');
+        
+        $delegacion = $_GET['delegacion'] ?? '';
+        $zona = $_GET['zona'] ?? '';
+        
+        if (empty($delegacion) || empty($zona)) {
+            echo json_encode(['error' => 'Parámetros incompletos']);
+            exit;
+        }
+        
+        $puntos = $this->modelo->obtenerPuntosPorZona($delegacion, $zona);
+        echo json_encode(['puntos' => $puntos]);
+        exit;
+    }
 }

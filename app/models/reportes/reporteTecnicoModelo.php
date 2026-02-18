@@ -15,6 +15,19 @@ class ReporteTecnicoModelo
         return $this->conn->query("SELECT id_tecnico, nombre_tecnico FROM tecnico WHERE estado = 1 ORDER BY nombre_tecnico ASC")->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function obtenerParametro($clave)
+    {
+        try {
+            $sql = "SELECT valor FROM parametros WHERE clave = :clave LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':clave', $clave);
+            $stmt->execute();
+            return $stmt->fetchColumn(); // Retorna el valor directo o false
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
     public function generarReporteServicios($id_tecnico, $fecha_inicio, $fecha_fin)
     {
         try {

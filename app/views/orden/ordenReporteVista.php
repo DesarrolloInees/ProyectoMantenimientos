@@ -127,24 +127,70 @@
             });
         }
 
+        /**
+         * Función auxiliar para restar horas (Formato HH:mm o HH:mm:ss)
+         * Retorna "HH:mm"
+         */
+        function calcularDiferenciaHoras(horaInicio, horaFin) {
+            if (!horaInicio || !horaFin) return "00:00";
+
+            // Convertir a objetos Date (usando una fecha base arbitraria)
+            let d1 = new Date(`2000-01-01T${horaInicio}`);
+            let d2 = new Date(`2000-01-01T${horaFin}`);
+
+            if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return "00:00";
+
+            let diffMs = d2 - d1;
+
+            // Si la diferencia es negativa (ej: error en datos), retornamos 0
+            if (diffMs < 0) return "Err";
+
+            let diffMins = Math.floor(diffMs / 60000);
+            let horas = Math.floor(diffMins / 60);
+            let mins = diffMins % 60;
+
+            // Formatear a dos dígitos
+            return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        }
+
         // ===============================================
-        // 1. EXCEL SERVICIOS (Corregido: Viáticos al final del bloque)
+        // GENERAR EXCEL CON CÁLCULO DE DESPLAZAMIENTO
         // ===============================================
         function generarExcelServicios(datos, inicio, fin) {
             let wb = XLSX.utils.book_new();
             let serviciosPorDelegacion = {};
-            
-            // Variable temporal para retener el viático hasta el final del día del técnico
             let viaticoPendiente = null;
 
-            // Iteramos usando el índice para poder "mirar el siguiente"
+            // Variables para el cálculo de desplazamiento
+            let prevTecnico = null;
+            let prevFecha = null;
+            let prevHoraSalida = null;
+
             datos.forEach((d, index) => {
                 let delegacion = d.delegacion || "SIN ASIGNAR";
                 if (!serviciosPorDelegacion[delegacion]) {
                     serviciosPorDelegacion[delegacion] = [];
                 }
 
-                // --- Lógica de Textos y Checks (Igual que antes) ---
+                // --- 1. CÁLCULO DEL DESPLAZAMIENTO ---
+                // Lógica: Hora Entrada Actual - Hora Salida Anterior (si es el mismo técnico y fecha)
+                let desplazamientoCalculado = "00:00";
+
+                if (d.nombre_tecnico === prevTecnico && d.fecha_visita === prevFecha && prevHoraSalida) {
+                    // Calculamos el tiempo de viaje desde el último punto
+                    desplazamientoCalculado = calcularDiferenciaHoras(prevHoraSalida, d.hora_entrada);
+                } else {
+                    // Es el primer servicio del día para este técnico
+                    desplazamientoCalculado = "";
+                }
+
+                // Actualizamos las variables "previas" para la siguiente iteración
+                prevTecnico = d.nombre_tecnico;
+                prevFecha = d.fecha_visita;
+                prevHoraSalida = d.hora_salida;
+
+
+                // --- 2. PREPARACIÓN DE DATOS (Igual que antes) ---
                 let txtServicio = (d.txt_servicio || "").toLowerCase();
                 let esPrevBasico = (txtServicio.includes("basico") || txtServicio.includes("básico")) ? "X" : "";
                 let esPrevProfundo = (txtServicio.includes("profundo") || txtServicio.includes("completo")) ? "X" : "";
@@ -155,14 +201,16 @@
                 }
 
                 let duracion = d.tiempo_servicio;
-                if (!duracion || duracion === '00:00:00') {
-                    duracion = calcularDuracion(d.hora_entrada, d.hora_salida);
+                // Si no viene calculado de BD, intentar calcularlo
+                if (!duracion || duracion === '00:00' || duracion === '00:00:00') {
+                    // Reutilizamos la función auxiliar creada arriba
+                    duracion = calcularDiferenciaHoras(d.hora_entrada, d.hora_salida);
                 }
 
                 let valorServicio = parseFloat(d.valor_servicio) || 0;
                 let valorViaticos = parseFloat(d.valor_viaticos) || 0;
 
-                // 1. INSERTAR SIEMPRE LA FILA DEL SERVICIO
+                // --- 3. AGREGAR AL ARRAY ---
                 serviciosPorDelegacion[delegacion].push({
                     device_id: d.device_id,
                     remision: d.numero_remision,
@@ -181,55 +229,66 @@
                     hora_entrada: d.hora_entrada,
                     hora_salida: d.hora_salida,
                     duracion: duracion,
+
+                    // Aquí inyectamos el cálculo
+                    desplazamiento: desplazamientoCalculado,
+
                     repuestos: d.repuestos_texto,
                     estado: d.estado_maquina,
                     calificacion: d.nombre_calificacion,
                     modalidad: d.tipo_zona
                 });
 
-                // 2. ¿ESTE SERVICIO TRAJO VIÁTICO? SI ES ASÍ, LO GUARDAMOS (NO LO INSERTAMOS AÚN)
+                // --- 4. GESTIÓN DE VIÁTICOS (Igual que antes) ---
                 if (valorViaticos > 0) {
                     viaticoPendiente = {
-                        device_id: "", remision: "", cliente: "", punto: "",
-                        prev_basico: "", prev_profundo: "", correctivo: "",
-                        
-                        valor: valorViaticos, // Valor en la columna correcta
-                        
-                        obs: "TARIFA ADICIONAL POR DÍA ", 
-                        delegacion: "", fecha: "", tecnico: "", 
-                        tipo_maquina: "", tipo_servicio: "VIÁTICOS",
-                        hora_entrada: "", hora_salida: "", duracion: "", 
-                        repuestos: "", estado: "", calificacion: "", modalidad: ""
+                        device_id: "",
+                        remision: "",
+                        cliente: "",
+                        punto: "",
+                        prev_basico: "",
+                        prev_profundo: "",
+                        correctivo: "",
+                        valor: valorViaticos,
+                        obs: "TARIFA ADICIONAL POR DÍA",
+                        delegacion: "",
+                        fecha: "",
+                        tecnico: "",
+                        tipo_maquina: "",
+                        tipo_servicio: "",
+                        hora_entrada: "",
+                        hora_salida: "",
+                        duracion: "",
+                        desplazamiento: "", // Viático no tiene desplazamiento
+                        repuestos: "",
+                        estado: "",
+                        calificacion: "",
+                        modalidad: ""
                     };
                 }
 
-                // 3. LOGICA "LOOK AHEAD" (MIRAR ADELANTE)
-                // Verificamos si aquí termina el bloque de este técnico en esta fecha.
+                // --- 5. LOGICA DE QUIEBRE DE GRUPO ---
                 let siguienteItem = datos[index + 1];
                 let cerrarGrupo = false;
 
                 if (!siguienteItem) {
-                    // Es el último registro de todo el array
                     cerrarGrupo = true;
                 } else {
-                    // Verificamos si cambia algo importante en el siguiente registro
                     let siguienteDel = siguienteItem.delegacion || "SIN ASIGNAR";
-                    
-                    if (siguienteItem.fecha_visita !== d.fecha_visita || // Cambió la fecha
-                        siguienteItem.nombre_tecnico !== d.nombre_tecnico || // Cambió el técnico
-                        siguienteDel !== delegacion) { // Cambió la delegación (raro pero posible)
+                    if (siguienteItem.fecha_visita !== d.fecha_visita ||
+                        siguienteItem.nombre_tecnico !== d.nombre_tecnico ||
+                        siguienteDel !== delegacion) {
                         cerrarGrupo = true;
                     }
                 }
 
-                // 4. SI SE CIERRA EL GRUPO Y TENÍAMOS UN VIÁTICO PENDIENTE, LO SOLTAMOS AHORA
                 if (cerrarGrupo && viaticoPendiente) {
                     serviciosPorDelegacion[delegacion].push(viaticoPendiente);
-                    viaticoPendiente = null; // Limpiamos para el siguiente grupo
+                    viaticoPendiente = null;
                 }
             });
 
-            // --- GENERACIÓN DEL ARCHIVO (ESTO SIGUE IGUAL) ---
+            // --- 6. GENERAR HOJAS DE EXCEL ---
             for (let del in serviciosPorDelegacion) {
                 let filas = serviciosPorDelegacion[del];
 
@@ -237,9 +296,9 @@
                     [
                         "Device_id", "Número de Remisión", "Cliente", "Nombre Punto",
                         "Preventivo Básico", "Preventivo Profundo", "Correctivo", "Tarifa",
-                        "Observaciones (Qué se hizo)", "Delegación", "Fecha", "Técnico",
+                        "Observaciones", "Delegación", "Fecha", "Técnico",
                         "Tipo de Máquina", "Tipo de Servicio", "Hora Entrada", "Hora Salida",
-                        "Duración", "Repuestos", "Estado", "Calificación", "Modalidad"
+                        "Duración", "Desplazamiento", "Repuestos", "Estado", "Calificación", "Modalidad"
                     ]
                 ];
 
@@ -249,7 +308,7 @@
                         f.prev_basico, f.prev_profundo, f.correctivo, f.valor,
                         f.obs, f.delegacion, f.fecha, f.tecnico,
                         f.tipo_maquina, f.tipo_servicio, f.hora_entrada, f.hora_salida,
-                        f.duracion, f.repuestos, f.estado, f.calificacion, f.modalidad
+                        f.duracion, f.desplazamiento, f.repuestos, f.estado, f.calificacion, f.modalidad
                     ]);
                 });
 
@@ -261,26 +320,75 @@
                     const range = XLSX.utils.decode_range(ws['!ref']);
                     const colTarifa = 7;
                     for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                        let cellRef = XLSX.utils.encode_cell({ c: colTarifa, r: R });
-                        if (!ws[cellRef]) ws[cellRef] = { t: 'n', v: 0 };
+                        let cellRef = XLSX.utils.encode_cell({
+                            c: colTarifa,
+                            r: R
+                        });
+                        if (!ws[cellRef]) ws[cellRef] = {
+                            t: 'n',
+                            v: 0
+                        };
                         ws[cellRef].t = 'n';
                         ws[cellRef].z = formatoContabilidad;
                     }
                 }
 
                 // Ancho columnas
-                ws["!cols"] = [
-                    { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 },
-                    { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 15 }, 
-                    { wch: 50 }, // Observaciones amplia
-                    { wch: 15 }, { wch: 12 }, { wch: 20 },
-                    { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
-                    { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+                ws["!cols"] = [{
+                        wch: 15
+                    }, {
+                        wch: 12
+                    }, {
+                        wch: 25
+                    }, {
+                        wch: 25
+                    },
+                    {
+                        wch: 8
+                    }, {
+                        wch: 8
+                    }, {
+                        wch: 8
+                    }, {
+                        wch: 15
+                    },
+                    {
+                        wch: 50
+                    }, {
+                        wch: 15
+                    }, {
+                        wch: 12
+                    }, {
+                        wch: 20
+                    },
+                    {
+                        wch: 15
+                    }, {
+                        wch: 20
+                    }, {
+                        wch: 10
+                    }, {
+                        wch: 10
+                    },
+                    {
+                        wch: 10
+                    }, {
+                        wch: 12
+                    }, {
+                        wch: 30
+                    }, {
+                        wch: 15
+                    }, {
+                        wch: 15
+                    }, {
+                        wch: 15
+                    }
                 ];
 
                 let nombreHoja = del.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Data";
                 XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
             }
+
             XLSX.writeFile(wb, `Reporte_Servicios_${inicio}_a_${fin}.xlsx`);
         }
 

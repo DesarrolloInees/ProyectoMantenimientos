@@ -160,9 +160,16 @@
             </div>
 
             <?php
-            if (isset($vistaContenido) && file_exists($vistaContenido)) {
+            // 1. PRIORIDAD: Si viene contenido HTML directo (del Buffer del controlador)
+            if (isset($contenido)) {
+                echo $contenido;
+            }
+            // 2. OPCIÓN B: Si viene una ruta de archivo (Lógica antigua)
+            elseif (isset($vistaContenido) && file_exists($vistaContenido)) {
                 include $vistaContenido;
-            } elseif (isset($vistaContenido)) {
+            } 
+            // 3. ERROR: Si se pidió una ruta pero no existe
+            elseif (isset($vistaContenido)) {
                 echo '<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow" role="alert">
                         <p class="font-bold"><i class="fas fa-exclamation-triangle"></i> Error 404</p>
                         <p>No se encuentra la vista solicitada: <code class="bg-red-200 px-1 rounded">' . $vistaContenido . '</code></p>
@@ -172,7 +179,7 @@
         </main>
 
         <footer class="bg-white border-t border-gray-200 mt-auto py-4 text-center text-xs text-gray-500">
-            &copy; 2025 INEES Mantenimientos - Todos los derechos reservados.
+            &copy; 2026 INEES Mantenimientos - Todos los derechos reservados.
         </footer>
     </div>
 

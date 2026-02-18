@@ -184,6 +184,28 @@ class ordenCrearControlador
     }
 
 
+
+    public function ajaxProgramacion()
+    {
+        while (ob_get_level()) ob_end_clean();
+        ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            if (isset($_POST['fecha'])) {
+                $data = $this->modelo->obtenerProgramacionDiaria($_POST['fecha']);
+                echo json_encode(['status' => true, 'data' => $data]);
+            } else {
+                echo json_encode(['status' => false, 'error' => 'Sin fecha']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => false, 'error' => $e->getMessage()]);
+        }
+        ob_end_flush();
+        exit;
+    }
+
+
     public function guardar()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -204,6 +226,7 @@ class ordenCrearControlador
                     $valorFinal = is_numeric($valorLimpio) ? $valorLimpio : 0;
 
                     $datosParaModelo = [
+                        'id_orden_previa' => !empty($fila['id_orden_previa']) ? intval($fila['id_orden_previa']) : null,
                         'remision'      => $fila['remision'],
                         'id_cliente'    => $fila['id_cliente'] ?? null,
                         'id_punto'      => $fila['id_punto'] ?? null,

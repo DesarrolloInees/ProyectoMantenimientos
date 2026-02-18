@@ -200,3 +200,117 @@
 <script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/app.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/crearNotificaciones.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>js/orden/ordenCrear/validadorRemisiones.js?v=<?php echo time(); ?>"></script>
+
+<script>
+    $(document).ready(function() {
+
+        // Detectar cambio en la fecha
+        $('input[name="fecha_reporte"]').on('change', function() {
+            var fecha = $(this).val();
+            cargarProgramacion(fecha);
+        });
+
+        // Cargar al inicio si ya hay fecha (por si recargan la página)
+        var fechaInicial = $('input[name="fecha_reporte"]').val();
+        if (fechaInicial) {
+            cargarProgramacion(fechaInicial);
+        }
+    });
+
+    function cargarProgramacion(fecha) {
+        // Feedback visual (Opcional)
+        console.log("Buscando programación para: " + fecha);
+
+        $.ajax({
+            url: 'index.php?pagina=ordenCrear&accion=ajaxProgramacion',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                fecha: fecha
+            },
+            success: function(response) {
+
+                // Limpiar tabla actual (Opcional: Si quieres que reemplace todo)
+                // $('#contenedorFilas').empty(); 
+                // filas = []; // Si usas un array global en filaManager.js para rastrear índices
+
+                if (response.status && response.data.length > 0) {
+
+                    // Limpiamos la tabla para no acumular basura si cambia la fecha varias veces
+                    $('#contenedorFilas').empty();
+
+                    // Alerta suave (Toast)
+                    // alert('Se encontraron ' + response.data.length + ' servicios programados.');
+
+                    response.data.forEach(function(servicio, index) {
+
+                        // 1. Agregamos una fila vacía (Llamamos a tu función existente)
+                        agregarFila();
+
+                        // 2. Esperamos un micro-momento para que el DOM exista, 
+                        // o buscamos la última fila agregada.
+                        var $fila = $('#contenedorFilas tr:last');
+                        // OBTENEMOS EL ÍNDICE REAL QUE GENERÓ agregarFila()
+                        // Si tu filaManager usa un contador global, búscalo en el atributo name
+                        // Ejemplo: name="filas[0][id_tecnico]" -> El índice es 0
+
+                        var nameAttribute = $fila.find('select').first().attr('name');
+                        var match = nameAttribute.match(/filas\[(\d+)\]/);
+                        var indiceReal = match ? match[1] : index;
+
+                        var index = $fila.attr('data-index'); // Asumiendo que tu filaManager pone un data-index
+
+                        // SI NO TIENES data-index, usa el índice del loop o cuenta las filas - 1
+
+                        // 3. LLENAMOS LOS DATOS
+                        // Nota: Los select2 necesitan .trigger('change')
+
+                        // 🔥 CREAMOS EL INPUT HIDDEN CON EL ÍNDICE CORRECTO 🔥
+                        // Si no tiene el índice correcto (filas[X]), PHP no sabrá a qué fila pertenece
+                        if ($fila.find('input.orden-previa').length === 0) {
+                            var inputHidden = `<input type="hidden" 
+                                                class="orden-previa" 
+                                                name="filas[${indiceReal}][id_orden_previa]" 
+                                                value="${servicio.id_ordenes_servicio}">`;
+                            $fila.find('td:first').append(inputHidden);
+                        }
+
+                        // Técnico
+                        $fila.find('select[name*="[id_tecnico]"]').val(servicio.id_tecnico).trigger('change');
+
+                        // Cliente (Esto disparará la carga de puntos por tu lógica de app.js)
+                        // Necesitamos una promesa o timeout porque cargar cliente limpia puntos
+                        var $selectCliente = $fila.find('select[name*="[id_cliente]"]');
+                        $selectCliente.val(servicio.id_cliente).trigger('change');
+
+                        // Esperar a que carguen los puntos (AJAX asíncrono en tu app.js)
+                        // HACK: Usamos un timeout o modificamos app.js para aceptar callbacks. 
+                        // Lo ideal es setTimeout simple para demo:
+                        setTimeout(function() {
+                            // Punto
+                            $fila.find('select[name*="[id_punto]"]').val(servicio.id_punto).trigger('change');
+
+                            setTimeout(function() {
+                                // Máquina
+                                $fila.find('select[name*="[id_maquina]"]').val(servicio.id_maquina).trigger('change');
+                            }, 800);
+
+                        }, 800); // Ajusta tiempos según velocidad de tu servidor
+
+                        // Tipo Mantenimiento
+                        $fila.find('select[name*="[tipo_servicio]"]').val(servicio.id_tipo_mantenimiento);
+
+                        // Modalidad (Si tienes el campo visible)
+                        // $fila.find('select[name*="[id_modalidad]"]').val(servicio.id_modalidad);
+
+                        // Iluminar la fila para indicar que vino de programación
+                        $fila.addClass('bg-blue-50');
+                    });
+                }
+            },
+            error: function(err) {
+                console.error("Error cargando programación", err);
+            }
+        });
+    }
+</script>

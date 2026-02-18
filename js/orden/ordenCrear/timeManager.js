@@ -161,7 +161,7 @@ function manejarCambioFecha() {
                     // Esto evita romper configuraciones manuales si usaras otras modalidades (ej: ID 3)
                     if (selectModalidad.value === "2") {
                          selectModalidad.value = "1"; // Vuelve a Urbano
-                         delete selectModalidad.dataset.cambioAutomatico;
+                            delete selectModalidad.dataset.cambioAutomatico;
                     }
 
                     // Limpiamos los estilos
