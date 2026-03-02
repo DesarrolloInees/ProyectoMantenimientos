@@ -29,7 +29,7 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-clipboard-list text-gray-400"></i></div>
                     <input type="text" name="nombre_novedad" required
                         value="<?= htmlspecialchars($datos['nombre_novedad']) ?>"
-                        class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase">
+                        class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 capitalize">
                 </div>
             </div>
 

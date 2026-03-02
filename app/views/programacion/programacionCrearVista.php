@@ -7,6 +7,107 @@
             <i class="fas fa-check-circle mr-2"></i><?= $mensajeExito ?>
         </div>
     <?php endif; ?>
+    <?php if (!empty($datosParaExcel)): ?>
+            <div class="bg-indigo-50 border border-indigo-200 p-5 rounded-lg mb-6 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 class="font-bold text-indigo-900 text-lg"><i class="fas fa-file-excel mr-2 text-green-600"></i> ¡Tu programación está lista!</h3>
+                    <p class="text-sm text-indigo-700">Descarga el archivo Excel con las rutas generadas para compartirlas con los técnicos.</p>
+                </div>
+                <button type="button" id="btnExportarProgramacion" onclick='generarExcelProgramacion(<?= json_encode($datosParaExcel) ?>)' 
+                        class="px-6 py-3 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-700 transition flex items-center">
+                    <span id="txtBotonProg"><i class="fas fa-download mr-2"></i> Descargar Excel Programado</span>
+                </button>
+            </div>
+
+            <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+            <script>
+                function generarExcelProgramacion(datos) {
+                    const btn = document.getElementById('btnExportarProgramacion');
+                    const txt = document.getElementById('txtBotonProg');
+
+                    btn.disabled = true;
+                    btn.classList.add('opacity-75', 'cursor-not-allowed');
+                    txt.innerHTML = "<i class='fas fa-spinner fa-spin mr-2'></i> Generando...";
+
+                    try {
+                        const datosFormateados = datos.map(fila => {
+                            // Limpieza de fecha última visita (igual que el script anterior)
+                            let fechaUltima = null;
+                            if (fila.fecha_ultima_visita && !fila.fecha_ultima_visita.startsWith('0000')) {
+                                let soloFecha = fila.fecha_ultima_visita.split(' ')[0];
+                                let partes = soloFecha.split('-');
+                                if (partes.length === 3) {
+                                    fechaUltima = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+                                }
+                            }
+
+                            // Formateo de fecha de visita programada
+                            let fechaProg = null;
+                            if (fila.fecha_visita_programada) {
+                                let partes = fila.fecha_visita_programada.split('-');
+                                fechaProg = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+                            }
+
+                            return {
+                                "Código Cliente": fila.codigo_cliente || "",
+                                "Cliente": fila.nombre_cliente || "",
+                                "Nombre del Punto": fila.nombre_punto || "",
+                                "Dirección": fila.direccion || "",
+                                "Municipio": fila.nombre_municipio || "",
+                                "Zona": fila.zona || "",
+                                "Delegación": fila.nombre_delegacion || "Sin Asignar",
+                                "Técnico Asignado": fila.tecnico_asignado || "", // <--- CAMPO NUEVO
+                                "Fecha Visita Programada": fechaProg,            // <--- CAMPO NUEVO
+                                "ID Dispositivo (Device)": fila.device_id || ""
+                            };
+                        });
+
+                        const workbook = XLSX.utils.book_new();
+                        const worksheet = XLSX.utils.json_to_sheet(datosFormateados, { cellDates: true });
+
+                        // Formatear columnas de fechas para quitar horas (M - Última, I - Programada)
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                            // Columna I (índice 8) = Fecha Visita Programada
+                            const cellProg = worksheet[XLSX.utils.encode_cell({r: R, c: 8})];
+                            if (cellProg && cellProg.t === 'd') cellProg.z = 'dd/mm/yyyy';
+                            
+                            // Columna K (índice 10) = Fecha Última Visita
+                            const cellUlt = worksheet[XLSX.utils.encode_cell({r: R, c: 10})];
+                            if (cellUlt && cellUlt.t === 'd') cellUlt.z = 'dd/mm/yyyy';
+                        }
+
+                        // Ajustar anchos
+                        worksheet['!cols'] = [
+                            { wch: 15 }, // Codigo
+                            { wch: 35 }, // Cliente
+                            { wch: 30 }, // Punto
+                            { wch: 40 }, // Direccion
+                            { wch: 25 }, // Municipio
+                            { wch: 20 }, // Zona
+                            { wch: 20 }, // Delegacion
+                            { wch: 30 }, // Tecnico Asignado
+                            { wch: 22 }, // Fecha Programada
+                            { wch: 25 }, // Device
+                        ];
+
+                        XLSX.utils.book_append_sheet(workbook, worksheet, "Rutas Programadas");
+                        const nombreArchivo = "Rutas_Programadas_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+                        XLSX.writeFile(workbook, nombreArchivo);
+
+                    } catch (error) {
+                        console.error("Error al generar Excel:", error);
+                        alert("Hubo un error al generar el Excel.");
+                    } finally {
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                        txt.innerHTML = "<i class='fas fa-download mr-2'></i> Descargar Excel Programado";
+                    }
+                }
+            </script>
+        <?php endif; ?>
+    
+        
 
     <?php if (!empty($errores)): ?>
         <div class="bg-red-100 text-red-800 p-4 rounded-lg mb-4 shadow-md border-l-4 border-red-500">

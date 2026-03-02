@@ -16,7 +16,6 @@ class TipoNovedadEditarControlador
         $this->modelo = new TipoNovedadEditarModelo($this->db);
     }
 
-    // Quitamos el argumento $id porque el index no lo envía
     public function index()
     {
         $errores = [];
@@ -24,18 +23,15 @@ class TipoNovedadEditarControlador
         $id = null;
 
         // --- LÓGICA PARA CAPTURAR EL ID MANUALMENTE ---
-        // 1. Si viene por POST (al guardar)
         if (isset($_POST['id_tipo_novedad'])) {
             $id = $_POST['id_tipo_novedad'];
         } 
-        // 2. Si viene por URL tipo /tipoNovedadEditar/5
         elseif (isset($_GET['ruta'])) {
             $partes = explode('/', rtrim($_GET['ruta'], '/'));
             if (isset($partes[1]) && is_numeric($partes[1])) {
                 $id = $partes[1];
             }
         }
-        // 3. Compatibilidad con ?id=5
         elseif (isset($_GET['id'])) {
             $id = $_GET['id'];
         }
@@ -44,7 +40,11 @@ class TipoNovedadEditarControlador
 
         // A. GUARDAR CAMBIOS (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = trim($_POST['nombre_novedad'] ?? '');
+            $nombreRaw = trim($_POST['nombre_novedad'] ?? '');
+            
+            // CAMBIO AQUÍ: Aplicamos Capitalize antes de guardar
+            $nombre = mb_convert_case($nombreRaw, MB_CASE_TITLE, "UTF-8");
+            
             $estado = $_POST['estado'] ?? '1';
 
             if (empty($nombre)) {

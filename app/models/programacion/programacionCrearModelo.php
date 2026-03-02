@@ -382,4 +382,73 @@ class programacionCrearModelo
 
         return $resultado;
     }
+
+
+    // ===================================
+    // EXPORTAR A EXCEL (DESPUÉS DE GUARDAR)
+    // ===================================
+
+    public function obtenerDatosProgramacionExcel($listaServicios)
+    {
+        if (empty($listaServicios)) return [];
+
+        // 1. Obtener IDs únicos de puntos para consultar
+        $idsPuntos = array_unique(array_column($listaServicios, 'id_punto'));
+        $in = str_repeat('?,', count($idsPuntos) - 1) . '?';
+
+        // Consultamos toda la data requerida
+        $sql = "SELECT p.id_punto, c.codigo_cliente, c.nombre_cliente, p.nombre_punto, 
+                        p.direccion, m.nombre_municipio, p.zona, d.nombre_delegacion, 
+                        (SELECT mq.device_id FROM maquina mq WHERE mq.id_punto = p.id_punto AND mq.estado = 1 ORDER BY mq.id_maquina ASC LIMIT 1) as device_id,
+                        p.fecha_ultima_visita,
+                        (SELECT tm.nombre_completo 
+                        FROM ordenes_servicio os 
+                        LEFT JOIN tipo_mantenimiento tm ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento 
+                        WHERE os.id_punto = p.id_punto AND os.estado = 1 
+                        ORDER BY os.fecha_visita DESC LIMIT 1) as nombre_mantenimiento
+                FROM punto p
+                LEFT JOIN cliente c ON p.id_cliente = c.id_cliente
+                LEFT JOIN municipio m ON p.id_municipio = m.id_municipio
+                LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                WHERE p.id_punto IN ($in)";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute(array_values($idsPuntos));
+        
+        $resultados = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $resultados[$row['id_punto']] = $row;
+        }
+
+        // 2. Obtener nombres de los técnicos asignados
+        $idsTecnicos = array_unique(array_column($listaServicios, 'id_tecnico'));
+        $nombresTecnicos = [];
+        if (!empty($idsTecnicos)) {
+            $inTec = str_repeat('?,', count($idsTecnicos) - 1) . '?';
+            $stmtTec = $this->conn->prepare("SELECT id_tecnico, nombre_tecnico FROM tecnico WHERE id_tecnico IN ($inTec)");
+            $stmtTec->execute(array_values($idsTecnicos));
+            while ($rowTec = $stmtTec->fetch(PDO::FETCH_ASSOC)) {
+                $nombresTecnicos[$rowTec['id_tecnico']] = $rowTec['nombre_tecnico'];
+            }
+        }
+
+        // 3. Unir la info consultada con la fecha y el técnico programado
+        $datosExcel = [];
+        foreach ($listaServicios as $servicio) {
+            $idPunto = $servicio['id_punto'];
+            if (isset($resultados[$idPunto])) {
+                $fila = $resultados[$idPunto];
+                $fila['fecha_visita_programada'] = $servicio['fecha_visita'];
+                $fila['tecnico_asignado'] = $nombresTecnicos[$servicio['id_tecnico']] ?? 'Desconocido';
+                $datosExcel[] = $fila;
+            }
+        }
+
+        // 4. Ordenar por fecha programada ascendente
+        usort($datosExcel, function($a, $b) {
+            return strtotime($a['fecha_visita_programada']) - strtotime($b['fecha_visita_programada']);
+        });
+
+        return $datosExcel;
+    }
 }

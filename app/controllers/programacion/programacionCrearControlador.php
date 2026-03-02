@@ -172,6 +172,7 @@ class programacionCrearControlador
     {
         $errores = [];
         $mensajeExito = "";
+        $datosParaExcel = null; 
 
         // Datos para la vista
         $listaDelegaciones = $this->modelo->obtenerDelegaciones();
@@ -186,6 +187,8 @@ class programacionCrearControlador
             $resultado = $this->modelo->guardarProgramacionDefinitiva($_POST['final']);
             if ($resultado['status']) {
                 $mensajeExito = "¡Programación creada exitosamente! Se generaron " . $resultado['count'] . " órdenes de servicio.";
+                
+                $datosParaExcel = $this->modelo->obtenerDatosProgramacionExcel($_POST['final']);
             } else {
                 $errores[] = "Error al guardar: " . $resultado['msg'];
             }

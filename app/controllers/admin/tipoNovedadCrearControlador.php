@@ -23,7 +23,10 @@ class TipoNovedadCrearControlador
         $nombrePrevio = "";
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombrePrevio = trim($_POST['nombre_novedad'] ?? '');
+            $nombreRaw = trim($_POST['nombre_novedad'] ?? '');
+
+            // Procesamos el nombre: Capitalize (Primera Letra De Cada Palabra)
+            $nombrePrevio = mb_convert_case($nombreRaw, MB_CASE_TITLE, "UTF-8");
 
             if (empty($nombrePrevio)) {
                 $errores[] = "El nombre de la novedad es obligatorio.";

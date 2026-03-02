@@ -31,7 +31,7 @@
                             <td class="px-4 py-3 font-medium text-gray-900">
                                 #<?= $item['id_tipo_novedad'] ?>
                             </td>
-                            <td class="px-4 py-3 font-semibold uppercase">
+                            <td class="px-4 py-3 font-semibold capitalize">
                                 <?= htmlspecialchars($item['nombre_novedad']) ?>
                             </td>
                             <td class="px-4 py-3 text-center">

@@ -199,7 +199,7 @@
                 labels: dataTipo.map(i => i.tipo),
                 datasets: [{
                     data: dataTipo.map(i => i.total),
-                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
+                    backgroundColor: ['#ef4444', '#fff000','#f59e0b', '#3b82f6','#10b981' ],
                     borderWidth: 0
                 }]
             },

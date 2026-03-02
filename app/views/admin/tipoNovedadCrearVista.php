@@ -27,7 +27,7 @@
                     <input type="text" name="nombre_novedad" required
                         placeholder="Ej: REPUESTO PENDIENTE"
                         value="<?= htmlspecialchars($nombrePrevio ?? '') ?>"
-                        class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase">
+                        class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 capitalize">
                 </div>
             </div>
 
