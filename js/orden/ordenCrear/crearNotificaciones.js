@@ -444,16 +444,63 @@ function configurarNotificaciones(opciones = {}) {
     Object.assign(NotifConfig, opciones);
 }
 
+
 // ==========================================
-// NUEVO: MODAL DE CONFIRMACIÓN (BLOQUEANTE)
+// NUEVO: MODAL DE CONFIRMACIÓN (BLOQUEANTE) Y VALIDACIÓN ESTRICTA
 // ==========================================
 
 /**
+ * Valida de forma ESTRICTA que el campo "¿Qué se realizó?" no esté vacío
+ * @returns {boolean} true si todo está bien, false si hay errores
+ */
+function validarCamposEstrictos() {
+    const filas = document.querySelectorAll('#contenedorFilas tr');
+    let formularioValido = true;
+
+    filas.forEach((tr, index) => {
+        // Buscamos el campo de observaciones (name="filas[X][obs]")
+        const campoObs = tr.querySelector('[name*="[obs]"]');
+        
+        if (campoObs) {
+            const valorObs = campoObs.value.trim();
+
+            if (valorObs === '') {
+                formularioValido = false;
+                
+                // Resaltamos el error visualmente
+                campoObs.classList.add('border-red-500', 'bg-red-50');
+                
+                // Notificamos usando tu sistema
+                mostrarNotificacion(
+                    `❌ Fila ${index + 1}: El campo "¿Qué se Realizó?" no puede estar vacío.`, 
+                    'error', 
+                    5000
+                );
+
+                // Quitamos el resaltado rojo después de unos segundos
+                setTimeout(() => {
+                    campoObs.classList.remove('border-red-500', 'bg-red-50');
+                }, 4000);
+            }
+        }
+    });
+
+    return formularioValido;
+}
+
+/**
  * Muestra un modal que exige respuesta del usuario
+ * PREVIAMENTE valida que los campos estrictos estén llenos.
  * @param {string} mensaje - El texto de la pregunta
  * @param {function} callbackConfirmar - Función a ejecutar si dice SÍ
  */
 function mostrarModalConfirmacion(mensaje, callbackConfirmar) {
+    
+    // 🔥 PRIMERO: Validamos estrictamente. Si falla, cortamos la ejecución y NO sale el modal.
+    if (!validarCamposEstrictos()) {
+        return; 
+    }
+
     const id = 'modal_confirm_' + Date.now();
 
     const modal = document.createElement('div');
@@ -528,8 +575,6 @@ function validarCoherenciaFila(idFila, tipoServicio, tieneRepuestos) {
     return hayError;
 }
 
-
-
 // Exportar
 window.CrearNotificaciones = {
     mostrarNotificacion,
@@ -559,7 +604,8 @@ window.CrearNotificaciones = {
     notificarInventarioCargado,
     notificarMaquinaAutoSeleccionada,
     mostrarModalConfirmacion,
-    validarCoherenciaFila
+    validarCoherenciaFila,
+    validarCamposEstrictos // Exportamos la nueva función por si la necesitas en otro lado
 };
 
 console.log('🔔 Sistema de notificaciones CREAR cargado');

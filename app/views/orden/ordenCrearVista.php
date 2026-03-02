@@ -93,7 +93,7 @@
                         <th class="px-2 w-32">Repuestos</th>
                         <th class="px-2 w-32">Estado Final</th>
                         <th class="px-2 w-32">Calificación</th>
-                        <th class="px-2 w-48">¿Qué se Realizó?</th>
+                        <th class="px-2 w-48">Información Servicio</th>
                         <th class="px-2 w-10"></th>
                     </tr>
                 </thead>
