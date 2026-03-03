@@ -328,7 +328,7 @@ class generarReporteControlador
         $ingresoPreventivoProf = $desgloseTipos[2]['total'] ?? 0;  // ID 2
         $ingresoCorrectivo = $desgloseTipos[3]['total'] ?? 0;  // ID 3
         $ingresoFallido = $desgloseTipos[4]['total'] ?? 0;  // ID 4
-        $ingresoGarantia = $desgloseTipos[5]['total'] ??0; // ID 5
+        $ingresoGarantia = $desgloseTipos[5]['total'] ?? 0; // ID 5
 
 
         // NUEVO: Extraemos la cantidad de servicios
@@ -337,7 +337,7 @@ class generarReporteControlador
         $cantCorr  = $desgloseTipos[3]['cantidad'] ?? 0;
         $cantFall  = $desgloseTipos[4]['cantidad'] ?? 0;
         $cantGaran = $desgloseTipos[5]['cantidad'] ?? 0;
-        
+
 
         // Calculamos el total de servicios 
         $ingresoServicios = $ingresoPreventivo + $ingresoPreventivoProf +
@@ -488,10 +488,30 @@ class generarReporteControlador
     }
 
     public function configurar()
-    {
-        $filtros = ['fecha_inicio' => $_GET['inicio'] ?? date('Y-m-01'), 'fecha_fin' => $_GET['fin'] ?? date('Y-m-t')];
-        require_once __DIR__ . '/../../views/reportes/configurarReporte.php';
+{
+    $filtros = [
+        'fecha_inicio' => $_GET['inicio'] ?? date('Y-m-01'),
+        'fecha_fin'    => $_GET['fin']    ?? date('Y-m-t')
+    ];
+
+    // DEBUG TEMPORAL - borra esto después de confirmar
+    $rutaVista = __DIR__ . '/../../views/reportes/configurarReporte.php';
+    if (!file_exists($rutaVista)) {
+        die("❌ No encuentra el archivo en: " . $rutaVista);
     }
+
+    ob_start();
+    include $rutaVista;
+    $contenido = ob_get_clean();
+
+    // DEBUG TEMPORAL - borra esto también
+    if (empty($contenido)) {
+        die("❌ El archivo existe pero $contenido está vacío. Revisa errores PHP dentro de configurarReporte.php");
+    }
+
+    $titulo = 'Configurar Reporte Ejecutivo';
+    include __DIR__ . '/../../views/plantillaVista.php';
+}
 
     public function seccionActiva($nombre)
     {

@@ -559,8 +559,10 @@
                                 <tr>
                                     <th class="px-2 py-2 text-left bg-slate-100 border-b border-slate-200">Delegación</th>
                                     <?php foreach ($tiposMaquinaCols as $tm): ?>
-                                        <th class="px-1 py-2 border-b border-slate-200 max-w-[60px] truncate" title="<?= $tm['nombre_tipo_maquina'] ?>">
-                                            <?= substr($tm['nombre_tipo_maquina'], 0, 8) ?>
+                                        <th class="px-1 py-2 border-b border-slate-200 w-[40px] leading-none" title="<?= $tm['nombre_tipo_maquina'] ?>">
+                                            <div class="break-words min-h-[40px] flex items-center justify-center text-center">
+                                                <?= $tm['nombre_tipo_maquina'] ?>
+                                            </div>
                                         </th>
                                     <?php endforeach; ?>
                                     <th class="px-2 py-2 border-b border-slate-200 bg-slate-50 font-bold">Total</th>

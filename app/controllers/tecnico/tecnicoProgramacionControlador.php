@@ -19,45 +19,58 @@ class tecnicoProgramacionControlador
     public function index()
     {
         $titulo = "Mi Programación Diaria";
-        $vistaContenido = "app/views/tecnico/programacionTecnicoVista.php";
+        $vistaContenido = "app/views/tecnico/tecnicoProgramacionVista.php";
         include "app/views/plantillaVista.php";
     }
 
     public function ajaxObtenerProgramacion()
     {
+        // Limpiamos cualquier output buffer previo para no contaminar el JSON
         while (ob_get_level()) ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
         try {
-            // 1. Aseguramos que la sesión esté iniciada para leer al usuario
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
-
-            // 2. Tomamos la fecha del frontend
-            $fecha = isset($_POST['fecha']) ? $_POST['fecha'] : date('Y-m-d');
-            
-            // 3. 🔥 EL TRUCO ESTÁ AQUÍ 🔥
-            // Tomamos el ID del USUARIO LOGUEADO directamente de la sesión (Seguridad máxima)
-            // Ajusta "id_usuario" según cómo se llame tu variable de sesión al hacer login
-            $idUsuarioLogueado = isset($_SESSION['id_usuario']) ? $_SESSION['id_usuario'] : 0; 
-            
-            // Alternativa: Si guardas un array en sesión, podría ser $_SESSION['usuario']['id']
-            // $idUsuarioLogueado = isset($_SESSION['usuario']['id']) ? $_SESSION['usuario']['id'] : 0;
+            // La sesión ya está iniciada por index.php, no hace falta session_start() aquí.
+            // ─────────────────────────────────────────────────────────────
+            // OBTENER ID DEL USUARIO LOGUEADO DESDE LA SESIÓN
+            // Confirmado en index.php: la clave es $_SESSION['usuario_id']
+            // ─────────────────────────────────────────────────────────────
+            $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
 
             if ($idUsuarioLogueado === 0) {
-                // Si no hay sesión, devolvemos vacío por seguridad
-                echo json_encode(["data" => [], "error" => "No hay sesión de usuario activa"]);
+                echo json_encode([
+                    "data"  => [],
+                    "error" => "No hay sesión de usuario activa."
+                ]);
+                ob_end_flush();
                 exit;
             }
 
-            // 4. Consultamos el modelo pasándole el ID del Usuario
+            // Fecha enviada desde el frontend (por defecto hoy)
+            $fecha = isset($_POST['fecha']) && !empty($_POST['fecha'])
+                ? $_POST['fecha']
+                : date('Y-m-d');
+
+            // Validar formato de fecha para evitar inyecciones
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+                echo json_encode(["data" => [], "error" => "Formato de fecha inválido."]);
+                ob_end_flush();
+                exit;
+            }
+
+            // Consultamos el modelo
             $datos = $this->modelo->obtenerServiciosProgramadosTecnico($idUsuarioLogueado, $fecha);
 
-            echo json_encode(["data" => $datos]);
+            echo json_encode([
+    "data"        => $datos,
+    "debug_id"    => $idUsuarioLogueado,
+    "debug_fecha" => $fecha
+]);
+
         } catch (Exception $e) {
-            echo json_encode(["data" => [], "error" => $e->getMessage()]);
+            error_log("[tecnicoProgramacion] Error en ajaxObtenerProgramacion: " . $e->getMessage());
+            echo json_encode(["data" => [], "error" => "Error interno del servidor."]);
         }
 
         ob_end_flush();
