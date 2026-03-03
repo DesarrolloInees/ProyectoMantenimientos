@@ -38,6 +38,8 @@ class ordenReporteControlador
 
         $inicio = $_POST['fecha_inicio'] ?? date('Y-m-d');
         $fin    = $_POST['fecha_fin'] ?? date('Y-m-d');
+        // NUEVO: Recibimos el tipo de mantenimiento (por defecto "todos")
+        $tipoMant = $_POST['tipo_mantenimiento'] ?? 'todos';
 
         if ($inicio > $fin) {
             echo json_encode(['status' => 'error', 'msg' => 'Fechas incorrectas.']);
@@ -45,7 +47,8 @@ class ordenReporteControlador
         }
 
         try {
-            $datos = $this->modelo->obtenerServiciosPorRango($inicio, $fin);
+            // 👇 ¡AQUÍ ESTÁ EL PRIMER CAMBIO! Le agregamos $tipoMant 👇
+            $datos = $this->modelo->obtenerServiciosPorRango($inicio, $fin, $tipoMant);
             echo json_encode(['status' => 'ok', 'datos' => $datos]);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'msg' => 'Error: ' . $e->getMessage()]);

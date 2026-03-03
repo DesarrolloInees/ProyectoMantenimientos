@@ -133,6 +133,7 @@ class importarExcelModels
                 'MACH 6'      => 'MATCH 6',    // Corrige el nombre
                 'MACH6'       => 'MATCH 6',
                 'SDM 500'     => 'SDM-500',    // Estandariza el guion
+                'SDM 100'     => 'SDM-100',
                 'SDM500'      => 'SDM-500',
                 'SDM 10'      => 'SDM-10',
                 'SDM10'       => 'SDM-10',
@@ -140,7 +141,9 @@ class importarExcelModels
                 'JH600'       => 'JH-600',
                 'MINI MEI'    => 'MINI MEI',   // A veces viene 'MINIMEI'
                 'MINIMEI'     => 'MINI MEI',
+                'PS3000'      => 'PS-3000',
                 'SNBC'     => 'PRO EFECTIVO X', // Ejemplo: Si quieres forzar un cambio radical
+                ''
                 // ... Agrega aquí todos los casos que veas en tu Excel ...
             ];
 

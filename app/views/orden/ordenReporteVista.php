@@ -25,6 +25,17 @@
             </div>
         </div>
 
+        <div class="mt-6">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Filtro de Mantenimiento (Aplica para Reporte de Servicios):</label>
+            <select id="filtro_mantenimiento" class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                <option value="todos">Todos los servicios</option>
+                <option value="basico">Solo Preventivos Básicos</option>
+                <option value="profundo">Solo Preventivos Profundos</option>
+                <option value="correctivo">Solo Correctivos</option>
+                <option value="fallido">Solo Fallidos</option>
+                <option value="garantia">Solo Garantía</option>
+            </select>
+        </div>
         <hr class="border-gray-200">
 
         <div class="flex flex-col md:flex-row justify-center gap-6 mt-6">
@@ -80,6 +91,8 @@
         function descargarData(accion, tipo) {
             let fInicio = $('#fecha_inicio').val();
             let fFin = $('#fecha_fin').val();
+            // 👇 ¡ESTA ES LA LÍNEA QUE TE FALTA AGREGAR! 👇
+            let filtroMant = $('#filtro_mantenimiento').val();
             let msg = $('#mensajeEstado');
             let btnActivo = (tipo === 'servicios') ? $('#btnServicios') : $('#btnNovedades');
             let btnInactivo = (tipo === 'servicios') ? $('#btnNovedades') : $('#btnServicios');
@@ -95,7 +108,8 @@
                 data: {
                     accion: accion,
                     fecha_inicio: fInicio,
-                    fecha_fin: fFin
+                    fecha_fin: fFin,
+                    tipo_mantenimiento: filtroMant // NUEVO: Se envía al controlador
                 },
                 dataType: 'json',
                 success: function(response) {

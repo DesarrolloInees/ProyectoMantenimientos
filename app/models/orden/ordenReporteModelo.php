@@ -11,13 +11,34 @@ class ordenReporteModelo
     }
 
     // --- 1. REPORTE CLÁSICO DE SERVICIOS ---
-    public function obtenerServiciosPorRango($fechaInicio, $fechaFin)
+    public function obtenerServiciosPorRango($fechaInicio, $fechaFin, $tipoMant = 'todos')
     {
+
+        // 1. Armamos las condiciones dinámicas según la selección
+            $filtroSql = "";
+        
+            if ($tipoMant === 'basico') {
+                $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%basico%' OR LOWER(tman.nombre_completo) LIKE '%básico%' OR (LOWER(tman.nombre_completo) LIKE '%preventivo%' AND LOWER(tman.nombre_completo) NOT LIKE '%profundo%' AND LOWER(tman.nombre_completo) NOT LIKE '%completo%'))";
+            } elseif ($tipoMant === 'profundo') {
+                $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%profundo%' OR LOWER(tman.nombre_completo) LIKE '%completo%')";
+            } elseif ($tipoMant === 'correctivo') {
+            $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%correctivo%' OR LOWER(tman.nombre_completo) LIKE '%reparacion%')";
+            } elseif ($tipoMant === 'fallido') {
+            $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%fallido%' OR LOWER(tman.nombre_completo) LIKE '%fallido%')";
+            } elseif ($tipoMant === 'garantia') {
+            $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%garantia%' OR LOWER(tman.nombre_completo) LIKE '%garantia%')";
+            }
+            
         $sql = "SELECT 
                 o.id_ordenes_servicio, o.numero_remision, o.fecha_visita,
                 o.hora_entrada, o.hora_salida, o.tiempo_servicio, o.valor_servicio,
-                o.valor_viaticos,
-                o.actividades_realizadas as que_se_hizo,
+                -- CORRECCIÓN AQUÍ: Buscamos si hubo tarifa adicional en TODO el día,
+                -- sin importar si el servicio original se ocultó por el filtro.
+                (SELECT MAX(o2.valor_viaticos) 
+                    FROM ordenes_servicio o2 
+                    WHERE o2.id_tecnico = o.id_tecnico 
+                    AND o2.fecha_visita = o.fecha_visita) as valor_viaticos,
+                    o.actividades_realizadas as que_se_hizo,
                 
                 -- CORRECCIÓN AQUÍ: 
                 -- El texto del servicio viene de la tabla 'tman', no de 'o'.
@@ -68,6 +89,9 @@ class ordenReporteModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE o.fecha_visita BETWEEN ? AND ?
+
+                /* 👇 ¡AQUÍ ESTÁ EL SEGUNDO CAMBIO! Pegamos la variable del filtro 👇 */
+                $filtroSql
                 -- IMPORTANTE: Ordenar por Técnico -> Fecha -> Hora Entrada (para poder calcular desplazamiento)
                 ORDER BY t.nombre_tecnico ASC, o.fecha_visita ASC, o.hora_entrada ASC";
 
