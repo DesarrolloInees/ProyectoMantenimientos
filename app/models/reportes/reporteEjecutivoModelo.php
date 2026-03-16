@@ -101,9 +101,14 @@ class ReporteEjecutivoModelo
     public function getDistribucionNovedades($fecha_inicio, $fecha_fin)
     {
         try {
-            $sql = "SELECT SUM(CASE WHEN tiene_novedad = 1 THEN 1 ELSE 0 END) as con_novedad,
-                            SUM(CASE WHEN tiene_novedad = 0 THEN 1 ELSE 0 END) as sin_novedad
-                    FROM ordenes_servicio WHERE fecha_visita BETWEEN :inicio AND :fin";
+            // Usamos LEFT JOIN con la tabla pivote y contamos los distintos para evitar duplicados
+            $sql = "SELECT 
+                        COUNT(DISTINCT osn.id_orden_servicio) as con_novedad,
+                        (COUNT(DISTINCT os.id_ordenes_servicio) - COUNT(DISTINCT osn.id_orden_servicio)) as sin_novedad
+                    FROM ordenes_servicio os
+                    LEFT JOIN orden_servicio_novedad osn ON os.id_ordenes_servicio = osn.id_orden_servicio
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin";
+            
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':inicio', $fecha_inicio);
             $stmt->bindParam(':fin', $fecha_fin);
@@ -415,15 +420,18 @@ class ReporteEjecutivoModelo
     public function getKpisPorDelegacion($fecha_inicio, $fecha_fin)
     {
         try {
-            // AGREGAMOS LA LÍNEA DE 'dias_efectivos'
             $sql = "SELECT d.nombre_delegacion, 
-                            COUNT(os.id_ordenes_servicio) as total_servicios,
+                            -- IMPORTANTE: Agregamos DISTINCT aquí para no inflar los servicios si hay varias novedades
+                            COUNT(DISTINCT os.id_ordenes_servicio) as total_servicios,
                             COUNT(DISTINCT os.id_tecnico) as total_tecnicos,
-                            SUM(CASE WHEN os.tiene_novedad = 1 THEN 1 ELSE 0 END) as total_novedades,
+                            -- Contamos las novedades desde la tabla pivote
+                            COUNT(DISTINCT osn.id_orden_servicio) as total_novedades,
                             COUNT(DISTINCT CONCAT(os.id_tecnico, '_', DATE(os.fecha_visita))) as dias_efectivos
                     FROM ordenes_servicio os
                     INNER JOIN punto p ON os.id_punto = p.id_punto
                     INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                    -- Agregamos el LEFT JOIN para las novedades
+                    LEFT JOIN orden_servicio_novedad osn ON os.id_ordenes_servicio = osn.id_orden_servicio
                     WHERE os.fecha_visita BETWEEN :inicio AND :fin
                     GROUP BY d.nombre_delegacion ORDER BY total_servicios DESC";
 

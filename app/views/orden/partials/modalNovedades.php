@@ -14,16 +14,16 @@
             <input type="hidden" id="nov_id_orden" name="id_orden">
 
             <div class="mb-4">
-                <label class="block text-gray-700 font-bold mb-2">Tipo de Novedad:</label>
-                <select id="nov_tipo" class="w-full border p-2 rounded bg-gray-50 focus:outline-none focus:border-red-500">
-                    <option value="">-- Seleccione el motivo --</option>
-                </select>
+                <label class="block text-gray-700 font-bold mb-2">Tipo de Novedad (Puedes seleccionar varias):</label>
+                
+                <select id="nov_tipo" name="novedades[]" multiple="multiple" class="w-full" style="width: 100%;">
+                    </select>
             </div>
 
             <div class="flex justify-between mt-6">
                 <button type="button" onclick="eliminarNovedad()"
                     class="text-red-500 hover:text-red-700 font-bold text-sm underline">
-                    Quitar Novedad
+                    Quitar Novedades
                 </button>
 
                 <div class="space-x-2">

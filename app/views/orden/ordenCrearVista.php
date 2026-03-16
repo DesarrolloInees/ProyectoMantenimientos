@@ -242,7 +242,8 @@
                     // Alerta suave (Toast)
                     // alert('Se encontraron ' + response.data.length + ' servicios programados.');
 
-                    response.data.forEach(function(servicio, index) {
+                    // 🔥 Le agregamos 'async' a la función del forEach
+                    response.data.forEach(async function(servicio, index) {
 
                         // 1. Agregamos una fila vacía (Llamamos a tu función existente)
                         agregarFila();
@@ -258,44 +259,32 @@
                         var match = nameAttribute.match(/filas\[(\d+)\]/);
                         var indiceReal = match ? match[1] : index;
 
-                        var index = $fila.attr('data-index'); // Asumiendo que tu filaManager pone un data-index
-
-                        // SI NO TIENES data-index, usa el índice del loop o cuenta las filas - 1
-
-                        // 3. LLENAMOS LOS DATOS
-                        // Nota: Los select2 necesitan .trigger('change')
-
-                        // 🔥 CREAMOS EL INPUT HIDDEN CON EL ÍNDICE CORRECTO 🔥
-                        // Si no tiene el índice correcto (filas[X]), PHP no sabrá a qué fila pertenece
+                        // Input hidden de orden previa
                         if ($fila.find('input.orden-previa').length === 0) {
-                            var inputHidden = `<input type="hidden" 
-                                                class="orden-previa" 
-                                                name="filas[${indiceReal}][id_orden_previa]" 
-                                                value="${servicio.id_ordenes_servicio}">`;
+                            var inputHidden = `<input type="hidden" class="orden-previa" name="filas[${indiceReal}][id_orden_previa]" value="${servicio.id_ordenes_servicio}">`;
                             $fila.find('td:first').append(inputHidden);
                         }
+
+                        // --- AQUÍ VIENE LA MAGIA ---
 
                         // Técnico
                         $fila.find('select[name*="[id_tecnico]"]').val(servicio.id_tecnico).trigger('change');
 
-                        // Cliente (Esto disparará la carga de puntos por tu lógica de app.js)
-                        // Necesitamos una promesa o timeout porque cargar cliente limpia puntos
-                        var $selectCliente = $fila.find('select[name*="[id_cliente]"]');
-                        $selectCliente.val(servicio.id_cliente).trigger('change');
+                        // Cliente (Lo asignamos SIN trigger, para nosotros controlar el AJAX a mano)
+                        $fila.find('select[name*="[id_cliente]"]').val(servicio.id_cliente);
 
-                        // Esperar a que carguen los puntos (AJAX asíncrono en tu app.js)
-                        // HACK: Usamos un timeout o modificamos app.js para aceptar callbacks. 
-                        // Lo ideal es setTimeout simple para demo:
-                        setTimeout(function() {
-                            // Punto
-                            $fila.find('select[name*="[id_punto]"]').val(servicio.id_punto).trigger('change');
+                        // Esperamos pacientemente a que lleguen los puntos (así se demore 5 segundos)
+                        await window.AjaxUtils.cargarPuntos(indiceReal, servicio.id_cliente);
 
-                            setTimeout(function() {
-                                // Máquina
-                                $fila.find('select[name*="[id_maquina]"]').val(servicio.id_maquina).trigger('change');
-                            }, 800);
+                        // Ahora SÍ, con los puntos ya cargados, seleccionamos el punto
+                        $fila.find('select[name*="[id_punto]"]').val(servicio.id_punto);
 
-                        }, 800); // Ajusta tiempos según velocidad de tu servidor
+                        // Esperamos pacientemente a que lleguen las máquinas
+                        await window.AjaxUtils.cargarMaquinas(indiceReal, servicio.id_punto);
+
+                        // Seleccionamos la máquina y rellenamos el Device ID
+                        $fila.find('select[name*="[id_maquina]"]').val(servicio.id_maquina);
+                        window.FilaManager.rellenarDeviceId(indiceReal, servicio.id_maquina);
 
                         // Tipo Mantenimiento
                         $fila.find('select[name*="[tipo_servicio]"]').val(servicio.id_tipo_mantenimiento);

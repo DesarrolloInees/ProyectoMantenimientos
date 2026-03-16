@@ -6,19 +6,25 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
 <?php if ($esTecnico): ?>
 
     <a href="<?= BASE_URL ?>inicio" 
-       class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
+        class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
         <i class="fas fa-home mr-3 w-5 text-center"></i> Inicio
     </a>
 
     <a href="<?= BASE_URL ?>ordenMovil" 
-       class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fas fa-search mr-3 w-5 text-center text-blue-300"></i> Consultar Historial
     </a>
+
+    <!--<a href="<?= BASE_URL ?>tecnicoProgramacion" 
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fa-regular fa-envelope mr-3 w-5 text-center text-blue-300"></i> Programación Servicios
+    </a>
+-->
 
 <?php else: ?>
 
     <a href="<?= BASE_URL ?>inicio" 
-       class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
+        class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
         <i class="fas fa-home mr-3 w-5 text-center"></i> Inicio
     </a>
 

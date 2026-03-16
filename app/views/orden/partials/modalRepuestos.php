@@ -1,14 +1,9 @@
-<!-- ============================================== -->
-<!-- PARTIAL: MODAL DE GESTIÓN DE REPUESTOS -->
-<!-- ============================================== -->
-
 <div id="modalRepuestos"
     class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
 
-    <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6 transform scale-100 transition-transform">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6 transform scale-100 transition-transform flex flex-col max-h-[90vh]">
 
-        <!-- HEADER -->
-        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between">
+        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between shrink-0">
             <span>🛠️ Gestión de Repuestos</span>
             <button type="button"
                 onclick="cerrarModal()"
@@ -17,11 +12,19 @@
             </button>
         </h3>
 
-        <!-- ID de la fila actual -->
         <input type="hidden" id="modal_fila_actual">
 
-        <!-- FORMULARIO DE AGREGAR -->
-        <div class="space-y-4">
+        <div class="overflow-y-auto pr-2 space-y-4 flex-grow">
+            
+            <div id="contenedor_sugerencias_tecnico" class="hidden mb-4 bg-orange-50 border border-orange-200 rounded-md p-3">
+                <div class="flex items-center gap-2 text-orange-700 font-bold text-sm mb-2 border-b border-orange-200 pb-1">
+                    <i class="fas fa-mobile-alt"></i>
+                    Reportado por el técnico desde la app:
+                </div>
+                <ul id="lista_sugerencias_tecnico" class="space-y-1 text-xs">
+                    </ul>
+            </div>
+
             <div class="flex gap-2 items-center">
 
                 <div class="flex-1 min-w-0">
@@ -55,17 +58,15 @@
                 </button>
             </div>
 
-            <!-- LISTA VISUAL DE REPUESTOS SELECCIONADOS -->
             <ul id="lista_repuestos_visual"
-                class="border rounded p-2 h-48 overflow-y-auto bg-gray-50 text-sm">
+                class="border rounded p-2 min-h-[120px] bg-gray-50 text-sm">
                 <li class="text-gray-400 text-center italic mt-10">
                     No hay repuestos seleccionados.
                 </li>
             </ul>
         </div>
 
-        <!-- FOOTER: BOTÓN CONFIRMAR -->
-        <div class="mt-6 text-right border-t pt-4">
+        <div class="mt-4 text-right border-t pt-4 shrink-0">
             <button type="button"
                 onclick="guardarCambiosModal()"
                 class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 shadow-lg transform hover:scale-105 transition">

@@ -23,36 +23,24 @@ class ordenDetalleControlador
     }
 
     // ==========================================
-    // 0. PROCESAR AJAX (Ruteo interno)
+    // 0. PROCESAR AJAX
     // ==========================================
     public function procesarAjax()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
 
-            if ($_POST['accion'] === 'ajaxObtenerPuntos') {
-                $this->ajaxObtenerPuntos();
-            }
+            $accion = $_POST['accion'];
 
-            if ($_POST['accion'] === 'ajaxObtenerMaquinas') {
-                $this->ajaxObtenerMaquinas();
-            }
+            if ($accion === 'ajaxObtenerPuntos')         $this->ajaxObtenerPuntos();
+            if ($accion === 'ajaxObtenerMaquinas')        $this->ajaxObtenerMaquinas();
+            if ($accion === 'ajaxObtenerDelegacion')      $this->ajaxObtenerDelegacion();
+            if ($accion === 'ajaxObtenerPrecio')          $this->ajaxObtenerPrecio();
+            if ($accion === 'ajaxObtenerStockTecnico')    $this->ajaxObtenerStockTecnico();
+            if ($accion === 'ajaxGestionarRepuestoRT')    $this->ajaxGestionarRepuestoRT();
+            if ($accion === 'ajaxGuardarNovedad')         $this->ajaxGuardarNovedad();
 
-            if ($_POST['accion'] === 'ajaxObtenerDelegacion') {
-                $this->ajaxObtenerDelegacion();
-            }
-
-            if ($_POST['accion'] === 'ajaxObtenerPrecio') {
-                $this->ajaxObtenerPrecio();
-            }
-            if ($_POST['accion'] === 'ajaxObtenerStockTecnico') {
-                $this->ajaxObtenerStockTecnico();
-            }
-            if ($_POST['accion'] === 'ajaxGestionarRepuestoRT') {
-                $this->ajaxGestionarRepuestoRT();
-            }
-            if ($_POST['accion'] === 'ajaxGuardarNovedad') {
-                $this->ajaxGuardarNovedad();
-            }
+            // ✅ NUEVO: Remisiones disponibles del técnico
+            if ($accion === 'ajaxObtenerRemisiones')      $this->ajaxObtenerRemisiones();
         }
     }
 
@@ -69,18 +57,16 @@ class ordenDetalleControlador
 
         $fecha = $_GET['fecha'] ?? date('Y-m-d');
 
-        // Datos para la vista
-        $servicios = $this->modelo->obtenerServiciosPorFecha($fecha);
-        $listaClientes = $this->modelo->obtenerTodosLosClientes();
-        $listaTecnicos = $this->modelo->obtenerTodosLosTecnicos();
-        $listaMantos   = $this->modelo->obtenerTiposMantenimiento();
-        $listaRepuestos = $this->modelo->obtenerListaRepuestos();
-        $listaEstados  = $this->modelo->obtenerEstados();
-        $listaCalifs   = $this->modelo->obtenerCalificaciones();
+        $servicios        = $this->modelo->obtenerServiciosPorFecha($fecha);
+        $listaClientes    = $this->modelo->obtenerTodosLosClientes();
+        $listaTecnicos    = $this->modelo->obtenerTodosLosTecnicos();
+        $listaMantos      = $this->modelo->obtenerTiposMantenimiento();
+        $listaRepuestos   = $this->modelo->obtenerListaRepuestos();
+        $listaEstados     = $this->modelo->obtenerEstados();
+        $listaCalifs      = $this->modelo->obtenerCalificaciones();
         $listaModalidades = $this->modelo->obtenerModalidades();
-        $listaFestivos = $this->modelo->obtenerFestivos(); // <--- ESTO ES VITAL
-        $listaFestivos = $this->modelo->obtenerFestivos();
-        $listaNovedades = $this->modelo->obtenerTiposNovedad();
+        $listaFestivos    = $this->modelo->obtenerFestivos();
+        $listaNovedades   = $this->modelo->obtenerTiposNovedad();
 
         $titulo = "Edición Total: " . $fecha;
 
@@ -128,17 +114,12 @@ class ordenDetalleControlador
     public function ajaxObtenerPrecio()
     {
         ob_clean();
-        $id_tipo_maquina = $_POST['id_tipo_maquina'] ?? 0;
+        $id_tipo_maquina       = $_POST['id_tipo_maquina'] ?? 0;
         $id_tipo_mantenimiento = $_POST['id_tipo_mantenimiento'] ?? 0;
-        $id_modalidad = $_POST['id_modalidad'] ?? 1;
+        $id_modalidad          = $_POST['id_modalidad'] ?? 1;
+        $fechaVisita           = $_POST['fecha_visita'] ?? date('Y-m-d');
+        $anio                  = date('Y', strtotime($fechaVisita));
 
-        // 🔥 1. RECIBIMOS LA FECHA DE LA FILA
-        $fechaVisita = $_POST['fecha_visita'] ?? date('Y-m-d');
-
-        // 🔥 2. CALCULAMOS EL AÑO (Ej: '2026-01-05' -> 2026)
-        $anio = date('Y', strtotime($fechaVisita));
-
-        // 🔥 3. LLAMAMOS AL MODELO CON EL AÑO
         $precio = $this->modelo->obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad, $anio);
 
         header('Content-Type: application/json');
@@ -148,7 +129,7 @@ class ordenDetalleControlador
 
     public function ajaxObtenerStockTecnico()
     {
-        ob_clean(); // Limpiar buffers previos
+        ob_clean();
         $idTecnico = $_POST['id_tecnico'] ?? 0;
 
         if ($idTecnico > 0) {
@@ -161,12 +142,33 @@ class ordenDetalleControlador
         exit;
     }
 
+    // ✅ NUEVO: Remisiones disponibles para el técnico
+    public function ajaxObtenerRemisiones()
+    {
+        ob_clean();
+        header('Content-Type: application/json');
+
+        $idTecnico      = intval($_POST['id_tecnico']      ?? 0);
+        $remisionActual = trim($_POST['remision_actual']   ?? '');
+
+        if ($idTecnico > 0) {
+            $remisiones = $this->modelo->obtenerRemisionesDisponiblesPorTecnico(
+                $idTecnico,
+                $remisionActual ?: null
+            );
+            echo json_encode($remisiones);
+        } else {
+            echo json_encode([]);
+        }
+        exit;
+    }
+
     public function ajaxGestionarRepuestoRT()
     {
         ob_clean();
         header('Content-Type: application/json');
 
-        $tipo       = $_POST['tipo']; // 'agregar' o 'eliminar'
+        $tipo       = $_POST['tipo'];
         $idOrden    = $_POST['id_orden'];
         $idRepuesto = $_POST['id_repuesto'];
         $origen     = $_POST['origen'];
@@ -184,37 +186,27 @@ class ordenDetalleControlador
     }
 
     // ==========================================
-    // 3. GUARDAR CAMBIOS (ADAPTADO AL INDEX.PHP ORIGINAL)
+    // 3. GUARDAR CAMBIOS
     // ==========================================
     public function guardarCambios()
     {
-        // ---------------------------------------------------------
-        // 🚫 ELIMINAMOS EL BLOQUE QUE DESVIABA A AJAX 🚫
-        // (El index.php ya se encargó de llamarnos directamente)
-        // ---------------------------------------------------------
-
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
-            // Recoger datos
-            $servicios = $_POST['servicios'] ?? [];
-            
-            // Si no viene fecha de origen, usamos la actual
+
+            $servicios   = $_POST['servicios'] ?? [];
             $fechaOrigen = $_POST['fecha_origen'] ?? date('Y-m-d');
-            
-            // Detectar si venimos del buscador
-            $esBusqueda = isset($_POST['es_busqueda']) && $_POST['es_busqueda'] == '1';
+            $esBusqueda  = isset($_POST['es_busqueda']) && $_POST['es_busqueda'] == '1';
 
             $errores = 0;
 
             foreach ($servicios as $id => $datos) {
 
-                // A. LIMPIEZA DE PRECIO
+                // Limpiar precio
                 if (isset($datos['valor'])) {
-                    $valorLimpio = str_replace('.', '', $datos['valor']);
+                    $valorLimpio   = str_replace('.', '', $datos['valor']);
                     $datos['valor'] = str_replace(',', '.', $valorLimpio);
                 }
 
-                // B. CALCULAR TIEMPO
+                // Calcular tiempo si no viene
                 if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
                     $datos['tiempo'] = '00:00';
                     if (!empty($datos['entrada']) && !empty($datos['salida'])) {
@@ -223,7 +215,8 @@ class ordenDetalleControlador
                             $d2 = new DateTime($datos['salida']);
                             if ($d2 < $d1) $d2->modify('+1 day');
                             $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
-                        } catch (Exception $e) {}
+                        } catch (Exception $e) {
+                        }
                     }
                 }
 
@@ -235,18 +228,15 @@ class ordenDetalleControlador
                 // D. GUARDAR EN BD
                 // Usamos la función robusta que ya corregimos en el Modelo
                 $resultado = $this->modelo->actualizarOrdenFull($id, $datos);
-                
+
                 if (!$resultado) {
                     $errores++;
                 }
             }
 
-            // 2. REDIRECCIÓN
-            if ($esBusqueda) {
-                $urlDestino = BASE_URL . "ordenDetalleBuscar";
-            } else {
-                $urlDestino = BASE_URL . "ordenDetalle/" . $fechaOrigen;
-            }
+            $urlDestino = $esBusqueda
+                ? BASE_URL . "ordenDetalleBuscar"
+                : BASE_URL . "ordenDetalle/" . $fechaOrigen;
 
             if ($errores > 0) {
                 echo "<script>
@@ -267,8 +257,9 @@ class ordenDetalleControlador
         }
     }
 
-
-    // A. Cargar la vista del buscador
+    // ==========================================
+    // 4. BÚSQUEDA AVANZADA
+    // ==========================================
     public function cargarVistaBusqueda()
     {
         if (!isset($_SESSION['usuario_id'])) {
@@ -276,43 +267,38 @@ class ordenDetalleControlador
             exit;
         }
 
-        // Listas necesarias para los selectores
-        $listaClientes  = $this->modelo->obtenerTodosLosClientes();
-        $listaTecnicos  = $this->modelo->obtenerTodosLosTecnicos();
-        $listaMantos    = $this->modelo->obtenerTiposMantenimiento();
-        $listaRepuestos = $this->modelo->obtenerListaRepuestos();
-        $listaEstados   = $this->modelo->obtenerEstados();
-        $listaCalifs    = $this->modelo->obtenerCalificaciones();
+        $listaClientes    = $this->modelo->obtenerTodosLosClientes();
+        $listaTecnicos    = $this->modelo->obtenerTodosLosTecnicos();
+        $listaMantos      = $this->modelo->obtenerTiposMantenimiento();
+        $listaRepuestos   = $this->modelo->obtenerListaRepuestos();
+        $listaEstados     = $this->modelo->obtenerEstados();
+        $listaCalifs      = $this->modelo->obtenerCalificaciones();
         $listaModalidades = $this->modelo->obtenerModalidades();
-        $listaFestivos  = $this->modelo->obtenerFestivos();
+        $listaFestivos    = $this->modelo->obtenerFestivos();
 
-        $vistaContenido = "app/views/orden/ordenBusquedaVista.php"; // <--- NUEVA VISTA
+        $vistaContenido = "app/views/orden/ordenBusquedaVista.php";
         require_once __DIR__ . '/../../views/plantillaVista.php';
     }
 
-    // B. Procesar la búsqueda AJAX
     public function ajaxBuscarOrdenes()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filtros = [
-                'remision'   => $_POST['remision'] ?? '',
-                'id_cliente' => $_POST['id_cliente'] ?? '',
-                'id_punto'   => $_POST['id_punto'] ?? '',
-                // 🔥 AGREGAR ESTAS 3 LÍNEAS NUEVAS:
+                'remision'      => $_POST['remision']      ?? '',
+                'id_cliente'    => $_POST['id_cliente']    ?? '',
+                'id_punto'      => $_POST['id_punto']      ?? '',
                 'id_delegacion' => $_POST['id_delegacion'] ?? '',
-                'fecha_inicio'  => $_POST['fecha_inicio'] ?? '',
-                'fecha_fin'     => $_POST['fecha_fin'] ?? ''
+                'fecha_inicio'  => $_POST['fecha_inicio']  ?? '',
+                'fecha_fin'     => $_POST['fecha_fin']     ?? ''
             ];
 
-            $servicios = $this->modelo->buscarOrdenesFiltros($filtros);
-
-            // === CORRECCIÓN: CARGAR TODAS LAS LISTAS NECESARIAS PARA detalleFila.php ===
-            $listaClientes    = $this->modelo->obtenerTodosLosClientes(); // <--- FALTABA ESTA
+            $servicios        = $this->modelo->buscarOrdenesFiltros($filtros);
+            $listaClientes    = $this->modelo->obtenerTodosLosClientes();
             $listaTecnicos    = $this->modelo->obtenerTodosLosTecnicos();
             $listaMantos      = $this->modelo->obtenerTiposMantenimiento();
             $listaEstados     = $this->modelo->obtenerEstados();
             $listaCalifs      = $this->modelo->obtenerCalificaciones();
-            $listaModalidades = $this->modelo->obtenerModalidades();      // <--- Y ESTA
+            $listaModalidades = $this->modelo->obtenerModalidades();
 
             // Renderizamos
             ob_start();
@@ -336,25 +322,25 @@ class ordenDetalleControlador
 
     public function ajaxGuardarNovedad()
     {
-        ob_clean(); // Limpia cualquier basura anterior
+        ob_clean();
         header('Content-Type: application/json');
 
         $idOrden = $_POST['id_orden'] ?? 0;
-        $tipo    = $_POST['tipo'] ?? ''; // 'guardar' o 'eliminar'
+        // Ahora esperamos un arreglo de IDs desde el frontend
+        $arrayNovedades = isset($_POST['novedades']) ? $_POST['novedades'] : []; 
 
         // Verificar que venga un ID válido
         if ($idOrden <= 0) {
-            echo json_encode(['success' => false, 'msg' => 'ID inválido']);
+            echo json_encode(['success' => false, 'msg' => 'ID de orden inválido']);
             exit;
         }
 
-        if ($tipo === 'eliminar') {
-            // Llama a la función del modelo que acabamos de corregir
-            $res = $this->modelo->eliminarNovedadOrden($idOrden);
-        } else {
-            $idTipoNovedad = $_POST['id_tipo_novedad'] ?? null;
-            $res = $this->modelo->guardarNovedadOrden($idOrden, $idTipoNovedad);
+        // Si mandaron un string vacío por accidente, lo convertimos a array vacío
+        if (!is_array($arrayNovedades)) {
+            $arrayNovedades = empty($arrayNovedades) ? [] : [$arrayNovedades];
         }
+
+        $res = $this->modelo->guardarNovedadesOrden($idOrden, $arrayNovedades);
 
         echo json_encode(['success' => $res]);
         exit;

@@ -340,8 +340,11 @@ class ordenCrearModels
             return $idOrden;
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            error_log("ERROR SQL al guardar orden: " . $e->getMessage());
-            die("ERROR SQL: " . $e->getMessage()); // Esto nos mostrará el error en pantalla si pasa algo más
+            // 🔥 AQUÍ ESTÁ EL TRUCO: Guardamos en el log de PHP exactamente los datos que causaron el fallo
+            error_log("ERROR SQL fila fallida. Datos: " . json_encode($datos) . " | Error real: " . $e->getMessage());
+            
+            // Quitamos el die() y retornamos false. 
+            // El controlador verá este false, sumará 1 a $errores y pondrá en la alerta "Fila #X falló al guardar".
             return false;
         }
     }

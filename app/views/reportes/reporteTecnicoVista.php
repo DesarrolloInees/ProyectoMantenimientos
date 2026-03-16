@@ -182,7 +182,7 @@
     });
 
     // =========================================================
-    // FUNCIÓN: EXCEL CON DESGLOSE POR TIPO DE MANTENIMIENTO
+    // FUNCIÓN: EXCEL CON DESGLOSE POR TIPO DE MANTENIMIENTO Y FALLIDOS
     // =========================================================
     function exportarExcelTecnico() {
         if (typeof XLSX === 'undefined') {
@@ -199,18 +199,15 @@
         // ---------------------------------------------------------
         // PASO 1: DETECTAR TODOS LOS TIPOS DE MANTENIMIENTO ÚNICOS
         // ---------------------------------------------------------
-        // Esto sirve para crear las columnas dinámicamente (Ej: Preventivo, Correctivo, etc.)
         let tiposMantenimientoSet = new Set();
         datosServicios.forEach(item => {
             let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
             tiposMantenimientoSet.add(tipo);
         });
-        // Convertimos el Set a Array y lo ordenamos alfabéticamente
         let columnasTipos = Array.from(tiposMantenimientoSet).sort();
 
-
         // ---------------------------------------------------------
-        // PASO 2: AGRUPAR DATOS CON PONDERACIÓN (Lógica Modificada)
+        // PASO 2: AGRUPAR DATOS CON PONDERACIÓN
         // ---------------------------------------------------------
         let resumen = {};
 
@@ -221,36 +218,27 @@
             let horaSal = item.hora_salida;
             let tipoMant = item.tipo_mantenimiento || "SIN ESPECIFICAR";
 
-            // --- NUEVA LÓGICA: DEFINIR PESO DEL SERVICIO ---
-            // Si el tipo de mantenimiento incluye la palabra "Correctivo", vale 1.5.
-            // De lo contrario, vale 1.
-            // --- NUEVA LÓGICA PARAMETRIZABLE ---
-            let peso = 1; // Valor por defecto para Preventivos, etc.
-            
-            // Si es correctivo, usamos la constante que vino de la BD
+            let peso = 1;
             if (tipoMant.toUpperCase().includes("CORRECTIVO")) {
                 peso = PESO_CORRECTIVO;
             }
 
             if (!resumen[tecnico]) {
                 resumen[tecnico] = {
-                    fechas: {}, 
-                    contadoresTipos: {} 
+                    fechas: {},
+                    contadoresTipos: {}
                 };
-                // Inicializamos contadores en 0
                 columnasTipos.forEach(t => resumen[tecnico].contadoresTipos[t] = 0);
             }
 
-            // --- Lógica del detalle por Fechas ---
             if (!resumen[tecnico].fechas[fecha]) {
                 resumen[tecnico].fechas[fecha] = {
-                    cantidad: 0, // Aquí se sumarán los 1 o 1.5
+                    cantidad: 0,
                     primera_entrada: "23:59:59",
                     ultima_salida: "00:00:00"
                 };
             }
-            
-            // APLICAMOS EL PESO (Antes era ++)
+
             resumen[tecnico].fechas[fecha].cantidad += peso;
 
             if (horaEnt && horaEnt < resumen[tecnico].fechas[fecha].primera_entrada) {
@@ -260,63 +248,96 @@
                 resumen[tecnico].fechas[fecha].ultima_salida = horaSal;
             }
 
-            // --- Lógica de Contadores por Tipo ---
-            // APLICAMOS EL PESO TAMBIÉN EN EL RESUMEN GENERAL (Antes era ++)
             resumen[tecnico].contadoresTipos[tipoMant] += peso;
         });
 
         // ---------------------------------------------------------
-        // PASO 3: CREAR HOJA 1 - RESUMEN GENERAL CON TIPOS
+        // PASO 3: CREAR MATRIZ RESUMEN GENERAL (HOJA 1)
         // ---------------------------------------------------------
-
-        // Encabezados dinámicos: Nombre, Total, [Tipo 1], [Tipo 2], ...
         let encabezadosResumen = ['NOMBRE DEL TÉCNICO', 'TOTAL SERVICIOS'];
-        columnasTipos.forEach(tipo => encabezadosResumen.push(tipo.toUpperCase())); // Agregamos las columnas dinámicas
+        columnasTipos.forEach(tipo => encabezadosResumen.push(tipo.toUpperCase()));
 
         let matrizResumenGeneral = [encabezadosResumen];
         let hayDatos = false;
 
         for (const [nombreTecnico, datos] of Object.entries(resumen)) {
             hayDatos = true;
-
-            // Calculamos total general sumando los tipos
             let totalTecnico = Object.values(datos.contadoresTipos).reduce((a, b) => a + b, 0);
-
-            // Fila del técnico
             let fila = [nombreTecnico, totalTecnico];
 
-            // Agregamos la cantidad de cada tipo en el orden de las columnas
             columnasTipos.forEach(tipo => {
                 fila.push(datos.contadoresTipos[tipo]);
             });
-
             matrizResumenGeneral.push(fila);
         }
 
+        // ---------------------------------------------------------
+        // PASO 3.5: AGREGAR LA TABLA DE FALLIDOS A LA MISMA HOJA
+        // ---------------------------------------------------------
+        let fallidosData = {};
+        let granTotalFallidos = 0;
+
+        datosServicios.forEach(item => {
+            // Valida si el servicio es Fallido (ajusta esta palabra según como esté en tu BD)
+            let tipo = item.tipo_mantenimiento || "";
+            let esFallido = tipo.toUpperCase().includes('FALLIDO');
+
+            if (esFallido) {
+                // CAMBIO AQUÍ: Usamos la delegación que viene del SQL
+                let delegacion = item.delegacion ? item.delegacion.toUpperCase() : "SIN DELEGACIÓN";
+                let cliente = item.nombre_cliente || "Sin Cliente";
+
+                if (!fallidosData[delegacion]) fallidosData[delegacion] = {};
+                if (!fallidosData[delegacion][cliente]) fallidosData[delegacion][cliente] = 0;
+
+                fallidosData[delegacion][cliente]++;
+                granTotalFallidos++;
+            }
+        });
+
+        if (granTotalFallidos > 0) {
+            matrizResumenGeneral.push(['']);
+            matrizResumenGeneral.push(['']);
+            
+            matrizResumenGeneral.push(['Cuenta de Cliente', 'Etiquetas de columna']);
+            matrizResumenGeneral.push(['Etiquetas de fila', 'Fallido']);
+
+            // Generar las filas agrupadas por Delegación
+            for (const [delegacion, clientes] of Object.entries(fallidosData)) {
+                let totalDelegacion = 0;
+                for (const count of Object.values(clientes)) totalDelegacion += count;
+
+                // Fila de la Delegación (ej: - BOGOTÁ)
+                matrizResumenGeneral.push(['- ' + delegacion, totalDelegacion]);
+
+                // Filas de los Clientes dentro de esa delegación
+                for (const [cliente, count] of Object.entries(clientes)) {
+                    matrizResumenGeneral.push(['    ' + cliente, count]);
+                }
+            }
+
+        }
+        // Convertir la matriz a hoja de Excel
         let wsResumen = XLSX.utils.aoa_to_sheet(matrizResumenGeneral);
 
-        // Ajustar anchos de columnas (Nombre + Total + Columnas dinámicas)
         let wscols = [{
             wch: 40
         }, {
-            wch: 15
+            wch: 20
         }];
         columnasTipos.forEach(() => wscols.push({
             wch: 20
-        })); // Ancho para las columnas de tipos
+        }));
         wsResumen['!cols'] = wscols;
 
         XLSX.utils.book_append_sheet(workbook, wsResumen, "RESUMEN GENERAL");
 
-
         // ---------------------------------------------------------
-        // PASO 4: CREAR HOJAS INDIVIDUALES (Igual que antes)
+        // PASO 4: CREAR HOJAS INDIVIDUALES POR TÉCNICO
         // ---------------------------------------------------------
         for (const [nombreTecnico, datos] of Object.entries(resumen)) {
-            let fechasObj = datos.fechas; // Accedemos a la propiedad fechas
+            let fechasObj = datos.fechas;
             let fechasOrdenadas = Object.keys(fechasObj).sort();
-
-            // Total calculado desde las fechas
             let totalServiciosTecnico = Object.values(fechasObj).reduce((a, b) => a + b.cantidad, 0);
 
             let matriz = [];
@@ -329,12 +350,7 @@
                 let hOut = (dataDia.ultima_salida === "00:00:00") ? "--" : dataDia.ultima_salida;
 
                 matriz.push([
-                    fecha,
-                    hIn,
-                    hOut,
-                    dataDia.cantidad,
-                    '', '', '', '', // Vacíos
-                    dataDia.cantidad
+                    fecha, hIn, hOut, dataDia.cantidad, '', '', '', '', dataDia.cantidad
                 ]);
             });
 
@@ -375,7 +391,7 @@
 
         if (hayDatos) {
             let fechaHoy = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-            XLSX.writeFile(workbook, `Reporte_Servicios_Detallado_${fechaHoy}.xlsx`);
+            XLSX.writeFile(workbook, `Reporte_Técnico_Detallado_${fechaHoy}.xlsx`);
         }
     }
 </script>

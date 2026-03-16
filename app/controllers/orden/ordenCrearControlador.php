@@ -222,6 +222,13 @@ class ordenCrearControlador
                 // 1. Validar que la fila tenga máquina
                 if (!empty($fila['id_maquina'])) {
 
+                    // 🔥 NUEVA VALIDACIÓN ESTRICTA 🔥
+                    if (empty($fila['id_cliente']) || empty($fila['id_punto'])) {
+                        $errores++;
+                        $detallesError .= "Fila #" . ($index + 1) . " rechazada: Falta Cliente o Punto. ";
+                        continue; // 🛑 Salta esta iteración y sigue con la siguiente fila
+                    }
+
                     $valorLimpio = str_replace(['$', '.', ' '], '', $fila['valor']);
                     $valorFinal = is_numeric($valorLimpio) ? $valorLimpio : 0;
 

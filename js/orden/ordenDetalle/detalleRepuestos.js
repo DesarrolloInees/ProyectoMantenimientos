@@ -105,7 +105,7 @@ async function abrirModalRepuestos(idFila) {
                 const stockReal = stockMap[idRep] || 0; // Si no está en el mapa, es 0
 
                 let textoOption = "";
-                
+
                 // Formato visual
                 if (stockReal > 0) {
                     textoOption = `✅ ${globalItem.nombre_repuesto} (Stock Mío: ${stockReal})`;
@@ -115,7 +115,7 @@ async function abrirModalRepuestos(idFila) {
 
                 // Crear opción
                 const option = new Option(textoOption, idRep, false, false);
-                
+
                 // Guardar datos vitales en atributos data
                 $(option).attr('data-stock', stockReal);
                 $(option).attr('data-nombre-limpio', globalItem.nombre_repuesto);
@@ -164,6 +164,44 @@ async function abrirModalRepuestos(idFila) {
         if (textoBD) repuestosFinales = convertirTextoARepuestos(textoBD);
     }
 
+    // 6. ⭐ LÓGICA DE SUGERENCIAS DEL TÉCNICO ⭐
+    const inputSugerido = document.getElementById(`input_sugerido_${idFila}`);
+    let sugeridos = [];
+    try {
+        if (inputSugerido && inputSugerido.value && inputSugerido.value.trim() !== "[]") {
+            sugeridos = JSON.parse(inputSugerido.value);
+        }
+    } catch (e) {
+        console.error("Error parseando sugerencias del técnico:", e);
+    }
+
+    let $contenedorSugerencias = $('#contenedor_sugerencias_tecnico');
+    let $listaSugerencias = $('#lista_sugerencias_tecnico');
+    $listaSugerencias.empty();
+
+    if (sugeridos.length > 0) {
+        sugeridos.forEach(rep => {
+            let bgOrigen = rep.origen === 'INEES' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-orange-100 text-orange-800 border-orange-200';
+            $listaSugerencias.append(`
+                <li class="flex justify-between items-center bg-white p-2 rounded border border-orange-100 shadow-sm">
+                    <span class="text-gray-700 font-medium truncate pr-2">
+                        <i class="fas fa-caret-right text-orange-400 mr-1"></i> ${rep.nombre}
+                    </span>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="font-bold text-gray-800">x${rep.cantidad}</span>
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${bgOrigen}">
+                            ${rep.origen}
+                        </span>
+                    </div>
+                </li>
+            `);
+        });
+        $contenedorSugerencias.removeClass('hidden');
+    } else {
+        $contenedorSugerencias.addClass('hidden');
+    }
+
+    // 7. Render final
     window.DetalleConfig.repuestosTemporales = repuestosFinales;
     renderizarListaVisual();
 
@@ -188,10 +226,10 @@ function cargarStockTecnicoPromesa(idTecnico) {
                 id_tecnico: idTecnico
             },
             dataType: "json",
-            success: function(data) {
+            success: function (data) {
                 resolve(data);
             },
-            error: function(err) {
+            error: function (err) {
                 reject(err);
             }
         });
@@ -244,9 +282,9 @@ function agregarRepuestoALista() {
     if (origen === 'INEES') {
         if (cantidad > stockDisponible) {
             alert(`🛑 STOCK INSUFICIENTE (INEES)\n\n` +
-                  `Disponible en stock: ${stockDisponible}\n` +
-                  `Solicitado: ${cantidad}\n\n` +
-                  `Si el repuesto lo suministró el cliente, cambie el origen a "PROSEGUR".`);
+                `Disponible en stock: ${stockDisponible}\n` +
+                `Solicitado: ${cantidad}\n\n` +
+                `Si el repuesto lo suministró el cliente, cambie el origen a "PROSEGUR".`);
             return;
         }
     }
@@ -270,16 +308,16 @@ function agregarRepuestoALista() {
         .then((res) => res.json())
         .then((data) => {
             if (data.status === "ok") {
-                
+
                 // ===============================================
                 // 🎨 ACTUALIZACIÓN VISUAL (Si es INEES)
                 // ===============================================
                 if (origen === 'INEES') {
                     let nuevoStock = stockDisponible - cantidad;
-                    
+
                     // Actualizar atributo data-stock
                     optionElement.attr("data-stock", nuevoStock);
-                    
+
                     // Actualizar texto visual del select (Icono y cantidad)
                     let nuevoTextoOption = "";
                     if (nuevoStock > 0) {
@@ -287,7 +325,7 @@ function agregarRepuestoALista() {
                     } else {
                         nuevoTextoOption = `📦 ${nombreLimpio} (Sin Stock)`;
                     }
-                    
+
                     // Actualizar DOM y Select2
                     optionElement.text(nuevoTextoOption);
                     select.trigger("change.select2");
@@ -383,7 +421,7 @@ function borrarRepuestoTemporal(index) {
         .then((res) => res.json())
         .then((data) => {
             if (data.status === "ok") {
-                
+
                 // ===============================================
                 // 🎨 DEVOLVER STOCK VISUALMENTE (Si era INEES)
                 // ===============================================
@@ -421,7 +459,7 @@ function borrarRepuestoTemporal(index) {
 // Función auxiliar para actualizar el texto del botón en la tabla principal
 function actualizarBotonFila(idFila) {
     const btnTexto = document.getElementById(`btn_texto_${idFila}`);
-    if(!btnTexto) return;
+    if (!btnTexto) return;
 
     const totalItems = window.DetalleConfig.repuestosTemporales.reduce(
         (acc, it) => acc + (parseInt(it.cantidad) || 1),
@@ -452,15 +490,15 @@ function guardarCambiosModal() {
     const inputJson = document.getElementById(`input_json_${idFila}`);
     // El input_db ya no lo usamos tanto porque dependemos del JSON para futuras ediciones, 
     // pero lo actualizamos por consistencia visual si fuera necesario.
-    
+
     if (inputJson) {
         inputJson.value = JSON.stringify(window.DetalleConfig.repuestosTemporales);
     }
-    
+
     actualizarBotonFila(idFila);
     cerrarModal();
 
-    if(window.DetalleNotificaciones) {
+    if (window.DetalleNotificaciones) {
         window.DetalleNotificaciones.notificarCambioGuardado();
     }
 }

@@ -72,7 +72,8 @@
 
                             // Validar año lógico (>1990) para evitar fechas "1969"
                             if (!isNaN(anio) && anio > 1990 && !isNaN(mes) && !isNaN(dia)) {
-                                fechaObjeto = new Date(anio, mes, dia);
+                                // Añadimos 12 horas (mediodía) para evitar el salto al día anterior por la zona horaria
+                                fechaObjeto = new Date(anio, mes, dia, 12, 0, 0);
                             }
                         }
                     } catch (e) {

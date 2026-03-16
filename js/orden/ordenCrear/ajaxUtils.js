@@ -152,11 +152,12 @@ async function calcularPrecio(id) {
     const fila = document.getElementById(`fila_${id}`);
     if (!fila) return;
 
-    const selectModalidad = document.getElementById(`select_modalidad_${id}`);
-    const idModalidad = selectModalidad?.value;
+    // Forma segura con jQuery/Select2
+    const idModalidad = $(`#select_modalidad_${id}`).val();
 
-    const selectMaquina = document.getElementById(`select_maquina_${id}`);
-    const tipoMaq = selectMaquina.options[selectMaquina.selectedIndex]?.getAttribute('data-tipo');
+    // Obtener la opción seleccionada de forma segura
+    const $maquinaOption = $(`#select_maquina_${id}`).find(':selected');
+    const tipoMaq = $maquinaOption.data('tipo');
 
     const selectServicio = fila.querySelector(`select[name="filas[${id}][tipo_servicio]"]`);
     const idManto = selectServicio?.value;
@@ -181,15 +182,15 @@ async function calcularPrecio(id) {
         });
 
         if (res && res.precio !== undefined) {
-            
+
             // 🛑 CASO 1: NO EXISTE TARIFA (-1)
             if (parseInt(res.precio) === -1) {
                 inputValor.value = ""; // Borramos el valor
                 inputValor.placeholder = "🚫 SIN TARIFA"; // Mensaje claro
-                
+
                 // Estilos de ERROR VISUAL
                 inputValor.classList.add('bg-red-200', 'border-red-500', 'text-red-700', 'font-bold', 'placeholder-red-700');
-                
+
                 // MARCA TÉCNICA PARA EL VALIDADOR
                 fila.classList.add('error-tarifa-faltante');
 

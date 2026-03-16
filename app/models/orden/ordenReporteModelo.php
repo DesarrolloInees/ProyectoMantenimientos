@@ -13,36 +13,31 @@ class ordenReporteModelo
     // --- 1. REPORTE CLÁSICO DE SERVICIOS ---
     public function obtenerServiciosPorRango($fechaInicio, $fechaFin, $tipoMant = 'todos')
     {
-
         // 1. Armamos las condiciones dinámicas según la selección
-            $filtroSql = "";
+        $filtroSql = "";
         
-            if ($tipoMant === 'basico') {
-                $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%basico%' OR LOWER(tman.nombre_completo) LIKE '%básico%' OR (LOWER(tman.nombre_completo) LIKE '%preventivo%' AND LOWER(tman.nombre_completo) NOT LIKE '%profundo%' AND LOWER(tman.nombre_completo) NOT LIKE '%completo%'))";
-            } elseif ($tipoMant === 'profundo') {
-                $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%profundo%' OR LOWER(tman.nombre_completo) LIKE '%completo%')";
-            } elseif ($tipoMant === 'correctivo') {
+        if ($tipoMant === 'basico') {
+            $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%basico%' OR LOWER(tman.nombre_completo) LIKE '%básico%' OR (LOWER(tman.nombre_completo) LIKE '%preventivo%' AND LOWER(tman.nombre_completo) NOT LIKE '%profundo%' AND LOWER(tman.nombre_completo) NOT LIKE '%completo%'))";
+        } elseif ($tipoMant === 'profundo') {
+            $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%profundo%' OR LOWER(tman.nombre_completo) LIKE '%completo%')";
+        } elseif ($tipoMant === 'correctivo') {
             $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%correctivo%' OR LOWER(tman.nombre_completo) LIKE '%reparacion%')";
-            } elseif ($tipoMant === 'fallido') {
+        } elseif ($tipoMant === 'fallido') {
             $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%fallido%' OR LOWER(tman.nombre_completo) LIKE '%fallido%')";
-            } elseif ($tipoMant === 'garantia') {
+        } elseif ($tipoMant === 'garantia') {
             $filtroSql = " AND (LOWER(tman.nombre_completo) LIKE '%garantia%' OR LOWER(tman.nombre_completo) LIKE '%garantia%')";
-            }
+        }
             
         $sql = "SELECT 
                 o.id_ordenes_servicio, o.numero_remision, o.fecha_visita,
                 o.hora_entrada, o.hora_salida, o.tiempo_servicio, o.valor_servicio,
-                -- CORRECCIÓN AQUÍ: Buscamos si hubo tarifa adicional en TODO el día,
-                -- sin importar si el servicio original se ocultó por el filtro.
+                
                 (SELECT MAX(o2.valor_viaticos) 
                     FROM ordenes_servicio o2 
                     WHERE o2.id_tecnico = o.id_tecnico 
                     AND o2.fecha_visita = o.fecha_visita) as valor_viaticos,
                     o.actividades_realizadas as que_se_hizo,
                 
-                -- CORRECCIÓN AQUÍ: 
-                -- El texto del servicio viene de la tabla 'tman', no de 'o'.
-                -- Usamos esto para la lógica de los Checks en el Excel (Basico/Profundo)
                 tman.nombre_completo as txt_servicio,
                 
                 m.device_id, tm.nombre_tipo_maquina,
@@ -58,9 +53,16 @@ class ordenReporteModelo
                 END as tipo_zona,
 
                 t.nombre_tecnico, 
-                -- También traemos el nombre para mostrarlo en la celda
                 tman.nombre_completo as tipo_servicio,
                 em.nombre_estado as estado_maquina, cal.nombre_calificacion,
+
+                -- TRAEMOS LAS NOVEDADES AL REPORTE DE SERVICIOS (Opcional, pero útil)
+                IFNULL(
+                    (SELECT GROUP_CONCAT(tn.nombre_novedad SEPARATOR ', ')
+                    FROM orden_servicio_novedad osn
+                    JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
+                    WHERE osn.id_orden_servicio = o.id_ordenes_servicio)
+                , '') as nombres_novedades,
 
                 IFNULL(
                     (SELECT GROUP_CONCAT(
@@ -75,10 +77,7 @@ class ordenReporteModelo
                 LEFT JOIN maquina m ON o.id_maquina = m.id_maquina
                 LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
                 LEFT JOIN tecnico t ON o.id_tecnico = t.id_tecnico
-                
-                -- JOIN IMPORTANTE: De aquí sacamos el nombre del mantenimiento
                 LEFT JOIN tipo_mantenimiento tman ON o.id_tipo_mantenimiento = tman.id_tipo_mantenimiento
-                
                 LEFT JOIN estado_maquina em ON o.id_estado_maquina = em.id_estado
                 LEFT JOIN calificacion_servicio cal ON o.id_calificacion = cal.id_calificacion
                 LEFT JOIN punto p_maq ON m.id_punto = p_maq.id_punto
@@ -89,10 +88,7 @@ class ordenReporteModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE o.fecha_visita BETWEEN ? AND ?
-
-                /* 👇 ¡AQUÍ ESTÁ EL SEGUNDO CAMBIO! Pegamos la variable del filtro 👇 */
                 $filtroSql
-                -- IMPORTANTE: Ordenar por Técnico -> Fecha -> Hora Entrada (para poder calcular desplazamiento)
                 ORDER BY t.nombre_tecnico ASC, o.fecha_visita ASC, o.hora_entrada ASC";
 
         $stmt = $this->conn->prepare($sql);
@@ -100,9 +96,10 @@ class ordenReporteModelo
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 2. NUEVO REPORTE DE NOVEDADES ---
+    // --- 2. NUEVO REPORTE DE NOVEDADES (CORREGIDO) ---
     public function obtenerNovedadesPorRango($fechaInicio, $fechaFin)
     {
+        // 🔥 CAMBIO CLAVE: Usamos la tabla pivote orden_servicio_novedad
         $sql = "SELECT 
                 tn.nombre_novedad,
                 o.actividades_realizadas as observacion,
@@ -117,7 +114,10 @@ class ordenReporteModelo
                 COALESCE(d_directo.nombre_delegacion, d_maq.nombre_delegacion) as delegacion
 
                 FROM ordenes_servicio o
-                INNER JOIN tipo_novedad tn ON o.id_tipo_novedad = tn.id_tipo_novedad
+                -- UNIMOS CON LA TABLA PIVOTE PRIMERO
+                INNER JOIN orden_servicio_novedad osn ON o.id_ordenes_servicio = osn.id_orden_servicio
+                -- LUEGO UNIMOS CON EL CATÁLOGO DE NOVEDADES
+                INNER JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
 
                 LEFT JOIN maquina m ON o.id_maquina = m.id_maquina
                 LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
@@ -129,8 +129,7 @@ class ordenReporteModelo
                 LEFT JOIN punto p_directo ON o.id_punto = p_directo.id_punto
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
-                WHERE (o.fecha_visita BETWEEN ? AND ?)
-                AND o.id_tipo_novedad > 0
+                WHERE o.fecha_visita BETWEEN ? AND ?
                 
                 ORDER BY o.fecha_visita ASC, t.nombre_tecnico ASC";
 

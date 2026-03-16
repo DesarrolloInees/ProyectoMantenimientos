@@ -15,6 +15,11 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
         <i class="fas fa-search mr-1"></i> Consultar Historial
     </a>
 
+    <!--<a href="<?= BASE_URL ?>tecnicoProgramacion" 
+       class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
+        <i class="fa-solid fa-envelope mr-1"></i> Programación Servicios
+-->
+
 <?php else: ?>
 
     <a href="<?= BASE_URL ?>inicio" 
@@ -104,7 +109,7 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
             <a href="<?= BASE_URL ?>clienteVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Clientes</a>
             
             <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 mt-2">Maestros del Sistema</div>
-            <a href="<?= BASE_URL ?>maquinaVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Máquinas</a>
+            <a href="<?= BASE_URL ?>maquinaVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" >Máquinas</a>
             <a href="<?= BASE_URL ?>puntoVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Puntos</a>
             <a href="<?= BASE_URL ?>tarifaVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Tarifas</a>
             

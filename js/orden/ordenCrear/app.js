@@ -227,12 +227,13 @@ async function procesarGuardado() {
         // A. Obtener valores
         const tecnico = fila.querySelector(`select[name^="filas"][name$="[id_tecnico]"]`)?.value;
         const cliente = fila.querySelector(`select[name^="filas"][name$="[id_cliente]"]`)?.value;
+        const punto = fila.querySelector(`select[name^="filas"][name$="[id_punto]"]`)?.value;
         const maquina = fila.querySelector(`select[name^="filas"][name$="[id_maquina]"]`)?.value;
         const tipoServicioElem = fila.querySelector(`select[name^="filas"][name$="[tipo_servicio]"]`);
         const tipoServicioVal = tipoServicioElem?.value;
 
         // B. Validar vacíos (EXISTENTE)
-        if (!tecnico || !cliente || !maquina || !tipoServicioVal) {
+        if (!tecnico || !cliente || !punto || !maquina || !tipoServicioVal) {
             hayErroresBloqueantes = true;
             fila.classList.add('bg-red-200'); // Fila roja
             setTimeout(() => fila.classList.remove('bg-red-200'), 4000); // Efecto visual

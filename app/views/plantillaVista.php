@@ -118,10 +118,6 @@
                                     <p class="text-sm font-bold text-gray-800"><?= $_SESSION['usuario_name'] ?? 'Usuario' ?></p>
                                     <p class="text-xs text-gray-500"><?= $_SESSION['usuario_cargo'] ?? '' ?></p>
                                 </div>
-                                <a href="<?= BASE_URL ?>usuarioVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-cog mr-2 text-gray-500"></i> Configuración
-                                </a>
-                                <div class="border-t border-gray-100 my-1"></div>
                                 <a href="<?= BASE_URL ?>logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                                     <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
                                 </a>
@@ -139,7 +135,6 @@
 
             <div id="mobile-menu" class="hidden xl:hidden bg-gray-900 border-t border-gray-700 pb-4 px-2 overflow-y-auto max-h-[85vh] shadow-inner">
                 <?php
-                // Aquí incluimos el archivo NUEVO que creamos en el paso 1
                 if (file_exists(__DIR__ . '/../partials/navbar_menu_mobile.php')) {
                     include __DIR__ . '/../partials/navbar_menu_mobile.php';
                 } else {
@@ -167,7 +162,7 @@
             // 2. OPCIÓN B: Si viene una ruta de archivo (Lógica antigua)
             elseif (isset($vistaContenido) && file_exists($vistaContenido)) {
                 include $vistaContenido;
-            } 
+            }
             // 3. ERROR: Si se pidió una ruta pero no existe
             elseif (isset($vistaContenido)) {
                 echo '<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow" role="alert">
