@@ -99,9 +99,9 @@ class ordenReporteModelo
     // --- 2. NUEVO REPORTE DE NOVEDADES (CORREGIDO) ---
     public function obtenerNovedadesPorRango($fechaInicio, $fechaFin)
     {
-        // 🔥 CAMBIO CLAVE: Usamos la tabla pivote orden_servicio_novedad
+        // 🔥 CAMBIO CLAVE: Agregamos GROUP_CONCAT y GROUP BY al final
         $sql = "SELECT 
-                tn.nombre_novedad,
+                GROUP_CONCAT(tn.nombre_novedad SEPARATOR ', ') as nombre_novedad,
                 o.actividades_realizadas as observacion,
                 o.fecha_visita,
                 o.numero_remision,
@@ -130,6 +130,9 @@ class ordenReporteModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE o.fecha_visita BETWEEN ? AND ?
+                
+                -- ESTO ES LO QUE AGRUPA LAS FILAS REPETIDAS EN UNA SOLA
+                GROUP BY o.id_ordenes_servicio
                 
                 ORDER BY o.fecha_visita ASC, t.nombre_tecnico ASC";
 

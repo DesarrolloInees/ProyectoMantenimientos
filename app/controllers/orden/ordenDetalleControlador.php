@@ -41,6 +41,7 @@ class ordenDetalleControlador
 
             // ✅ NUEVO: Remisiones disponibles del técnico
             if ($accion === 'ajaxObtenerRemisiones')      $this->ajaxObtenerRemisiones();
+            if ($accion === 'ajaxExportarDetalle') $this->ajaxExportarDetalle();
         }
     }
 
@@ -327,7 +328,7 @@ class ordenDetalleControlador
 
         $idOrden = $_POST['id_orden'] ?? 0;
         // Ahora esperamos un arreglo de IDs desde el frontend
-        $arrayNovedades = isset($_POST['novedades']) ? $_POST['novedades'] : []; 
+        $arrayNovedades = isset($_POST['novedades']) ? $_POST['novedades'] : [];
 
         // Verificar que venga un ID válido
         if ($idOrden <= 0) {
@@ -343,6 +344,49 @@ class ordenDetalleControlador
         $res = $this->modelo->guardarNovedadesOrden($idOrden, $arrayNovedades);
 
         echo json_encode(['success' => $res]);
+        exit;
+    }
+
+    // PASO 2: Agregar este método a la clase:
+    // ============================================================
+
+    public function ajaxExportarDetalle()
+    {
+        ob_clean();
+        header('Content-Type: application/json');
+
+        $fecha = $_POST['fecha'] ?? date('Y-m-d');
+
+        // Reutilizamos exactamente el mismo método que ya usa cargarVista()
+        $servicios = $this->modelo->obtenerServiciosPorFecha($fecha);
+
+        // Enriquecemos cada fila con el catálogo de novedades resuelto
+        // para que el JS no tenga que resolver IDs
+        $catalogoNovedades = $this->modelo->obtenerTiposNovedad();
+        $mapaNov = [];
+        foreach ($catalogoNovedades as $n) {
+            $mapaNov[$n['id_tipo_novedad']] = $n['nombre_novedad'];
+        }
+
+        foreach ($servicios as &$s) {
+            // Resolver IDs de novedades a nombres legibles
+            $idsNov = $s['ids_novedades'] ?? '';
+            if (!empty($idsNov)) {
+                $ids = explode(',', $idsNov);
+                $nombres = array_map(function ($id) use ($mapaNov) {
+                    $id = trim($id);
+                    return $mapaNov[$id] ?? "ID:$id";
+                }, $ids);
+                $s['nombres_novedades_resueltos'] = implode(', ', $nombres);
+            } else {
+                $s['nombres_novedades_resueltos'] = '';
+            }
+        }
+
+        echo json_encode([
+            'status' => 'ok',
+            'datos'  => $servicios
+        ]);
         exit;
     }
 }

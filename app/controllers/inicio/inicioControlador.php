@@ -17,7 +17,7 @@ class inicioControlador
         // $datos = $modelo->obtenerDatosDashboard();
 
         // 2. Datos para la vista
-        $titulo = "Dashboard General";
+        $titulo = "Inicio";
 
         // 3. Definimos cuál es el pedazo de HTML interno
         $vistaContenido = "app/views/inicio/inicioVista.php";

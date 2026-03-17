@@ -1,394 +1,280 @@
 // ==========================================
-// EXPORTACIÓN A EXCEL (ADAPTADA A BÚSQUEDA)
+// detalleExcel.js — reescrito con datos del servidor
+// Estrategia: igual que ordenReporteVista.php
+// NO lee el DOM. Pide los datos limpios al backend via AJAX.
 // ==========================================
 
-/**
- * Utilidades para extracción de datos
- */
-const ExcelUtils = {
-    getSelectText: (fila, partialName) => {
-        let sel = fila.querySelector(`select[name*="${partialName}"]`);
-        if (!sel || sel.selectedIndex < 0) return "";
+function _calcularDiferenciaHoras(horaInicio, horaFin) {
+    if (!horaInicio || !horaFin) return "";
+    let d1 = new Date(`2000-01-01T${horaInicio}`);
+    let d2 = new Date(`2000-01-01T${horaFin}`);
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return "";
+    let diffMs = d2 - d1;
+    if (diffMs < 0) return "";
+    let diffMins = Math.floor(diffMs / 60000);
+    let horas = Math.floor(diffMins / 60);
+    let mins = diffMins % 60;
+    return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
 
-        // Intentar sacar del atributo data-full, sino del texto visible
-        let text = "";
-        if (sel.options[sel.selectedIndex].hasAttribute("data-full")) {
-            text = sel.options[sel.selectedIndex].getAttribute("data-full");
-        } else {
-            text = sel.options[sel.selectedIndex].text;
-        }
-        return text.trim();
-    },
+function _obtenerFechaActiva() {
+    let fechaUrl = new URLSearchParams(window.location.search).get("fecha");
+    if (fechaUrl) return fechaUrl;
+    let inputFecha = document.querySelector('input[name="fecha_origen"]');
+    if (inputFecha && inputFecha.value) return inputFecha.value;
+    return new Date().toISOString().split('T')[0];
+}
 
-    getInputValue: (fila, partialName) => {
-        let input = fila.querySelector(`input[name*="${partialName}"]`);
-        return input ? input.value : "";
-    },
+function _obtenerBaseUrl() {
+    if (typeof BASE_URL !== 'undefined') return BASE_URL + 'ordenDetalle';
+    let path = window.location.pathname.split('/');
+    path.pop();
+    return path.join('/') + '/ordenDetalle';
+}
 
-    getTextareaValue: (fila, partialName) => {
-        let txt = fila.querySelector(`textarea[name*="${partialName}"]`);
-        return txt ? txt.value : "";
-    },
-
-    // Nueva utilidad para generar nombre de archivo dinámico
-    generarNombreArchivo: (prefijo) => {
-        // 1. Verificamos si estamos en modo búsqueda (mirando los inputs del buscador)
-        const clienteSelect = document.getElementById('busqCliente');
-        const remisionInput = document.getElementById('busqRemision');
-
-        let detalleNombre = "";
-
-        if (clienteSelect && clienteSelect.value) {
-            // Si hay cliente seleccionado, usamos su nombre
-            let nombreCliente = clienteSelect.options[clienteSelect.selectedIndex].text;
-            detalleNombre = `_${nombreCliente.replace(/[^a-zA-Z0-9]/g, "")}`; // Limpiar caracteres raros
-        } else if (remisionInput && remisionInput.value) {
-            // Si es por remisión
-            detalleNombre = `_Remision_${remisionInput.value}`;
-        } else {
-            // Si no es búsqueda, usamos la fecha como antes
-            let fechaUrl = new URLSearchParams(window.location.search).get("fecha");
-            if (!fechaUrl) {
-                const inputFecha = document.querySelector('input[name="fecha_origen"]');
-                if (inputFecha) fechaUrl = inputFecha.value;
-            }
-            detalleNombre = fechaUrl ? `_${fechaUrl}` : "_General";
-        }
-
-        return `${prefijo}${detalleNombre}.xlsx`;
-    }
-};
-
-/**
- * Exportar Excel Limpio (CORREGIDO ERROR VARIABLE)
- */
+// ─────────────────────────────────────────────────────────────
+// 1. EXPORTAR EXCEL LIMPIO (BOTÓN VERDE)
+// ─────────────────────────────────────────────────────────────
 function exportarExcelLimpio() {
-    if (typeof XLSX === "undefined") {
-        alert("Error: Librería SheetJS no cargada.");
-        return;
-    }
+    if (typeof XLSX === "undefined") { alert("Error: Librería SheetJS no cargada."); return; }
 
-    let tabla = document.getElementById("tablaEdicion");
-    let filasHTML = Array.from(tabla.querySelectorAll("tbody tr")).filter(f => f.id.startsWith("fila_"));
+    let fecha = _obtenerFechaActiva();
+    let baseUrl = _obtenerBaseUrl();
+    let btn = document.querySelector('[onclick*="exportarExcelLimpio"]');
+    if (btn) { btn._htmlOrig = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; btn.disabled = true; }
 
-    let ArbolDatos = {};
-    let contadorFilas = 0;
+    fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ accion: 'ajaxExportarDetalle', fecha: fecha })
+    })
+        .then(r => r.json())
+        .then(response => {
+            if (response.status !== 'ok' || !response.datos.length) {
+                alert('No se encontraron registros para esta fecha.');
+                return;
+            }
+            _generarExcelServicios(response.datos, fecha);
+        })
+        .catch(err => { console.error(err); alert('Error de conexión al exportar.'); })
+        .finally(() => {
+            if (btn) { btn.innerHTML = btn._htmlOrig || '<i class="fas fa-file-excel"></i> Excel'; btn.disabled = false; }
+        });
+}
 
-    // --- PASO 1: EXTRACCIÓN MASIVA ---
-    filasHTML.forEach((fila) => {
-        contadorFilas++;
-        let idFila = fila.id.replace("fila_", "");
+// ─────────────────────────────────────────────────────────────
+// 2. EXPORTAR EXCEL NOVEDADES (BOTÓN ROJO)
+// ─────────────────────────────────────────────────────────────
+function exportarExcelNovedades() {
+    if (typeof XLSX === "undefined") { alert("Librería SheetJS no cargada."); return; }
 
-        // Extracción de datos
-        let txtRemision = ExcelUtils.getInputValue(fila, "[remision]");
-        let txtFecha = ExcelUtils.getInputValue(fila, "[fecha_individual]");
-        let obs = ExcelUtils.getTextareaValue(fila, "[obs]");
+    let fecha = _obtenerFechaActiva();
+    let baseUrl = _obtenerBaseUrl();
+    let btn = document.querySelector('[onclick*="exportarExcelNovedades"]');
+    if (btn) { btn._htmlOrig = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; btn.disabled = true; }
 
-        let cliente = ExcelUtils.getSelectText(fila, "[id_cliente]");
-        let punto = ExcelUtils.getSelectText(fila, "[id_punto]");
-        let tecnico = ExcelUtils.getSelectText(fila, "[id_tecnico]");
-        let servicio = ExcelUtils.getSelectText(fila, "[id_manto]");
-        let modalidad = ExcelUtils.getSelectText(fila, "[id_modalidad]");
-        let estado = ExcelUtils.getSelectText(fila, "[id_estado]");
+    fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ accion: 'ajaxExportarDetalle', fecha: fecha })
+    })
+        .then(r => r.json())
+        .then(response => {
+            if (response.status !== 'ok') { alert('Error al obtener datos.'); return; }
+            let conNovedad = response.datos.filter(d => parseInt(d.tiene_novedad) === 1 || d.ids_novedades);
+            if (!conNovedad.length) { alert('No hay servicios con novedad en esta fecha.'); return; }
+            _generarExcelNovedades(conNovedad, fecha);
+        })
+        .catch(err => { console.error(err); alert('Error de conexión al exportar.'); })
+        .finally(() => {
+            if (btn) { btn.innerHTML = btn._htmlOrig || '<i class="fas fa-file-contract"></i> Novedades'; btn.disabled = false; }
+        });
+}
 
-        // ⚠️ AQUÍ ESTABA EL DETALLE: La variable se llama 'calif'
-        let calif = ExcelUtils.getSelectText(fila, "[id_calif]");
+// ─────────────────────────────────────────────────────────────
+// INTERNO: generar workbook de servicios por delegación
+// ─────────────────────────────────────────────────────────────
+function _generarExcelServicios(datos, fecha) {
+    let wb = XLSX.utils.book_new();
+    let porDelegacion = {};
+    let viaticoPendiente = null;
+    let prevTecnico = null;
+    let prevFecha = null;
+    let prevHoraSalida = null;
 
-        // Device ID
-        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
-        let device_id = "";
-        if (selMaq && selMaq.selectedIndex >= 0) {
-            device_id = selMaq.options[selMaq.selectedIndex].text.split("(")[0].trim();
+    datos.forEach((d, index) => {
+        let delegacion = (d.delegacion || "SIN ASIGNAR").replace(/[\r\n\t\s]+/g, ' ').trim().toUpperCase();
+        if (!porDelegacion[delegacion]) porDelegacion[delegacion] = [];
+
+        // Desplazamiento
+        let desplazamiento = "";
+        if (d.nombre_tecnico === prevTecnico && d.fecha_visita === prevFecha && prevHoraSalida) {
+            desplazamiento = _calcularDiferenciaHoras(prevHoraSalida, d.hora_entrada);
+        }
+        prevTecnico = d.nombre_tecnico;
+        prevFecha = d.fecha_visita;
+        prevHoraSalida = d.hora_salida;
+
+        // Tipo servicio → X
+        let txtServ = (d.tipo_servicio || "").toLowerCase();
+        let prevBasico = (txtServ.includes("basico") || txtServ.includes("básico")) ? "X" : "";
+        let prevProfundo = (txtServ.includes("profundo") || txtServ.includes("completo")) ? "X" : "";
+        let correctivo = (txtServ.includes("correctivo") || txtServ.includes("reparacion")) ? "X" : "";
+        if (!prevBasico && !prevProfundo && !correctivo && txtServ.includes("preventivo")) prevBasico = "X";
+
+        // Duración
+        let duracion = d.tiempo_servicio || "";
+        if (!duracion || duracion === '00:00' || duracion === '00:00:00') {
+            duracion = _calcularDiferenciaHoras(d.hora_entrada, d.hora_salida);
         }
 
-        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
-        let tipoMaquinatxt = divTipo ? divTipo.innerText : "";
-        let divDelegacion = document.getElementById(`td_delegacion_${idFila}`);
-        let delegacion = divDelegacion ? divDelegacion.innerText : "SIN ASIGNAR";
+        let valorServicio = parseFloat(d.valor_servicio) || 0;
+        let valorViaticos = parseFloat(d.valor_viaticos) || 0;
 
-        let txtServicio = servicio.toLowerCase();
-        let esPrevBasico = (txtServicio.includes("basico") || txtServicio.includes("básico")) ? "X" : "";
-        let esPrevProfundo = (txtServicio.includes("profundo") || txtServicio.includes("completo")) ? "X" : "";
-        let esCorrectivo = (txtServicio.includes("correctivo") || txtServicio.includes("reparacion")) ? "X" : "";
-        if (!esPrevBasico && !esPrevProfundo && !esCorrectivo && txtServicio.includes("preventivo")) esPrevBasico = "X";
-
-        let inputValor = fila.querySelector('input[name*="[valor]"]');
-        let valorRaw = inputValor ? inputValor.value : "0";
-        let valorLimpio = valorRaw.toString().replace(/\./g, "").replace(",", ".");
-        let valorExcel = parseFloat(valorLimpio) || 0;
-
-        let inputViaticos = document.getElementById(`viaticos_${idFila}`);
-        let valorViaticos = inputViaticos ? parseFloat(inputViaticos.value) : 0;
-
-        let inputEntrada = fila.querySelector('input[name*="[entrada]"]');
-        let inputSalida = fila.querySelector('input[name*="[salida]"]');
-        let horaEntrada = inputEntrada ? inputEntrada.value : "";
-        let horaSalida = inputSalida ? inputSalida.value : "";
-
-        let duracion = "";
-        if (window.DetalleFechaUtils && window.DetalleFechaUtils.calcularDuracion) {
-            duracion = window.DetalleFechaUtils.calcularDuracion(horaEntrada, horaSalida);
-        }
-
-        let spanDesplaz = document.getElementById(`desplazamiento_${idFila}`);
-        let desplazamiento = spanDesplaz ? spanDesplaz.innerText.replace("Err H.", "") : "";
-
-        let inputRepDB = document.getElementById(`input_db_${idFila}`);
-        let repuestos = inputRepDB ? inputRepDB.value : "";
-        if (repuestos.match(/Gest\. Repuestos|Items|sin repuestos|ninguno|n\/a|vacío/i)) repuestos = "";
-
-        // --- PASO 2: AGRUPACIÓN ---
-        if (!ArbolDatos[delegacion]) ArbolDatos[delegacion] = {};
-
-        let claveGrupo = tecnico + "|" + txtFecha;
-
-        if (!ArbolDatos[delegacion][claveGrupo]) {
-            ArbolDatos[delegacion][claveGrupo] = { items: [], totalViatico: 0 };
-        }
-
-        // 3. Agregar Datos (CORREGIDO)
-        ArbolDatos[delegacion][claveGrupo].items.push({
-            device_id, txtRemision, cliente, punto, esPrevBasico, esPrevProfundo, esCorrectivo,
-            valor: valorExcel, obs, delegacion, fecha: txtFecha, tecnico, tipoMaquina: tipoMaquinatxt,
-            servicio, horaEntrada, horaSalida, duracion, desplazamiento, repuestos, estado,
-
-            // 🔥 CORRECCIÓN AQUÍ: Asignamos la variable 'calif' a la propiedad 'calificacion'
-            calificacion: calif,
-
-            modalidad
+        porDelegacion[delegacion].push({
+            device_id: d.device_id || "",
+            remision: d.numero_remision || "",
+            cliente: d.nombre_cliente || "",
+            punto: d.nombre_punto || "",
+            prevBasico, prevProfundo, correctivo,
+            valor: valorServicio,
+            obs: d.que_se_hizo || d.actividades_realizadas || "",
+            delegacion,
+            fecha: d.fecha_visita || "",
+            tecnico: d.nombre_tecnico || "",
+            tipoMaquina: d.nombre_tipo_maquina || "",
+            tipoServicio: d.tipo_servicio || "",
+            horaEntrada: d.hora_entrada || "",
+            horaSalida: d.hora_salida || "",
+            duracion,
+            desplazamiento,
+            repuestos: d.repuestos_texto || "",
+            estado: d.estado_maquina || d.nombre_estado || "",
+            calificacion: d.nombre_calificacion || "",
+            modalidad: d.tipo_zona || ""
         });
 
         if (valorViaticos > 0) {
-            ArbolDatos[delegacion][claveGrupo].totalViatico += valorViaticos;
+            viaticoPendiente = {
+                device_id: "", remision: "", cliente: "", punto: "",
+                prevBasico: "", prevProfundo: "", correctivo: "",
+                valor: valorViaticos, obs: "TARIFA ADICIONAL POR DÍA",
+                delegacion: "", fecha: "", tecnico: "", tipoMaquina: "",
+                tipoServicio: "", horaEntrada: "", horaSalida: "",
+                duracion: "", desplazamiento: "", repuestos: "",
+                estado: "", calificacion: "", modalidad: ""
+            };
+        }
+
+        let sig = datos[index + 1];
+        let cerrar = !sig
+            || sig.fecha_visita !== d.fecha_visita
+            || sig.nombre_tecnico !== d.nombre_tecnico
+            || (sig.delegacion || "SIN ASIGNAR").replace(/[\r\n\t\s]+/g, ' ').trim().toUpperCase() !== delegacion;
+
+        if (cerrar && viaticoPendiente) {
+            porDelegacion[delegacion].push(viaticoPendiente);
+            viaticoPendiente = null;
         }
     });
 
-    if (contadorFilas === 0) {
-        alert("⚠️ No hay datos visibles para exportar.");
-        return;
-    }
+    for (let del in porDelegacion) {
+        let filas = porDelegacion[del];
+        let matriz = [[
+            "Device_id", "Número de Remisión", "Cliente", "Nombre Punto",
+            "Preventivo Básico", "Preventivo Profundo", "Correctivo", "Tarifa",
+            "Observaciones", "Delegación", "Fecha", "Técnico",
+            "Tipo de Máquina", "Tipo de Servicio", "Hora Entrada", "Hora Salida",
+            "Duración", "Desplazamiento", "Repuestos", "Estado de la Máquina",
+            "Calificación del Servicio", "Modalidad Operativa"
+        ]];
 
-    // --- PASO 3: GENERAR EXCEL ---
-    let workbook = XLSX.utils.book_new();
+        filas.forEach(f => {
+            matriz.push([
+                f.device_id, f.remision, f.cliente, f.punto,
+                f.prevBasico, f.prevProfundo, f.correctivo, f.valor,
+                f.obs, f.delegacion, f.fecha, f.tecnico,
+                f.tipoMaquina, f.tipoServicio, f.horaEntrada, f.horaSalida,
+                f.duracion, f.desplazamiento, f.repuestos, f.estado,
+                f.calificacion, f.modalidad
+            ]);
+        });
 
-    for (let delegacion in ArbolDatos) {
-        let gruposDeLaDelegacion = ArbolDatos[delegacion];
-        let matrizFinal = [];
+        let ws = XLSX.utils.aoa_to_sheet(matriz);
 
-        // Encabezados
-        matrizFinal.push([
-            "Device_id", "Número de Remisión", "Cliente", "Nombre Punto", "Preventivo Básico",
-            "Preventivo Profundo", "Correctivo", "Tarifa", "Observaciones", "Delegación", "Fecha",
-            "Técnico", "Tipo de Máquina", "Tipo de Servicio", "Hora Entrada", "Hora Salida",
-            "Duración", "Desplazamiento", "Repuestos", "Estado de la Máquina", "Calificación del Servicio",
-            "Modalidad Operativa"
-        ]);
-
-        for (let clave in gruposDeLaDelegacion) {
-            let grupo = gruposDeLaDelegacion[clave];
-
-            // A. Servicios
-            grupo.items.forEach(d => {
-                matrizFinal.push([
-                    d.device_id, d.txtRemision, d.cliente, d.punto, d.esPrevBasico, d.esPrevProfundo, d.esCorrectivo,
-                    d.valor, d.obs, d.delegacion, d.fecha, d.tecnico, d.tipoMaquina, d.servicio,
-                    d.horaEntrada, d.horaSalida, d.duracion, d.desplazamiento, d.repuestos, d.estado,
-                    d.calificacion, d.modalidad
-                ]);
-            });
-
-            // B. Viáticos al final del grupo
-            if (grupo.totalViatico > 0) {
-                matrizFinal.push([
-                    "", "", "", "", "", "", "",
-                    grupo.totalViatico,
-                    "TARIFA ADICIONAL POR DÍA",
-                    delegacion, "", "", "", "",
-                    "", "", "", "", "", "", "", ""
-                ]);
-            }
-        }
-
-        let ws = XLSX.utils.aoa_to_sheet(matrizFinal);
-
-        // Formato Moneda
-        const formatoContabilidad = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
+        const fmtMoneda = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
         if (ws['!ref']) {
             const range = XLSX.utils.decode_range(ws['!ref']);
-            const colTarifa = 7;
             for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                let cellRef = XLSX.utils.encode_cell({ c: colTarifa, r: R });
-                if (!ws[cellRef]) ws[cellRef] = { t: 'n', v: 0 };
-                ws[cellRef].t = 'n';
-                ws[cellRef].z = formatoContabilidad;
+                let ref = XLSX.utils.encode_cell({ c: 7, r: R });
+                if (!ws[ref]) ws[ref] = { t: 'n', v: 0 };
+                ws[ref].t = 'n';
+                ws[ref].z = fmtMoneda;
             }
         }
 
         ws["!cols"] = [
-            { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
-            { wch: 15 }, { wch: 50 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 20 },
-            { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+            { wch: 15 }, { wch: 14 }, { wch: 25 }, { wch: 25 },
+            { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 15 },
+            { wch: 50 }, { wch: 15 }, { wch: 12 }, { wch: 20 },
+            { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
+            { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 15 },
+            { wch: 15 }, { wch: 15 }
         ];
 
-        let nombreHoja = delegacion.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "General";
-        XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
+        let nombreHoja = del.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "General";
+        XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
     }
 
-    let nombreArchivo = ExcelUtils.generarNombreArchivo("Reporte_Servicios");
-    XLSX.writeFile(workbook, nombreArchivo);
+    XLSX.writeFile(wb, `Reporte_Servicios_${fecha}.xlsx`);
 }
 
-
-
-
-// ==========================================
-// 2. FUNCIÓN EXPORTAR NOVEDADES (ORDENADO 1-10 + AUTO-ANCHO COLUMNAS)
-// ==========================================
-function exportarExcelNovedades() {
-    if (typeof XLSX === "undefined") {
-        alert("Librería SheetJS no cargada.");
-        return;
-    }
-
-    let tabla = document.getElementById("tablaEdicion");
-    let filas = Array.from(tabla.querySelectorAll("tbody tr"));
-    let listaNovedades = [];
-
-    // Obtenemos el catálogo de novedades para traducir ID -> NOMBRE
-    const catalogoNovedades = window.DetalleConfig.listaNovedades || [];
-
-    filas.forEach((fila) => {
-        if (!fila.id.startsWith("fila_")) return;
-
-        let idFila = fila.id.replace("fila_", "");
-
-        // --- VALIDACIÓN: SOLO FILAS CON NOVEDAD ---
-        let inputTiene = document.getElementById(`hdn-tiene-${idFila}`);
-        if (!inputTiene || inputTiene.value != "1") return;
-
-        // --- DATOS ---
-
-        // Tipo Novedad
-        let inputTipo = document.getElementById(`hdn-tipo-${idFila}`);
-        let idTipo = inputTipo ? inputTipo.value : "";
-        let nombreNovedad = "SIN ESPECIFICAR";
-        if (idTipo) {
-            let novEncontrada = catalogoNovedades.find(n => n.id_tipo_novedad == idTipo);
-            if (novEncontrada) nombreNovedad = novEncontrada.nombre_novedad;
-        }
-
-        // Contexto
-        let divDel = document.getElementById(`td_delegacion_${idFila}`);
-        let delegacion = divDel ? divDel.innerText : "SIN ASIGNAR";
-
-        let cliente = ExcelUtils.getSelectText(fila, "[id_cliente]");
-        let punto = ExcelUtils.getSelectText(fila, "[id_punto]");
-        let tecnico = ExcelUtils.getSelectText(fila, "[id_tecnico]");
-
-        // Device ID
-        let selMaq = fila.querySelector('select[name*="[id_maquina]"]');
-        let deviceID = "";
-        if (selMaq && selMaq.selectedIndex >= 0) {
-            deviceID = selMaq.options[selMaq.selectedIndex].text.split("(")[0].trim();
-        }
-
-        let divTipo = document.getElementById(`td_tipomaq_${idFila}`);
-        let tipoMaq = divTipo ? divTipo.innerText : "";
-
-        let inputRem = fila.querySelector('input[name*="[remision]"]');
-        let remision = inputRem ? inputRem.value : "";
-
-        let txtObs = fila.querySelector('textarea[name*="[obs]"]');
-        let obsServicio = txtObs ? txtObs.value : "";
-
-        let inputFecha = fila.querySelector('input[name*="[fecha_individual]"]');
-        let fecha = inputFecha ? inputFecha.value : "";
-
-        // --- CONSTRUCCIÓN DEL OBJETO (ORDEN SOLICITADO) ---
-        listaNovedades.push({
-            "Tipo de Novedad": nombreNovedad,          // 1
-            "Descripción del Servicio": obsServicio,   // 2
-            "Cliente": cliente,                        // 3
-            "Punto": punto,                            // 4
-            "Delegación": delegacion,                  // 5
-            "Tipo de Máquina": tipoMaq,                // 6
-            "Device_id": deviceID,                     // 7
-            "Número de Remisión": remision,            // 8
-            "Fecha del Servicio": fecha,               // 9
-            "Nombre del Técnico": tecnico              // 10
-        });
-    });
-
-    if (listaNovedades.length === 0) {
-        alert("No se encontraron servicios marcados con novedad en la tabla visible.");
-        return;
-    }
+// ─────────────────────────────────────────────────────────────
+// INTERNO: generar excel de novedades
+// ─────────────────────────────────────────────────────────────
+function _generarExcelNovedades(datos, fecha) {
+    let lista = datos.map(d => ({
+        "Tipo de Novedad": d.nombres_novedades_resueltos || d.nombres_novedades || "SIN ESPECIFICAR",
+        "Descripción del Servicio": d.que_se_hizo || d.actividades_realizadas || "",
+        "Cliente": d.nombre_cliente || "",
+        "Punto": d.nombre_punto || "",
+        "Delegación": (d.delegacion || "").trim(),
+        "Tipo de Máquina": d.nombre_tipo_maquina || "",
+        "Device_id": d.device_id || "",
+        "Número de Remisión": d.numero_remision || "",
+        "Fecha del Servicio": d.fecha_visita || "",
+        "Nombre del Técnico": d.nombre_tecnico || ""
+    }));
 
     let wb = XLSX.utils.book_new();
-    let ws = XLSX.utils.json_to_sheet(listaNovedades);
+    let ws = XLSX.utils.json_to_sheet(lista);
 
-    // --- ALGORITMO DE AUTO-AJUSTE DE ANCHO DE COLUMNAS ---
-    // Recorremos las claves (encabezados) para calcular el ancho ideal
-    let headers = Object.keys(listaNovedades[0]);
-    let wscols = headers.map(header => {
-        // Empezamos con la longitud del encabezado
-        let maxLen = header.length;
-
-        // Revisamos todas las filas para esa columna
-        listaNovedades.forEach(row => {
-            let val = row[header] ? String(row[header]) : "";
-            if (val.length > maxLen) {
-                maxLen = val.length;
-            }
-        });
-
-        // REGLAS: 
-        // 1. Si es gigante, lo cortamos visualmente en 60 para no hacer un Excel infinito
-        if (maxLen > 60) maxLen = 60;
-        // 2. Mínimo 10 para que no quede muy apretado
-        if (maxLen < 10) maxLen = 10;
-
-        return { wch: maxLen + 2 }; // +2 para un poco de "aire"
+    let headers = Object.keys(lista[0]);
+    ws["!cols"] = headers.map(h => {
+        let max = h.length;
+        lista.forEach(r => { let v = r[h] ? String(r[h]) : ""; if (v.length > max) max = v.length; });
+        if (max > 70) max = 70;
+        if (max < 10) max = 10;
+        return { wch: max + 2 };
     });
 
-    // Aplicamos los anchos calculados a la hoja
-    ws["!cols"] = wscols;
-
-    // (Opcional) Activamos Wrap Text para que si cortamos el ancho, el texto baje
-    // Pero NO tocamos la altura de fila (!rows), dejamos que Excel se encargue.
     const range = XLSX.utils.decode_range(ws['!ref']);
     for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
-            let cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
-            if (!ws[cell_ref]) continue;
-            if (!ws[cell_ref].s) ws[cell_ref].s = {};
-
-            // Alineación superior y ajuste de texto, pero sin forzar altura
-            ws[cell_ref].s.alignment = { wrapText: true, vertical: "top" };
+            let ref = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[ref]) continue;
+            if (!ws[ref].s) ws[ref].s = {};
+            ws[ref].s.alignment = { wrapText: true, vertical: "top" };
         }
     }
 
     XLSX.utils.book_append_sheet(wb, ws, "Novedades");
-
-    // Nombre del archivo
-    let fechaNombre = new URLSearchParams(window.location.search).get("fecha");
-    if (!fechaNombre) {
-        const inputFecha = document.querySelector('input[name="fecha_origen"]');
-        if (inputFecha && inputFecha.value) fechaNombre = inputFecha.value;
-    }
-    if (!fechaNombre) fechaNombre = "Reporte";
-
-    XLSX.writeFile(wb, `Novedades_${fechaNombre.trim()}.xlsx`);
+    XLSX.writeFile(wb, `Novedades_${fecha}.xlsx`);
 }
 
-// ==========================================
-// 3. EXPORTAR AL OBJETO GLOBAL (PARA QUE LOS BOTONES FUNCIONEN)
-// ==========================================
-window.DetalleExcel = {
-    exportarExcelLimpio,
-    exportarExcelNovedades
-};
-
-// Retrocompatibilidad por si se llaman directamente desde el HTML
+// ─────────────────────────────────────────────────────────────
+// EXPORTAR AL OBJETO GLOBAL
+// ─────────────────────────────────────────────────────────────
+window.DetalleExcel = { exportarExcelLimpio, exportarExcelNovedades };
 window.exportarExcelLimpio = exportarExcelLimpio;
 window.exportarExcelNovedades = exportarExcelNovedades;

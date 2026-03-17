@@ -9,7 +9,7 @@ $error_login = $data['error_login'] ?? false;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - I-Nexis</title>
+    <title>Login - I-Bikers</title>
 
     <!-- Tailwind CSS -->
 
@@ -436,7 +436,7 @@ $error_login = $data['error_login'] ?? false;
             Bienvenido
         </h1>
         <p class="text-blue-200 mb-8 text-lg font-light">
-            Inicia sesión en <span class="font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">I-Nexis</span>
+            Inicia sesión en <span class="font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">I-Bikers</span>
         </p>
 
         <!-- Formulario -->
@@ -510,7 +510,7 @@ $error_login = $data['error_login'] ?? false;
         <div class="mt-8 pt-6 border-t border-white border-opacity-10">
             <p class="text-xs text-white text-opacity-60">
                 <i class="fa-solid fa-shield-halved mr-1"></i>
-                Sistema seguro I-Nexis &copy; <?php echo date('Y'); ?>
+                Sistema seguro I-Bikers &copy; <?php echo date('Y'); ?>
             </p>
         </div>
     </div>
