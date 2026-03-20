@@ -88,20 +88,20 @@ class tecnicoReporteControlador
 
 
             // ==========================================
-                // NUEVO: GUARDAR DATOS COMPLEMENTARIOS
-                // ==========================================
-                $datosComplementarios = [
-                    'id_orden_servicio'   => $idOrdenServicio,
-                    'numero_maquina'      => !empty($_POST['numero_maquina']) ? $_POST['numero_maquina'] : null,
-                    'serial_maquina'      => !empty($_POST['serial_maquina']) ? $_POST['serial_maquina'] : null,
-                    'serial_router'       => !empty($_POST['serial_router']) ? $_POST['serial_router'] : null,
-                    'serial_ups'          => !empty($_POST['serial_ups']) ? $_POST['serial_ups'] : null,
-                    'pendientes'          => !empty($_POST['pendientes']) ? $_POST['pendientes'] : null,
-                    'administrador_punto' => !empty($_POST['administrador_punto']) ? $_POST['administrador_punto'] : null,
-                    'celular_encargado'   => !empty($_POST['celular_encargado']) ? $_POST['celular_encargado'] : null,
-                    'id_estado_inicial'   => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null // <-- CAMBIO AQUÍ
-                ];
-                $this->modelo->guardarDatosComplementarios($datosComplementarios);
+            // NUEVO: GUARDAR DATOS COMPLEMENTARIOS
+            // ==========================================
+            $datosComplementarios = [
+                'id_orden_servicio'   => $idOrdenServicio,
+                'numero_maquina'      => !empty($_POST['numero_maquina']) ? $_POST['numero_maquina'] : null,
+                'serial_maquina'      => !empty($_POST['serial_maquina']) ? $_POST['serial_maquina'] : null,
+                'serial_router'       => !empty($_POST['serial_router']) ? $_POST['serial_router'] : null,
+                'serial_ups'          => !empty($_POST['serial_ups']) ? $_POST['serial_ups'] : null,
+                'pendientes'          => !empty($_POST['pendientes']) ? $_POST['pendientes'] : null,
+                'administrador_punto' => !empty($_POST['administrador_punto']) ? $_POST['administrador_punto'] : null,
+                'celular_encargado'   => !empty($_POST['celular_encargado']) ? $_POST['celular_encargado'] : null,
+                'id_estado_inicial'   => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null // <-- CAMBIO AQUÍ
+            ];
+            $this->modelo->guardarDatosComplementarios($datosComplementarios);
 
             // 1. Guardamos los datos en texto de la orden
             if ($this->modelo->guardarReporteTecnico($datos)) {
@@ -126,7 +126,7 @@ class tecnicoReporteControlador
                 // Array de los 3 inputs de archivos
                 $tiposFotos = [
                     'fotos_antes' => 'antes',
-                    'fotos_componentes' => 'componentes',
+                    'foto_remision' => 'remision',
                     'fotos_despues' => 'despues'
                 ];
 
@@ -142,13 +142,21 @@ class tecnicoReporteControlador
                                 $tmpName = $_FILES[$inputName]['tmp_name'][$i];
 
                                 $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
-                                $nombreNuevo = $tipoEnum . '_' . uniqid() . '.' . $extension;
+
+                                // Tomamos la remisión, o si no tiene, usamos el ID de la orden
+                                $numeroParaNombre = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'ORDEN-' . $idOrdenServicio;
+
+                                // Nombre final del archivo
+                                $nombreNuevo = 'REM-' . $numeroParaNombre . '_' . $tipoEnum . '_' . uniqid() . '.jpg';
+
+                                // Esta ruta SÍ usa el __DIR__ pero SOLO para guardar el archivo físico en Windows
                                 $rutaFinalServidor = $carpetaDestino . $nombreNuevo;
 
-                                // Nueva ruta relativa para la Base de Datos
+                                // === ESTA ES LA CLAVE ===
+                                // Esta es la ruta limpia que se va a guardar en la Base de Datos
                                 $rutaParaBD = 'uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreNuevo;
 
-                                if (move_uploaded_file($tmpName, $rutaFinalServidor)) {
+                                if ($this->optimizarImagen($tmpName, $rutaFinalServidor, 800, 70)) {
                                     $this->modelo->guardarEvidenciaFoto($idOrdenServicio, $tipoEnum, $rutaParaBD);
                                 }
                             }
@@ -189,6 +197,93 @@ class tecnicoReporteControlador
                     window.history.back();
                 </script>";
             }
+        }
+    }
+    // --- NUEVA FUNCIÓN: Comprimir y redimensionar imagen (VERSIÓN SEGURA) ---
+    private function optimizarImagen($rutaOrigen, $rutaDestino, $anchoMaximo = 800, $calidad = 70)
+    {
+        // 1. Aumentamos temporalmente la memoria de PHP. 
+        // Las fotos de iPhone/Android modernas consumen mucha RAM al descomprimirse.
+        ini_set('memory_limit', '256M');
+
+        // 2. Validamos si el servidor tiene instalada la librería GD para procesar imágenes
+        if (!extension_loaded('gd')) {
+            error_log("Falta librería GD en el servidor. Guardando imagen original.");
+            return move_uploaded_file($rutaOrigen, $rutaDestino);
+        }
+
+        // 3. Obtenemos información de la imagen silenciosamente (con @ para evitar warnings si el archivo es raro)
+        $info = @getimagesize($rutaOrigen);
+        if (!$info) {
+            return move_uploaded_file($rutaOrigen, $rutaDestino);
+        }
+
+        $mime = $info['mime'];
+        $anchoOriginal = $info[0];
+        $altoOriginal = $info[1];
+
+        // 4. Crear recurso de imagen según el tipo, con protecciones adicionales
+        try {
+            switch ($mime) {
+                case 'image/jpeg':
+                case 'image/jpg':
+                    $imagenOriginal = @imagecreatefromjpeg($rutaOrigen);
+                    break;
+                case 'image/png':
+                    $imagenOriginal = @imagecreatefrompng($rutaOrigen);
+                    break;
+                case 'image/gif':
+                    $imagenOriginal = @imagecreatefromgif($rutaOrigen);
+                    break;
+                case 'image/webp':
+                    if (function_exists('imagecreatefromwebp')) {
+                        $imagenOriginal = @imagecreatefromwebp($rutaOrigen);
+                    } else {
+                        return move_uploaded_file($rutaOrigen, $rutaDestino);
+                    }
+                    break;
+                default:
+                    return move_uploaded_file($rutaOrigen, $rutaDestino);
+            }
+
+            if (!$imagenOriginal) {
+                return move_uploaded_file($rutaOrigen, $rutaDestino);
+            }
+
+            // Calcular nuevas dimensiones manteniendo la proporción
+            if ($anchoOriginal > $anchoMaximo) {
+                $ratio = $anchoMaximo / $anchoOriginal;
+                $nuevoAncho = $anchoMaximo;
+                $nuevoAlto = round($altoOriginal * $ratio);
+            } else {
+                $nuevoAncho = $anchoOriginal;
+                $nuevoAlto = $altoOriginal;
+            }
+
+            // Crear lienzo nuevo
+            $imagenRedimensionada = imagecreatetruecolor($nuevoAncho, $nuevoAlto);
+
+            // Mantener transparencia si es PNG
+            if ($mime == 'image/png') {
+                imagealphablending($imagenRedimensionada, false);
+                imagesavealpha($imagenRedimensionada, true);
+                $colorTransparente = imagecolorallocatealpha($imagenRedimensionada, 255, 255, 255, 127);
+                imagefill($imagenRedimensionada, 0, 0, $colorTransparente);
+            }
+
+            // Copiar, redimensionar y guardar como JPG
+            imagecopyresampled($imagenRedimensionada, $imagenOriginal, 0, 0, 0, 0, $nuevoAncho, $nuevoAlto, $anchoOriginal, $altoOriginal);
+            $exito = imagejpeg($imagenRedimensionada, $rutaDestino, $calidad);
+
+            // Liberar memoria
+            imagedestroy($imagenOriginal);
+            imagedestroy($imagenRedimensionada);
+
+            return $exito;
+        } catch (Exception $e) {
+            error_log("Error comprimiendo imagen: " . $e->getMessage());
+            // Si algo explota en el proceso, nos aseguramos de que al menos guarde la foto original
+            return move_uploaded_file($rutaOrigen, $rutaDestino);
         }
     }
 }

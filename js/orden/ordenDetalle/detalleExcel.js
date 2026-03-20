@@ -33,33 +33,82 @@ function _obtenerBaseUrl() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 1. EXPORTAR EXCEL LIMPIO (BOTÓN VERDE)
+// 1. EXPORTAR EXCEL LIMPIO (BOTÓN VERDE) - ACTUALIZADO
 // ─────────────────────────────────────────────────────────────
 function exportarExcelLimpio() {
     if (typeof XLSX === "undefined") { alert("Error: Librería SheetJS no cargada."); return; }
 
-    let fecha = _obtenerFechaActiva();
     let baseUrl = _obtenerBaseUrl();
+    let payload = new URLSearchParams();
+    
+    // Detectamos si estamos en la vista del Buscador Avanzado
+    let esBuscador = document.getElementById('busqCliente') !== null;
+    let sufijoArchivo = "";
+
+    if (esBuscador) {
+        // MODO BUSCADOR: Capturamos los filtros
+        payload.append('accion', 'ajaxExportarBusqueda'); // Nueva acción para el backend
+        payload.append('remision', document.getElementById('busqRemision').value || '');
+        payload.append('id_cliente', document.getElementById('busqCliente').value || '');
+        payload.append('id_punto', document.getElementById('busqPunto').value || '');
+        payload.append('id_delegacion', document.getElementById('busqDelegacion').value || '');
+        payload.append('fecha_inicio', document.getElementById('busqFechaInicio').value || '');
+        payload.append('fecha_fin', document.getElementById('busqFechaFin').value || '');
+        
+        // --- 🚀 NUEVA LÓGICA PARA EL NOMBRE DEL ARCHIVO ---
+        let partesNombre = ["Filtro"]; // Base del nombre
+        
+        let selCliente = document.getElementById('busqCliente');
+        if (selCliente && selCliente.value) { 
+            // Agarramos el texto visible de la opción seleccionada
+            partesNombre.push(selCliente.options[selCliente.selectedIndex].text.trim());
+        }
+        
+        let selPunto = document.getElementById('busqPunto');
+        if (selPunto && selPunto.value) { 
+            partesNombre.push(selPunto.options[selPunto.selectedIndex].text.trim());
+        }
+
+        // Si no seleccionó ni cliente ni punto, le ponemos "General"
+        if (partesNombre.length === 1) {
+            partesNombre.push("General");
+        }
+        
+        // Unimos las partes con guiones bajos, reemplazamos espacios y limpiamos caracteres raros
+        sufijoArchivo = partesNombre.join("_")
+                                    .replace(/\s+/g, '_')
+                                    .replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ-]/g, '');
+
+    } else {
+        // MODO VISTA DIARIA: Usamos la fecha activa como antes
+        let fecha = _obtenerFechaActiva();
+        payload.append('accion', 'ajaxExportarDetalle');
+        payload.append('fecha', fecha);
+        
+        sufijoArchivo = fecha;
+    }
+
     let btn = document.querySelector('[onclick*="exportarExcelLimpio"]');
     if (btn) { btn._htmlOrig = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...'; btn.disabled = true; }
 
     fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ accion: 'ajaxExportarDetalle', fecha: fecha })
+        body: payload
     })
-        .then(r => r.json())
-        .then(response => {
-            if (response.status !== 'ok' || !response.datos.length) {
-                alert('No se encontraron registros para esta fecha.');
-                return;
-            }
-            _generarExcelServicios(response.datos, fecha);
-        })
-        .catch(err => { console.error(err); alert('Error de conexión al exportar.'); })
-        .finally(() => {
-            if (btn) { btn.innerHTML = btn._htmlOrig || '<i class="fas fa-file-excel"></i> Excel'; btn.disabled = false; }
-        });
+    .then(r => r.json())
+    .then(response => {
+        if (response.status !== 'ok' || !response.datos || response.datos.length === 0) {
+            alert('No se encontraron registros con los filtros aplicados.');
+            return;
+        }
+        // Le pasamos el sufijo para que el nombre del archivo sea correcto
+        _generarExcelServicios(response.datos, sufijoArchivo);
+    })
+    .catch(err => { console.error(err); alert('Error de conexión al exportar.'); })
+    .finally(() => {
+        if (btn) { btn.innerHTML = btn._htmlOrig || '<i class="fas fa-file-excel"></i> Excel'; btn.disabled = false; }
+    });
 }
 
 // ─────────────────────────────────────────────────────────────

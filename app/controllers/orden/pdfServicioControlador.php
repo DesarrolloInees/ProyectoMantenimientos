@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../config/conexion.php';
 // Reutilizamos tu modelo de detalles que ya debe tener las consultas del servicio
 require_once __DIR__ . '/../../models/orden/ordenDetalleModelo.php';
-require_once __DIR__ . '/../../models/orden/serviciosPdfModelo.php'; 
+require_once __DIR__ . '/../../models/orden/serviciosPdfModelo.php';
 
 use Spatie\Browsershot\Browsershot;
 
@@ -18,9 +18,9 @@ class PdfServicioControlador
     {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
-        
+
         // CORRECCIÓN AQUÍ: Usamos el modelo que tiene las nuevas funciones
-        $this->modelo = new serviciosPdfModelo($this->db); 
+        $this->modelo = new serviciosPdfModelo($this->db);
     }
 
     public function generar()
@@ -35,9 +35,11 @@ class PdfServicioControlador
         // 2. Aquí debes traer los datos de la orden (usa la función que ya tengas o creamos una)
         // OJO: Asumo que crearemos un método 'obtenerDatosCompletosOrden' en tu modelo
         $datosOrden = $this->modelo->obtenerDatosCompletosOrden($idOrden);
-        
+
         // También traemos las fotos de la tabla evidencia_servicio
         $evidencias = $this->modelo->obtenerEvidenciasOrden($idOrden);
+        // AGREGAR ESTA LÍNEA:
+        $novedades = $this->modelo->obtenerNovedadesOrden($idOrden);
 
         if (!$datosOrden) {
             die("Error: La orden no existe.");
@@ -46,12 +48,12 @@ class PdfServicioControlador
         // 3. Capturamos el HTML de la vista
         if (ob_get_length()) ob_end_clean();
         ob_start();
-        
+
         // CORRECCIÓN AQUÍ: Nombre exacto del archivo
         include __DIR__ . '/../../views/orden/plantillaPdfServicio.php';
-        
+
         $html = ob_get_clean();
-        
+
 
         // 4. Configuración de Browsershot (Copiada de tu código funcional)
         try {
@@ -63,7 +65,7 @@ class PdfServicioControlador
                 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
                 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
             ];
-            
+
             $chromePath = null;
             foreach ($posiblesRutasChrome as $ruta) {
                 if (file_exists($ruta)) {
@@ -95,10 +97,9 @@ class PdfServicioControlador
             header('Content-Type: application/pdf');
             header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');
             header('Content-Length: ' . strlen($pdfContent));
-            
+
             echo $pdfContent;
             exit;
-
         } catch (Exception $e) {
             echo "<h1>Error generando PDF del Servicio</h1><p>" . $e->getMessage() . "</p>";
             die();

@@ -138,4 +138,22 @@ class serviciosPdfModelo
             return [];
         }
     }
+    public function obtenerNovedadesOrden($idOrden)
+    {
+        // Asumiendo que tu tabla de tipos de novedad se llama 'tipo_novedad' 
+        // y el campo descriptivo se llama 'nombre_novedad' (ajusta si se llama diferente).
+        $sql = "SELECT tn.nombre_novedad 
+                FROM orden_servicio_novedad osn
+                INNER JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
+                WHERE osn.id_orden_servicio = ?";
+                
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idOrden]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo novedades para PDF: " . $e->getMessage());
+            return [];
+        }
+    }
 }

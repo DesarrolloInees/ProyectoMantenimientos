@@ -145,11 +145,11 @@
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">N° planilla (Remisión)</label>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">N° Remisión </label>
                 <select name="numero_remision" class="w-full border-gray-300 rounded-lg select2-movil" required>
-                    <option value="">- Seleccione Planilla -</option>
+                    <option value="">- Seleccione Remisión -</option>
                     <?php foreach ($remisiones as $rem): ?>
-                        <option value="<?= htmlspecialchars($rem['numero_remision']) ?>">PLANILLA-<?= htmlspecialchars($rem['numero_remision']) ?></option>
+                        <option value="<?= htmlspecialchars($rem['numero_remision']) ?>"><?= htmlspecialchars($rem['numero_remision']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -243,12 +243,12 @@
 
                     <div>
                         <div class="border border-dashed border-gray-300 rounded-lg p-3 bg-white text-center file-upload-btn transition hover:bg-gray-100 relative">
-                            <i class="fas fa-microchip text-gray-400 text-2xl mb-2"></i>
-                            <p class="text-sm font-bold text-gray-700">2. Componentes Cambiados</p>
-                            <span id="badge_fotos_comp" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0 seleccionadas</span>
-                            <input type="file" name="fotos_componentes[]" id="fotos_comp" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                            <i class="fas fa-file-signature text-gray-400 text-2xl mb-2"></i>
+                            <p class="text-sm font-bold text-gray-700">2. Foto de la Remisión</p>
+                            <span id="badge_foto_remision" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0 seleccionadas</span>
+                            <input type="file" name="foto_remision[]" id="foto_remision" multiple accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
                         </div>
-                        <div id="preview_comp" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
+                        <div id="preview_remision" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
                     </div>
 
                     <div>
@@ -338,8 +338,8 @@
 
         $('#hora_entrada, #hora_salida').on('change', calcularTiempoServicio);
 
-        // Previsualización de Fotos
-        $('#fotos_antes, #fotos_comp, #fotos_despues').on('change', function() {
+        // 1. Cambiar el selector inicial
+        $('#fotos_antes, #foto_remision, #fotos_despues').on('change', function() {
             let numFiles = this.files ? this.files.length : 0;
             let targetBadge = '';
             let targetPreview = '';
@@ -348,9 +348,10 @@
                 targetBadge = '#badge_fotos_antes';
                 targetPreview = '#preview_antes';
             }
-            if (this.id === 'fotos_comp') {
-                targetBadge = '#badge_fotos_comp';
-                targetPreview = '#preview_comp';
+            // 2. Cambiar esta validación
+            if (this.id === 'foto_remision') {
+                targetBadge = '#badge_foto_remision';
+                targetPreview = '#preview_remision';
             }
             if (this.id === 'fotos_despues') {
                 targetBadge = '#badge_fotos_despues';
@@ -401,9 +402,9 @@
 
     function calcularTotalFotos() {
         let fAntes = document.getElementById('fotos_antes').files.length;
-        let fComp = document.getElementById('fotos_comp').files.length;
+        let fRemision = document.getElementById('foto_remision').files.length; 
         let fDespues = document.getElementById('fotos_despues').files.length;
-        let total = fAntes + fComp + fDespues;
+        let total = fAntes + fRemision + fDespues;
         let totalElement = $('#total_fotos_count');
         totalElement.text(total);
 
@@ -419,9 +420,9 @@
     function validarYEnviar() {
         let form = document.getElementById('formReporteMovil');
         let fAntes = document.getElementById('fotos_antes').files.length;
-        let fComp = document.getElementById('fotos_comp').files.length;
+        let fRemision = document.getElementById('foto_remision').files.length; 
         let fDespues = document.getElementById('fotos_despues').files.length;
-        let totalFotos = fAntes + fComp + fDespues;
+        let totalFotos = fAntes + fRemision + fDespues;
 
         if (totalFotos < 8 || totalFotos > 10) {
             alert("⚠️ Por favor seleccione entre 8 y 10 fotos en total de evidencia.\nActualmente ha seleccionado: " + totalFotos);

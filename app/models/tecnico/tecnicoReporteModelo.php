@@ -216,7 +216,7 @@ class tecnicoReporteModelo
             // ==========================================================
 
             // ==========================================================
-            // 2. AHORA SÍ, ACTUALIZAMOS TODO EN LA ORDEN
+            // 2. AHORA SÍ, ACTUALIZAMOS TODO EN LA ORDEN (Sin la columna vieja)
             // ==========================================================
             $sql = "UPDATE ordenes_servicio SET 
                         numero_remision = :remision,
@@ -229,10 +229,9 @@ class tecnicoReporteModelo
                         id_estado_maquina = :id_estado,
                         id_calificacion = :id_calif,
                         tiene_novedad = :tiene_novedad,
-                        id_tipo_novedad = :id_tipo_novedad,
                         detalle_novedad = :detalle_novedad,
                         soporte_remoto = :soporte_remoto,
-                        repuestos_tecnico = :repuestos_tecnico, /* NUEVO CAMPO AÑADIDO A LA SENTENCIA */
+                        repuestos_tecnico = :repuestos_tecnico,
                         estado = 1 /* Pasa a estado ejecutado/revisión */
                     WHERE id_ordenes_servicio = :id_orden 
                     AND id_tecnico = :id_tecnico";
@@ -249,14 +248,14 @@ class tecnicoReporteModelo
                 ':id_estado'         => $datos['id_estado_maquina'],
                 ':id_calif'          => $datos['id_calificacion'],
                 ':tiene_novedad'     => $datos['tiene_novedad'],
-                ':id_tipo_novedad'   => $datos['id_tipo_novedad'],
                 ':detalle_novedad'   => $datos['detalle_novedad'],
                 ':soporte_remoto'    => $datos['soporte_remoto'],
-                ':repuestos_tecnico' => $datos['repuestos_tecnico'], /* NUEVO DATO BINDEADO */
+                ':repuestos_tecnico' => $datos['repuestos_tecnico'],
                 ':id_orden'          => $datos['id_ordenes_servicio'],
                 ':id_tecnico'        => $datos['id_tecnico']
             ]);
         } catch (PDOException $e) {
+            // Regresamos al log normal para que no se vea feo si llega a pasar algo
             error_log("Error guardarReporteTecnico: " . $e->getMessage());
             return false;
         }

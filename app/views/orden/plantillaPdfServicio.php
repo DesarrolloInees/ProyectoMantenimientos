@@ -104,10 +104,23 @@
         </div>
         <?php endif; ?>
 
-        <?php if ($datosOrden['tiene_novedad'] == 1): ?>
+        <?php if (!empty($novedades) || !empty($datosOrden['detalle_novedad'])): ?>
         <div class="p-4 border-t border-gray-200 bg-red-50 border-l-4 border-red-500">
-            <h4 class="text-xs font-bold text-red-700 uppercase mb-1">⚠️ Novedad Reportada:</h4>
-            <p class="text-sm text-red-600 font-medium"><?= $datosOrden['detalle_novedad'] ?: 'Se marcó como novedad pero no se adjuntó detalle.' ?></p>
+            <h4 class="text-xs font-bold text-red-700 uppercase mb-2">⚠️ Novedades Reportadas:</h4>
+            
+            <?php if (!empty($novedades)): ?>
+                <ul class="list-disc list-inside text-sm text-red-700 font-medium mb-2">
+                    <?php foreach ($novedades as $nov): ?>
+                        <li><?= htmlspecialchars($nov['nombre_novedad']) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+
+            <?php if (!empty($datosOrden['detalle_novedad'])): ?>
+                <p class="text-sm text-red-600 font-medium mt-1">
+                    <strong>Detalle:</strong> <?= htmlspecialchars($datosOrden['detalle_novedad']) ?>
+                </p>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
     </div>
@@ -136,22 +149,36 @@
                     <div class="grid grid-cols-3 gap-4">
                         <?php foreach ($fotos as $foto): ?>
                             <?php 
-                                // SOLUCIÓN: Buscar el archivo físicamente en el servidor y pasarlo a Base64
-                                $rutaFisica = __DIR__ . '/../../' . ltrim($foto['ruta_archivo'], '/');
+                                // 1. Sacamos la ruta de la BD y nos aseguramos de que empiece en 'uploads/'
+                                $rutaEnBD = $foto['ruta_archivo'];
+                                $pos = strpos($rutaEnBD, 'uploads/');
+                                $rutaLimpia = ($pos !== false) ? substr($rutaEnBD, $pos) : ltrim($rutaEnBD, '/');
+
+                                // 2. Armamos la ruta física real (subimos 2 niveles desde app/views/orden)
+                                $rutaFisica = realpath(__DIR__ . '/../../' . $rutaLimpia);
+                                
                                 $imgSrc = '';
                                 
-                                if (file_exists($rutaFisica)) {
-                                    $extension = pathinfo($rutaFisica, PATHINFO_EXTENSION);
+                                // 3. Validamos que el archivo exista y NO sea una carpeta
+                                if ($rutaFisica && file_exists($rutaFisica) && !is_dir($rutaFisica)) {
+                                    $extension = strtolower(pathinfo($rutaFisica, PATHINFO_EXTENSION));
+                                    $mime = ($extension === 'jpg') ? 'jpeg' : $extension;
+                                    
                                     $data = file_get_contents($rutaFisica);
-                                    // Creamos la cadena Base64
-                                    $imgSrc = 'data:image/' . $extension . ';base64,' . base64_encode($data);
+                                    $imgSrc = 'data:image/' . $mime . ';base64,' . base64_encode($data);
                                 } else {
-                                    // Si no encuentra la imagen física, mostramos un recuadro de error
-                                    $imgSrc = 'https://via.placeholder.com/300?text=Imagen+Perdida'; 
+                                    // Imagen gris por defecto si falla
+                                    $imgSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='; 
                                 }
                             ?>
-                            <div class="border border-gray-300 p-1 rounded bg-white shadow-sm flex items-center justify-center">
+                            <div class="border border-gray-300 p-1 rounded bg-white shadow-sm flex flex-col items-center justify-center">
                                 <img src="<?= $imgSrc ?>" alt="Evidencia" class="w-full h-48 object-cover rounded">
+                                
+                                <?php if(!$rutaFisica || !file_exists($rutaFisica) || is_dir($rutaFisica)): ?>
+                                    <span style="font-size: 8px; color: red; word-break: break-all; margin-top: 5px;">
+                                        Error: No encontrada en <?php echo __DIR__ . '/../../' . $rutaLimpia; ?>
+                                    </span>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>

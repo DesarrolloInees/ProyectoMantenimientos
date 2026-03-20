@@ -139,10 +139,20 @@ class ordenCrearModels
     }
 
 
-    // --- 9: OBTENER LISTA DE REPUESTOS ---
+    // --- 9: OBTENER LISTA DE REPUESTOS (PRUEBA DE CÓDIGOS) ---
     public function obtenerListaRepuestos()
     {
-        $sql = "SELECT id_repuesto, nombre_repuesto FROM repuesto WHERE estado = 1 ORDER BY nombre_repuesto ASC";
+        $sql = "SELECT id_repuesto, 
+                        CONCAT(
+                            '[', 
+                            COALESCE(NULLIF(codigo_referencia, ''), 'SIN CÓDIGO'), 
+                            '] ', 
+                            nombre_repuesto
+                        ) AS nombre_repuesto 
+                FROM repuesto 
+                WHERE estado = 1 
+                ORDER BY nombre_repuesto ASC";
+                
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -497,12 +507,18 @@ class ordenCrearModels
         }
     }
 
-    // --- NUEVO: OBTENER INVENTARIO ESPECÍFICO DE UN TÉCNICO (Con Cantidades Reales) ---
+    // --- NUEVO: OBTENER INVENTARIO ESPECÍFICO DE UN TÉCNICO (Con Cantidades Reales y Código) ---
     public function obtenerInventarioTecnico($idTecnico)
     {
         try {
-            // Traemos solo lo que tiene cantidad > 0 y está activo
-            $sql = "SELECT i.id_repuesto, r.nombre_repuesto, r.codigo_referencia, i.cantidad_actual 
+            $sql = "SELECT i.id_repuesto, 
+                            CASE 
+                                WHEN r.codigo_referencia IS NOT NULL AND r.codigo_referencia != '' 
+                                THEN CONCAT(r.codigo_referencia, ' - ', r.nombre_repuesto)
+                                ELSE r.nombre_repuesto
+                            END AS nombre_repuesto, 
+                            r.codigo_referencia, 
+                            i.cantidad_actual 
                     FROM inventario_tecnico i
                     INNER JOIN repuesto r ON i.id_repuesto = r.id_repuesto
                     WHERE i.id_tecnico = :id_tec AND i.estado = 1 AND i.cantidad_actual > 0

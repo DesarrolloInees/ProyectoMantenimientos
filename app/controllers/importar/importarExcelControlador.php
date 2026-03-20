@@ -80,9 +80,9 @@ class importarExcelControlador
     }
 
     // ========================================================================
-    // FASE 2: PROCESAR UN LOTE (CHUNK)
+    // FASE 2: PROCESAR UN LOTE (SIMULACIÓN O IMPORTACIÓN REAL)
     // ========================================================================
-   public function procesarLote()
+    public function procesarLote()
     {
         while (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
@@ -92,6 +92,10 @@ class importarExcelControlador
 
         $inicio = intval($_POST['inicio'] ?? 2); 
         $cantidad = intval($_POST['cantidad'] ?? 200);
+        
+        // --- NUEVO: Detectar el modo y los IDs aprobados ---
+        $modo = $_POST['modo'] ?? 'simular'; // 'simular' o 'importar'
+        $aprobados = isset($_POST['aprobados']) ? json_decode($_POST['aprobados'], true) : [];
 
         try {
             $reader = IOFactory::createReaderForFile($this->rutaTemporal);
@@ -110,7 +114,7 @@ class importarExcelControlador
             $filas = $hoja->toArray(null, true, true, true); 
 
             $stats = ['insertados' => 0, 'actualizados' => 0, 'errores' => 0];
-            $detallesNuevos = []; // <--- 1. ARRAY PARA GUARDAR LOS NUEVOS DE ESTE LOTE
+            $detallesLote = []; 
             $mapaTipos = ['MINI MEI' => 'Mini Mei', 'SDM-10' => 'SDM 10', 'JH-600' => 'JH 600'];
 
             $filasConDatosEnEsteLote = 0;
@@ -127,7 +131,7 @@ class importarExcelControlador
 
                 $codClienteStr = $fila['A']; 
                 $nombreCliente = $fila['B']; 
-                $deviceId      = $fila['C'] ?? ''; 
+                $deviceId      = trim($fila['C'] ?? ''); 
                 $cod1          = $fila['D']; 
                 $cod2          = $fila['E']; 
                 $nombrePunto   = $fila['F']; 
@@ -136,6 +140,34 @@ class importarExcelControlador
                 $direccion     = $fila['AK'] ?? ''; 
 
                 if (empty($deviceId)) continue;
+
+                // ----------------------------------------------------------------
+                // LÓGICA DE SIMULACIÓN (No toca la BD)
+                // ----------------------------------------------------------------
+                if ($modo === 'simular') {
+                    $datosActuales = $this->modelo->obtenerDetallesActuales($deviceId);
+                    $existe = ($datosActuales !== false);
+                    
+                    $accionStr = $existe ? 'ACTUALIZAR' : 'NUEVO';
+                    $badge     = $existe ? 'badge-primary' : 'badge-success';
+
+                    $itemSimulacion = [
+                        'device'  => $deviceId,
+                        'cliente' => $nombreCliente,
+                        'punto'   => $nombrePunto,
+                        'accion'  => "<span class='badge {$badge}'>{$accionStr}</span>",
+                        'estado'  => $accionStr
+                    ];
+
+                    // Si existe, mandamos también los datos viejos para comparar
+                    if ($existe) {
+                        $itemSimulacion['cliente_antiguo'] = $datosActuales['nombre_cliente'] ?? 'Desconocido';
+                        $itemSimulacion['punto_antiguo'] = $datosActuales['nombre_punto'] ?? 'Desconocido';
+                    }
+
+                    $detallesLote[] = $itemSimulacion;
+                    continue; // Saltamos a la siguiente fila, NO insertamos nada
+                }
 
                 try {
                     $this->db->beginTransaction();
@@ -153,18 +185,10 @@ class importarExcelControlador
                         $this->modelo->tocarMaquina($deviceId);
                         $stats['actualizados']++;
                     } else {
-                        $datosMaq = ['device_id' => trim($deviceId), 'id_punto' => $idPuntoDestino, 'id_tipo_maquina' => $idTipo];
+                        $datosMaq = ['device_id' => $deviceId, 'id_punto' => $idPuntoDestino, 'id_tipo_maquina' => $idTipo];
                         if ($this->modelo->insertarMaquina($datosMaq)) {
                             $this->modelo->tocarMaquina($deviceId);
                             $stats['insertados']++;
-                            
-                            // <--- 2. GUARDAMOS EL DETALLE DEL NUEVO
-                            $detallesNuevos[] = [
-                                'device'  => $deviceId,
-                                'cliente' => $nombreCliente,
-                                'punto'   => $nombrePunto,
-                                'ciudad'  => $delegacionTxt
-                            ];
                         }
                     }
                     $this->db->commit();
@@ -180,7 +204,7 @@ class importarExcelControlador
                 'exito' => true,
                 'procesados' => count($filas),
                 'stats' => $stats,
-                'nuevos' => $detallesNuevos, // <--- 3. ENVIAMOS LA LISTA AL JS
+                'detalles' => $detallesLote, // Enviamos lo analizado
                 'detener' => $forzarDetencion
             ]);
 
@@ -198,15 +222,31 @@ class importarExcelControlador
         while (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
 
-        $fechaInicio = $_POST['fecha_inicio'];
-        $bajas = $this->modelo->desactivarFantasmas($fechaInicio);
-        
-        if (file_exists($this->rutaTemporal)) unlink($this->rutaTemporal);
+        $modo = $_POST['modo'] ?? 'simular';
 
-        echo json_encode(['exito' => true, 'bajas' => $bajas]);
+        if ($modo === 'importar') {
+            // --- IMPORTACIÓN REAL ---
+            $fechaInicio = $_POST['fecha_inicio'];
+            $bajas = $this->modelo->desactivarFantasmas($fechaInicio);
+            
+            if (file_exists($this->rutaTemporal)) unlink($this->rutaTemporal);
+
+            echo json_encode(['exito' => true, 'mensaje' => 'Importación finalizada', 'bajas' => $bajas]);
+        } else {
+            // --- SIMULACIÓN: Buscar fantasmas ---
+            $devicesExcel = isset($_POST['devices_excel']) ? json_decode($_POST['devices_excel'], true) : [];
+            $fantasmas = $this->modelo->obtenerFantasmasSimulacion($devicesExcel);
+
+            echo json_encode([
+                'exito' => true, 
+                'mensaje' => 'Simulación finalizada.',
+                'fantasmas' => $fantasmas
+            ]);
+        }
         exit;
     }
-}
+
+} // <--- ¡AQUÍ ESTÁ LA MAGIA! ESTA ES LA LLAVE QUE FALTABA PARA CERRAR importarExcelControlador
 
 // ============================================================================
 // CLASE AUXILIAR CORREGIDA (Aquí estaba el error)

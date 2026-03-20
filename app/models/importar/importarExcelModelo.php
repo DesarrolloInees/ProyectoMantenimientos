@@ -285,4 +285,53 @@ class importarExcelModels
             return null;
         }
     }
+
+    // --- NUEVO: Traer datos actuales para la simulación ---
+    public function obtenerDetallesActuales($deviceId)
+    {
+        try {
+            $deviceId = trim($deviceId);
+            // Hacemos JOIN para traer el nombre del cliente y del punto actual
+            $sql = "SELECT c.nombre_cliente, p.nombre_punto 
+                    FROM maquina m
+                    INNER JOIN punto p ON m.id_punto = p.id_punto
+                    INNER JOIN cliente c ON p.id_cliente = c.id_cliente
+                    WHERE m.device_id = :id LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id' => $deviceId]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    // --- NUEVO: Buscar máquinas que se van a desactivar (Fantasmas) ---
+    public function obtenerFantasmasSimulacion($devicesExcel)
+    {
+        try {
+            if (empty($devicesExcel)) {
+                // Si el Excel está vacío, todo se daría de baja
+                $sql = "SELECT m.device_id, c.nombre_cliente, p.nombre_punto 
+                        FROM maquina m
+                        INNER JOIN punto p ON m.id_punto = p.id_punto
+                        INNER JOIN cliente c ON p.id_cliente = c.id_cliente
+                        WHERE m.estado = 1";
+                $stmt = $this->conn->prepare($sql);
+                $stmt->execute();
+            } else {
+                // Creamos los signos de interrogación dinámicos (?, ?, ?)
+                $inQuery = implode(',', array_fill(0, count($devicesExcel), '?'));
+                $sql = "SELECT m.device_id, c.nombre_cliente, p.nombre_punto 
+                        FROM maquina m
+                        INNER JOIN punto p ON m.id_punto = p.id_punto
+                        INNER JOIN cliente c ON p.id_cliente = c.id_cliente
+                        WHERE m.estado = 1 AND m.device_id NOT IN ($inQuery)";
+                $stmt = $this->conn->prepare($sql);
+                $stmt->execute($devicesExcel);
+            }
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
 }

@@ -42,6 +42,39 @@ class ordenDetalleControlador
             // ✅ NUEVO: Remisiones disponibles del técnico
             if ($accion === 'ajaxObtenerRemisiones')      $this->ajaxObtenerRemisiones();
             if ($accion === 'ajaxExportarDetalle') $this->ajaxExportarDetalle();
+            
+        }
+    }
+    
+    // ============================================================
+    // EXPORTAR EXCEL DESDE EL BUSCADOR AVANZADO
+    // ============================================================
+    public function ajaxExportarBusqueda()
+    {
+        ob_clean(); // Limpiamos cualquier basura antes de imprimir el JSON
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // 1. Recogemos los filtros del POST
+            $filtros = [
+                'remision'      => $_POST['remision'] ?? '',
+                'id_cliente'    => $_POST['id_cliente'] ?? '',
+                'id_punto'      => $_POST['id_punto'] ?? '',
+                'id_delegacion' => $_POST['id_delegacion'] ?? '',
+                'fecha_inicio'  => $_POST['fecha_inicio'] ?? '',
+                'fecha_fin'     => $_POST['fecha_fin'] ?? ''
+            ];
+
+            // 2. Buscamos usando el modelo
+            $resultados = $this->modelo->buscarOrdenesFiltros($filtros);
+
+            // 3. Devolvemos el JSON para que SheetJS arme el Excel
+            if ($resultados && count($resultados) > 0) {
+                echo json_encode(['status' => 'ok', 'datos' => $resultados]);
+            } else {
+                echo json_encode(['status' => 'error', 'msg' => 'No hay datos']);
+            }
+            exit;
         }
     }
 
