@@ -607,6 +607,7 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -881,7 +882,7 @@
                     cerrarModalNuevoServicio();
                     // Recargar el datatable para ver el nuevo servicio
                     $('#tablaProgramacion').DataTable().ajax.reload(null, false);
-                    alert("¡Servicio agendado crack!");
+                    alert("¡Servicio agregado!");
                 } else {
                     alert("Error: " + res.msj);
                 }
@@ -896,12 +897,60 @@
         });
     }
 
-    // ── Función para abrir el reporte móvil ───────────────────────────
+    // ── Función para abrir el reporte móvil y capturar GPS de Inicio ──
     function abrirReporteMovil(idOrden) {
-        // Aquí navegas a la página del reporte. Ajusta la ruta según tu sistema.
-        window.location.href = 'index.php?pagina=tecnicoReporte&accion=index&orden=' + idOrden;
+        // Mostramos el modal de carga
+        Swal.fire({
+            title: 'Iniciando Servicio...',
+            text: 'Obteniendo tu ubicación actual. Asegúrate de tener el GPS encendido.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
 
-        // Si prefieres abrir en modal o en nueva pestaña, comenta la línea de arriba y usa:
-        // window.open('index.php?pagina=tecnicoReporte&accion=index&orden=' + idOrden, '_blank');
+        // Solicitamos el GPS
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    let lat = position.coords.latitude;
+                    let lon = position.coords.longitude;
+
+                    // Mandamos los datos a PHP por AJAX
+                    $.ajax({
+                        url: 'index.php?pagina=tecnicoProgramacion&accion=ajaxIniciarServicio',
+                        type: 'POST',
+                        data: {
+                            id_orden: idOrden,
+                            latitud_inicio: lat,
+                            longitud_inicio: lon
+                        },
+                        dataType: 'json',
+                        success: function(res) {
+                            if(res.success) {
+                                // GPS Guardado, ahora sí lo mandamos al formulario
+                                window.location.href = 'index.php?pagina=tecnicoReporte&accion=index&orden=' + idOrden;
+                            } else {
+                                Swal.fire('Error', res.msj, 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Error de red', 'No se pudo comunicar con el servidor para iniciar el servicio.', 'error');
+                        }
+                    });
+                },
+                function(error) {
+                    let msjError = "Error desconocido.";
+                    if(error.code == 1) msjError = "Denegaste el permiso de ubicación. Es OBLIGATORIO permitirlo para iniciar el servicio.";
+                    if(error.code == 2) msjError = "No se pudo obtener la señal GPS. Sal a un lugar más despejado.";
+                    if(error.code == 3) msjError = "Se agotó el tiempo para obtener la ubicación.";
+                    
+                    Swal.fire('GPS Requerido', msjError, 'error');
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        } else {
+            Swal.fire('Incompatible', 'Tu dispositivo o navegador no soporta ubicación GPS.', 'error');
+        }
     }
 </script>

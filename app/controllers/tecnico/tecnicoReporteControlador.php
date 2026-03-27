@@ -88,7 +88,7 @@ class tecnicoReporteControlador
 
 
             // ==========================================
-            // NUEVO: GUARDAR DATOS COMPLEMENTARIOS
+            // NUEVO: GUARDAR DATOS COMPLEMENTARIOS (Con GPS)
             // ==========================================
             $datosComplementarios = [
                 'id_orden_servicio'   => $idOrdenServicio,
@@ -99,8 +99,12 @@ class tecnicoReporteControlador
                 'pendientes'          => !empty($_POST['pendientes']) ? $_POST['pendientes'] : null,
                 'administrador_punto' => !empty($_POST['administrador_punto']) ? $_POST['administrador_punto'] : null,
                 'celular_encargado'   => !empty($_POST['celular_encargado']) ? $_POST['celular_encargado'] : null,
-                'id_estado_inicial'   => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null // <-- CAMBIO AQUÍ
+                'id_estado_inicial'   => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null,
+                // ---> NUEVO: Atrapamos el GPS <---
+                'latitud_fin'         => !empty($_POST['latitud_fin']) ? $_POST['latitud_fin'] : null,
+                'longitud_fin'        => !empty($_POST['longitud_fin']) ? $_POST['longitud_fin'] : null
             ];
+            
             $this->modelo->guardarDatosComplementarios($datosComplementarios);
 
             // 1. Guardamos los datos en texto de la orden
@@ -163,6 +167,38 @@ class tecnicoReporteControlador
                         }
                     }
                 }
+
+                // ==========================================
+                // NUEVO: LÓGICA PARA GUARDAR LA FIRMA (CANVAS)
+                // ==========================================
+                if (!empty($_POST['firma_base64'])) {
+                    $firmaTextoBase64 = $_POST['firma_base64'];
+                    
+                    // El texto viene como "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                    // Necesitamos quitarle la cabecera para quedarnos solo con el código de la imagen
+                    $partesFirma = explode(',', $firmaTextoBase64);
+                    
+                    if (count($partesFirma) == 2) {
+                        $firmaDecodificada = base64_decode($partesFirma[1]);
+                        
+                        // Generamos el nombre del archivo
+                        $numeroParaNombreFirma = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'ORDEN-' . $idOrdenServicio;
+                        $nombreFirma = 'REM-' . $numeroParaNombreFirma . '_firma_' . uniqid() . '.png';
+                        
+                        // Rutas física y de BD
+                        $rutaFinalFirmaServidor = $carpetaDestino . $nombreFirma;
+                        $rutaParaBDFirma = 'uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreFirma;
+                        
+                        // Guardamos el archivo físicamente en el servidor
+                        if (file_put_contents($rutaFinalFirmaServidor, $firmaDecodificada)) {
+                            // Guardamos en la Base de Datos usando la misma función de evidencias
+                            $this->modelo->guardarEvidenciaFoto($idOrdenServicio, 'firma', $rutaParaBDFirma);
+                        } else {
+                            error_log("No se pudo guardar la imagen física de la firma.");
+                        }
+                    }
+                }
+                
 
                 // ==========================================
                 // 3. LÓGICA PARA GUARDAR REPUESTOS

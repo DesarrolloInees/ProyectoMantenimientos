@@ -127,6 +127,29 @@ class tecnicoProgramacionModelo
         }
     }
 
+    // ── GUARDAR GPS DE INICIO ──
+    public function iniciarServicioGPS(int $idOrden, $lat, $lon): bool
+    {
+        try {
+            $sql = "INSERT INTO ordenes_servicio_complemento 
+                    (id_orden_servicio, latitud_inicio, longitud_inicio, estado) 
+                    VALUES (:id_orden, :lat, :lon, 1)
+                    ON DUPLICATE KEY UPDATE 
+                    latitud_inicio = IFNULL(latitud_inicio, VALUES(latitud_inicio)), 
+                    longitud_inicio = IFNULL(longitud_inicio, VALUES(longitud_inicio))";
+            
+            $stmt = $this->conn->prepare($sql);
+            return $stmt->execute([
+                ':id_orden' => $idOrden,
+                ':lat' => $lat,
+                ':lon' => $lon
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error iniciarServicioGPS: " . $e->getMessage());
+            return false;
+        }
+    }
+
     // ── GUARDAR EL SERVICIO EXTRA ──
 
     public function guardarServicioExtra(int $idUsuarioLogueado, array $datos): bool

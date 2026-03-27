@@ -83,9 +83,10 @@
                 <div class="flex justify-between h-16">
 
                     <div class="flex items-center">
-                        <a href="<?= BASE_URL ?>inicio" class="flex-shrink-0 flex items-center mr-6 hover:text-blue-400 transition">
-                            <i class="fas fa-tools mr-2 text-blue-500"></i>
-                            <span class="font-bold text-xl tracking-wider">INEES APP</span>
+                        <a href="<?= BASE_URL ?>inicio" class="flex-shrink-0 flex items-center mr-6 hover:opacity-80 transition">
+                            <img src="<?= BASE_URL ?>app/logos/logoIneesFondoBlanco.png"
+                                alt="Logo-Inees"
+                                class="h-10 w-auto object-contain">
                         </a>
 
                         <div class="hidden xl:flex space-x-1 items-center h-full">

@@ -67,12 +67,7 @@ class reporteTecnicoControlador
                 $mensaje = "Por favor selecciona el rango de fechas.";
             }
         }
-        // OBTENER EL PARAMETRO DE LA BD
-        $valorCorrectivo = $this->modelo->obtenerParametro('servicioCorrectivo');
-        // Validación: Si está vacío o no existe, usamos 1.5 por defecto para no romper nada
-        if (!$valorCorrectivo) {
-            $valorCorrectivo = 1.5; 
-        }
+        
 
         $listaTecnicos = $this->modelo->obtenerTecnicos();
         $titulo = "Reporte de Servicios por Técnico";

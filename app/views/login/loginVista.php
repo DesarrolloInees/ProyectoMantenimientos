@@ -426,8 +426,8 @@ $error_login = $data['error_login'] ?? false;
 
         <!-- Logo con efecto -->
         <div class="logo-container mb-8">
-            <img src="https://lu-co.com/wp-content/uploads/2025/06/SmallLogo-copia.png"
-                alt="Logo I-Nexis"
+            <img src="<?= BASE_URL ?>app/logos/logoIneesFondoBlanco.png"
+                                alt="Logo-Inees"
                 class="w-28 mx-auto drop-shadow-2xl transform hover:scale-110 transition-transform duration-300">
         </div>
 

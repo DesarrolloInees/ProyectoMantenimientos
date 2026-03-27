@@ -56,6 +56,7 @@ class serviciosPdfModelo
                     o.actividades_realizadas as observaciones, o.tiene_novedad, o.detalle_novedad,
                     
                     t.nombre_tecnico,
+                    t.ruta_firma,
                     
                     COALESCE(c_directo.nombre_cliente, c_maq.nombre_cliente, 'SIN CLIENTE') as nombre_cliente,
                     COALESCE(p_directo.nombre_punto, p_maq.nombre_punto, 'SIN PUNTO') as nombre_punto,

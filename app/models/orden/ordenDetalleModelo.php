@@ -152,7 +152,7 @@ class ordenDetalleModelo
 
         return $resultados;
     }
-    
+
     // ⭐⭐ FUNCIÓN PARA CONVERTIR TEXTO A JSON (MÁS ROBUSTA) ⭐⭐
     private function convertirTextoAJSON($texto)
     {
@@ -423,7 +423,7 @@ class ordenDetalleModelo
             $this->conn->beginTransaction();
 
             // 1. Obtener datos actuales (AÑADIMOS id_maquina, id_tipo_mantenimiento y valor_servicio)
-            $sqlCheck = "SELECT numero_remision, id_tecnico, id_punto, fecha_visita, id_maquina, id_tipo_mantenimiento, valor_servicio FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
+            $sqlCheck = "SELECT numero_remision, id_tecnico, id_punto, fecha_visita, id_maquina, id_tipo_mantenimiento, valor_servicio, id_modalidad FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
             $stmtCheck->execute([$id]);
             $actual = $stmtCheck->fetch(PDO::FETCH_ASSOC);
@@ -470,32 +470,49 @@ class ordenDetalleModelo
             $delegacionesPrincipales = [1, 2, 3, 4];
             $idDelegacionPunto = $this->obtenerIdDelegacionPunto($nuevoPunto);
 
+            // 🔥 CORRECCIÓN: Priorizamos la modalidad que viene de la vista.
+            $idModalidad = isset($datos['id_modalidad']) ? intval($datos['id_modalidad']) : ($actual['id_modalidad'] ?? 1);
+
             $esFueraDelegacion = 0;
             $diasViaticos      = 0;
             $valorViaticos     = 0;
-            $idModalidad       = 1; // FORZAMOS URBANO POR DEFECTO
 
-            if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
-                $esFueraDelegacion = 1;
-                $idModalidad       = 2; // CAMBIA A INTERURBANO AUTOMÁTICAMENTE
+            // =======================================================
+            // 🚨 BLINDAJE DE VIÁTICOS: SÓLO SI ES INTERURBANO (2) 🚨
+            // =======================================================
+            if ($idModalidad == 2) {
+                
+                // Checamos si el punto está fuera de las delegaciones principales
+                if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
+                    $esFueraDelegacion = 1;
 
-                $sqlCheckViat = "SELECT COUNT(*) as total 
-                                FROM ordenes_servicio 
-                                WHERE id_tecnico = ? 
-                                    AND fecha_visita = ? 
-                                    AND valor_viaticos > 0 
-                                    AND id_ordenes_servicio != ?";
-                $stmtViat = $this->conn->prepare($sqlCheckViat);
-                $stmtViat->execute([$nuevoTecnico, $nuevaFecha, $id]);
-                $yaCobroHoy = $stmtViat->fetch(PDO::FETCH_ASSOC)['total'];
+                    // Verificamos si el técnico ya cobró viáticos hoy
+                    $sqlCheckViat = "SELECT COUNT(*) as total
+                                    FROM ordenes_servicio 
+                                    WHERE id_tecnico = ? 
+                                        AND fecha_visita = ? 
+                                        AND valor_viaticos > 0 
+                                        AND id_ordenes_servicio != ?";
+                    $stmtViat = $this->conn->prepare($sqlCheckViat);
+                    $stmtViat->execute([$nuevoTecnico, $nuevaFecha, $id]);
+                    $yaCobroHoy = $stmtViat->fetch(PDO::FETCH_ASSOC)['total'];
 
-                if ($yaCobroHoy == 0) {
-                    $diasViaticos  = isset($datos['dias_viaticos']) ? intval($datos['dias_viaticos']) : 1;
-                    $tarifaViat    = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
-                    $valorViaticos = $diasViaticos * $tarifaViat;
+                    // Si NO ha cobrado hoy, le asignamos los viáticos
+                    if ($yaCobroHoy == 0) {
+                        $diasViaticos  = isset($datos['dias_viaticos']) ? intval($datos['dias_viaticos']) : 1;
+                        $tarifaViat    = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
+                        $valorViaticos = $diasViaticos * $tarifaViat;
+                    }
                 }
+
             }
-            
+
+            // =======================================================
+            // Si la modalidad NO ES 2 (Ej: Es 1 Urbano), las variables 
+            // de viáticos se quedan en 0 como se declararon arriba.
+            // =======================================================
+
+
             // -----------------------------------------------------------------
             // LÓGICA DE PRECIO BASE Y DETECCIÓN DE CAMBIOS (FESTIVO / PUNTO)
             // -----------------------------------------------------------------
@@ -503,21 +520,22 @@ class ordenDetalleModelo
 
             $cambioPunto = ($actual['id_punto'] != $nuevoPunto);
             $cambioFecha = ($actual['fecha_visita'] != $nuevaFecha);
+            $cambioModalidad = ($actual['id_modalidad'] != $idModalidad);
 
-            // Si le cambiaron la fecha (ej. de festivo a normal) o el punto (ej. a Urbano)
-            // Recalculamos la tarifa LIMPIA y le tumbamos los recargos viejos
-            if ($cambioPunto || $cambioFecha) {
+            // Si le cambiaron la fecha, el punto o LA MODALIDAD
+            // Recalculamos la tarifa LIMPIA
+            if ($cambioPunto || $cambioFecha || $cambioModalidad) {
                 $idMaqUso   = $datos['id_maquina'] ?? $actual['id_maquina'];
                 $idMantoUso = $datos['id_manto'] ?? $actual['id_tipo_mantenimiento'];
-                
+
                 // Obtener el tipo de máquina necesario para consultar tarifa
                 $stmtTM = $this->conn->prepare("SELECT id_tipo_maquina FROM maquina WHERE id_maquina = ?");
                 $stmtTM->execute([$idMaqUso]);
                 $idTipoMaq = $stmtTM->fetchColumn();
-                
+
                 $anioUso = date('Y', strtotime($nuevaFecha));
                 $precioLimpio = $this->obtenerPrecioTarifa($idTipoMaq, $idMantoUso, $idModalidad, $anioUso);
-                
+
                 // Si encuentras la tarifa normal, se asigna. Si no existe, se blanquea a 0.
                 $valorServicio = ($precioLimpio);
             }
@@ -541,7 +559,7 @@ class ordenDetalleModelo
                 $datos['id_cliente']  ?? null,
                 $nuevoPunto,
                 $datos['id_maquina']  ?? null,
-                $idModalidad,           // 🔥 ACÁ LE FORZAMOS LA MODALIDAD CALCULADA Y NO LA VIEJA
+                $idModalidad,           // 🔥 Modalidad limpia
                 $nuevaRemision,
                 $nuevoTecnico,
                 $datos['id_manto']    ?? null,
@@ -550,12 +568,12 @@ class ordenDetalleModelo
                 $datos['entrada']     ?? '00:00',
                 $datos['salida']      ?? '00:00',
                 $datos['tiempo']      ?? '00:00',
-                $valorServicio,         // 🔥 ACÁ PASAMOS EL PRECIO RECALCULADO O LIMPIO
+                $valorServicio,         // 🔥 Precio recalculado o limpio
                 $datos['obs']         ?? '',
                 $datos['tiene_novedad'] ?? 0,
-                $esFueraDelegacion,     // Viáticos en 0 si volvió a Urbano
-                $diasViaticos,          // Viáticos en 0 si volvió a Urbano
-                $valorViaticos,         // Viáticos en 0 si volvió a Urbano
+                $esFueraDelegacion,     // Viáticos en 0 si es Urbano
+                $diasViaticos,          // Viáticos en 0 si es Urbano
+                $valorViaticos,         // Viáticos en 0 si es Urbano
                 $nuevaFecha,
                 $id
             ]);
@@ -921,7 +939,7 @@ class ordenDetalleModelo
             return ['status' => 'error', 'msg' => 'Error BD: ' . $e->getMessage()];
         }
     }
-    
+
     // B. Descontar del inventario (Lógica Segura)
     public function descontarStock($idTecnico, $idRepuesto, $cantidad)
     {
@@ -940,7 +958,7 @@ class ordenDetalleModelo
             $stmtUpd = $this->conn->prepare($sqlUpd);
             return $stmtUpd->execute([$cantidad, $idTecnico, $idRepuesto]);
         }
-        return false; 
+        return false;
     }
 
     public function devolverStock($idTecnico, $idRepuesto, $cantidad)
@@ -973,7 +991,7 @@ class ordenDetalleModelo
             if (!empty($arrayNovedades) && is_array($arrayNovedades)) {
                 $sqlIns = "INSERT INTO orden_servicio_novedad (id_orden_servicio, id_tipo_novedad) VALUES (?, ?)";
                 $stmtIns = $this->conn->prepare($sqlIns);
-                
+
                 foreach ($arrayNovedades as $idNov) {
                     $stmtIns->execute([$idOrden, $idNov]);
                 }

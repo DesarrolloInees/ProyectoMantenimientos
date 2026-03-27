@@ -1,196 +1,927 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Reporte de Servicio #<?= $datosOrden['numero_remision'] ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* Reglas especiales para impresión */
+        :root {
+            --verde: #16a34a;
+            --verde-oscuro: #14532d;
+            --verde-light: #dcfce7;
+            --verde-mid: #bbf7d0;
+            --azul: #1d4ed8;
+            --azul-oscuro: #1e3a8a;
+            --azul-light: #dbeafe;
+            --azul-mid: #bfdbfe;
+            --gris-bg: #f8fafc;
+            --gris-borde: #e2e8f0;
+            --gris-texto: #475569;
+            --negro: #0f172a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Sora', sans-serif;
+            background: white;
+            color: var(--negro);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* ─── PÁGINA ─── */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 10mm 12mm;
+            background: white;
+        }
+
+        /* ─── HEADER ─── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+
+        .header-marca {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .header-marca img {
+            height: 90px;
+            width: auto;
+            margin-bottom: 6px;
+        }
+
+        .header-marca .subtitulo {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--verde);
+        }
+
+        .header-remision {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .header-remision .num {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--negro);
+            line-height: 1;
+        }
+
+        .header-remision .num span {
+            color: var(--azul);
+        }
+
+        .header-remision .fecha {
+            font-size: 11px;
+            color: var(--gris-texto);
+            margin-top: 4px;
+        }
+
+        /* Línea divisora tricolor */
+        .divider {
+            height: 4px;
+            background: linear-gradient(to right, var(--verde) 40%, var(--azul) 60%, var(--azul-oscuro) 100%);
+            border-radius: 2px;
+            margin-bottom: 20px;
+        }
+
+        /* ─── BADGE TIPO SERVICIO ─── */
+        .badge-tipo {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--azul), var(--azul-oscuro));
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 99px;
+        }
+
+        /* ─── SECCIÓN TÍTULOS ─── */
+        .section-title {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gris-borde);
+        }
+
+        /* ─── GRID PRINCIPAL (cliente + ejecución) ─── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background: var(--gris-bg);
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            padding: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--verde);
+            border-radius: 10px 0 0 10px;
+        }
+
+        .card.azul::before {
+            background: var(--azul);
+        }
+
+        .card-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--verde);
+            margin-bottom: 8px;
+        }
+
+        .card.azul .card-label {
+            color: var(--azul);
+        }
+
+        .card-nombre {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--negro);
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .card-sub {
+            font-size: 11px;
+            color: var(--gris-texto);
+            margin-bottom: 2px;
+        }
+
+        .card-sub strong {
+            color: var(--negro);
+            font-weight: 600;
+        }
+
+        .card-divider {
+            border: none;
+            border-top: 1px solid var(--gris-borde);
+            margin: 10px 0;
+        }
+
+        .card-mini-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 3px;
+        }
+
+        /* ─── TÉCNICO DESTACADO ─── */
+        .tecnico-nombre {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--azul);
+        }
+
+        .horas-row {
+            display: flex;
+            gap: 16px;
+            margin-top: 6px;
+        }
+
+        .hora-box {
+            flex: 1;
+            background: white;
+            border: 1px solid var(--azul-mid);
+            border-radius: 6px;
+            padding: 6px 10px;
+            text-align: center;
+        }
+
+        .hora-box .h-label {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--azul);
+        }
+
+        .hora-box .h-valor {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--negro);
+        }
+
+        /* Calificación pill */
+        .calificacion-pill {
+            display: inline-block;
+            background: var(--verde-light);
+            color: var(--verde-oscuro);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 99px;
+            border: 1px solid var(--verde-mid);
+        }
+
+        /* ─── TABLA EQUIPOS ─── */
+        .equipos-grid {
+            background: var(--gris-bg);
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .equipos-header {
+            background: linear-gradient(to right, var(--verde-oscuro), var(--azul-oscuro));
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .equipos-header h3 {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        .equipos-body {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+        }
+
+        .equipo-cell {
+            padding: 10px 14px;
+            border-right: 1px solid var(--gris-borde);
+            border-bottom: 1px solid var(--gris-borde);
+        }
+
+        .equipo-cell:last-child,
+        .equipo-cell:nth-child(4) {
+            border-right: none;
+        }
+
+        .equipo-cell .ec-label {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 3px;
+        }
+
+        .equipo-cell .ec-valor {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--negro);
+        }
+
+        /* ─── DIAGNÓSTICO ─── */
+        .diagnostico-box {
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .diag-header {
+            background: linear-gradient(to right, var(--verde-oscuro), var(--azul-oscuro));
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .diag-header h3 {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        .estado-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+        }
+
+        .estado-cell {
+            padding: 12px 16px;
+            border-right: 1px solid var(--gris-borde);
+        }
+
+        .estado-cell:last-child {
+            border-right: none;
+        }
+
+        .estado-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 4px;
+        }
+
+        .estado-valor {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--negro);
+        }
+
+        .estado-valor.verde {
+            color: var(--verde);
+        }
+
+        .actividades-box {
+            padding: 14px 16px;
+            background: white;
+            border-top: 1px solid var(--gris-borde);
+        }
+
+        .actividades-box .act-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 6px;
+        }
+
+        .actividades-box p {
+            color: #334155;
+            white-space: pre-line;
+            line-height: 1.7;
+        }
+
+        /* ─── PENDIENTES ─── */
+        .pendientes-box {
+            padding: 12px 16px;
+            background: #fffbeb;
+            border-top: 3px solid #f59e0b;
+        }
+
+        .pendientes-box .pend-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #92400e;
+            margin-bottom: 4px;
+        }
+
+        .pendientes-box p {
+            color: #78350f;
+            white-space: pre-line;
+        }
+
+        /* ─── NOVEDADES ─── */
+        .novedades-box {
+            padding: 12px 16px;
+            background: #fff1f2;
+            border-top: 3px solid #e11d48;
+        }
+
+        .novedades-box .nov-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #9f1239;
+            margin-bottom: 6px;
+        }
+
+        .novedades-box ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .novedades-box ul li {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #be123c;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 3px 0;
+        }
+
+        .novedades-box ul li::before {
+            content: '▸';
+            color: #e11d48;
+        }
+
+        .novedades-box .nov-detalle {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: white;
+            border-left: 3px solid #e11d48;
+            border-radius: 0 4px 4px 0;
+            font-size: 11px;
+            color: #9f1239;
+        }
+
+        /* ─── EVIDENCIA FOTOGRÁFICA ─── */
+        .evidencia-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            margin-top: 8px;
+        }
+
+        .evidencia-header h2 {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--negro);
+            letter-spacing: -0.3px;
+        }
+
+        .evidencia-header .ev-line {
+            flex: 1;
+            height: 2px;
+            background: linear-gradient(to right, var(--verde), var(--azul));
+            border-radius: 2px;
+        }
+
+        .foto-grupo {
+            margin-bottom: 18px;
+            page-break-inside: avoid;
+        }
+
+        .foto-grupo-title {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+            background: linear-gradient(to right, var(--verde), var(--azul));
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .foto-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .foto-item {
+            border: 1px solid var(--gris-borde);
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .foto-item img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .foto-error {
+            font-size: 8px;
+            color: #e11d48;
+            word-break: break-all;
+            padding: 4px 6px;
+        }
+
+        /* ─── SIN EVIDENCIA ─── */
+        .sin-evidencia {
+            text-align: center;
+            padding: 24px;
+            background: var(--gris-bg);
+            border: 2px dashed var(--gris-borde);
+            border-radius: 10px;
+            margin-top: 16px;
+        }
+
+        .sin-evidencia p {
+            color: var(--gris-texto);
+            font-size: 12px;
+        }
+
+        /* ─── FOOTER / FIRMAS ─── */
+        .firmas {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            page-break-inside: avoid;
+        }
+
+        .firma-box {
+            text-align: center;
+        }
+
+        .firma-linea {
+            border-top: 1.5px solid var(--negro);
+            margin-bottom: 6px;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .firma-nombre {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--negro);
+        }
+
+        .firma-rol {
+            font-size: 10px;
+            color: var(--gris-texto);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .footer-strip {
+            margin-top: 20px;
+            padding: 8px 14px;
+            background: linear-gradient(to right, var(--verde-oscuro), var(--azul-oscuro));
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-strip span {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 0.5px;
+        }
+
+        .footer-strip .remision-footer {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* ─── IMAGEN DE FIRMA ─── */
+        .img-firma {
+            max-height: 65px;
+            max-width: 180px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Contenedor fijo para que las líneas queden alineadas haya o no firma */
+        .firma-espacio {
+            height: 70px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+
+        /* ─── PRINT ─── */
         @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page-break { page-break-before: always; }
-            .no-break { page-break-inside: avoid; }
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+
+            .no-break {
+                page-break-inside: avoid;
+            }
         }
     </style>
 </head>
-<body class="bg-white text-gray-800 font-sans p-8">
 
-    <div class="flex justify-between items-center border-b-4 border-indigo-600 pb-4 mb-6">
-        <div>
-            <h1 class="text-3xl font-black text-indigo-700 tracking-tight">INEES</h1>
-            <p class="text-sm text-gray-500 font-bold uppercase tracking-wider">Reporte Técnico de Servicio</p>
-        </div>
-        <div class="text-right">
-            <p class="text-2xl font-bold text-gray-800">Remisión <span class="text-indigo-600">#<?= $datosOrden['numero_remision'] ?></span></p>
-            <p class="text-gray-500 text-sm">Fecha: <?= date('d/m/Y', strtotime($datosOrden['fecha_visita'])) ?></p>
-        </div>
-    </div>
+<body>
+    <div class="page">
 
-    <div class="grid grid-cols-2 gap-4 mb-6 no-break">
-        <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Datos del Cliente</h3>
-            <p class="font-bold text-lg text-gray-800"><?= $datosOrden['nombre_cliente'] ?></p>
-            <p class="text-sm text-gray-600"><i class="fas fa-map-marker-alt"></i> <?= $datosOrden['nombre_punto'] ?></p>
-            <p class="text-xs text-gray-500 mt-1">Delegación: <span class="font-semibold text-gray-700"><?= $datosOrden['delegacion'] ?></span></p>
-            
-            <div class="mt-3 pt-3 border-t border-gray-200">
-                <p class="text-xs text-gray-500 uppercase font-bold">Contacto en Sitio</p>
-                <p class="text-sm text-gray-700 font-medium"><?= !empty($datosOrden['administrador_punto']) ? $datosOrden['administrador_punto'] : 'No registrado' ?> - ☎️ <?= !empty($datosOrden['celular_encargado']) ? $datosOrden['celular_encargado'] : 'N/A' ?></p>
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-marca">
+                <img src="<?= BASE_URL ?>app/logos/logoIneesSinFondo.png" alt="Logo-Inees">
+                <span class="subtitulo">Reporte Técnico de Servicio</span>
+            </div>
+            <div class="header-remision">
+                <div class="num">Remisión <span>#<?= $datosOrden['numero_remision'] ?></span></div>
+                <div class="fecha">Fecha: <?= date('d/m/Y', strtotime($datosOrden['fecha_visita'])) ?></div>
             </div>
         </div>
-        
-        <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Ejecución</h3>
-            <p class="font-bold text-gray-800">Técnico: <span class="text-indigo-600"><?= $datosOrden['nombre_tecnico'] ?></span></p>
-            <div class="flex space-x-4 mt-2 text-sm text-gray-600">
-                <p>Entrada: <span class="font-bold"><?= $datosOrden['hora_entrada'] ?></span></p>
-                <p>Salida: <span class="font-bold"><?= $datosOrden['hora_salida'] ?></span></p>
-            </div>
-            <p class="text-xs text-gray-500 mt-1">Duración Total: <span class="font-bold text-gray-700"><?= $datosOrden['tiempo_servicio'] ?> hrs</span></p>
-            
-            <div class="mt-3 pt-3 border-t border-gray-200">
-                <p class="text-xs text-gray-500 uppercase font-bold mb-1">Calificación Cliente</p>
-                <p class="font-bold text-indigo-700 text-sm"><?= $datosOrden['nombre_calificacion'] ?: 'Pendiente' ?></p>
-            </div>
-        </div>
-    </div>
 
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 no-break">
-        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
-            <h3 class="font-bold text-gray-700 text-sm uppercase">Detalles de Equipos e Inventario</h3>
-        </div>
-        <div class="p-4 grid grid-cols-2 gap-4 text-sm">
-            <div>
-                <p class="text-gray-500 text-xs uppercase font-bold">Device ID / N° Máquina:</p>
-                <p class="font-bold text-gray-800 mb-2"><?= $datosOrden['device_id'] ?: 'N/A' ?> <span class="text-gray-400 font-normal">|</span> <?= $datosOrden['numero_maquina'] ?: 'N/A' ?></p>
-                
-                <p class="text-gray-500 text-xs uppercase font-bold">Tipo / Serial Máquina:</p>
-                <p class="font-bold text-gray-800 mb-2"><?= $datosOrden['nombre_tipo_maquina'] ?: 'No especificado' ?> <span class="text-gray-400 font-normal">|</span> Serial: <?= $datosOrden['serial_maquina'] ?: 'N/A' ?></p>
-            </div>
-            <div>
-                <p class="text-gray-500 text-xs uppercase font-bold">Serial Router:</p>
-                <p class="font-bold text-gray-800 mb-2"><?= $datosOrden['serial_router'] ?: 'N/A' ?></p>
-                
-                <p class="text-gray-500 text-xs uppercase font-bold">Serial UPS:</p>
-                <p class="font-bold text-gray-800 mb-2"><?= $datosOrden['serial_ups'] ?: 'N/A' ?></p>
-            </div>
-        </div>
-    </div>
+        <div class="divider"></div>
 
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 no-break">
-        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between">
-            <h3 class="font-bold text-gray-700 text-sm uppercase">Diagnóstico y Mantenimiento</h3>
-            <span class="font-bold text-indigo-700 text-sm"><?= $datosOrden['tipo_servicio'] ?></span>
-        </div>
-        <div class="p-4 grid grid-cols-2 gap-4 text-sm bg-blue-50">
-            <div>
-                <p class="text-gray-500 text-xs uppercase font-bold">Estado Inicial (Diagnóstico):</p>
-                <p class="font-bold text-gray-800 text-base"><?= $datosOrden['estado_inicial'] ?: 'No registrado' ?></p>
+        <!-- CLIENTE + EJECUCIÓN -->
+        <div class="grid-2 no-break">
+            <!-- Cliente -->
+            <div class="card">
+                <div class="card-label">Datos del Cliente</div>
+                <div class="card-nombre"><?= $datosOrden['nombre_cliente'] ?></div>
+                <div class="card-sub">📍 <?= $datosOrden['nombre_punto'] ?></div>
+                <div class="card-sub">Delegación: <strong><?= $datosOrden['delegacion'] ?></strong></div>
+                <hr class="card-divider">
+                <div class="card-mini-label">Contacto en Sitio</div>
+                <div class="card-sub">
+                    <strong><?= !empty($datosOrden['administrador_punto']) ? $datosOrden['administrador_punto'] : 'No registrado' ?></strong>
+                    &nbsp;☎️ <?= !empty($datosOrden['celular_encargado']) ? $datosOrden['celular_encargado'] : 'N/A' ?>
+                </div>
             </div>
-            <div>
-                <p class="text-gray-500 text-xs uppercase font-bold">Estado Final de Operación:</p>
-                <p class="font-bold text-green-700 text-base"><?= $datosOrden['estado_maquina'] ?></p>
-            </div>
-        </div>
-        <div class="p-4 border-t border-gray-200 bg-white">
-            <h4 class="text-xs font-bold text-gray-500 uppercase mb-1">Actividades Realizadas</h4>
-            <p class="text-sm text-gray-700 whitespace-pre-line"><?= !empty($datosOrden['observaciones']) ? $datosOrden['observaciones'] : 'Sin observaciones registradas.' ?></p>
-        </div>
-        
-        <?php if (!empty($datosOrden['pendientes'])): ?>
-        <div class="p-4 border-t border-gray-200 bg-orange-50">
-            <h4 class="text-xs font-bold text-orange-600 uppercase mb-1"><i class="fas fa-exclamation-circle"></i> Pendientes / Recomendaciones</h4>
-            <p class="text-sm text-gray-800 whitespace-pre-line"><?= $datosOrden['pendientes'] ?></p>
-        </div>
-        <?php endif; ?>
 
-        <?php if (!empty($novedades) || !empty($datosOrden['detalle_novedad'])): ?>
-        <div class="p-4 border-t border-gray-200 bg-red-50 border-l-4 border-red-500">
-            <h4 class="text-xs font-bold text-red-700 uppercase mb-2">⚠️ Novedades Reportadas:</h4>
-            
-            <?php if (!empty($novedades)): ?>
-                <ul class="list-disc list-inside text-sm text-red-700 font-medium mb-2">
-                    <?php foreach ($novedades as $nov): ?>
-                        <li><?= htmlspecialchars($nov['nombre_novedad']) ?></li>
-                    <?php endforeach; ?>
-                </ul>
+            <!-- Ejecución -->
+            <div class="card azul">
+                <div class="card-label">Ejecución del Servicio</div>
+                <div class="card-mini-label">Técnico Asignado</div>
+                <div class="tecnico-nombre"><?= $datosOrden['nombre_tecnico'] ?></div>
+
+                <div class="horas-row" style="margin-bottom:10px;">
+                    <div class="hora-box">
+                        <div class="h-label">Entrada</div>
+                        <div class="h-valor"><?= $datosOrden['hora_entrada'] ?></div>
+                    </div>
+                    <div class="hora-box">
+                        <div class="h-label">Salida</div>
+                        <div class="h-valor"><?= $datosOrden['hora_salida'] ?></div>
+                    </div>
+                    <div class="hora-box">
+                        <div class="h-label">Duración</div>
+                        <div class="h-valor"><?= $datosOrden['tiempo_servicio'] ?>h</div>
+                    </div>
+                </div>
+
+                <hr class="card-divider">
+                <div class="card-mini-label">Calificación del Cliente</div>
+                <span class="calificacion-pill"><?= $datosOrden['nombre_calificacion'] ?: 'Pendiente' ?></span>
+            </div>
+        </div>
+
+        <!-- EQUIPOS E INVENTARIO -->
+        <div class="equipos-grid no-break">
+            <div class="equipos-header">
+                <h3>Detalles de Equipos e Inventario</h3>
+                <span class="badge-tipo"><?= $datosOrden['tipo_servicio'] ?></span>
+            </div>
+            <div class="equipos-body">
+                <div class="equipo-cell">
+                    <div class="ec-label">Device ID</div>
+                    <div class="ec-valor"><?= $datosOrden['device_id'] ?: 'N/A' ?></div>
+                </div>
+                <div class="equipo-cell">
+                    <div class="ec-label">N° Máquina</div>
+                    <div class="ec-valor"><?= $datosOrden['numero_maquina'] ?: 'N/A' ?></div>
+                </div>
+                <div class="equipo-cell">
+                    <div class="ec-label">Tipo Máquina</div>
+                    <div class="ec-valor"><?= $datosOrden['nombre_tipo_maquina'] ?: 'N/E' ?></div>
+                </div>
+                <div class="equipo-cell">
+                    <div class="ec-label">Serial Máquina</div>
+                    <div class="ec-valor"><?= $datosOrden['serial_maquina'] ?: 'N/A' ?></div>
+                </div>
+                <div class="equipo-cell">
+                    <div class="ec-label">Serial Router</div>
+                    <div class="ec-valor"><?= $datosOrden['serial_router'] ?: 'N/A' ?></div>
+                </div>
+                <div class="equipo-cell" style="border-right:none;">
+                    <div class="ec-label">Serial UPS</div>
+                    <div class="ec-valor"><?= $datosOrden['serial_ups'] ?: 'N/A' ?></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DIAGNÓSTICO Y MANTENIMIENTO -->
+        <div class="diagnostico-box no-break">
+            <div class="diag-header">
+                <h3>Diagnóstico y Mantenimiento</h3>
+            </div>
+            <div class="estado-grid">
+                <div class="estado-cell">
+                    <div class="estado-label">Estado Inicial (Diagnóstico)</div>
+                    <div class="estado-valor"><?= $datosOrden['estado_inicial'] ?: 'No registrado' ?></div>
+                </div>
+                <div class="estado-cell">
+                    <div class="estado-label">Estado Final de Operación</div>
+                    <div class="estado-valor verde"><?= $datosOrden['estado_maquina'] ?></div>
+                </div>
+            </div>
+            <div class="actividades-box">
+                <div class="act-label">Actividades Realizadas</div>
+                <p><?= !empty($datosOrden['observaciones']) ? $datosOrden['observaciones'] : 'Sin observaciones registradas.' ?></p>
+            </div>
+
+            <?php if (!empty($datosOrden['pendientes'])): ?>
+                <div class="pendientes-box">
+                    <div class="pend-label">⚠ Pendientes / Recomendaciones</div>
+                    <p><?= $datosOrden['pendientes'] ?></p>
+                </div>
             <?php endif; ?>
 
-            <?php if (!empty($datosOrden['detalle_novedad'])): ?>
-                <p class="text-sm text-red-600 font-medium mt-1">
-                    <strong>Detalle:</strong> <?= htmlspecialchars($datosOrden['detalle_novedad']) ?>
-                </p>
+            <?php if (!empty($novedades) || !empty($datosOrden['detalle_novedad'])): ?>
+                <div class="novedades-box">
+                    <div class="nov-label">🔴 Novedades Reportadas</div>
+                    <?php if (!empty($novedades)): ?>
+                        <ul>
+                            <?php foreach ($novedades as $nov): ?>
+                                <li><?= htmlspecialchars($nov['nombre_novedad']) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                    <?php if (!empty($datosOrden['detalle_novedad'])): ?>
+                        <div class="nov-detalle"><strong>Detalle:</strong> <?= htmlspecialchars($datosOrden['detalle_novedad']) ?></div>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         </div>
-        <?php endif; ?>
-    </div>
 
-    <?php if (!empty($evidencias)): ?>
-        <div class="page-break"></div> 
-        <h2 class="text-xl font-bold text-gray-800 border-b-2 border-indigo-600 pb-2 mb-4">Evidencia Fotográfica</h2>
-        
-        <?php 
-        // Agrupamos las fotos por su tipo
-        $fotosAntes = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'antes');
-        $fotosDurante = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'componentes');
-        $fotosDespues = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'despues');
-        
-        $grupos = [
-            'Antes del Servicio' => $fotosAntes,
-            'Componentes / Durante' => $fotosDurante,
-            'Después del Servicio' => $fotosDespues
-        ];
+        <?php
+        // Extraer y procesar la firma en Base64
+        $firmaEvidencia = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'firma');
+        $firmaSrc = null;
+
+        if (!empty($firmaEvidencia)) {
+            $fotoFirma = reset($firmaEvidencia); // Tomamos el primer registro de firma
+            $rutaEnBD  = $fotoFirma['ruta_archivo'];
+            $pos       = strpos($rutaEnBD, 'uploads/');
+            $rutaLimpia = ($pos !== false) ? substr($rutaEnBD, $pos) : ltrim($rutaEnBD, '/');
+            $rutaFisica = realpath(__DIR__ . '/../../' . $rutaLimpia);
+
+            if ($rutaFisica && file_exists($rutaFisica) && !is_dir($rutaFisica)) {
+                $extension = strtolower(pathinfo($rutaFisica, PATHINFO_EXTENSION));
+                $mime = ($extension === 'jpg') ? 'jpeg' : $extension;
+                $data = file_get_contents($rutaFisica);
+                $firmaSrc = 'data:image/' . $mime . ';base64,' . base64_encode($data);
+            }
+        }
+
+        // 2. Procesar la firma automática del Técnico
+        $firmaTecnicoSrc = null;
+
+        if (!empty($datosOrden['ruta_firma'])) {
+            $rutaBDTecnico = $datosOrden['ruta_firma'];
+            $posTecnico = strpos($rutaBDTecnico, 'uploads/');
+            $rutaLimpiaTecnico = ($posTecnico !== false) ? substr($rutaBDTecnico, $posTecnico) : ltrim($rutaBDTecnico, '/');
+            $rutaFisicaTecnico = realpath(__DIR__ . '/../../' . $rutaLimpiaTecnico);
+
+            if ($rutaFisicaTecnico && file_exists($rutaFisicaTecnico) && !is_dir($rutaFisicaTecnico)) {
+                $extTecnico = strtolower(pathinfo($rutaFisicaTecnico, PATHINFO_EXTENSION));
+                $mimeTecnico = ($extTecnico === 'jpg') ? 'jpeg' : $extTecnico;
+                $dataTecnico = file_get_contents($rutaFisicaTecnico);
+                $firmaTecnicoSrc = 'data:image/' . $mimeTecnico . ';base64,' . base64_encode($dataTecnico);
+            }
+        }
+
         ?>
 
-        <?php foreach ($grupos as $tituloGrupo => $fotos): ?>
-            <?php if (count($fotos) > 0): ?>
-                <div class="mb-6 no-break">
-                    <h3 class="font-bold text-gray-600 uppercase text-sm mb-3 bg-gray-100 py-1 px-2 rounded border-l-4 border-indigo-400"><?= $tituloGrupo ?></h3>
-                    <div class="grid grid-cols-3 gap-4">
-                        <?php foreach ($fotos as $foto): ?>
-                            <?php 
-                                // 1. Sacamos la ruta de la BD y nos aseguramos de que empiece en 'uploads/'
-                                $rutaEnBD = $foto['ruta_archivo'];
-                                $pos = strpos($rutaEnBD, 'uploads/');
-                                $rutaLimpia = ($pos !== false) ? substr($rutaEnBD, $pos) : ltrim($rutaEnBD, '/');
 
-                                // 2. Armamos la ruta física real (subimos 2 niveles desde app/views/orden)
+        <!-- FIRMAS -->
+        <div class="firmas no-break">
+            <div class="firma-box">
+                <div class="firma-espacio">
+                    <?php if ($firmaTecnicoSrc): ?>
+                        <img src="<?= $firmaTecnicoSrc ?>" alt="Firma Técnico" class="img-firma">
+                    <?php endif; ?>
+                </div>
+                <div class="firma-linea"></div>
+                <div class="firma-nombre"><?= $datosOrden['nombre_tecnico'] ?></div>
+                <div class="firma-rol">Técnico de Servicio</div>
+            </div>
+            <div class="firma-box">
+                <div class="firma-espacio">
+                    <?php if ($firmaSrc): ?>
+                        <img src="<?= $firmaSrc ?>" alt="Firma Cliente" class="img-firma">
+                    <?php endif; ?>
+                </div>
+                <div class="firma-linea"></div>
+                <div class="firma-nombre"><?= !empty($datosOrden['administrador_punto']) ? $datosOrden['administrador_punto'] : 'Responsable en Sitio' ?></div>
+                <div class="firma-rol">Recibido y Aprobado</div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer-strip">
+            <span>INEES — Reporte Técnico de Servicio</span>
+            <span class="remision-footer">Remisión #<?= $datosOrden['numero_remision'] ?></span>
+            <span><?= date('d/m/Y', strtotime($datosOrden['fecha_visita'])) ?></span>
+        </div>
+
+
+        <!-- ─── EVIDENCIA FOTOGRÁFICA ─── -->
+        <?php if (!empty($evidencias)): ?>
+            <div class="page-break"></div>
+
+            <div class="evidencia-header">
+                <h2>Evidencia Fotográfica</h2>
+                <div class="ev-line"></div>
+            </div>
+
+            <?php
+            $fotosAntes   = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'antes');
+            $fotosDurante = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'componentes');
+            $fotosDespues = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'despues');
+
+            $grupos = [
+                'Antes del Servicio'     => $fotosAntes,
+                'Componentes / Durante'  => $fotosDurante,
+                'Después del Servicio'   => $fotosDespues
+            ];
+            ?>
+
+            <?php foreach ($grupos as $tituloGrupo => $fotos): ?>
+                <?php if (count($fotos) > 0): ?>
+                    <div class="foto-grupo no-break">
+                        <div class="foto-grupo-title"><?= $tituloGrupo ?></div>
+                        <div class="foto-grid">
+                            <?php foreach ($fotos as $foto): ?>
+                                <?php
+                                $rutaEnBD  = $foto['ruta_archivo'];
+                                $pos       = strpos($rutaEnBD, 'uploads/');
+                                $rutaLimpia = ($pos !== false) ? substr($rutaEnBD, $pos) : ltrim($rutaEnBD, '/');
                                 $rutaFisica = realpath(__DIR__ . '/../../' . $rutaLimpia);
-                                
+
                                 $imgSrc = '';
-                                
-                                // 3. Validamos que el archivo exista y NO sea una carpeta
                                 if ($rutaFisica && file_exists($rutaFisica) && !is_dir($rutaFisica)) {
                                     $extension = strtolower(pathinfo($rutaFisica, PATHINFO_EXTENSION));
                                     $mime = ($extension === 'jpg') ? 'jpeg' : $extension;
-                                    
                                     $data = file_get_contents($rutaFisica);
                                     $imgSrc = 'data:image/' . $mime . ';base64,' . base64_encode($data);
                                 } else {
-                                    // Imagen gris por defecto si falla
-                                    $imgSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='; 
+                                    $imgSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
                                 }
-                            ?>
-                            <div class="border border-gray-300 p-1 rounded bg-white shadow-sm flex flex-col items-center justify-center">
-                                <img src="<?= $imgSrc ?>" alt="Evidencia" class="w-full h-48 object-cover rounded">
-                                
-                                <?php if(!$rutaFisica || !file_exists($rutaFisica) || is_dir($rutaFisica)): ?>
-                                    <span style="font-size: 8px; color: red; word-break: break-all; margin-top: 5px;">
-                                        Error: No encontrada en <?php echo __DIR__ . '/../../' . $rutaLimpia; ?>
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
+                                ?>
+                                <div class="foto-item">
+                                    <img src="<?= $imgSrc ?>" alt="Evidencia">
+                                    <?php if (!$rutaFisica || !file_exists($rutaFisica) || is_dir($rutaFisica)): ?>
+                                        <div class="foto-error">Error: <?= __DIR__ . '/../../' . $rutaLimpia ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                </div>
-            <?php endif; ?>
-        <?php endforeach; ?>
+                <?php endif; ?>
+            <?php endforeach; ?>
 
-    <?php else: ?>
-        <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg text-center mt-6">
-            <p class="text-gray-500 text-sm"><i class="fas fa-camera-slash mr-2"></i> No se adjuntaron evidencias fotográficas para este servicio.</p>
-        </div>
-    <?php endif; ?>
+        <?php else: ?>
+            <div class="sin-evidencia">
+                <p>📷 No se adjuntaron evidencias fotográficas para este servicio.</p>
+            </div>
+        <?php endif; ?>
 
+    </div><!-- /page -->
 </body>
+
 </html>

@@ -84,6 +84,9 @@
 
     <form action="index.php?pagina=tecnicoReporte&accion=guardar" method="POST" id="formReporteMovil" enctype="multipart/form-data">
         <input type="hidden" name="id_ordenes_servicio" value="<?= htmlspecialchars($orden['id_ordenes_servicio']) ?>">
+        
+        <input type="hidden" name="latitud_fin" id="latitud_fin" value="">
+        <input type="hidden" name="longitud_fin" id="longitud_fin" value="">
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-5">
             <div class="flex items-center gap-2 mb-1 border-b pb-2">
@@ -105,11 +108,11 @@
 
             <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora  (Entrada)</label>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora (Entrada)</label>
                     <input type="time" name="hora_entrada" id="hora_entrada" required class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora  (Salida)</label>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora (Salida)</label>
                     <input type="time" name="hora_salida" id="hora_salida" required class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div class="col-span-2 pt-2 border-t border-gray-200 flex justify-between items-center">
@@ -203,12 +206,12 @@
                     <?php endforeach; ?>
                 </select>
             </div>
-            
+
             <hr class="border-gray-200 my-4">
 
             <div class="space-y-5">
                 <h3 class="font-bold text-gray-400 text-xs uppercase text-center">--- Completar para el Sistema ---</h3>
-                
+
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Actividades Realizadas</label>
                     <textarea name="actividades_realizadas" rows="3" required placeholder="Describa el trabajo realizado..." class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500"></textarea>
@@ -236,7 +239,7 @@
                             <i class="fas fa-images text-gray-400 text-2xl mb-2"></i>
                             <p class="text-sm font-bold text-gray-700">1. Fotos del "Antes"</p>
                             <span id="badge_fotos_antes" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0 seleccionadas</span>
-                            <input type="file" name="fotos_antes[]" id="fotos_antes" multiple accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                            <input type="file" name="fotos_antes[]" id="fotos_antes" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
                         </div>
                         <div id="preview_antes" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
                     </div>
@@ -246,7 +249,7 @@
                             <i class="fas fa-file-signature text-gray-400 text-2xl mb-2"></i>
                             <p class="text-sm font-bold text-gray-700">2. Foto de la Remisión</p>
                             <span id="badge_foto_remision" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0 seleccionadas</span>
-                            <input type="file" name="foto_remision[]" id="foto_remision" multiple accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                            <input type="file" name="foto_remision[]" id="foto_remision" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
                         </div>
                         <div id="preview_remision" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
                     </div>
@@ -256,7 +259,7 @@
                             <i class="fas fa-check-double text-gray-400 text-2xl mb-2"></i>
                             <p class="text-sm font-bold text-gray-700">3. Fotos del "Después"</p>
                             <span id="badge_fotos_despues" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0 seleccionadas</span>
-                            <input type="file" name="fotos_despues[]" id="fotos_despues" multiple accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                            <input type="file" name="fotos_despues[]" id="fotos_despues" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
                         </div>
                         <div id="preview_despues" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
                     </div>
@@ -275,8 +278,26 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
+                    <div class="flex items-center gap-2 mb-1 border-b pb-2">
+                        <i class="fas fa-signature text-blue-500 text-lg"></i>
+                        <h2 class="font-bold text-gray-700 text-sm uppercase">Firma del Cliente</h2>
+                    </div>
+
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50 touch-none">
+                        <canvas id="canvas_firma" width="400" height="200" class="w-full h-48 bg-white cursor-crosshair"></canvas>
+                    </div>
+
+                    <button type="button" onclick="limpiarFirma()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                        <i class="fas fa-eraser"></i> Limpiar Firma
+                    </button>
+
+                    <input type="hidden" name="firma_base64" id="firma_base64">
+                </div>
             </div>
-            
+
         </div>
     </form>
 </div>
@@ -329,201 +350,11 @@
     </div>
 </div>
 
-<script>
-    $(document).ready(function() {
-        $('.select2-movil').select2({
-            width: '100%',
-            minimumResultsForSearch: 8
-        });
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-        $('#hora_entrada, #hora_salida').on('change', calcularTiempoServicio);
-
-        // 1. Cambiar el selector inicial
-        $('#fotos_antes, #foto_remision, #fotos_despues').on('change', function() {
-            let numFiles = this.files ? this.files.length : 0;
-            let targetBadge = '';
-            let targetPreview = '';
-
-            if (this.id === 'fotos_antes') {
-                targetBadge = '#badge_fotos_antes';
-                targetPreview = '#preview_antes';
-            }
-            // 2. Cambiar esta validación
-            if (this.id === 'foto_remision') {
-                targetBadge = '#badge_foto_remision';
-                targetPreview = '#preview_remision';
-            }
-            if (this.id === 'fotos_despues') {
-                targetBadge = '#badge_fotos_despues';
-                targetPreview = '#preview_despues';
-            }
-
-            if (numFiles > 0) {
-                $(targetBadge).removeClass('bg-gray-200 text-gray-700').addClass('bg-indigo-100 text-indigo-800').text(numFiles + ' seleccionadas');
-            } else {
-                $(targetBadge).removeClass('bg-indigo-100 text-indigo-800').addClass('bg-gray-200 text-gray-700').text('0 seleccionadas');
-            }
-
-            let previewContainer = $(targetPreview);
-            previewContainer.empty();
-
-            if (this.files) {
-                $.each(this.files, function(index, file) {
-                    if (file.type.match('image.*')) {
-                        let reader = new FileReader();
-                        reader.onload = function(e) {
-                            let imgHtml = '<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm">' +
-                                '<img src="' + e.target.result + '" class="w-full h-full object-cover"></div>';
-                            previewContainer.append(imgHtml);
-                        }
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-            calcularTotalFotos();
-        });
-    });
-
-    function calcularTiempoServicio() {
-        let hEntrada = $('#hora_entrada').val();
-        let hSalida = $('#hora_salida').val();
-        if (hEntrada && hSalida) {
-            let entrada = new Date("1970-01-01T" + hEntrada + ":00");
-            let salida = new Date("1970-01-01T" + hSalida + ":00");
-            if (salida < entrada) salida.setDate(salida.getDate() + 1);
-            let diffMs = salida - entrada;
-            let diffHrs = Math.floor((diffMs % 86400000) / 3600000);
-            let diffMins = Math.round(((diffMs % 86400000) % 3600000) / 60000);
-            let total = diffHrs.toString().padStart(2, '0') + ":" + diffMins.toString().padStart(2, '0');
-            $('#tiempo_servicio').val(total);
-            $('#tiempo_total_display').text(total + " hrs");
-        }
-    }
-
-    function calcularTotalFotos() {
-        let fAntes = document.getElementById('fotos_antes').files.length;
-        let fRemision = document.getElementById('foto_remision').files.length; 
-        let fDespues = document.getElementById('fotos_despues').files.length;
-        let total = fAntes + fRemision + fDespues;
-        let totalElement = $('#total_fotos_count');
-        totalElement.text(total);
-
-        if (total >= 8 && total <= 10) {
-            totalElement.removeClass('text-red-600 text-orange-500').addClass('text-green-600');
-        } else if (total > 0 && total < 8) {
-            totalElement.removeClass('text-red-600 text-green-600').addClass('text-orange-500');
-        } else {
-            totalElement.removeClass('text-green-600 text-orange-500').addClass('text-red-600');
-        }
-    }
-
-    function validarYEnviar() {
-        let form = document.getElementById('formReporteMovil');
-        let fAntes = document.getElementById('fotos_antes').files.length;
-        let fRemision = document.getElementById('foto_remision').files.length; 
-        let fDespues = document.getElementById('fotos_despues').files.length;
-        let totalFotos = fAntes + fRemision + fDespues;
-
-        if (totalFotos < 8 || totalFotos > 10) {
-            alert("⚠️ Por favor seleccione entre 8 y 10 fotos en total de evidencia.\nActualmente ha seleccionado: " + totalFotos);
-            return false;
-        }
-
-        if (form.checkValidity()) {
-            form.submit();
-        } else {
-            form.reportValidity();
-        }
-    }
-
-    // ==========================================
-    // LÓGICA DEL MODAL DE REPUESTOS
-    // ==========================================
-    let repuestosSeleccionados = [];
-
-    $('#btn_abrir_repuestos').on('click', function(e) {
-        e.preventDefault();
-        $('#modalRepuestos').removeClass('hidden').addClass('flex');
-
-        if (!$('#select_repuesto_modal').hasClass("select2-hidden-accessible")) {
-            $('#select_repuesto_modal').select2({
-                dropdownParent: $('#modalRepuestos'),
-                width: '100%'
-            });
-        }
-    });
-
-    function cerrarModalRepuestos() {
-        $('#modalRepuestos').addClass('hidden').removeClass('flex');
-        $('#select_repuesto_modal').val(null).trigger('change');
-        $('#cantidad_repuesto_modal').val(1);
-    }
-
-    function agregarRepuesto() {
-        let selectElement = $('#select_repuesto_modal');
-        let idRep = selectElement.val();
-        let optionSeleccionado = selectElement.find('option:selected');
-
-        if (!idRep) {
-            alert("⚠️ Seleccione un repuesto de la lista.");
-            return;
-        }
-
-        let nombreLimpio = optionSeleccionado.data('nombre');
-        let origen = $('#select_origen_modal').val();
-        let cant = parseInt($('#cantidad_repuesto_modal').val()) || 1;
-
-        if (cant <= 0) {
-            alert("⚠️ La cantidad debe ser mayor a 0.");
-            return;
-        }
-
-        let indexExiste = repuestosSeleccionados.findIndex(r => r.id === idRep && r.origen === origen);
-
-        if (indexExiste !== -1) {
-            repuestosSeleccionados[indexExiste].cantidad += cant;
-        } else {
-            repuestosSeleccionados.push({
-                id: idRep,
-                nombre: nombreLimpio,
-                origen: origen,
-                cantidad: cant
-            });
-        }
-
-        renderizarListaRepuestos();
-        cerrarModalRepuestos();
-    }
-
-    function renderizarListaRepuestos() {
-        let ul = $('#lista_repuestos_agregados');
-        ul.empty();
-        let totalItems = 0;
-
-        repuestosSeleccionados.forEach((item, index) => {
-            totalItems += item.cantidad;
-            let bgBadge = item.origen === 'INEES' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800';
-
-            ul.append(`
-                <li class="flex justify-between items-center bg-white p-2 border border-gray-200 rounded shadow-sm">
-                    <div class="flex items-center gap-2 overflow-hidden w-full">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bgBadge} border border-opacity-20 flex-shrink-0" style="min-width:60px; text-align:center">${item.origen}</span>
-                        <span class="text-xs text-gray-700 font-medium truncate flex-grow">${item.nombre}</span>
-                        <span class="bg-gray-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0">x${item.cantidad}</span>
-                    </div>
-                    <button type="button" onclick="borrarRepuesto(${index})" class="text-red-400 hover:text-red-600 px-3 ml-2 text-lg transition">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </li>
-            `);
-        });
-
-        $('#badge_repuestos').text(totalItems);
-        $('#json_repuestos').val(JSON.stringify(repuestosSeleccionados));
-    }
-
-    function borrarRepuesto(index) {
-        repuestosSeleccionados.splice(index, 1);
-        renderizarListaRepuestos();
-    }
-</script>
+<script src="<?= BASE_URL ?>js/tecnico/notificaciones.js"></script>
+<script src="<?= BASE_URL ?>js/tecnico/tecnicoReporte.js"></script>
+<script src="<?= BASE_URL ?>js/tecnico/autoGuardado.js"></script>
+<script src="<?= BASE_URL ?>js/tecnico/validaciones.js"></script>

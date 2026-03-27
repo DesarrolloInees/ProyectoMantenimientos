@@ -1,29 +1,29 @@
-<?php 
+<?php
 // Detectamos si es técnico
 $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3);
 ?>
 
 <?php if ($esTecnico): ?>
 
-    <a href="<?= BASE_URL ?>inicio" 
-       class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
+    <a href="<?= BASE_URL ?>inicio"
+        class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
         <i class="fas fa-home mr-1"></i> Inicio
     </a>
 
-    <a href="<?= BASE_URL ?>ordenMovil" 
-       class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
+    <a href="<?= BASE_URL ?>ordenMovil"
+        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
         <i class="fas fa-search mr-1"></i> Consultar Historial
     </a>
 
     <!--<a href="<?= BASE_URL ?>tecnicoProgramacion" 
-       class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
+        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
         <i class="fa-solid fa-envelope mr-1"></i> Programación Servicios
 -->
 
 <?php else: ?>
 
-    <a href="<?= BASE_URL ?>inicio" 
-       class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
+    <a href="<?= BASE_URL ?>inicio"
+        class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
         <i class="fas fa-home mr-1"></i> Inicio
     </a>
 
@@ -34,7 +34,7 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
         </button>
         <div class="absolute left-0 top-12 w-56 bg-white rounded-md shadow-lg py-1 hidden group-hover:block border border-gray-200 z-[9999]">
             <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Gestión de Servicios</div>
-            
+
             <a href="<?= BASE_URL ?>ordenCrear" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fas fa-plus-circle w-5 text-center mr-1 text-green-500"></i> Nuevo Servicio
             </a>
@@ -64,6 +64,21 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
             </a>
             <a href="<?= BASE_URL ?>controlRemisionVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-book w-5 text-center mr-1"></i> Admin. Remisiones
+            </a>
+        </div>
+    </div>
+
+    <div class="relative group h-full flex items-center ml-2">
+        <button class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium inline-flex items-center transition">
+            <span> Motorizados</span>
+            <i class="fas fa-chevron-down ml-2 text-xs opacity-75"></i>
+        </button>
+        <div class="absolute left-0 top-12 w-60 bg-white rounded-md shadow-lg py-1 hidden group-hover:block border border-gray-200 z-[9999]">
+            <a href="<?= BASE_URL ?>serviciosPdf" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-file-pdf w-5 text-center mr-1 text-yellow-600"></i> Servicios Pdf
+            </a>
+            <a href="<?= BASE_URL ?>rastreoTecnico" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-street-view w-5 text-center mr-1"></i> Rastreó Técnico
             </a>
         </div>
     </div>
@@ -102,17 +117,17 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
             <i class="fas fa-chevron-down ml-2 text-xs opacity-75"></i>
         </button>
         <div class="absolute right-0 md:left-auto md:right-auto top-12 w-80 bg-white rounded-md shadow-lg py-1 hidden group-hover:block border border-gray-200 z-[9999] max-h-[80vh] overflow-y-auto">
-            
+
             <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">Personas & Accesos</div>
             <a href="<?= BASE_URL ?>usuarioVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Usuarios y Accesos</a>
             <a href="<?= BASE_URL ?>tecnicoVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Técnicos</a>
             <a href="<?= BASE_URL ?>clienteVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Clientes</a>
-            
+
             <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 mt-2">Maestros del Sistema</div>
-            <a href="<?= BASE_URL ?>maquinaVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700" >Máquinas</a>
+            <a href="<?= BASE_URL ?>maquinaVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Máquinas</a>
             <a href="<?= BASE_URL ?>puntoVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Puntos</a>
             <a href="<?= BASE_URL ?>tarifaVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Tarifas</a>
-            
+
             <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 mt-2">Configuraciones Varias</div>
             <a href="<?= BASE_URL ?>tecnicoVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Administrar Técnicos</a>
             <a href="<?= BASE_URL ?>diasFestivosVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Días Festivos</a>

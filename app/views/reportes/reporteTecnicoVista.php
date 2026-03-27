@@ -159,10 +159,6 @@
     // Recibimos los datos COMPLETOS de PHP
     const datosServicios = <?= json_encode($datosExcel ?? []) ?>;
 
-    // RECIBIMOS EL PARAMETRO DESDE PHP
-    // Usamos parseFloat para asegurar que sea número decimal
-    const PESO_CORRECTIVO = parseFloat("<?= $valorCorrectivo ?>");
-
     $(document).ready(function() {
         $('.select2-search').select2({
             width: '100%',
@@ -185,213 +181,257 @@
     // FUNCIÓN: EXCEL CON DESGLOSE POR TIPO DE MANTENIMIENTO Y FALLIDOS
     // =========================================================
     function exportarExcelTecnico() {
-        if (typeof XLSX === 'undefined') {
-            alert("Error: Librería SheetJS no cargada.");
-            return;
-        }
-        if (datosServicios.length === 0) {
-            alert("No hay datos para exportar.");
-            return;
-        }
-
-        let workbook = XLSX.utils.book_new();
-
-        // ---------------------------------------------------------
-        // PASO 1: DETECTAR TODOS LOS TIPOS DE MANTENIMIENTO ÚNICOS
-        // ---------------------------------------------------------
-        let tiposMantenimientoSet = new Set();
-        datosServicios.forEach(item => {
-            let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
-            tiposMantenimientoSet.add(tipo);
-        });
-        let columnasTipos = Array.from(tiposMantenimientoSet).sort();
-
-        // ---------------------------------------------------------
-        // PASO 2: AGRUPAR DATOS CON PONDERACIÓN
-        // ---------------------------------------------------------
-        let resumen = {};
-
-        datosServicios.forEach(item => {
-            let tecnico = item.nombre_tecnico || "Sin Nombre";
-            let fecha = item.fecha_visita.split(' ')[0];
-            let horaEnt = item.hora_entrada;
-            let horaSal = item.hora_salida;
-            let tipoMant = item.tipo_mantenimiento || "SIN ESPECIFICAR";
-
-            let peso = 1;
-            if (tipoMant.toUpperCase().includes("CORRECTIVO")) {
-                peso = PESO_CORRECTIVO;
+        try {
+            if (typeof XLSX === 'undefined') {
+                alert("Error: Librería SheetJS no cargada.");
+                return;
+            }
+            if (!datosServicios || datosServicios.length === 0) {
+                alert("No hay datos para exportar.");
+                return;
             }
 
-            if (!resumen[tecnico]) {
-                resumen[tecnico] = {
-                    fechas: {},
-                    contadoresTipos: {}
-                };
-                columnasTipos.forEach(t => resumen[tecnico].contadoresTipos[t] = 0);
-            }
+            let workbook = XLSX.utils.book_new();
 
-            if (!resumen[tecnico].fechas[fecha]) {
-                resumen[tecnico].fechas[fecha] = {
-                    cantidad: 0,
-                    primera_entrada: "23:59:59",
-                    ultima_salida: "00:00:00"
-                };
-            }
-
-            resumen[tecnico].fechas[fecha].cantidad += peso;
-
-            if (horaEnt && horaEnt < resumen[tecnico].fechas[fecha].primera_entrada) {
-                resumen[tecnico].fechas[fecha].primera_entrada = horaEnt;
-            }
-            if (horaSal && horaSal > resumen[tecnico].fechas[fecha].ultima_salida) {
-                resumen[tecnico].fechas[fecha].ultima_salida = horaSal;
-            }
-
-            resumen[tecnico].contadoresTipos[tipoMant] += peso;
-        });
-
-        // ---------------------------------------------------------
-        // PASO 3: CREAR MATRIZ RESUMEN GENERAL (HOJA 1)
-        // ---------------------------------------------------------
-        let encabezadosResumen = ['NOMBRE DEL TÉCNICO', 'TOTAL SERVICIOS'];
-        columnasTipos.forEach(tipo => encabezadosResumen.push(tipo.toUpperCase()));
-
-        let matrizResumenGeneral = [encabezadosResumen];
-        let hayDatos = false;
-
-        for (const [nombreTecnico, datos] of Object.entries(resumen)) {
-            hayDatos = true;
-            let totalTecnico = Object.values(datos.contadoresTipos).reduce((a, b) => a + b, 0);
-            let fila = [nombreTecnico, totalTecnico];
-
-            columnasTipos.forEach(tipo => {
-                fila.push(datos.contadoresTipos[tipo]);
+            // ---------------------------------------------------------
+            // PASO 1: DETECTAR TODOS LOS TIPOS DE MANTENIMIENTO ÚNICOS
+            // ---------------------------------------------------------
+            let tiposMantenimientoSet = new Set();
+            datosServicios.forEach(item => {
+                let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
+                tiposMantenimientoSet.add(tipo);
             });
-            matrizResumenGeneral.push(fila);
-        }
+            let columnasTipos = Array.from(tiposMantenimientoSet).sort();
 
-        // ---------------------------------------------------------
-        // PASO 3.5: AGREGAR LA TABLA DE FALLIDOS A LA MISMA HOJA
-        // ---------------------------------------------------------
-        let fallidosData = {};
-        let granTotalFallidos = 0;
+            // ---------------------------------------------------------
+            // PASO 2: AGRUPAR DATOS CON PONDERACIÓN
+            // ---------------------------------------------------------
+            let resumen = {};
 
-        datosServicios.forEach(item => {
-            // Valida si el servicio es Fallido (ajusta esta palabra según como esté en tu BD)
-            let tipo = item.tipo_mantenimiento || "";
-            let esFallido = tipo.toUpperCase().includes('FALLIDO');
+            datosServicios.forEach(item => {
+                let tecnico = item.nombre_tecnico ? item.nombre_tecnico.toString().trim() : "Sin Nombre";
+                let fecha = item.fecha_visita ? item.fecha_visita.split(' ')[0] : "Sin Fecha";
+                let horaEnt = item.hora_entrada;
+                let horaSal = item.hora_salida;
+                let tipoMant = item.tipo_mantenimiento || "SIN ESPECIFICAR";
 
-            if (esFallido) {
-                // CAMBIO AQUÍ: Usamos la delegación que viene del SQL
-                let delegacion = item.delegacion ? item.delegacion.toUpperCase() : "SIN DELEGACIÓN";
-                let cliente = item.nombre_cliente || "Sin Cliente";
+                let peso = 1;
+                
 
-                if (!fallidosData[delegacion]) fallidosData[delegacion] = {};
-                if (!fallidosData[delegacion][cliente]) fallidosData[delegacion][cliente] = 0;
+                if (!resumen[tecnico]) {
+                    resumen[tecnico] = {
+                        fechas: {},
+                        contadoresTipos: {}
+                    };
+                    columnasTipos.forEach(t => resumen[tecnico].contadoresTipos[t] = 0);
+                }
 
-                fallidosData[delegacion][cliente]++;
-                granTotalFallidos++;
-            }
-        });
+                if (!resumen[tecnico].fechas[fecha]) {
+                    resumen[tecnico].fechas[fecha] = {
+                        cantidad: 0,
+                        primera_entrada: "23:59:59",
+                        ultima_salida: "00:00:00"
+                    };
+                }
 
-        if (granTotalFallidos > 0) {
-            matrizResumenGeneral.push(['']);
-            matrizResumenGeneral.push(['']);
-            
-            matrizResumenGeneral.push(['Cuenta de Cliente', 'Etiquetas de columna']);
-            matrizResumenGeneral.push(['Etiquetas de fila', 'Fallido']);
+                resumen[tecnico].fechas[fecha].cantidad += peso;
 
-            // Generar las filas agrupadas por Delegación
-            for (const [delegacion, clientes] of Object.entries(fallidosData)) {
-                let totalDelegacion = 0;
-                for (const count of Object.values(clientes)) totalDelegacion += count;
+                if (horaEnt && horaEnt < resumen[tecnico].fechas[fecha].primera_entrada) {
+                    resumen[tecnico].fechas[fecha].primera_entrada = horaEnt;
+                }
+                if (horaSal && horaSal > resumen[tecnico].fechas[fecha].ultima_salida) {
+                    resumen[tecnico].fechas[fecha].ultima_salida = horaSal;
+                }
 
-                // Fila de la Delegación (ej: - BOGOTÁ)
-                matrizResumenGeneral.push(['- ' + delegacion, totalDelegacion]);
+                resumen[tecnico].contadoresTipos[tipoMant] += peso;
+            });
 
-                // Filas de los Clientes dentro de esa delegación
-                for (const [cliente, count] of Object.entries(clientes)) {
-                    matrizResumenGeneral.push(['    ' + cliente, count]);
+            // ---------------------------------------------------------
+            // PASO 2.5: ORDENAR TÉCNICOS SEGÚN LISTA PERSONALIZADA
+            // ---------------------------------------------------------
+            // Usamos palabras clave ÚNICAS (como apellidos o nombres raros) en el orden exacto que necesitas.
+            const ordenPersonalizado = [
+                "MURGAS",      // 1. ANDRES CAMILO MURGAS GAMARRA
+                "JHONY",       // 2. JHONY ALEXANDER HERNANDEZ
+                "MAICOL",      // 3. MAICOL ANDRES GUZMAN
+                "RUIZ",        // 4. JOSE DANIEL RUIZ
+                "ORJUELA",     // 5. GIOVANNY ALEXANDER ORJUELA
+                "FORERO",      // 6. DANIEL FERNANDO FORERO
+                "ESPINOSA",    // 7. JHON SEBASTIAN ESPINOSA
+                "MAURICIO",    // 8. MAURICIO RODRIGUEZ NIÑO
+                "JHONATAN",    // 9. JHONATAN ANDRES SEPULVEDA
+                "ORTIZ",       // 10. JUAN DAVID ORTIZ CANO
+                "CERVERA",     // 11. BRAYAN CERVERA POLO
+                "VILORIA",     // 12. EDINSON RODRIGUEZ VILORIA
+                "SAAVEDRA",    // 13. LUIS ALFREDO SAAVEDRA
+                "BENAVIDES"    // 14. NELSON JAVIER BENAVIDES
+            ];
+
+            let tecnicosOrdenados = Object.keys(resumen);
+
+            tecnicosOrdenados.sort((a, b) => {
+                // Quitamos tildes y pasamos a mayúsculas para que la búsqueda sea perfecta
+                let nombreA = a.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                let nombreB = b.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+
+                // Buscamos si el nombre de la BD CONTIENE la palabra clave
+                let indexA = ordenPersonalizado.findIndex(clave => nombreA.includes(clave.toUpperCase()));
+                let indexB = ordenPersonalizado.findIndex(clave => nombreB.includes(clave.toUpperCase()));
+
+                // Si no encuentra coincidencia, lo manda al final
+                if (indexA === -1) indexA = 999;
+                if (indexB === -1) indexB = 999;
+
+                return indexA - indexB;
+            });
+
+            // ---------------------------------------------------------
+            // PASO 3: CREAR MATRIZ RESUMEN GENERAL (HOJA 1)
+            // ---------------------------------------------------------
+            let encabezadosResumen = ['NOMBRE DEL TÉCNICO', 'TOTAL SERVICIOS'];
+            columnasTipos.forEach(tipo => encabezadosResumen.push(tipo.toUpperCase()));
+
+            let matrizResumenGeneral = [encabezadosResumen];
+            let hayDatos = false;
+
+            tecnicosOrdenados.forEach(nombreTecnico => {
+                let datos = resumen[nombreTecnico];
+
+                hayDatos = true;
+                let totalTecnico = Object.values(datos.contadoresTipos).reduce((a, b) => a + b, 0);
+                let fila = [nombreTecnico, totalTecnico];
+
+                columnasTipos.forEach(tipo => {
+                    fila.push(datos.contadoresTipos[tipo]);
+                });
+                matrizResumenGeneral.push(fila);
+            });
+
+            // ---------------------------------------------------------
+            // PASO 3.5: AGREGAR LA TABLA DE FALLIDOS A LA MISMA HOJA
+            // ---------------------------------------------------------
+            let fallidosData = {};
+            let granTotalFallidos = 0;
+
+            datosServicios.forEach(item => {
+                let tipo = item.tipo_mantenimiento || "";
+                let esFallido = tipo.toUpperCase().includes('FALLIDO');
+
+                if (esFallido) {
+                    let delegacion = item.delegacion ? item.delegacion.toUpperCase() : "SIN DELEGACIÓN";
+                    let cliente = item.nombre_cliente || "Sin Cliente";
+
+                    if (!fallidosData[delegacion]) fallidosData[delegacion] = {};
+                    if (!fallidosData[delegacion][cliente]) fallidosData[delegacion][cliente] = 0;
+
+                    fallidosData[delegacion][cliente]++;
+                    granTotalFallidos++;
+                }
+            });
+
+            if (granTotalFallidos > 0) {
+                matrizResumenGeneral.push(['']);
+                matrizResumenGeneral.push(['']);
+                matrizResumenGeneral.push(['Cuenta de Cliente', 'Etiquetas de columna']);
+                matrizResumenGeneral.push(['Etiquetas de fila', 'Fallido']);
+
+                for (const [delegacion, clientes] of Object.entries(fallidosData)) {
+                    let totalDelegacion = 0;
+                    for (const count of Object.values(clientes)) totalDelegacion += count;
+
+                    matrizResumenGeneral.push(['- ' + delegacion, totalDelegacion]);
+
+                    for (const [cliente, count] of Object.entries(clientes)) {
+                        matrizResumenGeneral.push(['    ' + cliente, count]);
+                    }
                 }
             }
 
-        }
-        // Convertir la matriz a hoja de Excel
-        let wsResumen = XLSX.utils.aoa_to_sheet(matrizResumenGeneral);
-
-        let wscols = [{
-            wch: 40
-        }, {
-            wch: 20
-        }];
-        columnasTipos.forEach(() => wscols.push({
-            wch: 20
-        }));
-        wsResumen['!cols'] = wscols;
-
-        XLSX.utils.book_append_sheet(workbook, wsResumen, "RESUMEN GENERAL");
-
-        // ---------------------------------------------------------
-        // PASO 4: CREAR HOJAS INDIVIDUALES POR TÉCNICO
-        // ---------------------------------------------------------
-        for (const [nombreTecnico, datos] of Object.entries(resumen)) {
-            let fechasObj = datos.fechas;
-            let fechasOrdenadas = Object.keys(fechasObj).sort();
-            let totalServiciosTecnico = Object.values(fechasObj).reduce((a, b) => a + b.cantidad, 0);
-
-            let matriz = [];
-            matriz.push(['FECHA', 'PRIMERA ENTRADA', 'ÚLTIMA SALIDA', 'CANTIDAD', 'CALIDAD', 'OTROS', 'KISAN', 'CRP', 'TOTAL SERVICIOS']);
-            matriz.push([nombreTecnico.toUpperCase(), '', '', '', '', '', '', '', totalServiciosTecnico]);
-
-            fechasOrdenadas.forEach(fecha => {
-                let dataDia = fechasObj[fecha];
-                let hIn = (dataDia.primera_entrada === "23:59:59") ? "--" : dataDia.primera_entrada;
-                let hOut = (dataDia.ultima_salida === "00:00:00") ? "--" : dataDia.ultima_salida;
-
-                matriz.push([
-                    fecha, hIn, hOut, dataDia.cantidad, '', '', '', '', dataDia.cantidad
-                ]);
-            });
-
-            let ws = XLSX.utils.aoa_to_sheet(matriz);
-            ws['!cols'] = [{
-                wch: 12
-            }, {
-                wch: 18
-            }, {
-                wch: 18
-            }, {
-                wch: 10
-            }, {
-                wch: 10
-            }, {
-                wch: 10
-            }, {
-                wch: 10
-            }, {
-                wch: 10
+            let wsResumen = XLSX.utils.aoa_to_sheet(matrizResumenGeneral);
+            let wscols = [{
+                wch: 40
             }, {
                 wch: 20
             }];
-            ws['!merges'] = [{
-                s: {
-                    r: 1,
-                    c: 0
-                },
-                e: {
-                    r: 1,
-                    c: 7
-                }
-            }];
+            columnasTipos.forEach(() => wscols.push({
+                wch: 20
+            }));
+            wsResumen['!cols'] = wscols;
 
-            let nombreHoja = nombreTecnico.replace(/[\\/?*\[\]]/g, "").substring(0, 30);
-            XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
-        }
+            XLSX.utils.book_append_sheet(workbook, wsResumen, "RESUMEN GENERAL");
 
-        if (hayDatos) {
-            let fechaHoy = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-            XLSX.writeFile(workbook, `Reporte_Técnico_Detallado_${fechaHoy}.xlsx`);
+            // ---------------------------------------------------------
+            // PASO 4: CREAR HOJAS INDIVIDUALES POR TÉCNICO
+            // ---------------------------------------------------------
+            tecnicosOrdenados.forEach(nombreTecnico => {
+                let datos = resumen[nombreTecnico];
+                let fechasObj = datos.fechas;
+                let fechasOrdenadas = Object.keys(fechasObj).sort();
+                let totalServiciosTecnico = Object.values(fechasObj).reduce((a, b) => a + b.cantidad, 0);
+
+                let matriz = [];
+                matriz.push(['FECHA', 'PRIMERA ENTRADA', 'ÚLTIMA SALIDA', 'CANTIDAD', 'CALIDAD', 'OTROS', 'KISAN', 'CRP', 'TOTAL SERVICIOS']);
+                matriz.push([nombreTecnico.toUpperCase(), '', '', '', '', '', '', '', totalServiciosTecnico]);
+
+                fechasOrdenadas.forEach(fecha => {
+                    let dataDia = fechasObj[fecha];
+                    let hIn = (dataDia.primera_entrada === "23:59:59") ? "--" : dataDia.primera_entrada;
+                    let hOut = (dataDia.ultima_salida === "00:00:00") ? "--" : dataDia.ultima_salida;
+
+                    matriz.push([
+                        fecha, hIn, hOut, dataDia.cantidad, '', '', '', '', dataDia.cantidad
+                    ]);
+                });
+
+                let ws = XLSX.utils.aoa_to_sheet(matriz);
+                ws['!cols'] = [{
+                        wch: 12
+                    }, {
+                        wch: 18
+                    }, {
+                        wch: 18
+                    }, {
+                        wch: 10
+                    }, {
+                        wch: 10
+                    },
+                    {
+                        wch: 10
+                    }, {
+                        wch: 10
+                    }, {
+                        wch: 10
+                    }, {
+                        wch: 20
+                    }
+                ];
+                ws['!merges'] = [{
+                    s: {
+                        r: 1,
+                        c: 0
+                    },
+                    e: {
+                        r: 1,
+                        c: 7
+                    }
+                }];
+
+                let nombreHoja = nombreTecnico.replace(/[\\/?*\[\]]/g, "").substring(0, 30);
+                // Asegurar que el nombre de la hoja no esté vacío
+                if (!nombreHoja) nombreHoja = "Técnico";
+                XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
+            });
+
+            if (hayDatos) {
+                let fechaHoy = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+                XLSX.writeFile(workbook, `Reporte_Técnico_Detallado_${fechaHoy}.xlsx`);
+            } else {
+                alert("No se generaron datos para el reporte.");
+            }
+
+        } catch (error) {
+            console.error("Error al generar Excel:", error);
+            alert("Ocurrió un error al generar el Excel: " + error.message + "\n\nRevisa la consola (F12) para más detalles.");
         }
     }
 </script>

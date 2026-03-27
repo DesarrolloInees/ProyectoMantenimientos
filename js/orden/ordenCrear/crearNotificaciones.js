@@ -320,7 +320,7 @@ function notificarFilaEliminada(numeroFila) {
  */
 function notificarAutoGuardado() {
     const mensaje = `💾 Progreso guardado automáticamente<br>🔒 Tus datos están seguros`;
-    mostrarNotificacion(mensaje, 'guardado', 2000);
+    mostrarNotificacion(mensaje, 'guardado');
 }
 
 /**

@@ -53,7 +53,7 @@ function guardarProgresoLocal() {
     if (!window._contadorAutoGuardado) window._contadorAutoGuardado = 0;
     window._contadorAutoGuardado++;
 
-    if (window._contadorAutoGuardado % 5 === 0) {
+    if (window._contadorAutoGuardado % 15 === 0) {
         window.CrearNotificaciones.notificarAutoGuardado();
     }
 }

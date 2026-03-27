@@ -127,6 +127,32 @@ class tecnicoProgramacionControlador
         exit;
     }
 
+    // ── ENDPOINT PARA INICIAR SERVICIO (GPS) ──
+    public function ajaxIniciarServicio()
+    {
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idUsuario = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
+        $idOrden = isset($_POST['id_orden']) ? (int)$_POST['id_orden'] : 0;
+        $lat = isset($_POST['latitud_inicio']) ? $_POST['latitud_inicio'] : null;
+        $lon = isset($_POST['longitud_inicio']) ? $_POST['longitud_inicio'] : null;
+
+        if ($idUsuario === 0 || $idOrden === 0 || !$lat || !$lon) {
+            echo json_encode(["success" => false, "msj" => "Faltan permisos de GPS o la sesión expiró."]);
+            exit;
+        }
+
+        $guardado = $this->modelo->iniciarServicioGPS($idOrden, $lat, $lon);
+
+        if ($guardado) {
+            echo json_encode(["success" => true]);
+        } else {
+            echo json_encode(["success" => false, "msj" => "Error al guardar ubicación de inicio en la base de datos."]);
+        }
+        exit;
+    }
+
     public function ajaxObtenerTiposMantenimiento()
     {
         while (ob_get_level()) ob_end_clean();

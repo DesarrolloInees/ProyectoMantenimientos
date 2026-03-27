@@ -130,19 +130,29 @@ class importarExcelModels
             // Izquierda: Como viene MAL en el Excel
             // Derecha: Como DEBE SER en tu Base de Datos (El que tiene la tarifa)
             $mapaCorrecciones = [
-                'MACH 6'      => 'MATCH 6',    // Corrige el nombre
-                'MACH6'       => 'MATCH 6',
-                'SDM 500'     => 'SDM-500',    // Estandariza el guion
-                'SDM 100'     => 'SDM-100',
+                'MACH 6'      => 'MATCH-6',    // Corrige el nombre
+                'MACH6'       => 'MATCH-6',
+                'SDM 500'     => 'SDM-500',    
                 'SDM500'      => 'SDM-500',
+                'SDM 100'     => 'SDM-100',
+                'SDM100'      => 'SDM-100',
                 'SDM 10'      => 'SDM-10',
                 'SDM10'       => 'SDM-10',
+                'SDM 10 XS'   => 'SDM-10-XS',
+                'SDM 10XS'    => 'SDM-10-XS',
+                'SDM10 XS'    => 'SDM-10-XS',
+                'SDM-10XS'    => 'SDM-10-XS',
+                'SDM- 10X'    => 'SDM-10-XS',
                 'JH 600'      => 'JH-600',
                 'JH600'       => 'JH-600',
-                'MINI MEI'    => 'MINI MEI',   // A veces viene 'MINIMEI'
+                'JH 6000'     => 'JH-6000',
+                'JH6000'      => 'JH-6000',
+                'MINI MEI'    => 'MINI MEI',   
                 'MINIMEI'     => 'MINI MEI',
                 'PS3000'      => 'PS-3000',
-                'SNBC'     => 'PRO EFECTIVO X', // Ejemplo: Si quieres forzar un cambio radical
+                'SNBC'        => 'PRO EFECTIVO X', 
+                'DF 4'        => 'DF4',
+                'LOGY SAFE'   => 'LOGY-SAFE',
                 ''
                 // ... Agrega aquí todos los casos que veas en tu Excel ...
             ];
@@ -168,10 +178,10 @@ class importarExcelModels
             // Opción B (RECOMENDADA): Asignar un ID por defecto "DESCONOCIDO" para no ensuciar la BD.
 
             /* Si quieres evitar que se creen basuras nuevas, descomenta esto y devuelve el ID 
-           de un tipo "GENÉRICO" o "POR DEFINIR" que tengas en tu BD (ej. ID 99).
-           
-           return 99; 
-        */
+            de un tipo "GENÉRICO" o "POR DEFINIR" que tengas en tu BD (ej. ID 99).
+
+            return 99; 
+            */
 
             // Si prefieres que siga creando los nuevos (pero ya filtraste los errores comunes arriba):
             $sqlIns = "INSERT INTO tipo_maquina (nombre_tipo_maquina, estado) VALUES (:nom, 1)";

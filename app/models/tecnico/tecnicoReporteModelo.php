@@ -265,13 +265,15 @@ class tecnicoReporteModelo
     public function guardarDatosComplementarios($datosComp)
     {
         try {
-            // Usamos VALUES(columna) para no repetir los bind parameters de PDO, esto evita errores silenciosos
+            // Agregamos latitud_fin y longitud_fin al INSERT y al UPDATE
             $sql = "INSERT INTO ordenes_servicio_complemento (
                         id_orden_servicio, numero_maquina, serial_maquina, serial_router, 
-                        serial_ups, pendientes, administrador_punto, celular_encargado, id_estado_inicial, estado
+                        serial_ups, pendientes, administrador_punto, celular_encargado, id_estado_inicial, 
+                        latitud_fin, longitud_fin, estado
                     ) VALUES (
                         :id_orden, :num_maq, :ser_maq, :ser_rout, 
-                        :ser_ups, :pendientes, :admin, :celular, :est_ini, 1
+                        :ser_ups, :pendientes, :admin, :celular, :est_ini, 
+                        :lat_fin, :lon_fin, 1
                     ) ON DUPLICATE KEY UPDATE 
                         numero_maquina = VALUES(numero_maquina),
                         serial_maquina = VALUES(serial_maquina),
@@ -280,7 +282,9 @@ class tecnicoReporteModelo
                         pendientes = VALUES(pendientes),
                         administrador_punto = VALUES(administrador_punto),
                         celular_encargado = VALUES(celular_encargado),
-                        id_estado_inicial = VALUES(id_estado_inicial)";
+                        id_estado_inicial = VALUES(id_estado_inicial),
+                        latitud_fin = VALUES(latitud_fin),
+                        longitud_fin = VALUES(longitud_fin)";
 
             $stmt = $this->conn->prepare($sql);
             
@@ -293,10 +297,12 @@ class tecnicoReporteModelo
                 ':pendientes' => $datosComp['pendientes'],
                 ':admin'      => $datosComp['administrador_punto'],
                 ':celular'    => $datosComp['celular_encargado'],
-                ':est_ini'    => $datosComp['id_estado_inicial']
+                ':est_ini'    => $datosComp['id_estado_inicial'],
+                // ---> NUEVO: Pasamos los parámetros <---
+                ':lat_fin'    => $datosComp['latitud_fin'],
+                ':lon_fin'    => $datosComp['longitud_fin']
             ]);
 
-            // Si falla, lo escribimos en el log de errores de PHP para saber exactamente por qué
             if (!$resultado) {
                 error_log("Fallo SQL Complemento: " . print_r($stmt->errorInfo(), true));
             }
