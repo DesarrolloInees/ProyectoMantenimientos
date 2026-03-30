@@ -735,6 +735,7 @@
 <!-- INYECCIÓN PHP → JS -->
 <script>
     window.DetalleConfig = window.DetalleConfig || {};
+    window.DetalleConfig.BASE_URL = '<?= BASE_URL ?>'; // <--- AGREGA ESTA LÍNEA
     window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos  ?? []) ?>;
     window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos   ?? []) ?>;
     window.DetalleConfig.listaNovedades = <?= json_encode($listaNovedades  ?? []) ?>;

@@ -228,6 +228,22 @@
         }
     });
 
+    // ==========================================
+    // NUEVO: Buscar al presionar ENTER
+    // ==========================================
+    $('#busqRemision, #busqFechaInicio, #busqFechaFin').on('keydown', function(e) {
+        // Verificamos si la tecla presionada es Enter (código 13)
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault(); // Evita que la página intente recargarse o hacer un submit
+            
+            // Cambiamos el foco del input para que se cierre el teclado en móviles
+            $(this).blur(); 
+            
+            // Disparamos la búsqueda que ya tienes programada
+            realizarBusqueda(); 
+        }
+    });
+
     // Función de búsqueda (Mantener igual)
     function realizarBusqueda() {
         // ... tu código de búsqueda ...

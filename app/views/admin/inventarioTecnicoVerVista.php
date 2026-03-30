@@ -145,37 +145,57 @@
         });
     });
 
-    // 4. Función JS para generar el Excel usando SheetJS
+    // 4. Función JS para generar el Excel usando SheetJS (Separado por Técnico)
     function generarExcelInventario() {
         if (datosInventario.length === 0) {
             alert("No hay datos de inventario para exportar");
             return;
         }
 
-        // Mapeamos los datos para que las columnas tengan nombres bonitos
-        const datosExcel = datosInventario.map(d => ({
-            "Técnico": d.nombre_tecnico,
-            "Repuesto": d.nombre_repuesto,
-            "Referencia": d.codigo_referencia || "S/R",
-            "Cantidad Actual": d.cantidad_actual,
-            "Última Actualización": d.ultima_actualizacion
-        }));
-
-        const ws = XLSX.utils.json_to_sheet(datosExcel);
         const wb = XLSX.utils.book_new();
 
-        // Ajustamos ancho de columnas (Opcional pero recomendado)
-        ws['!cols'] = [
-            {wch: 25}, // Técnico
-            {wch: 30}, // Repuesto
-            {wch: 15}, // Ref
-            {wch: 15}, // Cantidad
-            {wch: 20}  // Fecha
-        ];
-
-        XLSX.utils.book_append_sheet(wb, ws, "Inventario");
+        // 1. Agrupar los datos por técnico
+        const datosPorTecnico = {};
         
-        // Generamos el nombre del archivo con la fecha de hoy
+        datosInventario.forEach(d => {
+            const tecnico = d.nombre_tecnico || "Sin Asignar";
+            
+            // Si el técnico no existe en nuestro objeto, le creamos su array
+            if (!datosPorTecnico[tecnico]) {
+                datosPorTecnico[tecnico] = [];
+            }
+            
+            // Metemos el repuesto en el array de este técnico
+            // Quitamos la columna "Técnico" porque ya va a ser el nombre de la hoja
+            datosPorTecnico[tecnico].push({
+                "Repuesto": d.nombre_repuesto,
+                "Referencia": d.codigo_referencia || "S/R",
+                "Cantidad Actual": d.cantidad_actual,
+                "Última Actualización": d.ultima_actualizacion
+            });
+        });
+
+        // 2. Iterar sobre cada técnico para crear su propia hoja
+        for (const tecnico in datosPorTecnico) {
+            const ws = XLSX.utils.json_to_sheet(datosPorTecnico[tecnico]);
+
+            // Ajustamos ancho de columnas
+            ws['!cols'] = [
+                {wch: 35}, // Repuesto
+                {wch: 15}, // Ref
+                {wch: 15}, // Cantidad Actual
+                {wch: 25}  // Última Actualización
+            ];
+
+            // IMPORTANTÍSIMO: Excel no permite ciertos caracteres en los nombres de las hojas 
+            // y el límite máximo es de 31 caracteres. Limpiamos el nombre:
+            let nombreHoja = tecnico.replace(/[\\/?*\[\]:]/g, "").substring(0, 31);
+
+            // Agregamos la hoja al libro (Workbook)
+            XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+        }
+        
+        // 3. Generamos el archivo
         const fechaHoy = new Date().toISOString().slice(0,10);
         XLSX.writeFile(wb, `Inventario_Tecnicos_${fechaHoy}.xlsx`);
     }

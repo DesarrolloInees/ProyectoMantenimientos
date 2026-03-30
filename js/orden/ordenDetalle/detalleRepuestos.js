@@ -217,9 +217,10 @@ async function abrirModalRepuestos(idFila) {
  * Función auxiliar para convertir AJAX de jQuery a Promesa (para usar await)
  */
 function cargarStockTecnicoPromesa(idTecnico) {
+    const urlAjax = (window.DetalleConfig.BASE_URL || '') + "ordenDetalle";
     return new Promise((resolve, reject) => {
         $.ajax({
-            url: "index.php?pagina=ordenDetalle",
+            url: urlAjax, // <-- URL corregida
             type: "POST",
             data: {
                 accion: "ajaxObtenerStockTecnico",
@@ -257,10 +258,9 @@ function agregarRepuestoALista() {
         return;
     }
 
-    // Obtener datos del option seleccionado
     const optionElement = $(dataSelect[0].element);
     const stockDisponible = parseInt(optionElement.attr("data-stock")) || 0;
-    const nombreLimpio = optionElement.attr("data-nombre-limpio") || dataSelect[0].text; // Usamos el nombre limpio
+    const nombreLimpio = optionElement.attr("data-nombre-limpio") || dataSelect[0].text;
 
     const origen = document.getElementById("select_origen_modal").value;
     const cantidadVal = document.getElementById("cantidad_repuesto_modal").value;
@@ -276,9 +276,6 @@ function agregarRepuestoALista() {
         return;
     }
 
-    // ===============================================
-    // 🔥 VALIDACIÓN DE STOCK (Solo para INEES)
-    // ===============================================
     if (origen === 'INEES') {
         if (cantidad > stockDisponible) {
             alert(`🛑 STOCK INSUFICIENTE (INEES)\n\n` +
@@ -288,12 +285,17 @@ function agregarRepuestoALista() {
             return;
         }
     }
-    // Si es PROSEGUR, pasa sin validar stock.
 
-    // Bloquear botón para evitar doble click
+    // Bloquear botones para evitar Race Conditions
     let btnAdd = document.querySelector('#modalRepuestos button[onclick="agregarRepuestoALista()"]');
+    let btnConfirm = document.querySelector('#modalRepuestos button[onclick="guardarCambiosModal()"]');
+    
     btnAdd.disabled = true;
     btnAdd.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    if(btnConfirm) {
+        btnConfirm.disabled = true;
+        btnConfirm.classList.add('opacity-50', 'cursor-not-allowed');
+    }
 
     let fd = new FormData();
     fd.append("accion", "ajaxGestionarRepuestoRT");
@@ -304,37 +306,30 @@ function agregarRepuestoALista() {
     fd.append("origen", origen);
     fd.append("id_tecnico", idTecnico);
 
-    fetch("index.php?pagina=ordenDetalle", { method: "POST", body: fd })
-        .then((res) => res.json())
+    const urlAjax = (window.DetalleConfig.BASE_URL || '') + "ordenDetalle"; // <-- URL Dinámica
+
+    fetch(urlAjax, { method: "POST", body: fd })
+        .then((res) => {
+            if (!res.ok) throw new Error("Fallo en la respuesta del servidor");
+            return res.json();
+        })
         .then((data) => {
             if (data.status === "ok") {
-
-                // ===============================================
-                // 🎨 ACTUALIZACIÓN VISUAL (Si es INEES)
-                // ===============================================
                 if (origen === 'INEES') {
                     let nuevoStock = stockDisponible - cantidad;
-
-                    // Actualizar atributo data-stock
                     optionElement.attr("data-stock", nuevoStock);
 
-                    // Actualizar texto visual del select (Icono y cantidad)
-                    let nuevoTextoOption = "";
-                    if (nuevoStock > 0) {
-                        nuevoTextoOption = `✅ ${nombreLimpio} (Stock Mío: ${nuevoStock})`;
-                    } else {
-                        nuevoTextoOption = `📦 ${nombreLimpio} (Sin Stock)`;
-                    }
+                    let nuevoTextoOption = nuevoStock > 0 
+                        ? `✅ ${nombreLimpio} (Stock Técnico: ${nuevoStock})` 
+                        : `📦 ${nombreLimpio} (Sin Stock)`;
 
-                    // Actualizar DOM y Select2
                     optionElement.text(nuevoTextoOption);
                     select.trigger("change.select2");
                 }
 
-                // Agregar a la lista visual inferior
                 window.DetalleConfig.repuestosTemporales.push({
                     id: idRepuesto,
-                    nombre: nombreLimpio, // Guardamos el nombre limpio sin "(Stock...)"
+                    nombre: nombreLimpio,
                     origen: origen,
                     cantidad: cantidad
                 });
@@ -342,18 +337,25 @@ function agregarRepuestoALista() {
                 renderizarListaVisual();
                 actualizarBotonFila(idOrden);
 
-                // Feedback UX
                 document.getElementById('cantidad_repuesto_modal').value = "1";
                 select.val(null).trigger('change');
-
             } else {
-                alert("❌ Error: " + data.msg);
+                alert("❌ Error del servidor: " + data.msg);
             }
         })
-        .catch((err) => console.error(err))
+        .catch((err) => {
+            console.error(err);
+            // ALERTA CRÍTICA: Ya no falla en silencio
+            alert("❌ Ocurrió un error de red al guardar el repuesto. Por favor, verifica tu conexión e intenta de nuevo."); 
+        })
         .finally(() => {
+            // Desbloquear botones
             btnAdd.disabled = false;
             btnAdd.innerHTML = '<i class="fas fa-plus"></i>';
+            if(btnConfirm) {
+                btnConfirm.disabled = false;
+                btnConfirm.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         });
 }
 
@@ -417,14 +419,15 @@ function borrarRepuestoTemporal(index) {
     fd.append("origen", item.origen);
     fd.append("id_tecnico", idTecnico);
 
-    fetch("index.php?pagina=ordenDetalle", { method: "POST", body: fd })
-        .then((res) => res.json())
+    const urlAjax = (window.DetalleConfig.BASE_URL || '') + "ordenDetalle"; // <-- URL Dinámica
+
+    fetch(urlAjax, { method: "POST", body: fd })
+        .then((res) => {
+            if (!res.ok) throw new Error("Fallo en la respuesta del servidor");
+            return res.json();
+        })
         .then((data) => {
             if (data.status === "ok") {
-
-                // ===============================================
-                // 🎨 DEVOLVER STOCK VISUALMENTE (Si era INEES)
-                // ===============================================
                 if (item.origen === 'INEES') {
                     const select = $("#select_repuesto_modal");
                     const option = select.find(`option[value="${item.id}"]`);
@@ -435,11 +438,9 @@ function borrarRepuestoTemporal(index) {
                         let nuevoStock = stockActual + cantidadDevuelta;
                         let nombreLimpio = option.attr("data-nombre-limpio") || item.nombre;
 
-                        // Actualizar data y texto
                         option.attr("data-stock", nuevoStock);
                         option.text(`✅ ${nombreLimpio} (Stock Mío: ${nuevoStock})`);
 
-                        // Refrescar si está seleccionado
                         if (select.val() == item.id) {
                             select.trigger("change.select2");
                         }
@@ -453,6 +454,10 @@ function borrarRepuestoTemporal(index) {
             } else {
                 alert("Error al eliminar: " + data.msg);
             }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert("❌ Error de red al intentar eliminar el repuesto.");
         });
 }
 
