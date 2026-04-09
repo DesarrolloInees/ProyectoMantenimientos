@@ -5,6 +5,15 @@
  * Fusión: Seguridad estricta del proyecto antiguo + Arquitectura MVC del nuevo.
  */
 
+// --- 0. CARGAR COMPOSER (NUEVO) ---
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+    
+    // Inicializar variables de entorno
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->load();
+}
+
 // --- 1. CONFIGURACIÓN INICIAL ---
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
