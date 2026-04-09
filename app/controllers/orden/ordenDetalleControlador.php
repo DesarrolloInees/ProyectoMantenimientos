@@ -441,7 +441,7 @@ class ordenDetalleControlador
         }
 
         // 🚨 CLAVE DE GROQ CLOUD - TOTALMENTE GRATIS 🚨
-        $apiKey = "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"; 
+        $apiKey = getenv('GROQ_API_KEY');
         
         // La URL de Groq es compatible con el estándar de OpenAI
         $url = 'https://api.groq.com/openai/v1/chat/completions';
