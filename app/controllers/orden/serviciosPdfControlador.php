@@ -33,7 +33,22 @@ class serviciosPdfControlador
         ob_clean();
         header('Content-Type: application/json');
         
-        $datos = $this->modelo->listarServiciosParaPdf();
+        // 1. Obtener el rol del usuario correctamente
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        // AQUÍ USAMOS nivel_acceso COMO EN EL LOGIN
+        $idRolUsuario = isset($_SESSION['nivel_acceso']) ? $_SESSION['nivel_acceso'] : null;
+        
+        // 2. Lógica de restricción
+        $mesesRestriccion = 0;
+        if ($idRolUsuario == 4) {
+            $paramValor = $this->modelo->obtenerParametro('meses_restriccion_prosegur');
+            $mesesRestriccion = $paramValor ? (int)$paramValor : 1; // 1 mes por defecto
+        }
+        
+        // 3. Pasar los datos al modelo
+        $datos = $this->modelo->listarServiciosParaPdf($idRolUsuario, $mesesRestriccion);
         
         echo json_encode(['data' => $datos], JSON_UNESCAPED_UNICODE);
         exit;

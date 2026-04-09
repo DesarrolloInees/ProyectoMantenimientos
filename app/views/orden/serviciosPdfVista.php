@@ -24,9 +24,13 @@
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
 <script>
     $(document).ready(function () {
         $('#tablaPdf').DataTable({
+            responsive: true, // <--- AGREGAR ESTA LÍNEA
             "ajax": {
                 // Apunta al controlador nuevo
                 "url": "index.php?pagina=serviciosPdf&accion=ajaxListar",
@@ -74,7 +78,7 @@
                 [0, "desc"] // Luego por ID descendente
             ],
             "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+                "url": "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
             }
         });
     });

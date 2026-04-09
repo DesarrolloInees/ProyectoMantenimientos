@@ -10,9 +10,18 @@ class serviciosPdfModelo
         $this->conn = $db;
     }
 
-    public function listarServiciosParaPdf()
+    public function listarServiciosParaPdf($idRol = null, $mesesRestriccion = 0)
     {
-        // Consulta optimizada para traer solo lo esencial para el listado
+        // Condición dinámica para el rol 4
+        $condicionWhere = "";
+        $params = [];
+
+        if ($idRol == 4 && $mesesRestriccion > 0) {
+            // Ocultar registros cuya fecha_visita sea mayor a la fecha de hace X meses
+            $condicionWhere = " WHERE o.fecha_visita <= DATE_SUB(CURDATE(), INTERVAL ? MONTH) ";
+            $params[] = $mesesRestriccion;
+        }
+
         $sql = "SELECT 
                     o.id_ordenes_servicio,
                     o.numero_remision,
@@ -23,7 +32,6 @@ class serviciosPdfModelo
                 FROM ordenes_servicio o
                 LEFT JOIN tecnico t ON o.id_tecnico = t.id_tecnico
                 
-                -- Relaciones para sacar el cliente y punto (directo o por máquina)
                 LEFT JOIN cliente c_directo ON o.id_cliente = c_directo.id_cliente
                 LEFT JOIN punto p_directo ON o.id_punto = p_directo.id_punto
                 
@@ -31,12 +39,14 @@ class serviciosPdfModelo
                 LEFT JOIN punto p_maq ON m.id_punto = p_maq.id_punto
                 LEFT JOIN cliente c_maq ON p_maq.id_cliente = c_maq.id_cliente
                 
+                $condicionWhere
+                
                 ORDER BY o.fecha_visita DESC, o.id_ordenes_servicio DESC
-                LIMIT 1000"; // Límite por precaución para no saturar si hay muchos registros
+                LIMIT 1000";
 
         try {
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute();
+            $stmt->execute($params); // Pasamos los parámetros de la consulta preparada
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Error SQL en serviciosPdfModelo: " . $e->getMessage());
@@ -155,6 +165,50 @@ class serviciosPdfModelo
         } catch (PDOException $e) {
             error_log("Error obteniendo novedades para PDF: " . $e->getMessage());
             return [];
+        }
+    }
+
+    public function obtenerParametro($clave)
+    {
+        $sql = "SELECT valor FROM parametros WHERE clave = ?";
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$clave]);
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $resultado ? $resultado['valor'] : null;
+        } catch (PDOException $e) {
+            error_log("Error obteniendo parámetro: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function puedeVerOrden($idOrden, $idRol, $mesesRestriccion)
+    {
+        // Si no es rol 4 o no hay restricción, pasa directo
+        if ($idRol != 4 || $mesesRestriccion <= 0) {
+            return true;
+        }
+
+        $sql = "SELECT fecha_visita FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idOrden]);
+            $orden = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$orden || empty($orden['fecha_visita'])) {
+                return false; // Si no existe la orden, bloqueamos por seguridad
+            }
+
+            // Validar la fecha
+            $fechaVisita = new DateTime($orden['fecha_visita']);
+            $fechaPermitida = new DateTime("- $mesesRestriccion months");
+
+            // Solo retorna true si la fecha de visita es igual o anterior a la fecha permitida
+            return $fechaVisita <= $fechaPermitida;
+
+        } catch (PDOException $e) {
+            error_log("Error validando acceso a orden: " . $e->getMessage());
+            return false;
         }
     }
 }

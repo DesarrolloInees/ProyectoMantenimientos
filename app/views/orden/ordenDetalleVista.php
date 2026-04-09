@@ -762,6 +762,65 @@
         }
     });
 
+
+    // ==========================================
+    // MAGIA CON IA PARA REESCRIBIR TEXTOS
+    // ==========================================
+    async function mejorarTextoIA(boton, idFila) {
+        const textarea = document.getElementById(`obs_${idFila}`);
+        const textoOriginal = textarea.value.trim();
+
+        if (textoOriginal === '') {
+            alert("⚠️ No hay texto escrito para mejorar.");
+            return;
+        }
+
+        // 1. Cambiamos el botón para mostrar que está cargando
+        const iconoOriginal = boton.innerHTML;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        boton.disabled = true;
+        boton.classList.add('opacity-100', 'bg-indigo-600', 'text-white');
+
+        try {
+            // 2. Preparamos los datos para enviar al controlador
+            const formData = new FormData();
+            formData.append('accion', 'ajaxMejorarTextoIA');
+            formData.append('texto', textoOriginal);
+
+            // 3. Hacemos la petición AJAX
+            const response = await fetch(window.DetalleConfig.BASE_URL + 'ordenDetalle', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                // 4. Reemplazamos el texto
+                textarea.value = data.texto_mejorado;
+                
+                // Efectito visual bacano para que el usuario note el cambio (un verde suave)
+                textarea.style.backgroundColor = '#ecfdf5';
+                textarea.style.borderColor = '#34d399';
+                setTimeout(() => {
+                    textarea.style.backgroundColor = '';
+                    textarea.style.borderColor = '';
+                }, 1500);
+
+            } else {
+                alert("❌ Error procesando con IA: " + data.msg);
+            }
+        } catch (error) {
+            console.error("Error conectando con la IA", error);
+            alert("❌ Error de conexión con el servidor.");
+        } finally {
+            // 5. Restauramos el botón
+            boton.innerHTML = iconoOriginal;
+            boton.disabled = false;
+            boton.classList.remove('opacity-100', 'bg-indigo-600', 'text-white');
+        }
+    }
+
     // ==========================================
     // NUEVO: INTERCEPTOR DE GUARDADO
     // ==========================================

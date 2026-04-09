@@ -42,6 +42,8 @@ class ordenDetalleControlador
             // ✅ NUEVO: Remisiones disponibles del técnico
             if ($accion === 'ajaxObtenerRemisiones')      $this->ajaxObtenerRemisiones();
             if ($accion === 'ajaxExportarDetalle') $this->ajaxExportarDetalle();
+            // ✅ NUEVO: LLAMADA A LA IA
+            if ($accion === 'ajaxMejorarTextoIA')         $this->ajaxMejorarTextoIA();
             
         }
     }
@@ -420,6 +422,74 @@ class ordenDetalleControlador
             'status' => 'ok',
             'datos'  => $servicios
         ]);
+        exit;
+    }
+
+    // ============================================================
+    // INTEGRACIÓN CON IA (GROQ API - GRATIS Y SÚPER RÁPIDA)
+    // ============================================================
+    public function ajaxMejorarTextoIA()
+    {
+        ob_clean();
+        header('Content-Type: application/json');
+
+        $textoOriginal = $_POST['texto'] ?? '';
+
+        if (empty($textoOriginal)) {
+            echo json_encode(['status' => 'error', 'msg' => 'Texto vacío']);
+            exit;
+        }
+
+        // 🚨 CLAVE DE GROQ CLOUD - TOTALMENTE GRATIS 🚨
+        $apiKey = "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"; 
+        
+        // La URL de Groq es compatible con el estándar de OpenAI
+        $url = 'https://api.groq.com/openai/v1/chat/completions';
+
+        $prompt = "Eres un ingeniero supervisor de mantenimiento experto. Toma el siguiente reporte redactado por un técnico de campo y reescríbelo para que tenga una ortografía perfecta, gramática correcta y usando un lenguaje técnico, objetivo y muy profesional.\n\nReglas estrictas:\n- NO inventes repuestos, marcas o procedimientos que no estén en el texto original.\n- NO cambies ni omitas medidas (voltajes, amperajes), tiempos o códigos de error.\n- Devuelve ÚNICAMENTE el texto mejorado, sin introducciones, saludos ni comillas.\n\nTexto original: " . $textoOriginal;
+
+        $data = [
+            "model" => "llama-3.3-70b-versatile", // Modelo de código abierto, brutalmente rápido
+            "messages" => [
+                ["role" => "system", "content" => "Eres un editor técnico estricto y conciso."],
+                ["role" => "user", "content" => $prompt]
+            ],
+            "temperature" => 0.2 // Nivel bajo para mantenerlo técnico y preciso
+        ];
+
+        // Usamos cURL para consumir la API
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($httpCode == 200) {
+            $resultado = json_decode($response, true);
+            
+            // Extraemos la respuesta igual que con OpenAI
+            $textoMejorado = $resultado['choices'][0]['message']['content'] ?? '';
+            
+            echo json_encode([
+                'status' => 'ok', 
+                'texto_mejorado' => trim($textoMejorado)
+            ]);
+        } else {
+            error_log("Error Groq API: " . $response . " | cURL Error: " . $error);
+            echo json_encode([
+                'status' => 'error', 
+                'msg' => 'Fallo la API de Groq. Código: ' . $httpCode
+            ]);
+        }
         exit;
     }
 }

@@ -23,6 +23,32 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
 
 <?php else: ?>
 
+
+<?php 
+// Detectamos si es técnico
+$esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 4);
+?>
+
+<?php if ($esProsegur): ?>
+
+    <a href="<?= BASE_URL ?>inicio" 
+        class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
+        <i class="fas fa-home mr-3 w-5 text-center"></i> Inicio
+    </a>
+
+    <a href="<?= BASE_URL ?>serviciosPdf" 
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fas fa-search mr-3 w-5 text-center text-blue-300"></i> Servicios Pdf
+    </a>
+
+    <!--<a href="<?= BASE_URL ?>tecnicoProgramacion" 
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fa-regular fa-envelope mr-3 w-5 text-center text-blue-300"></i> Programación Servicios
+    </a>
+-->
+
+<?php else: ?>
+
     <a href="<?= BASE_URL ?>inicio" 
         class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
         <i class="fas fa-home mr-3 w-5 text-center"></i> Inicio
@@ -115,6 +141,9 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
             <a href="<?= BASE_URL ?>reporteMaquinas" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
                 <i class="fa-solid fa-cash-register mr-2"></i> R. Máquinas
             </a>
+            <a href="<?= BASE_URL ?>reporteHistorial" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-timeline mr-2"></i> R. Historial
+            </a>
         </div>
     </details>
 
@@ -159,6 +188,7 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
         </div>
     </details>
 
+<?php endif; ?>
 <?php endif; ?>
 
 <div class="mt-4 mb-4">

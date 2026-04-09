@@ -75,7 +75,7 @@
             <div class="md:col-span-1">
                 <label class="block text-sm font-bold text-gray-700 mb-1">Técnico</label>
                 <select name="id_tecnico" id="select_tecnico" class="select2-search w-full border border-gray-300 rounded-lg">
-                    <option value="" <?= ($filtros['id_tecnico'] == '') ? 'selected' : '' ?>>-- VER TODOS LOS SERVICIOS --</option>
+                    <option value="" <?= ($filtros['id_tecnico'] == '') ? 'selected' : '' ?>></option>
                     <?php foreach ($listaTecnicos as $t): ?>
                         <option value="<?= $t['id_tecnico'] ?>" <?= ($filtros['id_tecnico'] == $t['id_tecnico']) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($t['nombre_tecnico']) ?>
@@ -162,7 +162,8 @@
     $(document).ready(function() {
         $('.select2-search').select2({
             width: '100%',
-            placeholder: '-- Todos los Técnicos --'
+            placeholder: '-- Todos los Técnicos --',
+            allowClear: true 
         });
         if ($('#reporteTable').length) {
             $('#reporteTable').DataTable({
@@ -216,7 +217,7 @@
                 let tipoMant = item.tipo_mantenimiento || "SIN ESPECIFICAR";
 
                 let peso = 1;
-                
+
 
                 if (!resumen[tecnico]) {
                     resumen[tecnico] = {

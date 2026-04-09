@@ -19,6 +19,23 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
         class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
         <i class="fa-solid fa-envelope mr-1"></i> Programación Servicios
 -->
+<?php else: ?>
+<?php
+// Detectamos si es técnico
+$esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 4);
+?>
+
+<?php if ($esProsegur): ?>
+
+    <a href="<?= BASE_URL ?>inicio"
+        class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
+        <i class="fas fa-home mr-1"></i> Inicio
+    </a>
+
+    <a href="<?= BASE_URL ?>serviciosPdf"
+        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
+        <i class="fas fa-search mr-1"></i> Servicios Pdf
+    </a>
 
 <?php else: ?>
 
@@ -108,6 +125,9 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
             <a href="<?= BASE_URL ?>reporteMaquinas" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-cash-register w-5 text-center mr-1"></i> R. Máquinas
             </a>
+            <a href="<?= BASE_URL ?>reporteHistorial" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-timeline w-5 text-center mr-1"></i> R. Historial
+            </a>
         </div>
     </div>
 
@@ -148,4 +168,5 @@ $esTecnico = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 3
         </div>
     </div>
 
+<?php endif; ?>
 <?php endif; ?>

@@ -112,10 +112,17 @@
     </td>
 
     <!-- 8. OBSERVACIONES -->
-    <td class="p-1 bg-blue-50 border-r-4 border-blue-200">
+    <td class="p-1 bg-blue-50 border-r-4 border-blue-200 relative group">
         <textarea name="servicios[<?= $idFila ?>][obs]"
+            id="obs_<?= $idFila ?>" 
             rows="3"
-            class="w-full border rounded text-xs p-1 shadow-inner focus:bg-white transition"><?= ($s['que_se_hizo']) ?></textarea>
+            class="w-full border rounded text-xs p-1 shadow-inner focus:bg-white transition pr-7"><?= htmlspecialchars($s['que_se_hizo'], ENT_QUOTES) ?></textarea>
+
+        <button type="button" onclick="mejorarTextoIA(this, <?= $idFila ?>)"
+            class="absolute top-2 right-2 bg-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] transition-colors shadow-sm opacity-40 group-hover:opacity-100"
+            title="Mejorar redacción con IA">
+            <i class="fas fa-magic"></i>
+        </button>
     </td>
 
     <!-- 9. NOVEDAD -->

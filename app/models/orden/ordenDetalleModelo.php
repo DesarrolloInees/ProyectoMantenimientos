@@ -600,11 +600,13 @@ class ordenDetalleModelo
     private function actualizarInfoMantenimientoPunto($idPunto)
     {
         try {
+            // Buscamos la fecha MÁXIMA registrada, pero EXCLUYENDO los mantenimientos Fallidos (ID 4)
             $sql = "UPDATE punto p
                     JOIN (
                         SELECT id_punto, fecha_visita, id_tipo_mantenimiento
                         FROM ordenes_servicio
                         WHERE id_punto = :id_punto_b
+                          AND id_tipo_mantenimiento != 4 /* 🔥 IGNORAR MANTENIMIENTO FALLIDO */
                         ORDER BY fecha_visita DESC, id_ordenes_servicio DESC
                         LIMIT 1
                     ) AS ultima_real ON p.id_punto = ultima_real.id_punto

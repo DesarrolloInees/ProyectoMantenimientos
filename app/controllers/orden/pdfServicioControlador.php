@@ -32,8 +32,29 @@ class PdfServicioControlador
             die("Error: ID de orden no proporcionado.");
         }
 
-        // 2. Aquí debes traer los datos de la orden (usa la función que ya tengas o creamos una)
-        // OJO: Asumo que crearemos un método 'obtenerDatosCompletosOrden' en tu modelo
+        // =======================================================
+        // BLOQUEO DE SEGURIDAD POR URL (Para que no copien el link)
+        // =======================================================
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $idRolUsuario = isset($_SESSION['nivel_acceso']) ? $_SESSION['nivel_acceso'] : null;
+
+        if ($idRolUsuario == 4 && $idOrden) {
+            $paramValor = $this->modelo->obtenerParametro('meses_restriccion_prosegur');
+            $mesesRestriccion = $paramValor ? (int)$paramValor : 1;
+
+            if (!$this->modelo->puedeVerOrden($idOrden, $idRolUsuario, $mesesRestriccion)) {
+                die("<div style='text-align:center; margin-top:50px; font-family:sans-serif;'>
+                        <h2 style='color:red;'>Acceso Denegado</h2>
+                        <p>No tienes los permisos suficientes para ver esta orden de servicio porque aún está en periodo de restricción.</p>
+                     </div>");
+            }
+        }
+        // =======================================================
+
+        // 2. Traer los datos de la orden
         $datosOrden = $this->modelo->obtenerDatosCompletosOrden($idOrden);
 
         // También traemos las fotos de la tabla evidencia_servicio
@@ -81,8 +102,7 @@ class PdfServicioControlador
                 ->setNpmBinary($npmPath)
                 ->setOption('args', ['--no-sandbox'])
                 ->format('A4')
-                ->margins(10, 10, 10, 10) // Márgenes para el PDF
-                // ->showBrowserHeaderAndFooter() // Descomenta si quieres poner header/footer repetitivo
+                ->margins(10, 10, 10, 10)
                 ->timeout(120);
 
             if ($chromePath) {
