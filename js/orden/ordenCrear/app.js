@@ -115,7 +115,75 @@ function configurarAtajosTeclado() {
             window.StorageManager.guardarProgresoLocal();
             window.UIUtils.mostrarNotificacion('Progreso guardado', 'success');
         }
+
+        const flechas = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (flechas.includes(e.key)) {
+            // Solo actuar si estamos dentro de la tabla de servicios
+            if ($(e.target).closest('#contenedorFilas').length > 0) {
+                navegarTabla(e);
+            }
+        }
     });
+}
+
+
+/**
+ * Lógica de navegación tipo Excel (Versión Definitiva por Índice)
+ */
+function navegarTabla(e) {
+    const $actual = $(e.target);
+    const $filaActual = $actual.closest('tr');
+    
+    // Selector inteligente: 
+    // - Ignora los hidden
+    // - Ignora los readonly (para no atascarse en campos bloqueados)
+    // - Ignora los select originales que Select2 oculta (.select2-hidden-accessible)
+    const selectorDestino = 'input:not([type="hidden"]):not([readonly]), select:not(.select2-hidden-accessible), .select2-selection';
+    
+    // Obtenemos TODOS los elementos navegables de la fila actual, en perfecto orden de izquierda a derecha
+    const $elementosFila = $filaActual.find(selectorDestino);
+    
+    // Buscamos el elemento exacto en la lista (Si es un Select2, agarramos el span correcto)
+    const $elementoReferencia = $actual.closest(selectorDestino);
+    const indexActual = $elementosFila.index($elementoReferencia);
+
+    // Detectar si es un campo de opciones
+    const esCampoOpciones = $elementoReferencia.is('select') || $elementoReferencia.hasClass('select2-selection');
+
+    switch (e.key) {
+        case 'ArrowDown':
+        case 'ArrowUp':
+            e.preventDefault();
+            // Para arriba/abajo, simplemente buscamos la otra fila y enfocamos la misma posición (índice)
+            const $filaDestino = e.key === 'ArrowDown' ? $filaActual.next() : $filaActual.prev();
+            if ($filaDestino.length) {
+                $filaDestino.find(selectorDestino).eq(indexActual).focus();
+            }
+            break;
+
+        case 'ArrowRight':
+            // Saltar si es Select/Select2, o si es input y el cursor está al final del texto
+            if (esCampoOpciones || ($actual.is('input') && e.target.selectionEnd === $actual.val().length)) {
+                // Verificamos que no estemos en el último elemento
+                if (indexActual >= 0 && indexActual < $elementosFila.length - 1) {
+                    e.preventDefault();
+                    $elementosFila.eq(indexActual + 1).focus();
+                }
+            }
+            break;
+
+        case 'ArrowLeft':
+            // Saltar si es Select/Select2, o si es input y el cursor está al inicio del texto
+            if (esCampoOpciones || ($actual.is('input') && e.target.selectionStart === 0)) {
+                // Verificamos que no estemos en el primer elemento
+                if (indexActual > 0) {
+                    e.preventDefault();
+                    // Retrocedemos exactamente 1 posición (ya no te enviará a la primera columna)
+                    $elementosFila.eq(indexActual - 1).focus();
+                }
+            }
+            break;
+    }
 }
 
 /**
@@ -299,14 +367,23 @@ async function procesarGuardado() {
             if (window.StorageManager && window.StorageManager.limpiarStorageParaEnvio) {
                 window.StorageManager.limpiarStorageParaEnvio();
             }
-            document.getElementById('formServicios').submit();
+            
+            // 🔥 AQUÍ CONECTAMOS EL JSON EN VEZ DEL SUBMIT TRADICIONAL 🔥
+            if (typeof ejecutarGuardadoJSONCrear === 'function') {
+                ejecutarGuardadoJSONCrear();
+            } else {
+                console.error("No se encontró la función ejecutarGuardadoJSONCrear");
+            }
+
         }, tipoIcono);
     } else {
         if (confirm(mensajeModal.replace(/<br>/g, '\n').replace(/<b>/g, '').replace(/<\/b>/g, ''))) {
-            document.getElementById('formServicios').submit();
+            // 🔥 Y AQUÍ TAMBIÉN 🔥
+            if (typeof ejecutarGuardadoJSONCrear === 'function') {
+                ejecutarGuardadoJSONCrear();
+            }
         }
     }
-
 }
 // ==========================================
 // EXPORTAR PARA DEBUG EN CONSOLA

@@ -25,7 +25,7 @@
             <div class="card-body">
                 
                 <div class="alert alert-info alert-dismissible">
-                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true"></button>
                     <h5><i class="icon fas fa-info"></i> ¿Cómo funciona?</h5>
                     <ul class="mb-0 small">
                         <li>Sube el archivo <b>.xlsx</b>. El sistema procesará en lotes para evitar bloqueos.</li>

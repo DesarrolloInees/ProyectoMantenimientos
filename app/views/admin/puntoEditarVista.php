@@ -1,6 +1,6 @@
 <?php if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado."); ?>
 
-<div class="w-full max-w-5xl mx-auto">
+<div class="w-full max-w-4xl mx-auto">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
 
         <div class="mb-6 border-b pb-4">

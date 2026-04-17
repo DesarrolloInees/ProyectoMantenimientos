@@ -57,7 +57,7 @@
     }
 </style>
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-100">
 
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-gray-100 pb-4">

@@ -39,7 +39,7 @@
 </style>
 
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md border border-gray-100">
 
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4">
@@ -55,7 +55,7 @@
             </a>
         </div>
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 overflow-hidden">
         <table id="tablaRemisiones" class="w-full text-sm text-left text-gray-500">
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">

@@ -40,15 +40,21 @@ function cambiarPagina(dir) {
 }
 
 /**
- * Mostrar página específica
+ * Mostrar página específica y cargar plugins solo en las filas visibles
  */
 function mostrarPagina(pag) {
-    let filas = document.querySelectorAll('#tablaEdicion tbody tr');
+    let filas = document.querySelectorAll('#tablaEdicion tbody tr[id^="fila_"]');
     let inicio = (pag - 1) * window.DetalleConfig.filasPorPagina;
     let fin = inicio + window.DetalleConfig.filasPorPagina;
 
     filas.forEach((tr, i) => {
-        tr.style.display = (i >= inicio && i < fin) ? 'table-row' : 'none';
+        if (i >= inicio && i < fin) {
+            tr.style.display = 'table-row';
+            tr.classList.add('fila-activa'); // Marcamos la fila como visible
+        } else {
+            tr.style.display = 'none';
+            tr.classList.remove('fila-activa');
+        }
     });
 
     let finM = fin > window.DetalleConfig.totalFilas
@@ -58,7 +64,7 @@ function mostrarPagina(pag) {
     const textoInfo = `${inicio + 1} - ${finM} de ${window.DetalleConfig.totalFilas}`;
     const textoPagina = `${pag} / ${window.DetalleConfig.totalPaginas}`;
 
-    // ✅ Actualizar AMBOS indicadores (top y bottom)
+    // Actualizar AMBOS indicadores
     ['indicadorPagina', 'indicadorPaginaTop'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerText = textoPagina;
@@ -68,6 +74,14 @@ function mostrarPagina(pag) {
         const el = document.getElementById(id);
         if (el) el.innerText = textoInfo;
     });
+
+    // 🔥 LA MAGIA: Avisar a la App que inicialice los Select2 de esta página
+    if (window.DetalleApp && window.DetalleApp.inicializarPluginsPorPagina) {
+        // requestAnimationFrame le dice al navegador: "Primero pinta la tabla, luego carga los plugins"
+        requestAnimationFrame(() => {
+            window.DetalleApp.inicializarPluginsPorPagina();
+        });
+    }
 }
 
 // Exportar

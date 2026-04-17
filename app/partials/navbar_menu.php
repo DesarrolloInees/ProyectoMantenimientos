@@ -74,7 +74,7 @@ $esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 
         </button>
         <div class="absolute left-0 top-12 w-60 bg-white rounded-md shadow-lg py-1 hidden group-hover:block border border-gray-200 z-[9999]">
             <a href="<?= BASE_URL ?>inventarioTecnicoVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
-                <i class="fa-brands fa-centos w-5 text-center mr-1 text-yellow-600"></i> Inventario Técnicos
+                <i class="fa-brands fa-centos w-5 text-center mr-1 text-yellow-600"></i> Inventario Técnicos    
             </a>
             <a href="<?= BASE_URL ?>repuestoVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-puzzle-piece w-5 text-center mr-1"></i> Gestión Repuestos
@@ -96,6 +96,21 @@ $esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 
             </a>
             <a href="<?= BASE_URL ?>rastreoTecnico" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-street-view w-5 text-center mr-1"></i> Rastreó Técnico
+            </a>
+        </div>
+    </div>
+
+    <div class="relative group h-full flex items-center ml-2">
+        <button class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium inline-flex items-center transition">
+            <span> Transporte</span>
+            <i class="fas fa-chevron-down ml-2 text-xs opacity-75"></i>
+        </button>
+        <div class="absolute left-0 top-12 w-60 bg-white rounded-md shadow-lg py-1 hidden group-hover:block border border-gray-200 z-[9999]">
+            <a href="<?= BASE_URL ?>transporteCrear" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-truck w-5 text-center mr-1 text-yellow-600"></i> Transportes Crear
+            </a>
+            <a href="<?= BASE_URL ?>transporteVer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-truck-front w-5 text-center mr-1"></i> Transportes Ver
             </a>
         </div>
     </div>

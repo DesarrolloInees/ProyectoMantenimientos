@@ -44,6 +44,7 @@ class ordenDetalleControlador
             if ($accion === 'ajaxExportarDetalle') $this->ajaxExportarDetalle();
             // ✅ NUEVO: LLAMADA A LA IA
             if ($accion === 'ajaxMejorarTextoIA')         $this->ajaxMejorarTextoIA();
+            if ($accion === 'ajaxGuardarCambiosJSON')   $this->ajaxGuardarCambiosJSON();
             
         }
     }
@@ -103,6 +104,7 @@ class ordenDetalleControlador
         $listaModalidades = $this->modelo->obtenerModalidades();
         $listaFestivos    = $this->modelo->obtenerFestivos();
         $listaNovedades   = $this->modelo->obtenerTiposNovedad();
+        $remisionesGlobales = $this->modelo->obtenerTodasRemisionesDisponibles();
 
         $titulo = "Edición Total: " . $fecha;
 
@@ -496,6 +498,67 @@ class ordenDetalleControlador
                 'status' => 'error', 
                 'msg' => "Error $httpCode. $detalleError"
             ]);
+        }
+        exit;
+    }
+
+    // ==========================================
+    // NUEVO GUARDADO MASIVO VÍA JSON (CORREGIDO)
+    // ==========================================
+    public function ajaxGuardarCambiosJSON()
+    {
+        ob_clean(); // Limpiamos cualquier basura HTML previa
+        header('Content-Type: application/json');
+
+        // Recibimos el texto gigante y lo convertimos de vuelta a un Array de PHP
+        $servicios = isset($_POST['json_data']) ? json_decode($_POST['json_data'], true) : [];
+        $fechaOrigen = $_POST['fecha_origen'] ?? date('Y-m-d');
+
+        if (empty($servicios)) {
+            echo json_encode(['status' => 'error', 'msg' => 'No se recibieron datos para guardar.']);
+            exit;
+        }
+
+        $errores = 0;
+
+        foreach ($servicios as $id => $datos) {
+
+            // Limpiar precio
+            if (isset($datos['valor'])) {
+                $valorLimpio   = str_replace('.', '', $datos['valor']);
+                $datos['valor'] = str_replace(',', '.', $valorLimpio);
+            }
+
+            // Calcular tiempo si no viene
+            if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
+                $datos['tiempo'] = '00:00';
+                if (!empty($datos['entrada']) && !empty($datos['salida'])) {
+                    try {
+                        $d1 = new DateTime($datos['entrada']);
+                        $d2 = new DateTime($datos['salida']);
+                        if ($d2 < $d1) $d2->modify('+1 day');
+                        $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
+                    } catch (Exception $e) {}
+                }
+            }
+
+            // Fecha individual
+            if (empty($datos['fecha_individual'])) {
+                $datos['fecha_individual'] = $fechaOrigen;
+            }
+
+            // GUARDAR EN BD
+            $resultado = $this->modelo->actualizarOrdenFull($id, $datos);
+
+            if (!$resultado) {
+                $errores++;
+            }
+        }
+
+        if ($errores > 0) {
+            echo json_encode(['status' => 'warning', 'msg' => "Se guardaron los cambios, pero hubo errores en $errores filas."]);
+        } else {
+            echo json_encode(['status' => 'ok', 'msg' => '¡Todos los cambios guardados correctamente sin recargar la página!']);
         }
         exit;
     }

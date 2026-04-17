@@ -43,7 +43,7 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">

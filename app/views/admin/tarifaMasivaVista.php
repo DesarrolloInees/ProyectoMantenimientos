@@ -1,6 +1,6 @@
 <?php if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado."); ?>
 
-<div class="w-full max-w-5xl mx-auto">
+<div class="w-full max-w-4xl mx-auto">
     
     <?php if (isset($mensaje)): ?>
         <div class="<?= $tipo_mensaje == 'success' ? 'bg-green-100 text-green-700 border-green-400' : 'bg-red-100 text-red-700 border-red-400' ?> border px-4 py-3 rounded relative mb-4" role="alert">

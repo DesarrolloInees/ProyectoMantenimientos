@@ -126,32 +126,46 @@ class ordenDetalleModelo
         $stmt->execute([$fecha]);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 🔧 PROCESAR LOS RESULTADOS
-        foreach ($resultados as &$row) {
-            // YA NO convertimos texto a JSON. 
-            // Hacemos una consulta REAL para obtener ID, Cantidad y Origen correctamente.
+        // 🔧 PROCESAR LOS RESULTADOS EN BLOQUE (ADIÓS BUCLE LENTO)
+        $idsOrdenes = array_column($resultados, 'id_ordenes_servicio');
 
-            $idOrden = $row['id_ordenes_servicio'];
+        if (!empty($idsOrdenes)) {
+            // 1. Creamos interrogantes para la consulta ( ?, ?, ? )
+            $placeholders = implode(',', array_fill(0, count($idsOrdenes), '?'));
+            
+            // 2. Traemos TODOS los repuestos de todas las órdenes en UNA SOLA consulta
+            $sqlRepTodos = "SELECT osr.id_orden_servicio, r.id_repuesto as id, r.nombre_repuesto as nombre, osr.origen, osr.cantidad 
+                            FROM orden_servicio_repuesto osr
+                            JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                            WHERE osr.id_orden_servicio IN ($placeholders)";
+                            
+            $stmtRepTodos = $this->conn->prepare($sqlRepTodos);
+            $stmtRepTodos->execute($idsOrdenes);
+            $todosLosRepuestos = $stmtRepTodos->fetchAll(PDO::FETCH_ASSOC);
 
-            $sqlRep = "SELECT 
-                r.id_repuesto as id, 
-                r.nombre_repuesto as nombre, 
-                osr.origen, 
-                osr.cantidad 
-                FROM orden_servicio_repuesto osr
-                JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
-                WHERE osr.id_orden_servicio = ?";
+            // 3. Agrupamos los repuestos por ID de orden usando PHP (es instantáneo)
+            $repuestosAgrupados = [];
+            foreach ($todosLosRepuestos as $rep) {
+                $idO = $rep['id_orden_servicio'];
+                unset($rep['id_orden_servicio']); // Quitamos el ID para el JSON
+                $repuestosAgrupados[$idO][] = $rep;
+            }
 
-            $stmtRep = $this->conn->prepare($sqlRep);
-            $stmtRep->execute([$idOrden]);
-            $listaRepuestos = $stmtRep->fetchAll(PDO::FETCH_ASSOC);
-
-            // Guardamos el JSON estructura real
-            $row['repuestos_json'] = json_encode($listaRepuestos);
+            // 4. Asignamos a las filas
+            foreach ($resultados as &$row) {
+                $idOrden = $row['id_ordenes_servicio'];
+                $row['repuestos_json'] = isset($repuestosAgrupados[$idOrden]) ? json_encode($repuestosAgrupados[$idOrden]) : '[]';
+            }
+        } else {
+            // Si no hay resultados, llenamos con vacío
+            foreach ($resultados as &$row) {
+                $row['repuestos_json'] = '[]';
+            }
         }
 
+        // 🔥 ¡AQUÍ ESTÁ LA LÍNEA QUE FALTABA! 🔥
         return $resultados;
-    }
+    } // <-- Cierre correcto de la función obtenerServiciosPorFecha
 
     // ⭐⭐ FUNCIÓN PARA CONVERTIR TEXTO A JSON (MÁS ROBUSTA) ⭐⭐
     private function convertirTextoAJSON($texto)
@@ -273,7 +287,20 @@ class ordenDetalleModelo
 
     public function obtenerTodosLosTecnicos()
     {
-        return $this->conn->query("SELECT * FROM tecnico WHERE estado = 1 ORDER BY nombre_tecnico")->fetchAll(PDO::FETCH_ASSOC);
+        // 🔥 CORRECCIÓN CRÍTICA: Traemos a TODOS los técnicos.
+        // Si están desactivados, les ponemos "(INACTIVO)" al lado y los mandamos al final de la lista.
+        // Esto evita que HTML auto-seleccione al primer técnico activo cuando se editan servicios viejos.
+        $sql = "SELECT 
+                    id_tecnico, 
+                    estado,
+                    CASE 
+                        WHEN estado = 1 THEN nombre_tecnico 
+                        ELSE CONCAT(nombre_tecnico, ' (INACTIVO)') 
+                    END as nombre_tecnico 
+                FROM tecnico 
+                ORDER BY estado DESC, nombre_tecnico ASC";
+                
+        return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function obtenerTiposMantenimiento()
@@ -814,21 +841,41 @@ class ordenDetalleModelo
         $stmt->execute($params);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // ... (Mantén el foreach que procesa el JSON de repuestos igual) ...
-        foreach ($resultados as &$row) {
-            $idOrden = $row['id_ordenes_servicio'];
-            // ... (tu lógica de repuestos json) ...
-            $sqlRep = "SELECT r.id_repuesto as id, r.nombre_repuesto as nombre, osr.origen, osr.cantidad 
-                        FROM orden_servicio_repuesto osr
-                        JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
-                        WHERE osr.id_orden_servicio = ?";
-            $stmtRep = $this->conn->prepare($sqlRep);
-            $stmtRep->execute([$idOrden]);
-            $row['repuestos_json'] = json_encode($stmtRep->fetchAll(PDO::FETCH_ASSOC));
+        // 🔧 PROCESAR LOS RESULTADOS EN BLOQUE
+        $idsOrdenes = array_column($resultados, 'id_ordenes_servicio');
+
+        if (!empty($idsOrdenes)) {
+            $placeholders = implode(',', array_fill(0, count($idsOrdenes), '?'));
+
+            $sqlRepTodos = "SELECT osr.id_orden_servicio, r.id_repuesto as id, r.nombre_repuesto as nombre, osr.origen, osr.cantidad 
+                            FROM orden_servicio_repuesto osr
+                            JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                            WHERE osr.id_orden_servicio IN ($placeholders)";
+
+            $stmtRepTodos = $this->conn->prepare($sqlRepTodos);
+            $stmtRepTodos->execute($idsOrdenes);
+            $todosLosRepuestos = $stmtRepTodos->fetchAll(PDO::FETCH_ASSOC);
+
+            $repuestosAgrupados = [];
+            foreach ($todosLosRepuestos as $rep) {
+                $idO = $rep['id_orden_servicio'];
+                unset($rep['id_orden_servicio']);
+                $repuestosAgrupados[$idO][] = $rep;
+            }
+
+            foreach ($resultados as &$row) {
+                $idOrden = $row['id_ordenes_servicio'];
+                $row['repuestos_json'] = isset($repuestosAgrupados[$idOrden]) ? json_encode($repuestosAgrupados[$idOrden]) : '[]';
+            }
+        } else {
+            foreach ($resultados as &$row) {
+                $row['repuestos_json'] = '[]';
+            }
         }
 
+        // 🔥 ¡TAMBIÉN FALTABA AQUÍ! 🔥
         return $resultados;
-    }
+    } // <-- Cierre correcto de la función buscarOrdenesFiltros
 
     // ==========================================
     // 6. GESTIÓN TIEMPO REAL (AJAX)
@@ -1043,5 +1090,21 @@ class ordenDetalleModelo
     public function obtenerDelegaciones()
     {
         return $this->conn->query("SELECT id_delegacion, nombre_delegacion FROM delegacion ORDER BY nombre_delegacion ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function obtenerTodasRemisionesDisponibles()
+    {
+        $sql = "SELECT id_tecnico, numero_remision 
+                FROM control_remisiones 
+                WHERE id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1) 
+                ORDER BY CAST(numero_remision AS UNSIGNED) ASC";
+        
+        $resultados = $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        
+        $agrupado = [];
+        foreach($resultados as $r) {
+            $agrupado[$r['id_tecnico']][] = ['numero_remision' => $r['numero_remision']];
+        }
+        return $agrupado;
     }
 }

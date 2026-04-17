@@ -6,7 +6,7 @@ $tiposUsuario = $data['tiposUsuario'] ?? [];
 $errores = $data['errores'] ?? [];
 ?>
 
-<div class="w-full max-w-3xl mx-auto">
+<div class="w-full max-w-4xl mx-auto">
     <?php if ($usuario): ?>
         <div class="bg-white p-6 sm:p-8 rounded-xl shadow-md">
 

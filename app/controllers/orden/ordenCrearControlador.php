@@ -299,4 +299,89 @@ class ordenCrearControlador
         ob_end_flush();
         exit;
     }
+
+    // ==========================================
+    // NUEVO: GUARDADO MASIVO VÍA JSON (CREAR)
+    // ==========================================
+    public function ajaxGuardarJSON()
+    {
+        // Limpiamos cualquier basura HTML para que devuelva JSON puro
+        while (ob_get_level()) ob_end_clean();
+        ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $fechaReporte = $_POST['fecha_reporte'] ?? date('Y-m-d');
+            $filasJson = $_POST['json_data'] ?? '[]';
+            $filas = json_decode($filasJson, true);
+
+            if (!is_array($filas) || empty($filas)) {
+                echo json_encode(['status' => 'error', 'msg' => 'No hay datos para guardar.']);
+                exit;
+            }
+
+            $guardados = 0;
+            $errores = 0;
+            $detallesError = "";
+
+            foreach ($filas as $index => $fila) {
+
+                // 1. Validar que la fila tenga máquina
+                if (!empty($fila['id_maquina'])) {
+
+                    // Validación estricta
+                    if (empty($fila['id_cliente']) || empty($fila['id_punto'])) {
+                        $errores++;
+                        $detallesError .= "Fila #" . ($index + 1) . " rechazada: Falta Cliente o Punto. ";
+                        continue;
+                    }
+
+                    $valorLimpio = str_replace(['$', '.', ' '], '', $fila['valor'] ?? '0');
+                    $valorFinal = is_numeric($valorLimpio) ? $valorLimpio : 0;
+
+                    $datosParaModelo = [
+                        'id_orden_previa' => !empty($fila['id_orden_previa']) ? intval($fila['id_orden_previa']) : null,
+                        'remision'      => $fila['remision'] ?? '',
+                        'id_cliente'    => $fila['id_cliente'],
+                        'id_punto'      => $fila['id_punto'],
+                        'id_modalidad'  => $fila['id_modalidad'] ?? 1,
+                        'fecha'         => $fechaReporte,
+                        'id_maquina'    => $fila['id_maquina'],
+                        'id_tecnico'    => $fila['id_tecnico'] ?? null,
+                        'tipo_servicio' => $fila['tipo_servicio'] ?? null,
+                        'valor'         => $valorFinal,
+                        'hora_entrada'  => $fila['hora_in'] ?? null,
+                        'hora_salida'   => $fila['hora_out'] ?? null,
+                        'estado'        => $fila['estado'] ?? null,
+                        'calif'         => $fila['calif'] ?? null,
+                        'obs'           => $fila['obs'] ?? '',
+                        'json_repuestos'=> $fila['json_repuestos'] ?? '[]'
+                    ];
+
+                    $idOrden = $this->modelo->guardarOrden($datosParaModelo);
+
+                    if ($idOrden) {
+                        $guardados++;
+                    } else {
+                        $errores++;
+                        $detallesError .= "Fila #" . ($index + 1) . " falló al guardar. ";
+                    }
+                }
+            }
+
+            // Feedback al frontend
+            if ($guardados > 0 && $errores == 0) {
+                echo json_encode(['status' => 'ok', 'msg' => "Se guardaron $guardados servicios correctamente."]);
+            } else if ($guardados > 0 && $errores > 0) {
+                echo json_encode(['status' => 'warning', 'msg' => "Se guardaron $guardados, pero hubo $errores errores. $detallesError"]);
+            } else {
+                echo json_encode(['status' => 'error', 'msg' => "Ningún servicio procesado. $detallesError"]);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'msg' => $e->getMessage()]);
+        }
+
+        ob_end_flush();
+        exit;
+    }
 }

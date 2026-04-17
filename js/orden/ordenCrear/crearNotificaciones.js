@@ -183,18 +183,35 @@ function reposicionarNotificaciones() {
     });
 }
 
+// Variable global para el audio
+let audioContextGlobal = null;
+
+// Escuchamos cualquier clic en la página para "desbloquear" el motor de audio
+document.addEventListener('click', () => {
+    try {
+        if (!audioContextGlobal) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContextGlobal = new AudioContext();
+        } else if (audioContextGlobal.state === 'suspended') {
+            audioContextGlobal.resume();
+        }
+    } catch (e) { console.warn("Audio bloqueado", e); }
+}, { once: true }); // El once:true hace que este evento se ejecute solo la primera vez
+
 /**
- * Reproducir sonido
+ * Reproducir sonido (Versión Corregida)
  */
 function reproducirSonido(tipo) {
     try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContext();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+        // Si el usuario aún no ha interactuado con la página, abortamos en silencio
+        if (!audioContextGlobal || audioContextGlobal.state === 'suspended') return;
+
+        // Reutilizamos el contexto global en lugar de crear uno nuevo
+        const oscillator = audioContextGlobal.createOscillator();
+        const gainNode = audioContextGlobal.createGain();
 
         oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+        gainNode.connect(audioContextGlobal.destination);
 
         const frecuencias = {
             success: [523.25, 659.25],
@@ -206,16 +223,16 @@ function reproducirSonido(tipo) {
         const freqs = frecuencias[tipo] || frecuencias.info;
 
         oscillator.frequency.value = freqs[0];
-        gainNode.gain.value = 0.1;
+        gainNode.gain.value = 0.1; // Volumen bajito
         oscillator.type = 'sine';
 
-        oscillator.start(audioCtx.currentTime);
+        oscillator.start(audioContextGlobal.currentTime);
 
         if (freqs.length > 1) {
-            oscillator.frequency.setValueAtTime(freqs[1], audioCtx.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(freqs[1], audioContextGlobal.currentTime + 0.1);
         }
 
-        oscillator.stop(audioCtx.currentTime + 0.2);
+        oscillator.stop(audioContextGlobal.currentTime + 0.2);
     } catch (e) {
         // Silenciar errores
     }
@@ -450,40 +467,74 @@ function configurarNotificaciones(opciones = {}) {
 // ==========================================
 
 /**
- * Valida de forma ESTRICTA que el campo "¿Qué se realizó?" no esté vacío
+ * Valida de forma ESTRICTA que todos los campos obligatorios estén llenos
  * @returns {boolean} true si todo está bien, false si hay errores
  */
 function validarCamposEstrictos() {
     const filas = document.querySelectorAll('#contenedorFilas tr');
     let formularioValido = true;
+    let mensajesError = [];
 
     filas.forEach((tr, index) => {
-        // Buscamos el campo de observaciones (name="filas[X][obs]")
-        const campoObs = tr.querySelector('[name*="[obs]"]');
+        const numFila = index + 1;
+        // Solo validamos las filas que tengan una máquina seleccionada
+        const campoMaquina = tr.querySelector('select[name*="[id_maquina]"]');
         
-        if (campoObs) {
-            const valorObs = campoObs.value.trim();
+        if (campoMaquina && campoMaquina.value !== '') {
+            // Buscamos los demás campos clave de esta fila
+            const campoRemision = tr.querySelector('select[name*="[remision]"]');
+            const campoHoraIn = tr.querySelector('input[name*="[hora_in]"]');
+            const campoHoraOut = tr.querySelector('input[name*="[hora_out]"]');
+            const campoObs = tr.querySelector('textarea[name*="[obs]"]');
+            
+            let faltan = [];
 
-            if (valorObs === '') {
+            // Validar Remisión (Como es un select, verificamos que no esté vacío)
+            if (!campoRemision || campoRemision.value.trim() === '') {
+                faltan.push('Remisión');
+                if(campoRemision) campoRemision.classList.add('border-red-500', 'bg-red-50');
+            }
+
+            // Validar Horas
+            if (!campoHoraIn || campoHoraIn.value.trim() === '') {
+                faltan.push('Hora Entrada');
+                if(campoHoraIn) campoHoraIn.classList.add('border-red-500', 'bg-red-50');
+            }
+            if (!campoHoraOut || campoHoraOut.value.trim() === '') {
+                faltan.push('Hora Salida');
+                if(campoHoraOut) campoHoraOut.classList.add('border-red-500', 'bg-red-50');
+            }
+
+            // Validar Observaciones
+            if (!campoObs || campoObs.value.trim() === '') {
+                faltan.push('¿Qué se Realizó?');
+                if(campoObs) campoObs.classList.add('border-red-500', 'bg-red-50');
+            }
+
+            // Si faltó algo en esta fila, anotamos el error
+            if (faltan.length > 0) {
                 formularioValido = false;
+                mensajesError.push(`<b>Fila ${numFila}:</b> ${faltan.join(', ')}`);
                 
-                // Resaltamos el error visualmente
-                campoObs.classList.add('border-red-500', 'bg-red-50');
-                
-                // Notificamos usando tu sistema
-                mostrarNotificacion(
-                    `❌ Fila ${index + 1}: El campo "¿Qué se Realizó?" no puede estar vacío.`, 
-                    'error', 
-                    5000
-                );
-
                 // Quitamos el resaltado rojo después de unos segundos
                 setTimeout(() => {
-                    campoObs.classList.remove('border-red-500', 'bg-red-50');
-                }, 4000);
+                    if(campoRemision) campoRemision.classList.remove('border-red-500', 'bg-red-50');
+                    if(campoHoraIn) campoHoraIn.classList.remove('border-red-500', 'bg-red-50');
+                    if(campoHoraOut) campoHoraOut.classList.remove('border-red-500', 'bg-red-50');
+                    if(campoObs) campoObs.classList.remove('border-red-500', 'bg-red-50');
+                }, 5000);
             }
         }
     });
+
+    if (!formularioValido) {
+        // Mostramos una notificación consolidada con todos los errores
+        mostrarNotificacion(
+            `❌ Error antes de guardar:<br>${mensajesError.join('<br>')}`, 
+            'error', 
+            6000
+        );
+    }
 
     return formularioValido;
 }
@@ -538,10 +589,19 @@ function mostrarModalConfirmacion(mensaje, callbackConfirmar) {
     };
 
     document.getElementById(`btn_confirmar_${id}`).onclick = () => {
+        // 1. Desaparecemos el modal de confirmación
         modal.style.opacity = '0';
+        
+        // 2. 🔥 ACTIVAMOS LA PANTALLA DE CARGA BLOQUEANTE 🔥
+        const pantallaCarga = document.getElementById('pantallaCargaGuardando');
+        if (pantallaCarga) {
+            pantallaCarga.classList.remove('hidden');
+        }
+
         setTimeout(() => {
             modal.remove();
-            callbackConfirmar(); // EJECUTA EL GUARDADO SOLO AQUÍ
+            // 3. Ejecutamos el envío del formulario
+            callbackConfirmar(); 
         }, 300);
     };
 

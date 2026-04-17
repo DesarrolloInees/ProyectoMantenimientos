@@ -13,7 +13,6 @@ class reporteHistorialControlador
     {
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
-        // CÓDIGO CORRECTO:
         $this->modelo = new reporteHistorialModelo($this->db);
     }
 
@@ -35,16 +34,20 @@ class reporteHistorialControlador
 
             if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
 
-                // Traemos los datos para la vista y el Excel
+                // Para la tabla web (Solo los que tuvieron visitas)
                 $datosReporte = $this->modelo->obtenerHistorialMantenimientos(
                     $filtros['fecha_inicio'],
                     $filtros['fecha_fin']
                 );
                 
-                $datosExcel = $datosReporte; // En este caso usamos los mismos datos
+                // Para el EXCEL (TODOS los puntos, filtrando conteo por fecha)
+                $datosExcel = $this->modelo->obtenerCumplimientoPuntos(
+                    $filtros['fecha_inicio'],
+                    $filtros['fecha_fin']
+                );
 
-                if (empty($datosReporte)) {
-                    $mensaje = "No se encontraron mantenimientos en ese rango de fechas.";
+                if (empty($datosReporte) && empty($datosExcel)) {
+                    $mensaje = "No se encontraron datos en la base de datos.";
                 }
             } else {
                 $mensaje = "Por favor selecciona el rango de fechas.";

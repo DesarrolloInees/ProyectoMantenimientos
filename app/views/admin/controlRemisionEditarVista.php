@@ -14,7 +14,7 @@
     }
 </style>
 
-<div class="w-full max-w-2xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-8 rounded-xl shadow-md border border-gray-100">
 
         <div class="mb-6 border-b pb-4">

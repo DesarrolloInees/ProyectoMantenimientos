@@ -117,6 +117,24 @@ $esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 
 
     <details class="group border-b border-gray-700">
         <summary class="flex justify-between items-center cursor-pointer list-none text-gray-300 py-3 px-3 hover:bg-gray-700 rounded select-none">
+            <span class="font-bold"><i class="fa-solid fa-truck-front mr-3 w-5 text-center"></i> Transportes</span>
+            
+            <span class="transition group-open:rotate-180">
+                <i class="fas fa-chevron-down"></i>
+            </span>
+        </summary>
+        <div class="text-gray-400 mt-2 mb-2 pl-4 bg-gray-800 rounded-lg py-2">
+            <a href="<?= BASE_URL ?>transporteCrear" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-truck text-yellow-600 mr-2"></i> Transportes Crear
+            </a>
+            <a href="<?= BASE_URL ?>transporteVer" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-truck-moving mr-2"></i> Transportes Ver
+            </a>
+        </div>
+    </details>
+
+    <details class="group border-b border-gray-700">
+        <summary class="flex justify-between items-center cursor-pointer list-none text-gray-300 py-3 px-3 hover:bg-gray-700 rounded select-none">
             <span class="font-bold"><i class="fas fa-chart-bar mr-3 w-5 text-center"></i> Reportes</span>
             <span class="transition group-open:rotate-180">
                 <i class="fas fa-chevron-down"></i>

@@ -2,7 +2,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
 
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-8">
         <div class="mb-6 border-b pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

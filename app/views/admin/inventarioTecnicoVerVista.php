@@ -7,7 +7,12 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <style>
-    /* Tus estilos personalizados */
+    /* Estilos para que la tabla ocupe el 100% real */
+    #tablaInventario {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    
     .dataTables_length select, .dataTables_filter input {
         background-color: white !important;
         color: #374151 !important;
@@ -31,18 +36,9 @@
     .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type {
         display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin: 1.5rem 0;
     }
-    /* Estilo Select2 */
-    .select2-container .select2-selection--single {
-        height: 42px !important;
-        border-color: #d1d5db !important;
-        display: flex; align-items: center;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 40px !important;
-    }
 </style>
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">

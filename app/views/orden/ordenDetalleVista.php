@@ -609,6 +609,24 @@
     .tabla-wrapper::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
     }
+    /* ======================================
+       LA MAGIA DE LA VELOCIDAD: OCULTAR POR DEFECTO
+    ====================================== */
+    
+    /* 1. Oculta TODAS las filas de la tabla por defecto */
+    #tablaEdicion tbody tr[id^="fila_"] {
+        display: none; 
+    }
+
+    /* 2. Muestra SOLO las primeras 6 filas (Carga instantánea) */
+    #tablaEdicion tbody tr[id^="fila_"]:nth-child(-n+6) {
+        display: table-row;
+    }
+
+    /* 3. Esta es la clase que nuestro JS usará después para paginar */
+    #tablaEdicion tbody tr[id^="fila_"].fila-activa {
+        display: table-row !important;
+    }
 </style>
 
 <!-- ======================================
@@ -633,7 +651,7 @@
             <button type="button" onclick="exportarExcelNovedades()" class="btn btn-red">
                 <i class="fas fa-file-contract"></i> Novedades
             </button>
-            <a href="<?= BASE_URL ?>inicio" class="btn btn-gray">
+            <a href="<?= BASE_URL ?>ordenVer" class="btn btn-gray">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
         </div>
@@ -739,6 +757,7 @@
     window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos  ?? []) ?>;
     window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos   ?? []) ?>;
     window.DetalleConfig.listaNovedades = <?= json_encode($listaNovedades  ?? []) ?>;
+    window.DetalleConfig.remisionesGlobales = <?= json_encode($remisionesGlobales ?? []) ?>;
 </script>
 
 <!-- SCRIPTS MÓDULOS -->
@@ -822,35 +841,94 @@
     }
 
     // ==========================================
-    // NUEVO: INTERCEPTOR DE GUARDADO
+    // INTERCEPTOR DE GUARDADO ACTUALIZADO
     // ==========================================
     function procesarGuardado() {
-        // 1. Verificamos que el sistema de notificaciones exista
         if (!window.DetalleNotificaciones || !window.DetalleNotificaciones.mostrarModalConfirmacion) {
-            console.warn("Sistema de notificaciones no cargado. Guardado tradicional fallback.");
-            document.getElementById('formEdicionMaestra').submit();
+            ejecutarGuardadoJSON();
             return;
         }
 
-        // 2. Llamamos al modal (que por dentro ejecuta validarCamposEstrictos automáticamente)
         window.DetalleNotificaciones.mostrarModalConfirmacion(
             "¿Estás seguro de que deseas guardar todos los cambios de esta página?",
             function() {
-                // Si el usuario dice que SÍ (Confirmar), se ejecuta esto:
-                
-                // Opcional: Contamos las filas para la notificación
-                const cantFilas = document.querySelectorAll('#tablaEdicion tbody tr[id^="fila_"]').length;
-                window.DetalleNotificaciones.notificarEnviandoFormulario(cantFilas);
-                
-                // Deshabilitamos el botón para evitar doble clic
-                const btnSave = document.querySelector('.btn-save-float');
-                btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> GUARDANDO...';
-                btnSave.style.pointerEvents = 'none';
-                btnSave.style.opacity = '0.7';
-
-                // Enviamos el formulario de verdad
-                document.getElementById('formEdicionMaestra').submit();
+                ejecutarGuardadoJSON();
             }
         );
+    }
+
+    // ==========================================
+    // EL MOTOR JSON (¡La Magia!)
+    // ==========================================
+    async function ejecutarGuardadoJSON() {
+        const filas = document.querySelectorAll('#tablaEdicion tbody tr[id^="fila_"]');
+        
+        if (window.DetalleNotificaciones && window.DetalleNotificaciones.notificarEnviandoFormulario) {
+            window.DetalleNotificaciones.notificarEnviandoFormulario(filas.length);
+        }
+        
+        // Bloquear botón visualmente
+        const btnSave = document.querySelector('.btn-save-float');
+        const originalHTML = btnSave.innerHTML;
+        btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> GUARDANDO...';
+        btnSave.style.pointerEvents = 'none';
+        btnSave.style.opacity = '0.7';
+
+        // 1. Recolectar datos y armar el objeto limpio
+        let serviciosData = {};
+        let fechaOrigen = document.querySelector('input[name="fecha_origen"]').value;
+
+        filas.forEach(fila => {
+            let idOrden = fila.id.split('_')[1];
+            let filaDatos = {};
+            
+            // Atrapamos todos los inputs, selects y textareas de esta fila
+            let elementos = fila.querySelectorAll('input, select, textarea');
+            elementos.forEach(el => {
+                if (el.name) {
+                    // Extraemos el nombre del campo
+                    let match = el.name.match(/\[([a-zA-Z0-9_]+)\]$/);
+                    if (match && match[1]) {
+                        filaDatos[match[1]] = el.value;
+                    }
+                }
+            });
+            
+            serviciosData[idOrden] = filaDatos;
+        });
+
+        // 2. Preparar el paquete engañando a PHP (FormData)
+        const formData = new FormData();
+        formData.append('accion', 'ajaxGuardarCambiosJSON');
+        formData.append('fecha_origen', fechaOrigen);
+        // Empaquetamos toda la tabla en UNA SOLA variable de texto gigante
+        formData.append('json_data', JSON.stringify(serviciosData));
+
+        // 3. Enviar al backend vía fetch sin recargar la página
+        try {
+            const response = await fetch(window.DetalleConfig.BASE_URL + 'ordenDetalle', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                alert("✅ " + data.msg);
+                // window.location.reload(); // Descomenta esto si quieres que refresque tras el OK
+            } else if (data.status === 'warning') {
+                alert("⚠️ " + data.msg);
+            } else {
+                alert("❌ Error: " + data.msg);
+            }
+        } catch (error) {
+            console.error("Error guardando:", error);
+            alert("❌ Error de red o del servidor al intentar guardar.");
+        } finally {
+            // Restaurar botón siempre, pase lo que pase
+            btnSave.innerHTML = originalHTML;
+            btnSave.style.pointerEvents = 'auto';
+            btnSave.style.opacity = '1';
+        }
     }
 </script>

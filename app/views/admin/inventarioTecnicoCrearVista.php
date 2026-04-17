@@ -17,7 +17,7 @@
     }
 </style>
 
-<div class="w-full px-6 mt-6">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
 
         <div class="mb-6 border-b pb-4 flex items-center justify-between">

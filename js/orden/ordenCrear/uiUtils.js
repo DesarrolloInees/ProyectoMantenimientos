@@ -148,6 +148,49 @@ function confirmarAccion(mensaje) {
     return confirm(mensaje);
 }
 
+/**
+ * Gestiona la navegación tipo Excel con flechas de teclado
+ */
+function manejarNavegacionTeclado(e) {
+    const $actual = $(e.target);
+    const $celdaActual = $actual.closest('td');
+    const $filaActual = $actual.closest('tr');
+    const colIndex = $celdaActual.index();
+
+    // Flechas horizontales (Izquierda / Derecha)
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        // Solo saltar si es un select o si el cursor está al inicio/final del input
+        const esSelect = $actual.is('select') || $actual.hasClass('select2-selection--single');
+        const alFinal = e.target.selectionEnd === $actual.val()?.length;
+        const alInicio = e.target.selectionStart === 0;
+
+        if (e.key === 'ArrowRight' && (esSelect || alFinal)) {
+            const $sig = $celdaActual.nextAll().find('input, select, .select2-selection').first();
+            if ($sig.length) { e.preventDefault(); $sig.focus(); }
+        } else if (e.key === 'ArrowLeft' && (esSelect || alInicio)) {
+            const $ant = $celdaActual.prevAll().find('input, select, .select2-selection').first();
+            if ($ant.length) { e.preventDefault(); $ant.focus(); }
+        }
+    }
+
+    // Flechas verticales (Arriba / Abajo)
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        // IMPORTANTE: Si es un Select2, solo navegar si el menú está CERRADO
+        if ($actual.hasClass('select2-selection--single')) {
+            const $selectOriginal = $celdaActual.find('select');
+            if ($selectOriginal.data('select2').isOpen()) return; 
+        }
+
+        e.preventDefault();
+        const $targetFila = (e.key === 'ArrowDown') ? $filaActual.next() : $filaActual.prev();
+        const $inputDestino = $targetFila.find('td').eq(colIndex).find('input, select, .select2-selection').first();
+        
+        if ($inputDestino.length) {
+            $inputDestino.focus();
+        }
+    }
+}
+
 // Exportar
 window.UIUtils = {
     activarSelect2,

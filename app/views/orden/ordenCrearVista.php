@@ -168,6 +168,14 @@
         </div>
     </div>
 </div>
+
+<div id="pantallaCargaGuardando" class="fixed inset-0 z-[999999] hidden bg-gray-900 bg-opacity-90 flex flex-col items-center justify-center">
+    <div class="animate-spin rounded-full h-32 w-32 border-t-4 border-b-4 border-blue-500 mb-6"></div>
+    <h2 class="text-3xl font-bold text-white text-center">Guardando Servicios...</h2>
+    <p class="text-gray-300 mt-4 text-lg text-center max-w-md">
+        Por favor, no cierres ni recargues esta ventana hasta que el proceso haya finalizado. Esto puede tomar unos segundos.
+    </p>
+</div>
 </div>
 
 <!-- ============================================== -->
@@ -301,5 +309,80 @@
                 console.error("Error cargando programación", err);
             }
         });
+    }
+
+
+    // ==========================================
+    // MOTOR DE GUARDADO MASIVO (JSON) PARA CREAR
+    // ==========================================
+    
+
+    async function ejecutarGuardadoJSONCrear() {
+        const filas = document.querySelectorAll('#contenedorFilas tr');
+        const fechaReporte = document.querySelector('input[name="fecha_reporte"]').value;
+
+        // Mostrar tu bonita pantalla de carga oscura que ya tenías diseñada
+        const pantallaCarga = document.getElementById('pantallaCargaGuardando');
+        if(pantallaCarga) pantallaCarga.classList.remove('hidden');
+
+        const btnSave = document.getElementById('btnGuardarFijo');
+        btnSave.disabled = true;
+
+        let filasData = [];
+
+        // Extraemos los datos de la misma forma inteligente que en edición
+        filas.forEach(fila => {
+            let filaDatos = {};
+            
+            let elementos = fila.querySelectorAll('input, select, textarea');
+            elementos.forEach(el => {
+                if (el.name) {
+                    // Extrae el nombre final, ej: filas[0][id_maquina] -> id_maquina
+                    let match = el.name.match(/\[([a-zA-Z0-9_]+)\]$/);
+                    if (match && match[1]) {
+                        filaDatos[match[1]] = el.value;
+                    }
+                }
+            });
+            
+            // Si la fila tiene el input oculto de orden programada, lo capturamos
+            let inputPrevia = fila.querySelector('.orden-previa');
+            if (inputPrevia) {
+                filaDatos['id_orden_previa'] = inputPrevia.value;
+            }
+
+            filasData.push(filaDatos);
+        });
+
+        // Preparamos el paquete engañando a PHP
+        const formData = new FormData();
+        formData.append('fecha_reporte', fechaReporte);
+        formData.append('json_data', JSON.stringify(filasData));
+
+        try {
+            // Fíjate que ahora apuntamos a la nueva acción "ajaxGuardarJSON"
+            const response = await fetch('index.php?pagina=ordenCrear&accion=ajaxGuardarJSON', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                alert("✅ " + data.msg);
+                window.location.reload(); // Recarga limpia tras el éxito
+            } else if (data.status === 'warning') {
+                alert("⚠️ " + data.msg);
+                window.location.reload(); 
+            } else {
+                alert("❌ Error: " + data.msg);
+            }
+        } catch (error) {
+            console.error("Error guardando:", error);
+            alert("❌ Ocurrió un error de conexión con el servidor.");
+        } finally {
+            if(pantallaCarga) pantallaCarga.classList.add('hidden');
+            btnSave.disabled = false;
+        }
     }
 </script>

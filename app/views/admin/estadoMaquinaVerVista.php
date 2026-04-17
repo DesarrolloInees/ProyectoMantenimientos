@@ -50,7 +50,7 @@
     }
 </style>
 
-<div class="w-full max-w-5xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
 
         <div class="flex justify-between items-center mb-6 border-b pb-4">

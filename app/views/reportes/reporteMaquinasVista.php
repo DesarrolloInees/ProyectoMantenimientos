@@ -41,7 +41,7 @@
     }
 </style>
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
     
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-6">
         <div class="flex justify-between items-center border-b pb-4 mb-4">

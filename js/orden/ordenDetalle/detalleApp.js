@@ -103,7 +103,10 @@ function configurarAperturaInteligentePuntos() {
     $(document).on('select2:select', 'select[id^="sel_tecnico_"]', function () {
         const idFila = this.id.replace('sel_tecnico_', '');
         const idTecnico = this.value;
-        if (typeof calcularDesplazamientos === 'function') calcularDesplazamientos();
+        
+        // 🔥 AHORA LE PASAMOS EL ID PARA QUE SOLO CALCULE ESA FILA
+        if (typeof calcularDesplazamientos === 'function') calcularDesplazamientos(idFila); 
+        
         if (typeof cargarRemisiones === 'function') cargarRemisiones(idFila, idTecnico);
     });
 
@@ -180,8 +183,7 @@ function cargarRemisionesIniciales() {
 function inicializarAplicacionDetalle() {
     console.log('🚀 Iniciando Sistema de Detalle de Servicios v2.3...');
 
-    // 1. Select2 en todos los selects + eventos delegados
-    inicializarSelect2Fila(null);       // toda la tabla
+    // 1. Eventos delegados (Apertura inteligente y cambios)
     configurarAperturaInteligentePuntos();
     configurarSelect2Modal();
 
@@ -190,10 +192,9 @@ function inicializarAplicacionDetalle() {
 
     // 3. Cálculos iniciales
     if (window.DetalleDesplazamientos) window.DetalleDesplazamientos.calcularDesplazamientos();
+    
+    // 4. 🔥 INICIAR PAGINACIÓN (Esto disparará mostrarPagina, que a su vez cargará los primeros 6 Select2)
     if (window.DetallePaginacion) window.DetallePaginacion.iniciarPaginacion();
-
-    // 4. Remisiones: actual (USADA) + disponibles para corregir
-    cargarRemisionesIniciales();
 
     // 5. Bloqueo de guardado si hay errores de tarifa
     const form = document.querySelector('form');
@@ -214,6 +215,35 @@ function inicializarAplicacionDetalle() {
     }
 
     console.log('✅ Sistema inicializado v2.3');
+}
+
+function inicializarPluginsPorPagina() {
+    // Busca las filas que están visibles AHORA, y que NO hayan sido inicializadas antes
+    const filasVisibles = document.querySelectorAll('tr.fila-activa:not([data-init-done="true"])');
+
+    filasVisibles.forEach(fila => {
+        const idFila = fila.id.replace('fila_', '');
+
+        // 1. Inicializar Select2 SOLO para esta fila
+        inicializarSelect2Fila(idFila);
+
+        // 2. Cargar remisiones de esta fila
+        const selTecnico = document.getElementById(`sel_tecnico_${idFila}`);
+        if (selTecnico && selTecnico.value) {
+            if (typeof window.cargarRemisiones === 'function') {
+                window.cargarRemisiones(idFila, selTecnico.value);
+            }
+        }
+
+        // 3. Marcar la fila como lista
+        fila.setAttribute('data-init-done', 'true');
+    });
+
+    // 🔥 NUEVO: Calcular los desplazamientos de la página actual 
+    // Lo llamamos fuera del forEach para que el requestAnimationFrame actúe en bloque
+    if (window.DetalleDesplazamientos && window.DetalleDesplazamientos.calcularDesplazamientos) {
+        window.DetalleDesplazamientos.calcularDesplazamientos();
+    }
 }
 
 function validarDependenciasDetalle() {
@@ -241,6 +271,7 @@ window.DetalleApp = {
     version: '2.3.0',
     init: inicializarAplicacionDetalle,
     recargar: inicializarAplicacionDetalle,
-    // Exponer para que detalleAjax.js pueda reinit Select2 tras reconstruir un select
-    reinitSelect2Fila: inicializarSelect2Fila
+    reinitSelect2Fila: inicializarSelect2Fila,
+    // Exportamos esta nueva función para que la paginación la pueda llamar
+    inicializarPluginsPorPagina: inicializarPluginsPorPagina
 };

@@ -1,6 +1,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<div class="max-w-4xl mx-auto mt-10">
+<div class="w-full max-w-4xl mx-auto">
     <div class="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
         <div class="bg-blue-600 p-6">
             <h2 class="text-2xl font-bold text-white flex items-center gap-2">
@@ -27,7 +27,7 @@
 
         <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
             <span class="text-sm text-gray-500">Formato de salida: Excel Original (.xlsx)</span>
-            <a href="<?php echo BASE_URL; ?>" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+            <a href="<?php echo BASE_URL; ?>inicio" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
                 &larr; Volver al inicio
             </a>
         </div>

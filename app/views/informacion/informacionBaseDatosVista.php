@@ -2,7 +2,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
 
     <div class="mb-8 border-b pb-4">
         <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-database text-purple-600 mr-2"></i> Estado de la Base de Datos</h1>

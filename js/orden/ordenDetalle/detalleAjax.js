@@ -1,6 +1,13 @@
 // ==========================================
 // GESTIÓN DE PETICIONES AJAX
 // ==========================================
+// Variable para evitar ametralladoras de notificaciones al iniciar
+window.silenciarNotificacionesInicio = true; 
+
+// Desactivamos el silenciador después de 2 segundos (cuando ya cargó todo)
+setTimeout(() => {
+    window.silenciarNotificacionesInicio = false;
+}, 2000);
 
 // URL base dinámica — compatible con cualquier estructura de router
 const AJAX_URL = (typeof BASE_URL !== 'undefined')
@@ -45,9 +52,9 @@ function cargarPuntos(idFila, idCliente, mantenerValorActual = false, callback =
             if (selPunto.data('select2')) selPunto.select2('destroy');
             selPunto.select2({ width: '100%', language: { noResults: () => "No encontrado" } });
 
-            if (data.length > 0 && window.DetalleNotificaciones)
+            if (!window.silenciarNotificacionesInicio && data.length > 0 && window.DetalleNotificaciones) {
                 window.DetalleNotificaciones.notificarDatosCargados('Puntos', data.length);
-            if (callback) callback();
+            }
         })
         .catch(error => {
             console.error("Error cargando puntos:", error);
@@ -108,9 +115,10 @@ function cargarMaquinas(idFila, idPunto) {
                 selMaq.value = data[0].id_maquina;
                 actualizarTipoMaquina(idFila);
                 actualizarTarifa(idFila);
-                if (window.DetalleNotificaciones)
-                    window.DetalleNotificaciones.notificarDatosCargados('Máquinas', data.length);
-            }
+                // CÁMBIALO A ESTO:
+            if (!window.silenciarNotificacionesInicio && window.DetalleNotificaciones) {
+                window.DetalleNotificaciones.notificarDatosCargados('Máquinas', data.length);
+            }}
 
             // Re-init Select2 en máquina para filtrado por escritura
             const $selMaq = $(`#sel_maq_${idFila}`);
@@ -197,18 +205,12 @@ function actualizarTarifa(idFila) {
 }
 
 // ==========================================
-// ✅ REMISIONES — CORREGIDO
+// ✅ REMISIONES — VERSIÓN OPTIMIZADA (SÚPER RÁPIDA)
 // ==========================================
 
 /**
  * Cargar remisiones del técnico en el select de la fila.
- *
- * Muestra siempre:
- *  - La remisión actualmente asignada a la orden (aunque esté USADA) → marcada con ✓
- *  - Las remisiones DISPONIBLES del técnico → para corregir si se equivocó
- *
- * El servidor recibe 'remision_actual' y la incluye en el resultado
- * aunque no esté disponible, garantizando que nunca desaparezca.
+ * Ahora lee desde window.DetalleConfig.remisionesGlobales en lugar de hacer AJAX.
  */
 function cargarRemisiones(idFila, idTecnico) {
     const selRemision = document.getElementById(`sel_remision_${idFila}`);
@@ -220,95 +222,53 @@ function cargarRemisiones(idFila, idTecnico) {
     }
 
     // Leer la remisión actual ANTES de tocar el select
-    // Puede venir del HTML (carga inicial) o del valor previo si el usuario ya cambió
     const remisionActual = selRemision.dataset.remisionOriginal
         || selRemision.value
         || '';
 
     // Guardar como data attribute para sobrevivir reconstrucciones del select
     selRemision.dataset.remisionOriginal = remisionActual;
+    selRemision.innerHTML = '';
 
-    selRemision.innerHTML = '<option value="">⏳ Cargando remisiones...</option>';
-    selRemision.disabled = true;
+    // 1. Opción vacía (sin remisión)
+    const optVacia = document.createElement('option');
+    optVacia.value = '';
+    optVacia.textContent = '- Sin remisión -';
+    selRemision.appendChild(optVacia);
 
-    const fd = new FormData();
-    fd.append('accion', 'ajaxObtenerRemisiones');
-    fd.append('id_tecnico', idTecnico);
-    fd.append('remision_actual', remisionActual); // ← el servidor la incluye aunque esté USADA
+    // 2. La remisión actual SIEMPRE aparece primero, marcada con ✓
+    if (remisionActual) {
+        const optActual = document.createElement('option');
+        optActual.value = remisionActual;
+        optActual.textContent = `${remisionActual} ✓ (actual)`;
+        optActual.selected = true;
+        selRemision.appendChild(optActual);
+    }
 
-    fetch(AJAX_URL, { method: 'POST', body: fd })
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        })
-        .then(data => {
-            selRemision.innerHTML = '';
+    // 3. Buscar en el diccionario local instantáneo (Cargado desde PHP)
+    const remisionesGlobales = (window.DetalleConfig && window.DetalleConfig.remisionesGlobales) ? window.DetalleConfig.remisionesGlobales : {};
+    const remisionesDelTecnico = remisionesGlobales[idTecnico] || [];
 
-            // Opción vacía (sin remisión)
-            const optVacia = document.createElement('option');
-            optVacia.value = '';
-            optVacia.textContent = '- Sin remisión -';
-            selRemision.appendChild(optVacia);
+    // 4. Llenar el resto (evitando duplicar la actual)
+    remisionesDelTecnico.forEach(r => {
+        if (String(r.numero_remision) !== String(remisionActual)) {
+            const opt = document.createElement('option');
+            opt.value = r.numero_remision;
+            opt.textContent = r.numero_remision;
+            selRemision.appendChild(opt);
+        }
+    });
 
-            // La remisión actual SIEMPRE aparece primero, marcada con ✓
-            // El servidor ya la incluyó en `data`, pero si no vino la ponemos nosotros
-            let actualYaVino = false;
+    selRemision.disabled = false;
 
-            if (Array.isArray(data) && data.length > 0) {
-                data.forEach(r => {
-                    const opt = document.createElement('option');
-                    opt.value = r.numero_remision;
-
-                    const esActual = String(r.numero_remision) === String(remisionActual);
-                    if (esActual) {
-                        opt.textContent = `${r.numero_remision} ✓ (actual)`;
-                        opt.selected = true;
-                        actualYaVino = true;
-                        selRemision.insertBefore(opt, selRemision.children[1] || null);
-                    } else {
-                        opt.textContent = r.numero_remision;
-                        selRemision.appendChild(opt);
-                    }
-                });
-            }
-
-            // Seguro de vida: si el servidor no devolvió la actual, la añadimos igual
-            if (remisionActual && !actualYaVino) {
-                const optFallback = document.createElement('option');
-                optFallback.value = remisionActual;
-                optFallback.textContent = `${remisionActual} ✓ (actual)`;
-                optFallback.selected = true;
-                selRemision.insertBefore(optFallback, selRemision.children[1] || null);
-            }
-
-            selRemision.disabled = false;
-
-            // Re-inicializar Select2 en este select específico para que
-            // el filtrado por escritura funcione con las nuevas opciones
-            if (window.DetalleApp?.reinitSelect2Fila) {
-                window.DetalleApp.reinitSelect2Fila(idFila);
-            } else {
-                // Fallback directo si DetalleApp aún no cargó
-                const $sel = $(`#sel_remision_${idFila}`);
-                if ($sel.data('select2')) $sel.select2('destroy');
-                $sel.select2({ width: '100%', language: { noResults: () => "No encontrado" } });
-            }
-        })
-        .catch(err => {
-            console.error('Error cargando remisiones:', err);
-            selRemision.innerHTML = '';
-            const optErr = document.createElement('option');
-            optErr.value = remisionActual || '';
-            optErr.textContent = remisionActual ? `${remisionActual} ✓ (actual)` : '- Error al cargar -';
-            optErr.selected = true;
-            selRemision.appendChild(optErr);
-            selRemision.disabled = false;
-
-            // Re-init Select2 también en error para no quedar sin él
-            const $sel = $(`#sel_remision_${idFila}`);
-            if ($sel.data('select2')) $sel.select2('destroy');
-            $sel.select2({ width: '100%', language: { noResults: () => "No encontrado" } });
-        });
+    // 5. Re-inicializar Select2 para que el filtrado funcione
+    if (window.DetalleApp?.reinitSelect2Fila) {
+        window.DetalleApp.reinitSelect2Fila(idFila);
+    } else {
+        const $sel = $(`#sel_remision_${idFila}`);
+        if ($sel.data('select2')) $sel.select2('destroy');
+        $sel.select2({ width: '100%', language: { noResults: () => "No encontrado" } });
+    }
 }
 
 /**

@@ -314,6 +314,17 @@ function cambioServicio(id) {
     // validarCoherencia(id); 
 }
 
+/**
+ * Evento delegado para auto-seleccionar texto en inputs de la tabla
+ * Se pone fuera de las funciones para que se registre una sola vez al cargar el script
+ */
+$(document).on('focus', '#contenedorFilas input', function() {
+    const self = this;
+    setTimeout(() => {
+        $(self).select();
+    }, 50);
+});
+
 
 // Exportar
 window.FilaManager = {

@@ -26,15 +26,15 @@
     }
 </style>
 
-<div class="w-full max-w-7xl mx-auto">
+<div class="w-full px-4 md:px-6">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-8">
         <div class="mb-4 border-b pb-2 flex justify-between items-center flex-wrap gap-2">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-map-marker-alt text-red-600 mr-2"></i> Historial de Mantenimientos por Punto</h1>
-                <p class="text-gray-500 text-sm">Consulta consolidada de tipos de mantenimiento por Device ID.</p>
+                <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-calendar-check text-blue-600 mr-2"></i> Reporte de Cumplimiento Semestral</h1>
+                <p class="text-gray-500 text-sm">Validación de mantenimientos ejecutados vs. propuesta por máquina.</p>
             </div>
             <?php if (!empty($datosReporte)): ?>
-                <button type="button" onclick="exportarExcelPuntos()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow flex items-center gap-2 transform hover:scale-105 transition">
+                <button type="button" onclick="exportarExcelCumplimiento()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow flex items-center gap-2 transform hover:scale-105 transition">
                     <i class="fas fa-file-excel"></i> Exportar Excel
                 </button>
             <?php endif; ?>
@@ -112,9 +112,9 @@
     });
 
     // =========================================================
-    // EXPORTACIÓN A EXCEL (TABLA PIVOTE REESTRUCTURADA)
+    // EXPORTACIÓN A EXCEL (TODOS LOS PUNTOS)
     // =========================================================
-    function exportarExcelPuntos() {
+    function exportarExcelCumplimiento() {
         try {
             if (typeof XLSX === 'undefined') {
                 alert("Error: Librería SheetJS no cargada."); return;
@@ -125,110 +125,84 @@
 
             let workbook = XLSX.utils.book_new();
 
-            // 1. OBTENER TIPOS DE MANTENIMIENTO ÚNICOS (Garantía ya viene excluida desde SQL)
-            let tiposMantenimientoSet = new Set();
-            datosHistorial.forEach(item => {
-                let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
-                tiposMantenimientoSet.add(tipo);
-            });
-            let columnasTipos = Array.from(tiposMantenimientoSet).sort();
-
-            // 2. AGRUPAR DATOS POR DEVICE_ID
-            let resumen = {};
-            datosHistorial.forEach(item => {
-                let key = item.device_id || "SIN_DEVICE_" + Math.random();
-                
-                if (!resumen[key]) {
-                    resumen[key] = {
-                        cliente: item.cliente || '',
-                        punto: item.punto || '',
-                        dele: item.dele || '',
-                        tipo_maquina: item.tipo_maquina || '',
-                        device_id: item.device_id || '',
-                        total_mantenimientos: 0,
-                        total_general: 0,
-                        tipos: {}
-                    };
-                    columnasTipos.forEach(t => resumen[key].tipos[t] = 0);
-                }
-
-                let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
-                resumen[key].tipos[tipo]++;
-                
-                // LÓGICA DE SUMATORIOS (Sin la columna individual de fallidos)
-                resumen[key].total_general++; // El total general cuenta TODO
-                
-                // Si NO es fallido (ID 4), sumamos a mantenimientos reales
-                if (item.id_tipo_mantenimiento != 4) { 
-                    resumen[key].total_mantenimientos++; 
-                }
-            });
-
-            // 3. CONSTRUIR ENCABEZADOS DE ACUERDO A LA ESTRUCTURA NUEVA
+            // ENCABEZADOS EN EL ORDEN SOLICITADO
             let encabezados = [
-                'CLIENTE', 'PUNTO', 'DELE', 'TIPO MÁQUINA', 'DEVICE ID'
+                'DEVICE ID', 
+                'TIPO DE MÁQUINA', 
+                'CLIENTE', 
+                'PUNTO', 
+                'DELEGACIÓN', 
+                'PROPUESTA SEMESTRAL', 
+                'TOTAL MANTENIMIENTOS', 
+                'FALTAN', 
+                'FECHA ÚLTIMO MANTENIMIENTO'
             ];
-            // Agregamos las columnas dinámicas (sin garantía)
-            columnasTipos.forEach(t => encabezados.push(t.toUpperCase()));
-            // Agregamos solo las dos columnas de totales solicitadas
-            encabezados.push('TOTAL MANTENIMIENTOS', 'TOTAL GENERAL'); 
-
+            
             let matriz = [encabezados];
             
-            // Variables para el gran total de la hoja completa
+            let granTotalPropuesta = 0;
             let granTotalMantenimientos = 0;
-            let granTotalGeneral = 0;
-            let totalesPorColumna = {};
-            columnasTipos.forEach(t => totalesPorColumna[t] = 0);
+            let granTotalFaltantes = 0;
 
-            // 4. LLENAR FILAS
-            Object.values(resumen).forEach(row => {
-                let fila = [
-                    row.cliente, 
-                    row.punto, 
-                    row.dele, 
-                    row.tipo_maquina, 
-                    row.device_id
-                ];
-
-                columnasTipos.forEach(t => {
-                    fila.push(row.tipos[t]);
-                    totalesPorColumna[t] += row.tipos[t];
-                });
-
-                fila.push(row.total_mantenimientos, row.total_general);
+            // LLENAR FILAS
+            datosHistorial.forEach(row => {
+                let propuesta = row.frecuencia ? Math.floor(180 / row.frecuencia) : 'N/A';
+                let faltantes = 'N/A';
                 
-                // Sumamos a los acumulados del fondo
-                granTotalMantenimientos += row.total_mantenimientos;
-                granTotalGeneral += row.total_general;
+                // Total general para mostrar en la columna (incluye correctivos, instalaciones, etc)
+                let totalMtto = parseInt(row.total_mantenimientos) || 0;
+                
+                // Solo los preventivos para hacer la resta matemática
+                let totalPreventivos = parseInt(row.total_preventivos) || 0;
+                
+                if (propuesta !== 'N/A') {
+                    // Ahora restamos SOLO los preventivos y permitimos que queden en negativo
+                    faltantes = propuesta - totalPreventivos;
+                    
+                    granTotalPropuesta += propuesta;
+                    granTotalFaltantes += faltantes;
+                }
+
+                granTotalMantenimientos += totalMtto;
+
+                let fila = [
+                    row.device_id || 'N/A',
+                    row.tipo_maquina || 'N/A',
+                    row.cliente || 'N/A', 
+                    row.punto || 'N/A', 
+                    row.dele || 'N/A', 
+                    propuesta,
+                    totalMtto,
+                    faltantes, // Aquí saldrá el negativo si se pasan de la propuesta
+                    row.fecha_ultima || ''
+                ];
 
                 matriz.push(fila);
             });
 
-            // 5. FILA DE TOTALES AL FINAL DE LA TABLA
-            let filaTotales = ['TOTALES', '', '', '', ''];
-            columnasTipos.forEach(t => filaTotales.push(totalesPorColumna[t]));
-            filaTotales.push(granTotalMantenimientos, granTotalGeneral);
+            // FILA DE TOTALES AL FINAL DE LA TABLA
+            let filaTotales = ['TOTALES', '', '', '', '', granTotalPropuesta, granTotalMantenimientos, granTotalFaltantes, ''];
             
             matriz.push([]); // Espacio en blanco
             matriz.push(filaTotales);
 
-            // 6. GENERAR HOJA EXCEL
+            // GENERAR HOJA EXCEL Y AJUSTAR COLUMNAS
             let ws = XLSX.utils.aoa_to_sheet(matriz);
             
-            // Ajustamos los anchos de columna para que se vea bien
             let wscols = [
+                {wch: 20}, // DEVICE ID
+                {wch: 25}, // TIPO MAQUINA
                 {wch: 30}, // CLIENTE
                 {wch: 35}, // PUNTO
-                {wch: 10}, // DELE
-                {wch: 25}, // TIPO MAQUINA
-                {wch: 20}  // DEVICE ID
+                {wch: 15}, // DELEGACION
+                {wch: 22}, // PROPUESTA
+                {wch: 22}, // TOTAL MANTENIMIENTOS
+                {wch: 12}, // FALTAN
+                {wch: 28}  // FECHA ULTIMA
             ];
-            columnasTipos.forEach(() => wscols.push({wch: 15})); // Tipos dinámicos
-            wscols.push({wch: 22}, {wch: 18}); // Totales (Mantenimientos, General)
             ws['!cols'] = wscols;
 
-            XLSX.utils.book_append_sheet(workbook, ws, "Historial Puntos");
+            XLSX.utils.book_append_sheet(workbook, ws, "Historial_Mantenimientos");
             
             let fechaHoy = new Date().toISOString().slice(0, 10).replace(/-/g, "");
             XLSX.writeFile(workbook, `Historial_Mantenimientos_${fechaHoy}.xlsx`);

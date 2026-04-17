@@ -871,12 +871,12 @@
 
             <?php
             $fotosAntes   = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'antes');
-            $fotosDurante = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'componentes');
+            $fotosRemision = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'remision');
             $fotosDespues = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'despues');
 
             $grupos = [
                 'Antes del Servicio'     => $fotosAntes,
-                'Componentes / Durante'  => $fotosDurante,
+                'Remisión'               => $fotosRemision,
                 'Después del Servicio'   => $fotosDespues
             ];
             ?>
