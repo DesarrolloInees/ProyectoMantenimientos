@@ -37,4 +37,24 @@ class PuntoVerModelo
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         return $stmt->execute();
     }
+
+    // NUEVA FUNCIÓN: Trae todos los datos para el Excel pre-cargado
+    public function obtenerDatosExcelPuntos()
+    {
+        $sql = "SELECT 
+                    p.id_punto,
+                    c.nombre_cliente AS 'Cliente',
+                    p.nombre_punto AS 'Punto',
+                    tm.nombre_tipo_maquina AS 'Tipo_Maquina',
+                    m.device_id AS 'Device_ID',
+                    p.direccion AS 'Direccion'
+                FROM punto p
+                INNER JOIN cliente c ON p.id_cliente = c.id_cliente
+                LEFT JOIN maquina m ON p.id_punto = m.id_punto AND m.estado = 1
+                LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
+                WHERE p.estado = 1
+                ORDER BY c.nombre_cliente ASC, p.nombre_punto ASC";
+
+        return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

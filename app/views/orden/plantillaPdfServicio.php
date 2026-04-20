@@ -473,6 +473,73 @@
             color: #9f1239;
         }
 
+        /* ─── REPUESTOS ─── */
+        .repuestos-box {
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .repuestos-header {
+            background: linear-gradient(to right, #475569, #1e293b);
+            padding: 8px 14px;
+        }
+
+        .repuestos-header h3 {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+            margin: 0;
+        }
+
+        .repuestos-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .repuestos-table th {
+            background: var(--gris-bg);
+            color: var(--gris-texto);
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--gris-borde);
+        }
+
+        .repuestos-table td {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--gris-borde);
+            color: var(--negro);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .repuestos-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge-origen {
+            font-size: 8px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.5px;
+        }
+
+        .origen-inees {
+            background: var(--verde);
+        }
+
+        .origen-prosegur {
+            background: #f59e0b;
+        }
+
         /* ─── EVIDENCIA FOTOGRÁFICA ─── */
         .evidencia-header {
             display: flex;
@@ -512,6 +579,8 @@
             padding: 3px 12px;
             border-radius: 4px;
             margin-bottom: 10px;
+            page-break-after: avoid;
+            /* Evita que el título quede en una página y las fotos en la otra */
         }
 
         .foto-grid {
@@ -526,12 +595,16 @@
             overflow: hidden;
             background: white;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            page-break-inside: avoid;
+            /* Evita que una foto individual se parta por la mitad */
         }
 
         .foto-item img {
             width: 100%;
             height: 160px;
-            object-fit: cover;
+            /* Mantenemos la altura fija para que la cuadrícula se vea ordenada */
+            object-fit: contain;
+            /* <-- CAMBIO AQUÍ. Muestra la imagen entera */
             display: block;
         }
 
@@ -786,6 +859,35 @@
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
+            <?php if (!empty($repuestos)): ?>
+                <div class="repuestos-box no-break">
+                    <div class="repuestos-header">
+                        <h3>⚙️ Repuestos Utilizados</h3>
+                    </div>
+                    <table class="repuestos-table">
+                        <thead>
+                            <tr>
+                                <th>Repuesto</th>
+                                <th style="text-align: center;">Cantidad</th>
+                                <th style="text-align: center;">Origen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($repuestos as $rep): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($rep['nombre_repuesto']) ?></td>
+                                    <td style="text-align: center; font-family: 'IBM Plex Mono', monospace;"><?= $rep['cantidad'] ?></td>
+                                    <td style="text-align: center;">
+                                        <span class="badge-origen <?= strtoupper($rep['origen']) === 'INEES' ? 'origen-inees' : 'origen-prosegur' ?>">
+                                            <?= htmlspecialchars($rep['origen']) ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
         </div>
 
         <?php
@@ -829,61 +931,56 @@
 
 
         <!-- FIRMAS -->
-        <div class="firmas no-break">
-            <div class="firma-box">
-                <div class="firma-espacio">
-                    <?php if ($firmaTecnicoSrc): ?>
-                        <img src="<?= $firmaTecnicoSrc ?>" alt="Firma Técnico" class="img-firma">
-                    <?php endif; ?>
+        <div class="no-break">
+            <div class="firmas">
+                <div class="firma-box">
+                    <div class="firma-espacio">
+                        <?php if ($firmaTecnicoSrc): ?>
+                            <img src="<?= $firmaTecnicoSrc ?>" alt="Firma Técnico" class="img-firma">
+                        <?php endif; ?>
+                    </div>
+                    <div class="firma-linea"></div>
+                    <div class="firma-nombre"><?= $datosOrden['nombre_tecnico'] ?></div>
+                    <div class="firma-rol">Técnico de Servicio</div>
                 </div>
-                <div class="firma-linea"></div>
-                <div class="firma-nombre"><?= $datosOrden['nombre_tecnico'] ?></div>
-                <div class="firma-rol">Técnico de Servicio</div>
-            </div>
-            <div class="firma-box">
-                <div class="firma-espacio">
-                    <?php if ($firmaSrc): ?>
-                        <img src="<?= $firmaSrc ?>" alt="Firma Cliente" class="img-firma">
-                    <?php endif; ?>
+                <div class="firma-box">
+                    <div class="firma-espacio">
+                        <?php if ($firmaSrc): ?>
+                            <img src="<?= $firmaSrc ?>" alt="Firma Cliente" class="img-firma">
+                        <?php endif; ?>
+                    </div>
+                    <div class="firma-linea"></div>
+                    <div class="firma-nombre"><?= !empty($datosOrden['administrador_punto']) ? $datosOrden['administrador_punto'] : 'Responsable en Sitio' ?></div>
+                    <div class="firma-rol">Recibido y Aprobado</div>
                 </div>
-                <div class="firma-linea"></div>
-                <div class="firma-nombre"><?= !empty($datosOrden['administrador_punto']) ? $datosOrden['administrador_punto'] : 'Responsable en Sitio' ?></div>
-                <div class="firma-rol">Recibido y Aprobado</div>
             </div>
-        </div>
 
-        <!-- FOOTER -->
-        <div class="footer-strip">
-            <span>INEES — Reporte Técnico de Servicio</span>
-            <span class="remision-footer">Remisión #<?= $datosOrden['numero_remision'] ?></span>
-            <span><?= date('d/m/Y', strtotime($datosOrden['fecha_visita'])) ?></span>
-        </div>
-
-
-        <!-- ─── EVIDENCIA FOTOGRÁFICA ─── -->
-        <?php if (!empty($evidencias)): ?>
-            <div class="page-break"></div>
-
-            <div class="evidencia-header">
+            <div class="footer-strip">
+                <span>INEES — Reporte Técnico de Servicio</span>
+                <span class="remision-footer">Remisión #<?= $datosOrden['numero_remision'] ?></span>
+                <span><?= date('d/m/Y', strtotime($datosOrden['fecha_visita'])) ?></span>
+            </div>
+        </div> <?php if (!empty($evidencias)): ?>
+            <div class="evidencia-header" style="margin-top: 30px;">
                 <h2>Evidencia Fotográfica</h2>
                 <div class="ev-line"></div>
             </div>
 
             <?php
-            $fotosAntes   = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'antes');
-            $fotosRemision = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'remision');
-            $fotosDespues = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'despues');
+                    $fotosAntes   = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'antes');
+                    $fotosRemision = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'remision');
+                    $fotosDespues = array_filter($evidencias, fn($e) => $e['tipo_evidencia'] === 'despues');
 
-            $grupos = [
-                'Antes del Servicio'     => $fotosAntes,
-                'Remisión'               => $fotosRemision,
-                'Después del Servicio'   => $fotosDespues
-            ];
+                    $grupos = [
+                        'Antes del Servicio'     => $fotosAntes,
+                        'Remisión'               => $fotosRemision,
+                        'Después del Servicio'   => $fotosDespues
+                    ];
             ?>
 
             <?php foreach ($grupos as $tituloGrupo => $fotos): ?>
                 <?php if (count($fotos) > 0): ?>
-                    <div class="foto-grupo no-break">
+                    <div class="foto-grupo ">
                         <div class="foto-grupo-title"><?= $tituloGrupo ?></div>
                         <div class="foto-grid">
                             <?php foreach ($fotos as $foto): ?>

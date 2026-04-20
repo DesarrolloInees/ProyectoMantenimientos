@@ -25,11 +25,11 @@ class resetPasswordControlador
             $this->procesarResetPassword();
             return;
         }
-        
-        // Vista normal
+
         $data = [
             'baseURL' => BASE_URL,
             'error'   => $_GET['error'] ?? null,
+            'success' => $_GET['success'] ?? null,
             'email'   => $_GET['email'] ?? ''
         ];
         require_once "app/views/login/resetPasswordVista.php";
@@ -37,90 +37,68 @@ class resetPasswordControlador
 
     public function procesarResetPassword()
     {
-        echo "<pre style='background: #000; color: #0f0; padding: 20px;'>";
-        echo "=== MODO DEPURACIÓN ACTIVADO ===\n";
-
-        $email = $_POST['email'] ?? '';
+        $email  = $_POST['email'] ?? '';
         $codigo = trim($_POST['codigo'] ?? '');
-        $p1 = $_POST['nueva_password'] ?? '';
-        $p2 = $_POST['confirmar_password'] ?? '';
+        $p1     = $_POST['nueva_password'] ?? '';
+        $p2     = $_POST['confirmar_password'] ?? '';
 
-        echo "1. Datos Recibidos:\n";
-        echo "   Email: [$email]\n";
-        echo "   Código: [$codigo]\n";
-        echo "   Pass 1: [$p1]\n";
-        echo "   Pass 2: [$p2]\n\n";
-
-        // VALIDACIÓN 1: Coincidencia
+        // 1. Validación de coincidencia
         if ($p1 !== $p2) {
-            die("❌ ERROR: Las contraseñas no coinciden.");
+            $this->redireccionarError("Las contraseñas no coinciden.", $email);
         }
-        echo "✅ Paso 1: Las contraseñas coinciden.\n";
 
-        // VALIDACIÓN 2: Regex
-        // Simplificamos la regex temporalmente para ver si es eso
+        // 2. Validación de complejidad (Regex)
         $regex = "/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{8,}$/";
         if (!preg_match($regex, $p1)) {
-            echo "❌ ERROR: La contraseña no cumple con la seguridad (Mayuscula, Minuscula, Numero, Simbolo).\n";
-            die("   Intenta poner una más simple temporalmente o revisa la Regex.");
+            $this->redireccionarError("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.", $email);
         }
-        echo "✅ Paso 2: La contraseña es segura.\n";
 
-        // VALIDACIÓN 3: Verificar Código en BD
-        echo "🔍 Verificando código en BD...\n";
-        
-        // Hacemos una consulta manual para ver qué hay en la BD realmente
+        // 3. Verificar Registro de Reset
         $stmt = $this->db->prepare("SELECT * FROM password_reset WHERE usuario_email = :email ORDER BY id DESC LIMIT 1");
         $stmt->execute([':email' => $email]);
         $registro = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$registro) {
-            die("❌ ERROR: No existe ningún registro de reset para este email en la tabla 'password_reset'.");
+            $this->redireccionarError("No se encontró una solicitud de restablecimiento válida.", $email);
         }
 
-        echo "   Registro encontrado en BD:\n";
-        print_r($registro);
-
+        // 4. Validaciones de Seguridad del Código
         $ahora = date('Y-m-d H:i:s');
-        echo "\n   Hora del Servidor PHP: " . $ahora . "\n";
-        echo "   Hora de Expiración BD: " . $registro['expira_en'] . "\n";
-
+        
         if ($registro['usado'] == 1) {
-            die("❌ ERROR: Este código YA FUE USADO (usado = 1). Genera uno nuevo.");
+            $this->redireccionarError("Este código ya ha sido utilizado.", $email);
         }
 
         if ($registro['expira_en'] <= $ahora) {
-            die("❌ ERROR: El código ha EXPIRADO (La hora actual es mayor a la de expiración). Revisa la Zona Horaria.");
+            $this->redireccionarError("El código ha expirado. Por favor, solicita uno nuevo.", $email);
         }
 
         if (!password_verify($codigo, $registro['codigo_hash'])) {
-             die("❌ ERROR: El código escrito NO COINCIDE con el hash guardado.");
+            $this->redireccionarError("El código de verificación es incorrecto.", $email);
         }
 
-        echo "✅ Paso 3: El código es VÁLIDO.\n";
-
-        // VALIDACIÓN 4: Actualizar Usuario
+        // 5. Actualizar Contraseña del Usuario
         $usuario = $this->modelo->obtenerUsuarioPorEmail($email);
         if (!$usuario) {
-            die("❌ ERROR: No se encuentra el usuario en la tabla 'usuarios'.");
+            $this->redireccionarError("Usuario no encontrado.", $email);
         }
-        
-        echo "✅ Paso 4: Usuario encontrado (ID: " . $usuario['usuario_id'] . ").\n";
-        echo "⚙️ Intentando actualizar password...\n";
 
         $hash = password_hash($p1, PASSWORD_BCRYPT);
-        $update = $this->modelo->actualizarPassword($usuario['usuario_id'], $hash);
+        $actualizado = $this->modelo->actualizarPassword($usuario['usuario_id'], $hash);
 
-        if ($update) {
-            echo "🎉 ¡ÉXITO! La base de datos confirmó la actualización.\n";
+        if ($actualizado) {
             $this->modelo->marcarCodigoComoUsado($registro['id']);
-            echo "   Código marcado como usado.\n";
-            echo "   <a href='".BASE_URL."login' style='color: white; font-size: 20px;'>--> CLIC AQUÍ PARA IR AL LOGIN <--</a>";
+            header("Location: " . BASE_URL . "login?success=Tu contraseña ha sido actualizada correctamente.");
+            exit();
         } else {
-            echo "❌ ERROR CRÍTICO: El modelo devolvió FALSE al intentar hacer el UPDATE. Revisa logs de error.";
+            $this->redireccionarError("Error interno al actualizar la contraseña.", $email);
         }
-        
-        echo "</pre>";
-        exit(); // Detenemos todo aquí
+    }
+
+    private function redireccionarError($mensaje, $email)
+    {
+        $url = BASE_URL . "resetPassword?error=" . urlencode($mensaje) . "&email=" . urlencode($email);
+        header("Location: " . $url);
+        exit();
     }
 }

@@ -77,15 +77,63 @@ function activarInputHora(selector, idFila) {
         return;
     }
 
-    $(selector).mask('00:00');
+    const $input = $(selector);
+    const inputDOM = $input[0]; // Obtenemos el elemento HTML puro (sin jQuery)
 
-    $(selector).on('blur', function () {
+    // 🚀 TRUCO NIVEL DIOS: Usar true al final (Capture Phase)
+    // Esto atrapa el pegado ANTES de que jQuery Mask o Cloudflare lo vean.
+    inputDOM.addEventListener('paste', function(e) {
+        e.preventDefault();
+        e.stopPropagation(); // 🛑 Le decimos a la máscara: "No te metas, yo me encargo"
+
+        let textoPegado = (e.clipboardData || window.clipboardData).getData('text') || '';
+        let valorFinal = "";
+
+        // Buscamos 1 o 2 números, cualquier texto en el medio, y 2 números
+        // Esto atrapa "7:59", "07:59", "7 59", "Hora: 7 y 59"
+        let coincidencia = textoPegado.match(/(\d{1,2})[^\d]*(\d{2})/);
+
+        if (coincidencia) {
+            let horas = coincidencia[1].padStart(2, '0');
+            let minutos = coincidencia[2].padStart(2, '0');
+            valorFinal = horas + ':' + minutos;
+        } else {
+            let numeros = textoPegado.replace(/\D/g, '').substring(0, 4);
+            if (numeros.length === 3) numeros = '0' + numeros;
+            if (numeros.length === 4) {
+                valorFinal = numeros.substring(0, 2) + ':' + numeros.substring(2, 4);
+            } else {
+                valorFinal = numeros;
+            }
+        }
+
+        // Apagamos máscara, inyectamos valor, y volvemos a prender
+        $input.unmask();
+        $input.val(valorFinal);
+        $input.mask('00:00');
+        $input.removeClass('border-red-500 bg-red-50');
+
+        // 🔥 Disparamos el blur para que tu código valide y calcule el tiempo al instante
+        $input.trigger('blur');
+        
+    }, true); // <-- ESTE TRUE ES LA MAGIA QUE VENCE A CLOUDFLARE
+
+    // Inicializamos la máscara normal para cuando escriban a mano
+    $input.mask('00:00');
+
+    // Validar y calcular al salir del input
+    $input.on('blur', function () {
         const valor = $(this).val();
-        if (valor === '') return;
+        
+        if (valor === '') {
+            $(this).removeClass('border-red-500 bg-red-50');
+            calcTiempo(idFila); 
+            return;
+        }
 
         const partes = valor.split(':');
-        const horas = parseInt(partes[0]);
-        const minutos = parseInt(partes[1]);
+        const horas = parseInt(partes[0], 10);
+        const minutos = parseInt(partes[1], 10);
 
         let esValido = true;
 
@@ -94,9 +142,8 @@ function activarInputHora(selector, idFila) {
         if (minutos < 0 || minutos > 59) esValido = false;
 
         if (!esValido) {
-            // Usar UIUtils si existe, sino alert normal
             if (window.UIUtils && window.UIUtils.mostrarNotificacion) {
-                window.UIUtils.mostrarNotificacion('Hora inválida (formato 24h)', 'error');
+                window.UIUtils.mostrarNotificacion('Hora inválida', 'error');
             } else {
                 alert('⚠️ Hora inválida. Use formato 24 horas (00:00 a 23:59).');
             }
@@ -104,8 +151,9 @@ function activarInputHora(selector, idFila) {
             $(this).addClass('border-red-500 bg-red-50');
         } else {
             $(this).removeClass('border-red-500 bg-red-50');
-            calcTiempo(idFila);
         }
+        
+        calcTiempo(idFila);
     });
 }
 

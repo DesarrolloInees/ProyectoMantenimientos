@@ -314,15 +314,10 @@ function cambioServicio(id) {
     // validarCoherencia(id); 
 }
 
-/**
- * Evento delegado para auto-seleccionar texto en inputs de la tabla
- * Se pone fuera de las funciones para que se registre una sola vez al cargar el script
- */
-$(document).on('focus', '#contenedorFilas input', function() {
-    const self = this;
-    setTimeout(() => {
-        $(self).select();
-    }, 50);
+// 🔥 CORRECCIÓN: Usar click en lugar de focus + setTimeout para evitar 
+// que interrumpa el evento de pegado (paste) de la máscara de tiempo.
+$(document).on('click', '#contenedorFilas input', function() {
+    $(this).select();
 });
 
 

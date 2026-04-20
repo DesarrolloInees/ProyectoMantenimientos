@@ -2,9 +2,7 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
 
-
 <style>
-    /* Reutilizamos los estilos pro que ya definimos antes */
     .dataTables_length select,
     .dataTables_filter input {
         background-color: white !important;
@@ -39,10 +37,6 @@
     }
 </style>
 
-<?php if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado."); ?>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
-
 <div class="w-full px-4 md:px-6">
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -50,7 +44,7 @@
                 <i class="fas fa-bullseye text-red-600 mr-2"></i> Remisiones Salteadas
             </h1>
             <p class="text-gray-500 mt-1">
-                Detectando remisiones <strong>DISPONIBLES</strong> atrapadas entre dos <strong>USADAS</strong>.
+                Detectando saltos de 1 o 2 remisiones <strong>DISPONIBLES</strong> atrapadas entre <strong>USADAS</strong>.
             </p>
         </div>
         <a href="<?= BASE_URL ?>controlRemisionVer" class="text-gray-600 hover:text-gray-900 font-medium">
@@ -64,7 +58,7 @@
                 <i class="fas fa-check text-2xl text-green-600"></i>
             </div>
             <h3 class="text-lg font-bold text-gray-800">Todo Correcto</h3>
-            <p class="text-gray-600">No hay saltos individuales detectados actualmente.</p>
+            <p class="text-gray-600">No hay saltos de 1 o 2 remisiones detectados actualmente.</p>
         </div>
     <?php else: ?>
 

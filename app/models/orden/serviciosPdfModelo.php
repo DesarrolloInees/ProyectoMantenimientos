@@ -211,4 +211,22 @@ class serviciosPdfModelo
             return false;
         }
     }
+
+    public function obtenerRepuestosOrden($idOrden)
+    {
+        // Traemos los repuestos cruzando con la tabla 'repuesto'
+        $sql = "SELECT r.nombre_repuesto, osr.origen, osr.cantidad 
+                FROM orden_servicio_repuesto osr
+                INNER JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
+                WHERE osr.id_orden_servicio = ?";
+                
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idOrden]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo repuestos para PDF: " . $e->getMessage());
+            return [];
+        }
+    }
 }

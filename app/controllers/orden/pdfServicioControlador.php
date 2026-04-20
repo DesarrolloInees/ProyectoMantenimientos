@@ -38,7 +38,7 @@ class PdfServicioControlador
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        
+
         $idRolUsuario = isset($_SESSION['nivel_acceso']) ? $_SESSION['nivel_acceso'] : null;
 
         if ($idRolUsuario == 4 && $idOrden) {
@@ -61,6 +61,7 @@ class PdfServicioControlador
         $evidencias = $this->modelo->obtenerEvidenciasOrden($idOrden);
         // AGREGAR ESTA LÍNEA:
         $novedades = $this->modelo->obtenerNovedadesOrden($idOrden);
+        $repuestos = $this->modelo->obtenerRepuestosOrden($idOrden);
 
         if (!$datosOrden) {
             die("Error: La orden no existe.");
@@ -94,8 +95,13 @@ class PdfServicioControlador
                     break;
                 }
             }
-
+            // 1. Extraer los datos necesarios
             $numeroRemision = $datosOrden['numero_remision'] ?? $idOrden;
+            $puntoAtendido  = $datosOrden['nombre_punto'] ?? 'Sin_Punto';
+            $fechaServicio  = date('Y-m-d', strtotime($datosOrden['fecha_visita']));
+
+            // 2. Limpiar el nombre del punto (quitar acentos, espacios o caracteres raros para evitar errores de archivo)
+            $puntoLimpio = str_replace([' ', '/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $puntoAtendido);
 
             $browsershot = Browsershot::html($html)
                 ->setNodeBinary($nodePath)
@@ -112,7 +118,9 @@ class PdfServicioControlador
             $pdfContent = $browsershot->pdf();
 
             // 5. Mostrar el PDF en el navegador
-            $nombreArchivo = "Servicio_{$numeroRemision}.pdf";
+            // 3. Construir el nuevo nombre del archivo
+            // Ejemplo: Servicio_1025_Punto_Venta_Norte_2026-04-17.pdf
+            $nombreArchivo = "Servicio_{$numeroRemision}_{$puntoLimpio}_{$fechaServicio}.pdf";
 
             header('Content-Type: application/pdf');
             header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');

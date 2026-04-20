@@ -18,11 +18,10 @@ class RemisionesPendientesControlador
 
     public function index()
     {
-        // Usamos la nueva lógica de vecindad
-        
+        // Lógica de Sándwich para detectar 1 o 2 remisiones salteadas
         $pendientes = $this->modelo->obtenerSalteadasSandwich();
 
-        $titulo = "Remisiones Salteadas (Detectadas por uso posterior)";
+        $titulo = "Remisiones Salteadas";
         $vistaContenido = "app/views/reportes/remisionesPendientesVista.php";
         include "app/views/plantillaVista.php";
     }
@@ -33,12 +32,9 @@ class RemisionesPendientesControlador
             $id = $_GET['id'];
             $estado = $_GET['estado'];
             
-            // AGREGADO: 'DISPONIBLE' por seguridad si necesitas revertir
-            // Asegúrate de que estos nombres sean IDÉNTICOS a los de tu tabla 'estados_remision'
             $estadosPermitidos = ['ANULADA', 'USADA', 'FALTANTE', 'ELIMINADO', 'DISPONIBLE']; 
 
             if (in_array($estado, $estadosPermitidos)) {
-                // Ahora esto funcionará porque el modelo traducirá el texto a ID
                 $this->modelo->actualizarEstadoRapido($id, $estado);
             }
         }
