@@ -729,7 +729,7 @@
         <!-- HEADER -->
         <div class="header">
             <div class="header-marca">
-                <img src="<?= BASE_URL ?>app/logos/logoIneesSinFondo.png" alt="Logo-Inees">
+                <img src="<?= BASE_URL ?>app/logos/logoTransBank.jpg" alt="Logo-Inees">
                 <span class="subtitulo">Reporte Técnico de Servicio</span>
             </div>
             <div class="header-remision">

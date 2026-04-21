@@ -28,7 +28,7 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 
 <script>
-    $(document).ready(function () {
+    $(document).ready(function() {
         $('#tablaPdf').DataTable({
             responsive: true, // <--- AGREGAR ESTA LÍNEA
             "ajax": {
@@ -37,41 +37,47 @@
                 "type": "POST"
             },
             "columns": [{
-                "data": "id_ordenes_servicio",
-                "className": "text-center font-bold text-gray-600"
-            },
-            {
-                "data": "numero_remision",
-                "className": "text-center font-bold text-indigo-600"
-            },
-            {
-                "data": "fecha_visita",
-                "className": "text-center"
-            },
-            {
-                "data": null,
-                "render": function (data, type, row) {
-                    return `<div class="font-bold text-gray-800">${row.nombre_cliente}</div>
+                    "data": "id_ordenes_servicio",
+                    "className": "text-center font-bold text-gray-600"
+                },
+                {
+                    "data": "numero_remision",
+                    "className": "text-center font-bold text-indigo-600"
+                },
+                {
+                    "data": "fecha_visita",
+                    "className": "text-center"
+                },
+                {
+                    "data": null,
+                    "render": function(data, type, row) {
+                        return `<div class="font-bold text-gray-800">${row.nombre_cliente}</div>
                                 <div class="text-xs text-gray-500">${row.nombre_punto}</div>`;
-                }
-            },
-            {
-                "data": "nombre_tecnico"
-            },
-            {
-                "data": null,
-                "className": "text-center align-middle",
-                render: function (data, type, row) {
-                    // Apuntamos al nuevo controlador MVC que creaste
-                    const urlPdf = `index.php?pagina=pdfServicio&accion=generar&id=${row.id_ordenes_servicio}`;
+                    }
+                },
+                {
+                    "data": "nombre_tecnico"
+                },
+                {
+                    "data": null,
+                    "className": "text-center align-middle",
+                    // Dentro de tu columns render de DataTables:
+                    render: function(data, type, row) {
+                        const urlPdf = `index.php?pagina=pdfServicio&accion=generar&id=${row.id_ordenes_servicio}`;
+                        const urlEditar = `index.php?pagina=servicioEditar&accion=index&id=${row.id_ordenes_servicio}`;
 
-                    return `
-                    <a href="${urlPdf}" target="_blank"
-                        class="bg-red-600 hover:bg-red-800 text-white font-bold py-2 px-4 rounded shadow transition hover:scale-105 inline-block">
-                        <i class="fas fa-file-pdf mr-2"></i> Descargar PDF
-                    </a>`;
+                        return `
+                            <div class="flex flex-col gap-2">
+                                <a href="${urlPdf}" target="_blank" class="bg-red-600 hover:bg-red-800 text-white font-bold py-1 px-3 rounded shadow text-xs text-center inline-block">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                                <a href="${urlEditar}" class="bg-blue-600 hover:bg-blue-800 text-white font-bold py-1 px-3 rounded shadow text-xs text-center inline-block">
+                                    <i class="fas fa-edit"></i> Completar
+                                </a>
+                            </div>
+                        `;
+                    }
                 }
-            }
             ],
             "order": [
                 [2, "desc"], // Ordenar por fecha descendente

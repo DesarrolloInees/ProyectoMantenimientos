@@ -49,7 +49,7 @@ class PdfServicioControlador
                 die("<div style='text-align:center; margin-top:50px; font-family:sans-serif;'>
                         <h2 style='color:red;'>Acceso Denegado</h2>
                         <p>No tienes los permisos suficientes para ver esta orden de servicio porque aún está en periodo de restricción.</p>
-                     </div>");
+                    </div>");
             }
         }
         // =======================================================
