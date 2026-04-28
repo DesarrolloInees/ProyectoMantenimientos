@@ -45,10 +45,9 @@ class ordenDetalleControlador
             // ✅ NUEVO: LLAMADA A LA IA
             if ($accion === 'ajaxMejorarTextoIA')         $this->ajaxMejorarTextoIA();
             if ($accion === 'ajaxGuardarCambiosJSON')   $this->ajaxGuardarCambiosJSON();
-            
         }
     }
-    
+
     // ============================================================
     // EXPORTAR EXCEL DESDE EL BUSCADOR AVANZADO
     // ============================================================
@@ -444,12 +443,12 @@ class ordenDetalleControlador
 
         // 1. CORRECCIÓN: Respaldo con getenv() por si $_ENV está vacío por configuración del php.ini
         $apiKey = $_ENV['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY') ?? $_SERVER['GROQ_API_KEY'] ?? '';
-        
+
         if (empty(trim($apiKey))) {
             echo json_encode(['status' => 'error', 'msg' => 'API Key no encontrada en el entorno.']);
             exit;
         }
-        
+
         $url = 'https://api.groq.com/openai/v1/chat/completions';
 
         $prompt = "Eres un ingeniero supervisor de mantenimiento experto. Toma el siguiente reporte redactado por un técnico de campo y reescríbelo para que tenga una ortografía perfecta, gramática correcta y usando un lenguaje técnico, objetivo y muy profesional.\n\nReglas estrictas:\n- NO inventes repuestos, marcas o procedimientos que no estén en el texto original.\n- NO cambies ni omitas medidas (voltajes, amperajes), tiempos o códigos de error.\n- Devuelve ÚNICAMENTE el texto mejorado, sin introducciones, saludos ni comillas.\n\nTexto original: " . $textoOriginal;
@@ -471,10 +470,10 @@ class ordenDetalleControlador
             'Content-Type: application/json',
             'Authorization: Bearer ' . trim($apiKey)
         ]);
-        
+
         // 2. CORRECCIÓN: Apagar ambas validaciones SSL para entornos locales y añadir Timeout
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); 
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Máximo 30 segundos de espera
 
         $response = curl_exec($ch);
@@ -485,17 +484,17 @@ class ordenDetalleControlador
         if ($httpCode == 200) {
             $resultado = json_decode($response, true);
             $textoMejorado = $resultado['choices'][0]['message']['content'] ?? '';
-            
+
             echo json_encode([
-                'status' => 'ok', 
+                'status' => 'ok',
                 'texto_mejorado' => trim($textoMejorado)
             ]);
         } else {
             // 3. CORRECCIÓN: Enviar el error real de cURL al frontend para saber exactamente qué pasa
             $detalleError = $error ? "Falla interna (cURL): $error" : "Groq respondió: $response";
-            
+
             echo json_encode([
-                'status' => 'error', 
+                'status' => 'error',
                 'msg' => "Error $httpCode. $detalleError"
             ]);
         }
@@ -529,6 +528,10 @@ class ordenDetalleControlador
                 $datos['valor'] = str_replace(',', '.', $valorLimpio);
             }
 
+            // ── NUEVO: sanitizar horas ANTES de usarlas ──
+            $datos['entrada'] = $this->sanitizarHora($datos['entrada'] ?? '');
+            $datos['salida']  = $this->sanitizarHora($datos['salida']  ?? '');
+
             // Calcular tiempo si no viene
             if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
                 $datos['tiempo'] = '00:00';
@@ -538,7 +541,8 @@ class ordenDetalleControlador
                         $d2 = new DateTime($datos['salida']);
                         if ($d2 < $d1) $d2->modify('+1 day');
                         $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
-                    } catch (Exception $e) {}
+                    } catch (Exception $e) {
+                    }
                 }
             }
 
@@ -562,4 +566,36 @@ class ordenDetalleControlador
         }
         exit;
     }
+
+/**
+ * Convierte cualquier formato de hora a HH:MM
+ * Acepta: "1230", "12:30", "830", "8:30", "12:30:00"
+ * Devuelve siempre: "12:30" o "" si vacío
+ */
+private function sanitizarHora(?string $valor): string
+{
+    if (empty(trim($valor ?? ''))) return '';
+
+    $valor = trim($valor);
+
+    // Ya tiene formato HH:MM o HH:MM:SS → tomamos solo HH:MM
+    if (preg_match('/^(\d{1,2}):(\d{2})/', $valor, $m)) {
+        $h   = min(23, (int)$m[1]);
+        $min = min(59, (int)$m[2]);
+        return sprintf('%02d:%02d', $h, $min);
+    }
+
+    // Solo dígitos: "1230", "830", etc.
+    $nums = preg_replace('/\D/', '', $valor);
+    if (!$nums) return '';
+
+    // Completar a 4 dígitos
+    $nums = str_pad($nums, 4, '0', STR_PAD_RIGHT);
+    $nums = substr($nums, 0, 4);
+
+    $h   = min(23, (int)substr($nums, 0, 2));
+    $min = min(59, (int)substr($nums, 2, 2));
+
+    return sprintf('%02d:%02d', $h, $min);
+}
 }

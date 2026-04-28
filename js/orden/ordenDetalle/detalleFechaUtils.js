@@ -78,41 +78,74 @@ function calcTiempo(id) {
 }
 
 /**
- * 🔥 NUEVO: Activar máscara y validación para inputs de hora (Traído de timeManager)
+ * 🔥 FORMATO EN VIVO: Hora Militar Inteligente
  */
-function activarInputHora(selector, idFila) {
-    if (typeof jQuery === 'undefined' || typeof jQuery.fn.mask === 'undefined') {
-        console.warn("jQuery Mask Plugin no cargado. Saltando máscara.");
-        return;
-    }
+function activarInputHora() {
 
-    $(selector).mask('00:00');
+    // ─── MIENTRAS ESCRIBE: formato en vivo ───
+    $(document).off('input.hora', '.input-hora-militar')
+               .on('input.hora',  '.input-hora-militar', function () {
 
-    $(selector).on('blur', function () {
-        const valor = $(this).val();
-        if (valor === '') return;
+        const input  = this;
+        const selIni = input.selectionStart;
 
-        const partes = valor.split(':');
-        const horas = parseInt(partes[0]);
-        const minutos = parseInt(partes[1]);
+        // Sacamos solo dígitos del valor actual
+        let nums = input.value.replace(/\D/g, '');
 
-        let esValido = true;
+        // Máximo 4 dígitos
+        if (nums.length > 4) nums = nums.slice(0, 4);
 
-        if (valor.length !== 5 || isNaN(horas) || isNaN(minutos)) esValido = false;
-        if (horas < 0 || horas > 23) esValido = false;
-        if (minutos < 0 || minutos > 59) esValido = false;
+        // Si el primer dígito es 3-9, anteponemos 0 (ej: "8" → "08")
+        if (nums.length === 1 && parseInt(nums[0]) > 2) {
+            nums = '0' + nums;
+        }
 
-        if (!esValido) {
-            if (window.UIUtils && window.UIUtils.mostrarNotificacion) {
-                window.UIUtils.mostrarNotificacion('Hora inválida (formato 24h)', 'error');
-            } else {
-                alert('⚠️ Hora inválida. Use formato 24 horas (00:00 a 23:59).');
-            }
-            $(this).val('');
-            $(this).addClass('border-red-500 bg-red-50');
+        // Construir el string formateado
+        let formatted = '';
+        if (nums.length <= 2) {
+            formatted = nums;                                   // "14"
         } else {
-            $(this).removeClass('border-red-500 bg-red-50');
-            calcTiempo(idFila); // Recalcula la duración automáticamente
+            formatted = nums.slice(0, 2) + ':' + nums.slice(2); // "14:30"
+        }
+
+        input.value = formatted;
+
+        // Reposicionar cursor: si acabamos de pasar los 2 primeros dígitos,
+        // saltamos el ":" que insertamos
+        let newPos = selIni;
+        if (formatted.length >= 3 && newPos === 2) newPos = 3;
+        try { input.setSelectionRange(newPos, newPos); } catch (e) {}
+    });
+
+    // ─── AL SALIR: validar y completar ───
+    $(document).off('blur.hora', '.input-hora-militar')
+               .on('blur.hora',  '.input-hora-militar', function () {
+
+        const input = this;
+        let nums = input.value.replace(/\D/g, '');
+
+        if (!nums) {
+            input.value = '';
+            input.classList.remove('border-red-500', 'bg-red-50');
+            if (window.DetalleDesplazamientos?.calcularDesplazamientos) {
+                window.DetalleDesplazamientos.calcularDesplazamientos();
+            }
+            return;
+        }
+
+        // Completar dígitos faltantes hasta 4
+        while (nums.length < 4) nums += '0';
+        nums = nums.slice(0, 4);
+
+        const h = Math.min(23, parseInt(nums.slice(0, 2), 10));
+        const m = Math.min(59, parseInt(nums.slice(2, 4), 10));
+
+        input.value = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        input.classList.remove('border-red-500', 'bg-red-50');
+
+        if (window.DetalleDesplazamientos?.calcularDesplazamientos) {
+            const idFila = input.id.split('_').pop();
+            window.DetalleDesplazamientos.calcularDesplazamientos(idFila);
         }
     });
 }
@@ -238,6 +271,7 @@ window.DetalleFechaUtils = {
     activarInputHora,    // Añadido
     configurarDetectorFechas,
     manejarCambioFechaGlobal, // Añadido
+    activarInputHora,    // Añadido
     inicializar          // Añadido
 };
 

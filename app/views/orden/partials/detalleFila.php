@@ -249,24 +249,39 @@
     </td>
 
     <!-- 13. HORA ENTRADA -->
-    <td class="p-1">
-        <input type="time"
-            name="servicios[<?= $idFila ?>][entrada]"
-            id="hora_entrada_<?= $idFila ?>"
-            value="<?= $s['hora_entrada'] ?>"
-            onchange="calcularDesplazamientos()"
-            class="w-full border rounded text-xs p-1">
-    </td>
+<td class="p-1">
+    <?php
+    $horaEntrada = '';
+    if (!empty($s['hora_entrada'])) {
+        // Funciona tanto si viene "HH:MM:SS" como "HH:MM"
+        $horaEntrada = substr($s['hora_entrada'], 0, 5);
+    }
+    ?>
+    <input type="text"
+        name="servicios[<?= $idFila ?>][entrada]"
+        id="hora_entrada_<?= $idFila ?>"
+        value="<?= $horaEntrada ?>"
+        placeholder="00:00"
+        maxlength="5"
+        class="input-hora-militar w-full border rounded text-xs p-1 text-center font-mono focus:bg-blue-50 transition">
+</td>
 
-    <!-- 14. HORA SALIDA -->
-    <td class="p-1">
-        <input type="time"
-            name="servicios[<?= $idFila ?>][salida]"
-            id="hora_salida_<?= $idFila ?>"
-            value="<?= $s['hora_salida'] ?>"
-            onchange="calcularDesplazamientos()"
-            class="w-full border rounded text-xs p-1">
-    </td>
+<!-- 14. HORA SALIDA -->
+<td class="p-1">
+    <?php
+    $horaSalida = '';
+    if (!empty($s['hora_salida'])) {
+        $horaSalida = substr($s['hora_salida'], 0, 5);
+    }
+    ?>
+    <input type="text"
+        name="servicios[<?= $idFila ?>][salida]"
+        id="hora_salida_<?= $idFila ?>"
+        value="<?= $horaSalida ?>"
+        placeholder="00:00"
+        maxlength="5"
+        class="input-hora-militar w-full border rounded text-xs p-1 text-center font-mono focus:bg-blue-50 transition">
+</td>
 
     <!-- 15. DESPLAZAMIENTO -->
     <td class="p-1 bg-orange-50 text-center align-middle">

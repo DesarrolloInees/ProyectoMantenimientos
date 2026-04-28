@@ -132,13 +132,13 @@ class ordenDetalleModelo
         if (!empty($idsOrdenes)) {
             // 1. Creamos interrogantes para la consulta ( ?, ?, ? )
             $placeholders = implode(',', array_fill(0, count($idsOrdenes), '?'));
-            
+
             // 2. Traemos TODOS los repuestos de todas las órdenes en UNA SOLA consulta
             $sqlRepTodos = "SELECT osr.id_orden_servicio, r.id_repuesto as id, r.nombre_repuesto as nombre, osr.origen, osr.cantidad 
                             FROM orden_servicio_repuesto osr
                             JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
                             WHERE osr.id_orden_servicio IN ($placeholders)";
-                            
+
             $stmtRepTodos = $this->conn->prepare($sqlRepTodos);
             $stmtRepTodos->execute($idsOrdenes);
             $todosLosRepuestos = $stmtRepTodos->fetchAll(PDO::FETCH_ASSOC);
@@ -299,7 +299,7 @@ class ordenDetalleModelo
                     END as nombre_tecnico 
                 FROM tecnico 
                 ORDER BY estado DESC, nombre_tecnico ASC";
-                
+
         return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -449,6 +449,10 @@ class ordenDetalleModelo
         try {
             $this->conn->beginTransaction();
 
+            // 🔥 DEFENSA FINAL: normalizar horas por si llegaron sin formato
+            $datos['entrada'] = $this->normalizarHora($datos['entrada'] ?? '');
+            $datos['salida']  = $this->normalizarHora($datos['salida']  ?? '');
+
             // 1. Obtener datos actuales (AÑADIMOS id_maquina, id_tipo_mantenimiento y valor_servicio)
             $sqlCheck = "SELECT numero_remision, id_tecnico, id_punto, fecha_visita, id_maquina, id_tipo_mantenimiento, valor_servicio, id_modalidad FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
@@ -508,7 +512,7 @@ class ordenDetalleModelo
             // 🚨 BLINDAJE DE VIÁTICOS: SÓLO SI ES INTERURBANO (2) 🚨
             // =======================================================
             if ($idModalidad == 2) {
-                
+
                 // Checamos si el punto está fuera de las delegaciones principales
                 if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
                     $esFueraDelegacion = 1;
@@ -531,7 +535,6 @@ class ordenDetalleModelo
                         $valorViaticos = $diasViaticos * $tarifaViat;
                     }
                 }
-
             }
 
             // =======================================================
@@ -1140,13 +1143,43 @@ class ordenDetalleModelo
                 FROM control_remisiones 
                 WHERE id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1) 
                 ORDER BY CAST(numero_remision AS UNSIGNED) ASC";
-        
+
         $resultados = $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $agrupado = [];
-        foreach($resultados as $r) {
+        foreach ($resultados as $r) {
             $agrupado[$r['id_tecnico']][] = ['numero_remision' => $r['numero_remision']];
         }
         return $agrupado;
     }
+
+    /**
+ * Normaliza hora a HH:MM:SS para MySQL TIME
+ * Acepta: "1230", "12:30", "8:5", "12:30:00", ""
+ */
+private function normalizarHora(?string $valor): string
+{
+    if (empty(trim($valor ?? ''))) return '00:00:00';
+
+    $valor = trim($valor);
+
+    // Ya viene HH:MM o HH:MM:SS
+    if (preg_match('/^(\d{1,2}):(\d{2})/', $valor, $m)) {
+        $h   = min(23, (int)$m[1]);
+        $min = min(59, (int)$m[2]);
+        return sprintf('%02d:%02d:00', $h, $min);
+    }
+
+    // Solo dígitos
+    $nums = preg_replace('/\D/', '', $valor);
+    if (!$nums) return '00:00:00';
+
+    $nums = str_pad($nums, 4, '0', STR_PAD_RIGHT);
+    $nums = substr($nums, 0, 4);
+
+    $h   = min(23, (int)substr($nums, 0, 2));
+    $min = min(59, (int)substr($nums, 2, 2));
+
+    return sprintf('%02d:%02d:00', $h, $min);
+}
 }
