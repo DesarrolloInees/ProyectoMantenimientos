@@ -35,7 +35,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label for="codigo_referencia" class="block text-sm font-bold text-gray-700 mb-1">Código / Referencia</label>
                     <div class="relative">
@@ -50,10 +50,27 @@
                     <label for="estado" class="block text-sm font-bold text-gray-700 mb-1">Estado</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-toggle-on text-gray-400"></i></div>
-                        <select id="estado" name="estado" class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white">
-                            <option value="1" <?= $datosRepuesto['estado'] == '1' ? 'selected' : '' ?>>Activo (Disponible)</option>
-                            <option value="0" <?= $datosRepuesto['estado'] == '0' ? 'selected' : '' ?>>Inactivo (No Disponible)</option>
+                        <select id="estado" name="estado" class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white appearance-none">
+                            <option value="1" <?= isset($datosRepuesto['estado']) && $datosRepuesto['estado'] == '1' ? 'selected' : '' ?>>Activo (Disponible)</option>
+                            <option value="0" <?= isset($datosRepuesto['estado']) && $datosRepuesto['estado'] == '0' ? 'selected' : '' ?>>Inactivo (No Disponible)</option>
                         </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="requiere_devolucion" class="block text-sm font-bold text-gray-700 mb-1">¿Control de Devolución?</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-undo-alt text-gray-400"></i></div>
+                        <select id="requiere_devolucion" name="requiere_devolucion" class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white appearance-none">
+                            <option value="0" <?= isset($datosRepuesto['requiere_devolucion']) && $datosRepuesto['requiere_devolucion'] == '0' ? 'selected' : '' ?>>No requiere</option>
+                            <option value="1" <?= isset($datosRepuesto['requiere_devolucion']) && $datosRepuesto['requiere_devolucion'] == '1' ? 'selected' : '' ?>>Sí (Técnico debe devolver)</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </div>
                     </div>
                 </div>
             </div>

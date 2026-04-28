@@ -40,14 +40,12 @@ class ordenCrearModels
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 4. PUNTOS POR CLIENTE (CORREGIDO: Lógica Modalidad) ---
+    // --- 4. PUNTOS POR CLIENTE ---
     public function obtenerPuntosPorCliente($idCliente)
     {
         try {
-            // CAMBIO: Ahora obtenemos id_modalidad directamente de la tabla PUNTO
-            // Hacemos un LEFT JOIN con modalidad_operativa por si quieres mostrar el nombre (Urbano/Interurbano)
             $sql = "SELECT p.id_punto, p.nombre_punto, p.codigo_1, 
-                            COALESCE(p.id_modalidad, 1) as id_modalidad, -- Si es null, asume 1 (Urbano)
+                            COALESCE(p.id_modalidad, 1) as id_modalidad,
                             mo.nombre_modalidad
                     FROM punto p
                     LEFT JOIN modalidad_operativa mo ON p.id_modalidad = mo.id_modalidad
@@ -83,7 +81,7 @@ class ordenCrearModels
         }
     }
 
-    // --- 6. CONSULTAR TARIFA (CON VALIDACIÓN DE EXISTENCIA) ---
+    // --- 6. CONSULTAR TARIFA ---
     public function consultarTarifa($idTipoMaq, $idTipoManto, $idModalidad, $fechaVisita)
     {
         try {
@@ -105,20 +103,16 @@ class ordenCrearModels
             $stmt->execute();
             $res = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // 🔥 AQUÍ ESTÁ EL TRUCO:
-            // Si $res es false, significa que NO HAY TARIFA CREADA -> Devolvemos -1
             if ($res === false) {
                 return -1;
             }
 
-            // Si existe (incluso si es 0), devolvemos el precio
             return $res['precio'];
         } catch (PDOException $e) {
             error_log("Error en consultarTarifa: " . $e->getMessage());
-            return -1; // Ante error de conexión, también asumimos error
+            return -1;
         }
     }
-
 
     // --- 7: OBTENER ESTADOS ---
     public function obtenerEstadosMaquina()
@@ -138,8 +132,7 @@ class ordenCrearModels
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-
-    // --- 9: OBTENER LISTA DE REPUESTOS (PRUEBA DE CÓDIGOS) ---
+    // --- 9: OBTENER LISTA DE REPUESTOS ---
     public function obtenerListaRepuestos()
     {
         $sql = "SELECT id_repuesto, 
@@ -152,21 +145,19 @@ class ordenCrearModels
                 FROM repuesto 
                 WHERE estado = 1 
                 ORDER BY nombre_repuesto ASC";
-                
+
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 10: GUARDAR ORDEN (CORREGIDO: SIN updated_at) ---
+    // --- 10: GUARDAR ORDEN (AQUÍ ESTÁ LA MAGIA DE LA DEVOLUCIÓN) ---
     public function guardarOrden($datos)
     {
         try {
             $this->conn->beginTransaction();
 
-            // =============================================================
             // 1. LÓGICA DE VIÁTICOS INTELIGENTE
-            // =============================================================
             $esFueraDelegacion = 0;
             $diasViaticos = 0;
             $valorViaticos = 0;
@@ -177,7 +168,6 @@ class ordenCrearModels
             if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
                 $esFueraDelegacion = 1;
 
-                // Validamos si ya cobró hoy (excluyendo la orden actual si es una edición)
                 $sqlCheck = "SELECT count(*) as total 
                             FROM ordenes_servicio 
                             WHERE id_tecnico = :id_tec 
@@ -221,16 +211,10 @@ class ordenCrearModels
                 }
             }
 
-            // =============================================================
-            // 3. DECISIÓN: ¿ACTUALIZAR (UPDATE) O INSERTAR (INSERT)?
-            // =============================================================
-
+            // 3. DECISIÓN: ¿ACTUALIZAR O INSERTAR?
             $idOrden = 0;
 
             if (!empty($datos['id_orden_previa'])) {
-
-                // === CASO A: ACTUALIZAR ORDEN PROGRAMADA (Estado 2 -> Estado 1) ===
-                // 🔥 CORRECCIÓN: Quitamos updated_at = NOW()
                 $sql = "UPDATE ordenes_servicio SET 
                             id_modalidad = :id_modalidad,
                             numero_remision = :remision,
@@ -246,7 +230,7 @@ class ordenCrearModels
                             id_estado_maquina = :id_estado,
                             id_calificacion = :id_calif,
                             actividades_realizadas = :actividades,
-                            estado = 1 /* PASA A ESTADO EJECUTADO */
+                            estado = 1 
                         WHERE id_ordenes_servicio = :id_orden";
 
                 $stmt = $this->conn->prepare($sql);
@@ -270,8 +254,6 @@ class ordenCrearModels
 
                 $idOrden = $datos['id_orden_previa'];
             } else {
-
-                // === CASO B: CREAR NUEVA ORDEN (INSERT) ===
                 $sql = "INSERT INTO ordenes_servicio 
                         (id_cliente, id_punto, id_modalidad, numero_remision, fecha_visita, id_maquina, id_tecnico, id_tipo_mantenimiento, 
                         valor_servicio, es_fuera_delegacion, dias_viaticos, valor_viaticos, 
@@ -306,40 +288,55 @@ class ordenCrearModels
                 $idOrden = $this->conn->lastInsertId();
             }
 
-            // =============================================================
             // ACCIONES POSTERIORES
-            // =============================================================
-
-            // 1. Marcar remisión como usada
             if (!empty($datos['remision'])) {
                 $this->marcarRemisionComoUsada($datos['remision'], $idOrden, $datos['id_tecnico']);
             }
 
-            // 2. Actualizar fecha en Punto
             $this->actualizarInfoMantenimientoPunto($datos['id_punto']);
 
-            // 3. Procesar Repuestos
+            // 3. PROCESAR REPUESTOS Y DEVOLUCIONES
             if (!empty($datos['json_repuestos'])) {
                 $repuestos = json_decode($datos['json_repuestos'], true);
 
                 if (is_array($repuestos) && count($repuestos) > 0) {
 
-                    // Limpiamos anteriores si es UPDATE
+                    // Limpiamos los previos si era actualización
                     if (!empty($datos['id_orden_previa'])) {
                         $stmtDel = $this->conn->prepare("DELETE FROM orden_servicio_repuesto WHERE id_orden_servicio = ?");
                         $stmtDel->execute([$idOrden]);
+
+                        // 🔥 NUEVO: Limpiamos devoluciones previas
+                        $stmtDelDev = $this->conn->prepare("DELETE FROM control_devolucion_repuestos WHERE id_orden_servicio = ?");
+                        $stmtDelDev->execute([$idOrden]);
                     }
 
                     $sqlRep = "INSERT INTO orden_servicio_repuesto (id_orden_servicio, id_repuesto, origen, cantidad) VALUES (?, ?, ?, ?)";
                     $stmtRep = $this->conn->prepare($sqlRep);
 
+                    // 🔥 NUEVO: Preparar consultas para las devoluciones
+                    $stmtCheckDev = $this->conn->prepare("SELECT requiere_devolucion FROM repuesto WHERE id_repuesto = ?");
+                    $sqlDev = "INSERT INTO control_devolucion_repuestos (id_tecnico, id_orden_servicio, id_repuesto, cantidad, estado_devolucion) VALUES (?, ?, ?, ?, 'Pendiente')";
+                    $stmtDev = $this->conn->prepare($sqlDev);
+
                     foreach ($repuestos as $rep) {
                         if (isset($rep['id']) && isset($rep['origen'])) {
                             $cant = isset($rep['cantidad']) && $rep['cantidad'] > 0 ? $rep['cantidad'] : 1;
+
+                            // Guardamos uso normal
                             $stmtRep->execute([$idOrden, $rep['id'], $rep['origen'], $cant]);
 
                             if (empty($datos['id_orden_previa']) && $rep['origen'] === 'INEES') {
                                 $this->descontarDelInventario($datos['id_tecnico'], $rep['id'], $cant);
+                            }
+
+                            // 🔥 NUEVO: Verificar si exige devolución
+                            $stmtCheckDev->execute([$rep['id']]);
+                            $reqDev = $stmtCheckDev->fetchColumn();
+
+                            if ($reqDev == 1) {
+                                // Lo mandamos a la tabla de control
+                                $stmtDev->execute([$datos['id_tecnico'], $idOrden, $rep['id'], $cant]);
                             }
                         }
                     }
@@ -350,16 +347,12 @@ class ordenCrearModels
             return $idOrden;
         } catch (PDOException $e) {
             $this->conn->rollBack();
-            // 🔥 AQUÍ ESTÁ EL TRUCO: Guardamos en el log de PHP exactamente los datos que causaron el fallo
             error_log("ERROR SQL fila fallida. Datos: " . json_encode($datos) . " | Error real: " . $e->getMessage());
-            
-            // Quitamos el die() y retornamos false. 
-            // El controlador verá este false, sumará 1 a $errores y pondrá en la alerta "Fila #X falló al guardar".
             return false;
         }
     }
 
-    // --- 11. ACTUALIZAR MODALIDAD DEL PUNTO (AJAX SILENCIOSO) ---
+    // --- 11. ACTUALIZAR MODALIDAD DEL PUNTO ---
     public function actualizarModalidadPunto($idPunto, $idModalidad)
     {
         try {
@@ -375,17 +368,16 @@ class ordenCrearModels
         }
     }
 
-    // --- NUEVA FUNCIÓN: ACTUALIZAR FECHA Y TIPO EN PUNTO ---
+    // --- 12. ACTUALIZAR INFO DE MANTENIMIENTO EN PUNTO (Fecha Última Visita y Tipo Último Mantenimiento) ---
     public function actualizarInfoMantenimientoPunto($idPunto)
     {
         try {
-            // Buscamos la fecha MÁXIMA registrada, pero EXCLUYENDO las órdenes con mantenimiento Fallido (ID 4).
             $sql = "UPDATE punto p
                     JOIN (
                         SELECT id_punto, fecha_visita, id_tipo_mantenimiento
                         FROM ordenes_servicio
                         WHERE id_punto = :id_punto_b
-                          AND id_tipo_mantenimiento != 4 /* IGNORAR MANTENIMIENTO FALLIDO */
+                            AND id_tipo_mantenimiento != 4 
                         ORDER BY fecha_visita DESC, id_ordenes_servicio DESC
                         LIMIT 1
                     ) AS ultima_real ON p.id_punto = ultima_real.id_punto
@@ -395,8 +387,8 @@ class ordenCrearModels
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
-                ':id_punto_b' => $idPunto, // Para el subquery
-                ':id_punto_a' => $idPunto  // Para el where principal
+                ':id_punto_b' => $idPunto,
+                ':id_punto_a' => $idPunto
             ]);
             return true;
         } catch (PDOException $e) {
@@ -405,12 +397,9 @@ class ordenCrearModels
         }
     }
 
-    // 1. Obtener las remisiones que el técnico tiene libres
-    // 1. Obtener las remisiones que el técnico tiene libres
+    // --- 13. OBTENER REMISIONES DISPONIBLES POR TÉCNICO (Solo las que estén en estado 'DISPONIBLE') ---
     public function obtenerRemisionesDisponibles($idTecnico)
     {
-        // CAMBIO: Usamos una subconsulta para obtener el ID de 'DISPONIBLE'
-        // y filtramos por 'id_estado' en lugar de 'estado'
         $sql = "SELECT id_control, numero_remision 
                 FROM control_remisiones 
                 WHERE id_tecnico = ? 
@@ -422,13 +411,9 @@ class ordenCrearModels
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // 2. Método auxiliar para "Quemar" la remisión (ACTUALIZADO PARA DUPLICADOS)
-    // 2. Método para "Quemar" la remisión
+    // --- 14. MARCAR REMISIÓN COMO USADA ---
     public function marcarRemisionComoUsada($numeroRemision, $idOrden, $idTecnico)
     {
-        // CAMBIO: 
-        // 1. SET id_estado = (Subconsulta para buscar el ID de 'USADA')
-        // 2. Ya no usamos SET estado = 'USADA'
         $sql = "UPDATE control_remisiones 
                 SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
                     id_orden_servicio = ?, 
@@ -439,10 +424,10 @@ class ordenCrearModels
         $stmt->execute([$idOrden, $numeroRemision, $idTecnico]);
     }
 
+    // --- 15. VERIFICAR SI LA REMISIÓN ESTÁ REALMENTE DISPONIBLE (No solo por ID, sino que su estado sea 'DISPONIBLE') ---
     public function verificarRemisionDisponible($numeroRemision, $idTecnico)
     {
         try {
-            // CAMBIO: Hacemos JOIN con estados_remision para obtener el 'nombre_estado'
             $sql = "SELECT e.nombre_estado, cr.id_orden_servicio 
                     FROM control_remisiones cr
                     INNER JOIN estados_remision e ON cr.id_estado = e.id_estado
@@ -459,55 +444,38 @@ class ordenCrearModels
             $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$resultado) {
-                return [
-                    'disponible' => false,
-                    'mensaje' => 'Remisión no encontrada en el sistema'
-                ];
+                return ['disponible' => false, 'mensaje' => 'Remisión no encontrada en el sistema'];
             }
 
-            // AHORA SÍ podemos comparar con texto porque trajimos 'nombre_estado'
             if ($resultado['nombre_estado'] === 'USADA') {
-                return [
-                    'disponible' => false,
-                    'mensaje' => 'Remisión ya fue usada en orden #' . $resultado['id_orden_servicio']
-                ];
+                return ['disponible' => false, 'mensaje' => 'Remisión ya fue usada en orden #' . $resultado['id_orden_servicio']];
             }
 
-            // Opcional: Validar si está ANULADA o ELIMINADA
             if ($resultado['nombre_estado'] === 'ANULADA' || $resultado['nombre_estado'] === 'ELIMINADO') {
-                return [
-                    'disponible' => false,
-                    'mensaje' => 'Esta remisión está ' . $resultado['nombre_estado']
-                ];
+                return ['disponible' => false, 'mensaje' => 'Esta remisión está ' . $resultado['nombre_estado']];
             }
 
-            return [
-                'disponible' => true,
-                'mensaje' => 'Remisión disponible'
-            ];
+            return ['disponible' => true, 'mensaje' => 'Remisión disponible'];
         } catch (PDOException $e) {
             error_log("Error verificando remisión: " . $e->getMessage());
-            return [
-                'disponible' => false,
-                'mensaje' => 'Error al verificar remisión'
-            ];
+            return ['disponible' => false, 'mensaje' => 'Error al verificar remisión'];
         }
     }
-    // Obtener lista simple de fechas festivas
+
+    // --- 16. OBTENER DÍAS FESTIVOS (Para Validación en el Frontend) ---
     public function obtenerFestivos()
     {
         try {
             $sql = "SELECT fecha FROM dias_festivos ORDER BY fecha ASC";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute();
-            // Devuelve un array plano: ["2025-01-01", "2025-01-06", ...]
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             return [];
         }
     }
 
-    // --- NUEVO: OBTENER INVENTARIO ESPECÍFICO DE UN TÉCNICO (Con Cantidades Reales y Código) ---
+    // --- 17. OBTENER INVENTARIO DEL TÉCNICO (Solo los repuestos con cantidad > 0) ---
     public function obtenerInventarioTecnico($idTecnico)
     {
         try {
@@ -533,7 +501,7 @@ class ordenCrearModels
         }
     }
 
-    // --- NUEVO: DESCONTAR DEL INVENTARIO (Al guardar la orden) ---
+    // --- 18. DESCONTAR DEL INVENTARIO DEL TÉCNICO (Cuando se usa un repuesto del inventario propio) ---
     public function descontarDelInventario($idTecnico, $idRepuesto, $cantidad)
     {
         try {
@@ -551,11 +519,10 @@ class ordenCrearModels
         }
     }
 
-    // --- AUXILIAR: Obtener ID Delegación del Punto ---
+    // --- AUXILIAR: Obtener delegación del punto (Para lógica de viáticos) ---
     private function obtenerIdDelegacionPunto($idPunto)
     {
         try {
-            // Asegúrate que tu tabla punto tenga la columna id_delegacion
             $sql = "SELECT id_delegacion FROM punto WHERE id_punto = :id LIMIT 1";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([':id' => $idPunto]);
@@ -566,7 +533,7 @@ class ordenCrearModels
         }
     }
 
-    // --- AUXILIAR: Obtener valor del parametro ---
+    // --- AUXILIAR: Obtener valor de un parámetro por su clave (Para lógica de viáticos) ---
     private function obtenerValorParametro($clave)
     {
         try {
@@ -580,9 +547,7 @@ class ordenCrearModels
         }
     }
 
-
-
-    // 1. NUEVA FUNCIÓN: TRAER LO PROGRAMADO (Estado 2)
+    // --- 19. OBTENER PROGRAMACIÓN DIARIA (Órdenes programadas para una fecha específica, con detalles completos) ---
     public function obtenerProgramacionDiaria($fecha)
     {
         try {
@@ -607,7 +572,7 @@ class ordenCrearModels
                     LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
                     LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
                     WHERE os.fecha_visita = :fecha 
-                    AND os.estado = 2  /* SOLO LAS PROGRAMADAS */
+                    AND os.estado = 2 
                     ORDER BY t.nombre_tecnico ASC";
 
             $stmt = $this->conn->prepare($sql);

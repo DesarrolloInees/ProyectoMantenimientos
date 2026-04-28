@@ -8,8 +8,8 @@
 
 <style>
     /* ======================================
-   FUENTE Y VARIABLES
-====================================== */
+        FUENTE Y VARIABLES
+    ====================================== */
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
     :root {
@@ -41,8 +41,8 @@
     }
 
     /* ======================================
-   HEADER PANEL
-====================================== */
+        HEADER PANEL
+    ====================================== */
     .det-header {
         background: var(--c-surface);
         border-bottom: 1px solid var(--c-border);
@@ -126,8 +126,8 @@
     }
 
     /* ======================================
-   PAGINACIÓN
-====================================== */
+        PAGINACIÓN
+    ====================================== */
     .pag-bar {
         background: var(--c-surface);
         border: 1px solid var(--c-border);
@@ -188,8 +188,8 @@
     }
 
     /* ======================================
-   CONTENEDOR DE TABLA
-====================================== */
+        CONTENEDOR DE TABLA
+    ====================================== */
     .tabla-wrapper {
         overflow-x: auto;
         border: 1px solid var(--c-border);
@@ -201,8 +201,8 @@
     }
 
     /* ======================================
-   TABLA
-====================================== */
+        TABLA
+    ====================================== */
     #tablaEdicion {
         width: max-content;
         min-width: 100%;
@@ -299,8 +299,8 @@
     }
 
     /* ======================================
-   SELECT2 — AJUSTE PARA TABLA DENSA
-====================================== */
+        SELECT2 — AJUSTE PARA TABLA DENSA
+    ====================================== */
 
     /* Contenedor base */
     #tablaEdicion .select2-container {
@@ -375,8 +375,8 @@
     }
 
     /* ======================================
-   CONTROLES EN TABLA
-====================================== */
+        CONTROLES EN TABLA
+    ====================================== */
     #tablaEdicion select,
     #tablaEdicion input[type="text"],
     #tablaEdicion input[type="date"],
@@ -468,8 +468,8 @@
     }
 
     /* ======================================
-   BOTÓN REPUESTOS
-====================================== */
+        BOTÓN REPUESTOS
+    ====================================== */
     .btn-repuestos {
         display: flex;
         align-items: center;
@@ -536,8 +536,8 @@
     }
 
     /* ======================================
-   BOTÓN GUARDAR FLOTANTE
-====================================== */
+        BOTÓN GUARDAR FLOTANTE
+    ====================================== */
     .btn-save-float {
         position: fixed;
         bottom: 1.5rem;
@@ -566,8 +566,8 @@
     }
 
     /* ======================================
-   RESPONSIVO
-====================================== */
+        RESPONSIVO
+    ====================================== */
     @media (max-width: 768px) {
         .det-header {
             flex-direction: column;
@@ -609,13 +609,14 @@
     .tabla-wrapper::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
     }
+
     /* ======================================
-       LA MAGIA DE LA VELOCIDAD: OCULTAR POR DEFECTO
+        LA MAGIA DE LA VELOCIDAD: OCULTAR POR DEFECTO
     ====================================== */
-    
+
     /* 1. Oculta TODAS las filas de la tabla por defecto */
     #tablaEdicion tbody tr[id^="fila_"] {
-        display: none; 
+        display: none;
     }
 
     /* 2. Muestra SOLO las primeras 6 filas (Carga instantánea) */
@@ -629,9 +630,9 @@
     }
 </style>
 
-<!-- ======================================
-     LAYOUT PRINCIPAL
-====================================== -->
+    <!-- ======================================
+        LAYOUT PRINCIPAL
+    ====================================== -->
 <div style="background:var(--c-bg); min-height:100vh; padding: 0 0 5rem;">
 
     <!-- HEADER -->
@@ -817,7 +818,7 @@
             if (data.status === 'ok') {
                 // 4. Reemplazamos el texto
                 textarea.value = data.texto_mejorado;
-                
+
                 // Efectito visual bacano para que el usuario note el cambio (un verde suave)
                 textarea.style.backgroundColor = '#ecfdf5';
                 textarea.style.borderColor = '#34d399';
@@ -862,11 +863,11 @@
     // ==========================================
     async function ejecutarGuardadoJSON() {
         const filas = document.querySelectorAll('#tablaEdicion tbody tr[id^="fila_"]');
-        
+
         if (window.DetalleNotificaciones && window.DetalleNotificaciones.notificarEnviandoFormulario) {
             window.DetalleNotificaciones.notificarEnviandoFormulario(filas.length);
         }
-        
+
         // Bloquear botón visualmente
         const btnSave = document.querySelector('.btn-save-float');
         const originalHTML = btnSave.innerHTML;
@@ -881,7 +882,7 @@
         filas.forEach(fila => {
             let idOrden = fila.id.split('_')[1];
             let filaDatos = {};
-            
+
             // Atrapamos todos los inputs, selects y textareas de esta fila
             let elementos = fila.querySelectorAll('input, select, textarea');
             elementos.forEach(el => {
@@ -893,7 +894,7 @@
                     }
                 }
             });
-            
+
             serviciosData[idOrden] = filaDatos;
         });
 

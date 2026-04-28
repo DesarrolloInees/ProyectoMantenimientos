@@ -162,6 +162,9 @@ $esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 
             <a href="<?= BASE_URL ?>reporteHistorial" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
                 <i class="fa-solid fa-timeline mr-2"></i> R. Historial
             </a>
+            <a href="<?= BASE_URL ?>reporteDevolucion" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-angles-left mr-2"></i> R. Devoluciones
+            </a>
         </div>
     </details>
 
@@ -186,6 +189,7 @@ $esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 
             
             <p class="px-4 py-1 text-xs font-bold text-gray-500 uppercase mt-2">Configuración</p>
             <a href="<?= BASE_URL ?>tecnicoVer" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded">Administrar Técnicos</a>
+            <a href="<?= BASE_URL ?>gestionDevolucion" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded">Devoluciones de Repuestos</a>
             <a href="<?= BASE_URL ?>diasFestivosVer" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded">Días Festivos</a>
             <a href="<?= BASE_URL ?>informacionBaseDatos" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded">Información Base de Datos</a>
             <a href="<?= BASE_URL ?>calificacionServicioVer" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded">Tipos de Calificación</a>

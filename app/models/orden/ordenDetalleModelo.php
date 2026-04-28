@@ -614,6 +614,12 @@ class ordenDetalleModelo
                 $this->actualizarInfoMantenimientoPunto($nuevoPunto);
             }
 
+            // 🔥 NUEVO: Si cambian al técnico de la orden completa, le pasamos la "deuda" de los repuestos al nuevo técnico
+            if ($actual['id_tecnico'] != $nuevoTecnico) {
+                $sqlUpdDevTech = "UPDATE control_devolucion_repuestos SET id_tecnico = ? WHERE id_orden_servicio = ?";
+                $this->conn->prepare($sqlUpdDevTech)->execute([$nuevoTecnico, $id]);
+            }
+
             $this->conn->commit();
             return true;
         } catch (Exception $e) {
@@ -881,8 +887,7 @@ class ordenDetalleModelo
     // 6. GESTIÓN TIEMPO REAL (AJAX)
     // ==========================================
 
-    // A. AGREGAR REPUESTO (Descuenta stock y guarda en orden)
-    // A. AGREGAR REPUESTO (CORREGIDO: Solo descuenta si es INEES)
+    // A. AGREGAR REPUESTO (CORREGIDO CON DEVOLUCIONES)
     public function agregarRepuestoRealTime($idOrden, $idRepuesto, $cantidad, $origen, $idTecnico)
     {
         try {
@@ -891,7 +896,7 @@ class ordenDetalleModelo
             $nuevoStockVisual = 0;
 
             // =========================================================
-            // 🔥 PROTECCIÓN: SOLO TOCAMOS INVENTARIO SI ES INEES
+            // 1. PROTECCIÓN: SOLO TOCAMOS INVENTARIO SI ES INEES
             // =========================================================
             if ($origen === 'INEES') {
                 $sqlStock = "SELECT cantidad_actual FROM inventario_tecnico 
@@ -905,7 +910,7 @@ class ordenDetalleModelo
                     return ['status' => 'error', 'msg' => 'Stock insuficiente en la maleta del técnico.'];
                 }
 
-                // 2. Descontar del Inventario Técnico
+                // Descontar del Inventario Técnico
                 $sqlUpdInv = "UPDATE inventario_tecnico 
                                 SET cantidad_actual = cantidad_actual - ? 
                                 WHERE id_tecnico = ? AND id_repuesto = ?";
@@ -913,9 +918,8 @@ class ordenDetalleModelo
 
                 $nuevoStockVisual = $stockActual - $cantidad;
             }
-            // =========================================================
 
-            // 3. Agregar o Actualizar en la Orden (ESTO SIEMPRE SE HACE)
+            // 2. Agregar o Actualizar en la Orden (ESTO SIEMPRE SE HACE)
             $sqlCheck = "SELECT cantidad FROM orden_servicio_repuesto 
                             WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
@@ -936,9 +940,32 @@ class ordenDetalleModelo
                 $this->conn->prepare($sqlInsOrden)->execute([$idOrden, $idRepuesto, $origen, $cantidad]);
             }
 
-            $this->conn->commit();
+            // =========================================================
+            // 🔥 3. NUEVO: LÓGICA DE CONTROL DE DEVOLUCIONES 🔥
+            // =========================================================
+            $stmtCheckDev = $this->conn->prepare("SELECT requiere_devolucion FROM repuesto WHERE id_repuesto = ?");
+            $stmtCheckDev->execute([$idRepuesto]);
+            $reqDev = $stmtCheckDev->fetchColumn();
 
-            // Devolvemos el stock nuevo solo si era INEES, sino devolvemos null o algo neutral
+            if ($reqDev == 1) {
+                // Verificamos si ya está registrado en la tabla de devoluciones para esta orden
+                $sqlCheckCD = "SELECT cantidad FROM control_devolucion_repuestos WHERE id_orden_servicio = ? AND id_repuesto = ?";
+                $stmtCD = $this->conn->prepare($sqlCheckCD);
+                $stmtCD->execute([$idOrden, $idRepuesto]);
+                $cantCD = $stmtCD->fetchColumn();
+
+                if ($cantCD !== false) {
+                    // Si ya existe, le sumamos la cantidad extra
+                    $sqlUpdCD = "UPDATE control_devolucion_repuestos SET cantidad = cantidad + ? WHERE id_orden_servicio = ? AND id_repuesto = ?";
+                    $this->conn->prepare($sqlUpdCD)->execute([$cantidad, $idOrden, $idRepuesto]);
+                } else {
+                    // Si no existe, lo insertamos nuevo
+                    $sqlInsCD = "INSERT INTO control_devolucion_repuestos (id_tecnico, id_orden_servicio, id_repuesto, cantidad, estado_devolucion) VALUES (?, ?, ?, ?, 'Pendiente')";
+                    $this->conn->prepare($sqlInsCD)->execute([$idTecnico, $idOrden, $idRepuesto, $cantidad]);
+                }
+            }
+
+            $this->conn->commit();
             return ['status' => 'ok', 'msg' => 'Agregado correctamente', 'nuevo_stock' => $nuevoStockVisual];
         } catch (Exception $e) {
             $this->conn->rollBack();
@@ -946,7 +973,7 @@ class ordenDetalleModelo
         }
     }
 
-    // B. ELIMINAR REPUESTO (CORREGIDO: Solo devuelve stock si es INEES)
+    // B. ELIMINAR REPUESTO (CORREGIDO CON DEVOLUCIONES)
     public function eliminarRepuestoRealTime($idOrden, $idRepuesto, $origen, $idTecnico)
     {
         try {
@@ -965,21 +992,36 @@ class ordenDetalleModelo
             }
 
             // =========================================================
-            // 🔥 PROTECCIÓN: SOLO DEVOLVEMOS AL TÉCNICO SI ES INEES
+            // 2. PROTECCIÓN: SOLO DEVOLVEMOS AL TÉCNICO SI ES INEES
             // =========================================================
             if ($origen === 'INEES') {
-                // 1. Verificar Stock Disponible
                 $sqlDev = "INSERT INTO inventario_tecnico (id_tecnico, id_repuesto, cantidad_actual, estado) 
                             VALUES (?, ?, ?, 1) 
                             ON DUPLICATE KEY UPDATE cantidad_actual = cantidad_actual + ?";
                 $this->conn->prepare($sqlDev)->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
             }
-            // =========================================================
 
             // 3. Borrar de la Orden (ESTO SIEMPRE SE HACE)
             $sqlDel = "DELETE FROM orden_servicio_repuesto 
                         WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $this->conn->prepare($sqlDel)->execute([$idOrden, $idRepuesto, $origen]);
+
+            // =========================================================
+            // 🔥 4. NUEVO: LIMPIEZA EN CONTROL DE DEVOLUCIONES 🔥
+            // =========================================================
+            $stmtCheckDev = $this->conn->prepare("SELECT requiere_devolucion FROM repuesto WHERE id_repuesto = ?");
+            $stmtCheckDev->execute([$idRepuesto]);
+            $reqDev = $stmtCheckDev->fetchColumn();
+
+            if ($reqDev == 1) {
+                // Restamos la cantidad que acabamos de eliminar
+                $sqlUpdCD = "UPDATE control_devolucion_repuestos SET cantidad = cantidad - ? WHERE id_orden_servicio = ? AND id_repuesto = ?";
+                $this->conn->prepare($sqlUpdCD)->execute([$cantidad, $idOrden, $idRepuesto]);
+
+                // Si la cantidad de devoluciones quedó en 0 (o menos), limpiamos la basura
+                $sqlCleanCD = "DELETE FROM control_devolucion_repuestos WHERE id_orden_servicio = ? AND id_repuesto = ? AND cantidad <= 0";
+                $this->conn->prepare($sqlCleanCD)->execute([$idOrden, $idRepuesto]);
+            }
 
             $this->conn->commit();
             return ['status' => 'ok', 'msg' => 'Repuesto eliminado de la orden'];

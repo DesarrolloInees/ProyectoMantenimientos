@@ -48,7 +48,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
                 <p class="text-xs text-gray-400 mt-1">Nombre descriptivo del componente.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                 <div>
                     <label for="codigo_referencia" class="block text-sm font-bold text-gray-700 mb-1">
@@ -75,10 +75,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
                         </div>
                         <select id="estado" name="estado"
                             class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all appearance-none cursor-pointer">
-
-                            <?php
-                            $estadoPrevio = $datosPrevios['estado'] ?? '1';
-                            ?>
+                            <?php $estadoPrevio = $datosPrevios['estado'] ?? '1'; ?>
                             <option value="1" <?= $estadoPrevio == '1' ? 'selected' : '' ?>>Activo (Disponible)</option>
                             <option value="0" <?= $estadoPrevio == '0' ? 'selected' : '' ?>>Inactivo (No Disponible)</option>
                         </select>
@@ -87,6 +84,27 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
                         </div>
                     </div>
                 </div>
+
+                <div>
+                    <label for="requiere_devolucion" class="block text-sm font-bold text-gray-700 mb-1">
+                        ¿Control de Devolución?
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-undo-alt text-gray-400"></i>
+                        </div>
+                        <select id="requiere_devolucion" name="requiere_devolucion"
+                            class="pl-10 mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all appearance-none cursor-pointer">
+                            <?php $devPrevio = $datosPrevios['requiere_devolucion'] ?? '0'; ?>
+                            <option value="0" <?= $devPrevio == '0' ? 'selected' : '' ?>>No requiere</option>
+                            <option value="1" <?= $devPrevio == '1' ? 'selected' : '' ?>>Sí (Técnico debe devolver)</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <div class="pt-6 border-t border-gray-100 flex justify-end space-x-4">

@@ -1,3 +1,31 @@
+<?php
+// Lista de todas las secciones posibles (sin incluir la portada)
+$todasLasSecciones = [
+    'delegaciones',
+    'tendencias',
+    'mantenimiento',
+    'maquinas',
+    'estados',
+    'puntos_atendidos',
+    'puntos_fallidos',
+    'repuestos',
+    'calificaciones',
+    'tecnicos',
+    'costos',
+    'balance'
+];
+
+$seccionesActivasCount = 0;
+foreach ($todasLasSecciones as $seccion) {
+    if ($this->seccionActiva($seccion)) {
+        $seccionesActivasCount++;
+    }
+}
+
+// Si solo hay 1 sección activa, activamos el "Modo Único"
+$esModoUnico = ($seccionesActivasCount === 1);
+?>
+
 <!DOCTYPE html>
 <html lang="es">
 
@@ -14,8 +42,7 @@
             background-color: #f3f4f6;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            /* Un padding inferior general ayuda */
-            padding-bottom: 50px;
+            /* ELIMINASTE EL PADDING-BOTTOM AQUÍ */
         }
 
         .page-break {
@@ -80,63 +107,24 @@
             /* Toque técnico */
             white-space: nowrap;
         }
-
-        /* === ESTILOS PARA PIE DE PÁGINA === */
-        /* === ESTILOS PARA PIE DE PÁGINA === */
-        .footer-page {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 12px 32px;
-            background: white;
-            /* Importante que tenga fondo para que se lea bien */
-            border-top: 1px solid #e2e8f0;
-            z-index: 100;
-            /* Z-index bajo */
+        /* === ESTILO PARA VISTA ÚNICA (GRÁFICAS GRANDES) === */
+        .modo-unico-activo .card {
+            /* El zoom funciona perfecto en navegadores basados en Chromium (Chrome/Edge) */
+            zoom: 1.6;
+            /* Aumenta el tamaño un 160%. Puedes ajustar este valor (ej. 1.8 o 2.0) */
         }
 
-        @media print {
-            .footer-page {
-                position: fixed;
-                bottom: 0;
-            }
-
-            /* Agrega margen inferior al body para que el contenido no se solape con el footer */
-            body {
-                margin-bottom: 20mm;
-            }
+        /* Esto hace que cada sección inicie en una página nueva, 
+       EXCEPTO la primera que se renderice */
+        .seccion-reporte {
+            page-break-before: always;
+            break-before: page;
         }
 
-        /* === ESTILOS PARA NUMERACIÓN DE PÁGINAS === */
-        .page-number {
-            counter-increment: page;
-        }
-
-        .page-number::after {
-            content: counter(page);
-        }
-
-        /* Reinicia el contador en la primera página después de la portada */
-        .reset-page-counter {
-            counter-reset: page 1;
-        }
-
-        .portada-container {
-            min-height: 100vh;
-            /* Forzar altura completa */
-            height: 100vh;
-        }
-
-        /* === OCULTA EL PIE DE PÁGINA EN LA PORTADA === */
-        .portada-container~.footer-page {
-            display: none;
-        }
-
-        @media print {
-            @page {
-                margin-bottom: 20mm;
-            }
+        .seccion-reporte:first-child,
+        .portada-container+.seccion-reporte {
+            page-break-before: avoid;
+            break-before: auto;
         }
     </style>
 </head>
@@ -253,16 +241,7 @@
     <?php endif; ?>
 
 
-
-
-
-    <!-- REINICIA EL CONTADOR DE PÁGINAS DESPUÉS DE LA PORTADA -->
-    <div class="reset-page-counter"></div>
-
-    <div class="columns-1 md:columns-2 gap-8 space-y-8">
-
-
-
+    <div class="columns-1 md:columns-2 gap-8 space-y-8 <?= $esModoUnico ? 'modo-unico-activo flex flex-col items-center' : '' ?>">
 
         <?php if ($this->seccionActiva('delegaciones')): ?>
             <div class="card-wrapper mt-4">
@@ -533,7 +512,7 @@
 
         <?php if ($this->seccionActiva('maquinas')): ?>
             <div class="card-wrapper mt-8">
-                <div class="card">
+                <div class="card p-4">
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-xl">🏧</div>
@@ -554,24 +533,27 @@
                     ?>
 
                     <div class="overflow-hidden rounded-lg border border-slate-200">
-                        <table class="w-full text-[9px] text-center">
+                        <table class="w-full text-[8px] text-center border-collapse">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider">
                                 <tr>
-                                    <th class="px-2 py-2 text-left bg-slate-100 border-b border-slate-200">Delegación</th>
+                                    <th class="px-1 py-1 text-left bg-slate-100 border-b border-slate-200 w-[70px]">Delegación</th>
+
                                     <?php foreach ($tiposMaquinaCols as $tm): ?>
-                                        <th class="px-1 py-2 border-b border-slate-200 w-[40px] leading-none" title="<?= $tm['nombre_tipo_maquina'] ?>">
-                                            <div class="break-words min-h-[40px] flex items-center justify-center text-center">
+                                        <th class="px-0.5 py-1 border-b border-slate-200 align-bottom" title="<?= $tm['nombre_tipo_maquina'] ?>">
+                                            <div class="break-words text-[6px] flex items-end justify-center text-center leading-tight">
                                                 <?= $tm['nombre_tipo_maquina'] ?>
                                             </div>
                                         </th>
                                     <?php endforeach; ?>
-                                    <th class="px-2 py-2 border-b border-slate-200 bg-slate-50 font-bold">Total</th>
+
+                                    <th class="px-1 py-1 border-b border-slate-200 bg-slate-50 font-bold w-[30px]">Total</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 <?php foreach ($delegacionesListaMaquina as $del): $rowT = 0; ?>
                                     <tr class="hover:bg-slate-50">
-                                        <td class="px-2 py-1 text-left font-bold text-slate-700 bg-slate-50/50"><?= $del ?></td>
+                                        <td class="px-1 py-1 text-left font-bold text-slate-700 bg-slate-50/50 truncate max-w-[70px]" title="<?= $del ?>"><?= $del ?></td>
+
                                         <?php foreach ($tiposMaquinaCols as $tm):
                                             $nombreTipo = $tm['nombre_tipo_maquina'];
                                             $val = $matrizMaquina[$del][$nombreTipo] ?? 0;
@@ -579,21 +561,21 @@
                                             $totalesColumna[$nombreTipo] += $val;
                                             $cls = $val == 0 ? 'text-slate-200' : 'text-teal-700 font-bold bg-teal-50';
                                         ?>
-                                            <td class="px-1 py-1 <?= $cls ?>"><?= $val ?></td>
+                                            <td class="px-0.5 py-1 <?= $cls ?>"><?= $val ?></td>
                                         <?php endforeach;
                                         $granTotalGeneral += $rowT;
                                         ?>
-                                        <td class="px-2 py-1 font-bold bg-slate-100"><?= $rowT ?></td>
+                                        <td class="px-1 py-1 font-bold bg-slate-100"><?= $rowT ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                             <tfoot class="bg-slate-100 font-bold text-slate-800 border-t-2 border-slate-200">
                                 <tr>
-                                    <td class="px-2 py-2 text-left">TOTALES</td>
+                                    <td class="px-1 py-1 text-left text-[7px]">TOTALES</td>
                                     <?php foreach ($tiposMaquinaCols as $tm): ?>
-                                        <td class="px-1 py-2"><?= $totalesColumna[$tm['nombre_tipo_maquina']] ?></td>
+                                        <td class="px-0.5 py-1"><?= $totalesColumna[$tm['nombre_tipo_maquina']] ?></td>
                                     <?php endforeach; ?>
-                                    <td class="px-2 py-2 bg-slate-200 text-teal-800"><?= $granTotalGeneral ?></td>
+                                    <td class="px-1 py-1 bg-slate-200 text-teal-800"><?= $granTotalGeneral ?></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -842,10 +824,10 @@
                                         <div class="flex flex-col">
                                             <div class="flex justify-between items-center text-[8px] mb-0.5">
                                                 <div class="flex-1 min-w-0 pr-1">
-                                                    <div class="font-semibold text-slate-600 truncate leading-tight" title="<?= $p['punto'] ?>">
-                                                        <?= strlen($p['punto']) > 20 ? substr($p['punto'], 0, 18) . '...' : $p['punto'] ?>
+                                                    <div class="font-semibold text-slate-600 leading-[1.1] break-words" title="<?= $p['punto'] ?>">
+                                                        <?= $p['punto'] ?>
                                                     </div>
-                                                    <div class="text-[6px] text-slate-400 uppercase truncate">
+                                                    <div class="text-[6px] text-slate-400 uppercase mt-0.5 break-words">
                                                         <?= $p['tipo'] ?>
                                                     </div>
                                                 </div>
@@ -960,10 +942,10 @@
                                         <ul class="space-y-0.5">
                                             <?php foreach (array_slice($datos['items'], 0, 5) as $item): ?>
                                                 <li class="flex justify-between items-start text-[8px] gap-2 py-0.5 border-b border-slate-50 last:border-0">
-                                                    <span class="text-slate-600 text-left leading-tight flex-1 truncate">
+                                                    <span class="text-slate-600 text-left leading-tight flex-1 break-words whitespace-normal pr-1">
                                                         <?= $item['nombre'] ?>
                                                     </span>
-                                                    <span class="font-bold text-slate-800 bg-slate-100 px-1 py-0 rounded shrink-0">
+                                                    <span class="font-bold text-slate-800 bg-slate-100 px-1 py-0 rounded shrink-0 mt-0.5">
                                                         <?= $item['cantidad'] ?>
                                                     </span>
                                                 </li>
@@ -1755,24 +1737,6 @@
 
 
 
-        </div>
-
-        <!-- === PIE DE PÁGINA GLOBAL (Aparece en todas las páginas excepto portada) === -->
-        <div class="footer-page">
-            <div class="flex justify-between items-center">
-                <div class="uppercase tracking-[0.4em] text-[10px] font-bold text-slate-400">
-                    Documento Confidencial
-                </div>
-
-                <div class="text-[10px] font-bold text-slate-500">
-                    <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
-                </div>
-
-                <!-- NUMERACIÓN DE PÁGINA -->
-                <div class="text-[10px] font-mono font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded border border-slate-200">
-                    Página <span class="page-number"></span>
-                </div>
-            </div>
         </div>
 
 </body>

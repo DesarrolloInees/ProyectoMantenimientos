@@ -32,7 +32,8 @@ class RepuestoEditarModelo
             $sql = "UPDATE repuesto SET 
                         nombre_repuesto = :nombre, 
                         codigo_referencia = :codigo, 
-                        estado = :estado 
+                        estado = :estado,
+                        requiere_devolucion = :requiere_devolucion
                     WHERE 
                         id_repuesto = :id";
 
@@ -45,6 +46,11 @@ class RepuestoEditarModelo
             $stmt->bindParam(':codigo', $codigo);
 
             $stmt->bindParam(':estado', $datos['estado'], PDO::PARAM_INT);
+            
+            // Nuevo parámetro para control de devoluciones
+            $requiereDevolucion = isset($datos['requiere_devolucion']) ? $datos['requiere_devolucion'] : 0;
+            $stmt->bindParam(':requiere_devolucion', $requiereDevolucion, PDO::PARAM_INT);
+            
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
             return $stmt->execute();
