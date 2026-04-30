@@ -165,6 +165,9 @@ $esProsegur = (isset($_SESSION['nivel_acceso']) && $_SESSION['nivel_acceso'] == 
             <a href="<?= BASE_URL ?>reporteDevolucion" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
                 <i class="fa-solid fa-angles-left mr-2"></i> R. Devoluciones
             </a>
+            <a href="<?= BASE_URL ?>asistencia" class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-stopwatch mr-2"></i> R. Horas Trabajadores
+            </a>
         </div>
     </details>
 
