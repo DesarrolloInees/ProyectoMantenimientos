@@ -842,6 +842,23 @@
     }
 
     // ==========================================
+    // AUTO-AJUSTAR TEXTAREA CON DOBLE CLIC
+    // ==========================================
+    function toggleTextareaSize(textarea) {
+        // Verificamos si ya está expandido usando un atributo personalizado de HTML5 (data-expandido)
+        if (textarea.dataset.expandido === "true") {
+            // Si estaba expandido, lo regresamos a su tamaño original (CSS por defecto)
+            textarea.style.height = ""; 
+            textarea.dataset.expandido = "false";
+        } else {
+            // Si está pequeño, calculamos el tamaño de su contenido interior
+            textarea.style.height = "auto"; // Reseteamos la altura temporalmente para calcular el scroll real
+            textarea.style.height = (textarea.scrollHeight + 2) + "px"; // Le sumamos 2px para los bordes
+            textarea.dataset.expandido = "true";
+        }
+    }
+
+    // ==========================================
     // INTERCEPTOR DE GUARDADO ACTUALIZADO
     // ==========================================
     function procesarGuardado() {
