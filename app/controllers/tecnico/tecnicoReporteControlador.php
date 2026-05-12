@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/tecnico/tecnicoReporteModelo.php';
@@ -66,7 +67,7 @@ class tecnicoReporteControlador
             $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
             $idTecnicoActual = $this->modelo->obtenerIdTecnicoPorUsuario($idUsuarioLogueado);
 
-            $idOrdenServicio = (int)$_POST['id_ordenes_servicio'];
+            $idOrdenServicio = (int) $_POST['id_ordenes_servicio'];
 
             $datos = [
                 'id_ordenes_servicio' => $idOrdenServicio,
@@ -86,9 +87,8 @@ class tecnicoReporteControlador
                 'repuestos_tecnico'   => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
             ];
 
-
             // ==========================================
-            // NUEVO: GUARDAR DATOS COMPLEMENTARIOS (Con GPS)
+            // GUARDAR DATOS COMPLEMENTARIOS (Con GPS)
             // ==========================================
             $datosComplementarios = [
                 'id_orden_servicio'   => $idOrdenServicio,
@@ -100,131 +100,74 @@ class tecnicoReporteControlador
                 'administrador_punto' => !empty($_POST['administrador_punto']) ? $_POST['administrador_punto'] : null,
                 'celular_encargado'   => !empty($_POST['celular_encargado']) ? $_POST['celular_encargado'] : null,
                 'id_estado_inicial'   => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null,
-                // ---> NUEVO: Atrapamos el GPS <---
                 'latitud_fin'         => !empty($_POST['latitud_fin']) ? $_POST['latitud_fin'] : null,
                 'longitud_fin'        => !empty($_POST['longitud_fin']) ? $_POST['longitud_fin'] : null
             ];
-            
+
             $this->modelo->guardarDatosComplementarios($datosComplementarios);
 
-            // 1. Guardamos los datos en texto de la orden
+            // ==========================================
+            // 1. GUARDAMOS EL REPORTE EN LA BD
+            // ==========================================
             if ($this->modelo->guardarReporteTecnico($datos)) {
 
+                // Si hay remisión, la marcamos como usada
                 if (!empty($datos['numero_remision'])) {
                     $this->modeloMaestro->marcarRemisionComoUsada($datos['numero_remision'], $idOrdenServicio, $idTecnicoActual);
                 }
 
-                // ==========================================
-                // 2. LÓGICA PARA SUBIR LAS IMÁGENES
-                // ==========================================
                 $remisionCarpeta = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'SIN_REMISION_' . $idOrdenServicio;
-
-                // Definimos la nueva carpeta: uploads/imagenes_servicios/NUMERO_REMISION/
-                $carpetaDestino = __DIR__ . '/../../uploads/imagenes_servicios/' . $remisionCarpeta . '/';
-
-                // Si la carpeta no existe, la creamos con permisos de escritura
+                $carpetaDestino = __DIR__ . '/../../app/uploads/imagenes_servicios/' . $remisionCarpeta . '/';
                 if (!file_exists($carpetaDestino)) {
                     mkdir($carpetaDestino, 0777, true);
                 }
 
-                // Array de los 3 inputs de archivos
-                $tiposFotos = [
-                    'fotos_antes' => 'antes',
-                    'foto_remision' => 'remision',
-                    'fotos_despues' => 'despues'
-                ];
-
-                foreach ($tiposFotos as $inputName => $tipoEnum) {
-                    if (isset($_FILES[$inputName]) && !empty($_FILES[$inputName]['name'][0])) {
-
-                        $cantidadFotos = count($_FILES[$inputName]['name']);
-
-                        for ($i = 0; $i < $cantidadFotos; $i++) {
-                            if ($_FILES[$inputName]['error'][$i] === UPLOAD_ERR_OK) {
-
-                                $nombreOriginal = $_FILES[$inputName]['name'][$i];
-                                $tmpName = $_FILES[$inputName]['tmp_name'][$i];
-
-                                $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
-
-                                // Tomamos la remisión, o si no tiene, usamos el ID de la orden
-                                $numeroParaNombre = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'ORDEN-' . $idOrdenServicio;
-
-                                // Nombre final del archivo
-                                $nombreNuevo = 'REM-' . $numeroParaNombre . '_' . $tipoEnum . '_' . uniqid() . '.jpg';
-
-                                // Esta ruta SÍ usa el __DIR__ pero SOLO para guardar el archivo físico en Windows
-                                $rutaFinalServidor = $carpetaDestino . $nombreNuevo;
-
-                                // === ESTA ES LA CLAVE ===
-                                // Esta es la ruta limpia que se va a guardar en la Base de Datos
-                                $rutaParaBD = 'uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreNuevo;
-
-                                if ($this->optimizarImagen($tmpName, $rutaFinalServidor, 800, 70)) {
-                                    $this->modelo->guardarEvidenciaFoto($idOrdenServicio, $tipoEnum, $rutaParaBD);
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // ==========================================
-                // NUEVO: LÓGICA PARA GUARDAR LA FIRMA (CANVAS)
+                // LÓGICA PARA GUARDAR LA FIRMA (CANVAS)
                 // ==========================================
                 if (!empty($_POST['firma_base64'])) {
                     $firmaTextoBase64 = $_POST['firma_base64'];
-                    
-                    // El texto viene como "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
-                    // Necesitamos quitarle la cabecera para quedarnos solo con el código de la imagen
+
                     $partesFirma = explode(',', $firmaTextoBase64);
-                    
+
                     if (count($partesFirma) == 2) {
                         $firmaDecodificada = base64_decode($partesFirma[1]);
-                        
-                        // Generamos el nombre del archivo
+
                         $numeroParaNombreFirma = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'ORDEN-' . $idOrdenServicio;
                         $nombreFirma = 'REM-' . $numeroParaNombreFirma . '_firma_' . uniqid() . '.png';
-                        
-                        // Rutas física y de BD
+
                         $rutaFinalFirmaServidor = $carpetaDestino . $nombreFirma;
-                        $rutaParaBDFirma = 'uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreFirma;
-                        
-                        // Guardamos el archivo físicamente en el servidor
+                        $rutaParaBDFirma = 'app/uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreFirma;
+
                         if (file_put_contents($rutaFinalFirmaServidor, $firmaDecodificada)) {
-                            // Guardamos en la Base de Datos usando la misma función de evidencias
                             $this->modelo->guardarEvidenciaFoto($idOrdenServicio, 'firma', $rutaParaBDFirma);
                         } else {
                             error_log("No se pudo guardar la imagen física de la firma.");
                         }
                     }
                 }
-                
 
                 // ==========================================
-                // 3. LÓGICA PARA GUARDAR REPUESTOS
+                // LÓGICA PARA GUARDAR REPUESTOS
                 // ==========================================
                 if (!empty($_POST['json_repuestos'])) {
                     $repuestosUsados = json_decode($_POST['json_repuestos'], true);
 
                     if (is_array($repuestosUsados) && count($repuestosUsados) > 0) {
-                        // Limpiamos los repuestos anteriores por si acaso (aunque debería ser un insert limpio)
                         $this->modelo->limpiarRepuestosOrden($idOrdenServicio);
 
                         foreach ($repuestosUsados as $rep) {
-                            $idRepuesto = (int)$rep['id'];
-                            $cantidad = (int)$rep['cantidad'];
-                            $origen = $rep['origen']; // 'INEES' o 'PROSEGUR'
+                            $idRepuesto = (int) $rep['id'];
+                            $cantidad = (int) $rep['cantidad'];
+                            $origen = $rep['origen'];
 
-                            // Guardamos en detalles_ordenes_servicio
                             $this->modelo->guardarRepuestoOrden($idOrdenServicio, $idRepuesto, $cantidad, $origen);
                         }
                     }
                 }
 
-                // ==========================================
-
                 echo "<script>
-                    alert('✅ Reporte y evidencias guardadas exitosamente.');
+                    alert('✅ Reporte finalizado exitosamente.');
                     window.location.href = 'index.php?pagina=tecnicoProgramacion';
                 </script>";
             } else {
@@ -235,7 +178,158 @@ class tecnicoReporteControlador
             }
         }
     }
-    // --- NUEVA FUNCIÓN: Comprimir y redimensionar imagen (VERSIÓN SEGURA) ---
+
+
+    // ==========================================
+    // ENDPOINTS AJAX PARA IMÁGENES INDIVIDUALES
+    // ==========================================
+
+    public function ajaxObtenerEvidencias()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
+        $evidencias = $this->modelo->obtenerEvidenciasPorOrden($idOrden);
+
+        echo json_encode(['success' => true, 'data' => $evidencias]);
+        exit;
+    }
+
+    public function ajaxSubirFotoUnica()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
+        $tipoEvidencia = isset($_POST['tipo_evidencia']) ? $_POST['tipo_evidencia'] : '';
+        $remision = !empty($_POST['numero_remision']) ? $_POST['numero_remision'] : 'SIN_REMISION_' . $idOrden;
+
+        // 1. Verificar si la imagen llegó al servidor (A veces se corta si pesa más que el post_max_size)
+        if (!isset($_FILES['foto'])) {
+            echo json_encode(['success' => false, 'msj' => 'No se recibió la foto. Verifica los límites de php.ini (post_max_size).']);
+            exit;
+        }
+
+        // 2. Verificar errores nativos de PHP al subir archivos
+        if ($_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
+            $errores = [
+                1 => 'La foto supera el upload_max_filesize de php.ini.',
+                2 => 'La foto supera el MAX_FILE_SIZE del formulario HTML.',
+                3 => 'La foto se subió parcialmente (se cortó el internet).',
+                4 => 'No se seleccionó ninguna foto.',
+                6 => 'Falta la carpeta temporal en el servidor.',
+                7 => 'No se pudo escribir la foto en el disco del servidor.',
+                8 => 'Una extensión de PHP detuvo la subida de la foto.'
+            ];
+            $codigoError = $_FILES['foto']['error'];
+            $mensaje = isset($errores[$codigoError]) ? $errores[$codigoError] : 'Error desconocido de subida (Código: ' . $codigoError . ')';
+
+            echo json_encode(['success' => false, 'msj' => $mensaje]);
+            exit;
+        }
+
+        // 3. Proceso normal si no hay errores
+        if ($idOrden > 0) {
+            $carpetaDestino = __DIR__ . '/../../app/uploads/imagenes_servicios/' . $remision . '/';
+
+            // Verificamos si podemos crear la carpeta
+            if (!file_exists($carpetaDestino)) {
+                if (!mkdir($carpetaDestino, 0777, true)) {
+                    echo json_encode(['success' => false, 'msj' => 'No se pudo crear la carpeta en el servidor. Verifica los permisos de escritura.']);
+                    exit;
+                }
+            }
+
+            $nombreOriginal = $_FILES['foto']['name'];
+            $tmpName = $_FILES['foto']['tmp_name'];
+            // En la función ajaxSubirFotoUnica de tecnicoReporteControlador.php:
+            $nombreNuevo = 'REM-' . $remision . '_TEC_' . $tipoEvidencia . '_' . uniqid() . '.jpg';
+
+            $rutaFinalServidor = $carpetaDestino . $nombreNuevo;
+            $rutaParaBD = 'app/uploads/imagenes_servicios/' . $remision . '/' . $nombreNuevo;
+
+            // Intentamos optimizar y guardar
+            if ($this->optimizarImagen($tmpName, $rutaFinalServidor, 800, 70)) {
+                $guardadoBD = $this->modelo->guardarEvidenciaFoto($idOrden, $tipoEvidencia, $rutaParaBD);
+                if ($guardadoBD) {
+                    echo json_encode(['success' => true, 'msj' => 'Foto subida correctamente', 'ruta' => $rutaParaBD]);
+                    exit;
+                } else {
+                    echo json_encode(['success' => false, 'msj' => 'La foto se guardó en el servidor, pero falló el insert en la Base de Datos.']);
+                    exit;
+                }
+            } else {
+                echo json_encode(['success' => false, 'msj' => 'Fallo al comprimir o mover la imagen a la carpeta final.']);
+                exit;
+            }
+        }
+
+        echo json_encode(['success' => false, 'msj' => 'ID de orden no válido.']);
+        exit;
+    }
+
+    public function ajaxEliminarFotoUnica()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idEvidencia = isset($_POST['id_evidencia']) ? (int) $_POST['id_evidencia'] : 0;
+
+        if ($idEvidencia > 0) {
+            $resultado = $this->modelo->eliminarEvidencia($idEvidencia);
+
+            if ($resultado['success']) {
+                $rutaFisica = __DIR__ . '/../../' . $resultado['ruta'];
+                // Borramos el archivo físico si aún existe (con @ para evitar warnings si ya lo borraste a mano)
+                if (file_exists($rutaFisica)) {
+                    @unlink($rutaFisica);
+                }
+                echo json_encode(['success' => true]);
+                exit;
+            } else {
+                // AQUÍ: Mandamos el error exacto a la pantalla
+                echo json_encode(['success' => false, 'msj' => $resultado['msj']]);
+                exit;
+            }
+        }
+        echo json_encode(['success' => false, 'msj' => 'El ID de la evidencia llegó vacío al servidor.']);
+        exit;
+    }
+
+    public function ajaxLimpiarEvidenciasOrden()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
+
+        if ($idOrden > 0) {
+            // 1. Buscamos y borramos los archivos físicos
+            $evidencias = $this->modelo->obtenerEvidenciasPorOrden($idOrden);
+            foreach ($evidencias as $ev) {
+                $rutaFisica = __DIR__ . '/../../' . $ev['ruta_archivo'];
+                if (file_exists($rutaFisica)) {
+                    @unlink($rutaFisica);
+                }
+            }
+
+            // 2. Borramos de la BD
+            $resultado = $this->modelo->eliminarTodasEvidenciasOrden($idOrden);
+            if ($resultado['success']) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'msj' => $resultado['msj']]);
+            }
+            exit;
+        }
+        echo json_encode(['success' => false, 'msj' => 'ID de orden inválido.']);
+        exit;
+    }
     private function optimizarImagen($rutaOrigen, $rutaDestino, $anchoMaximo = 800, $calidad = 70)
     {
         // 1. Aumentamos temporalmente la memoria de PHP. 

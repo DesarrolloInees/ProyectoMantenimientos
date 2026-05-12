@@ -130,6 +130,56 @@ class tecnicoReporteModelo
         }
     }
 
+    // --- NUEVA FUNCIÓN: Obtener evidencias ya subidas de una orden ---
+    public function obtenerEvidenciasPorOrden($idOrden)
+    {
+        try {
+            // CAMBIA "id_evidencia" POR EL NOMBRE REAL DE TU COLUMNA SI ES DIFERENTE
+            $sql = "SELECT id_evidencia, tipo_evidencia, ruta_archivo 
+                    FROM evidencia_servicio 
+                    WHERE id_orden_servicio = :id_orden";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id_orden' => $idOrden]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo evidencias: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function eliminarEvidencia($idEvidencia)
+    {
+        try {
+            $sqlSelect = "SELECT ruta_archivo FROM evidencia_servicio WHERE id_evidencia = :id";
+            $stmtSelect = $this->conn->prepare($sqlSelect);
+            $stmtSelect->execute([':id' => $idEvidencia]);
+            $foto = $stmtSelect->fetch(PDO::FETCH_ASSOC);
+
+            if ($foto) {
+                $sqlDelete = "DELETE FROM evidencia_servicio WHERE id_evidencia = :id";
+                $stmtDelete = $this->conn->prepare($sqlDelete);
+                $stmtDelete->execute([':id' => $idEvidencia]);
+                
+                return ['success' => true, 'ruta' => $foto['ruta_archivo']];
+            }
+            return ['success' => false, 'msj' => 'No se encontró la foto en la BD con ese ID.'];
+        } catch (PDOException $e) {
+            return ['success' => false, 'msj' => 'Error SQL al borrar: ' . $e->getMessage()];
+        }
+    }
+
+    public function eliminarTodasEvidenciasOrden($idOrden)
+    {
+        try {
+            $sql = "DELETE FROM evidencia_servicio WHERE id_orden_servicio = :id_orden";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id_orden' => $idOrden]);
+            return ['success' => true];
+        } catch (PDOException $e) {
+            return ['success' => false, 'msj' => 'Error SQL al vaciar: ' . $e->getMessage()];
+        }
+    }
+
 
     // --- NUEVA FUNCIÓN: Limpiar repuestos antes de guardar (por seguridad) ---
     public function limpiarRepuestosOrden($idOrden)

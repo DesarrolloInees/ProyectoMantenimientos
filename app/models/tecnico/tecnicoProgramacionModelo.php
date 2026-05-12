@@ -152,7 +152,7 @@ class tecnicoProgramacionModelo
 
     // ── GUARDAR EL SERVICIO EXTRA ──
 
-    public function guardarServicioExtra(int $idUsuarioLogueado, array $datos): bool
+    public function guardarServicioExtra(int $idUsuarioLogueado, array $datos)
     {
         try {
             // 1. Obtener ID del técnico
@@ -161,23 +161,25 @@ class tecnicoProgramacionModelo
             $stmtTec->execute([':uid' => $idUsuarioLogueado]);
             $tecnico = $stmtTec->fetch(PDO::FETCH_ASSOC);
 
-            if (!$tecnico) return false;
+            if (!$tecnico) return ['success' => false, 'msj' => 'No se encontró el perfil de técnico.'];
 
-            // 2. Obtener la modalidad del punto seleccionado (necesario para la tabla ordenes_servicio)
+            // 2. Obtener la modalidad del punto seleccionado
             $sqlPunto = "SELECT id_modalidad FROM punto WHERE id_punto = :id_punto";
             $stmtPunto = $this->conn->prepare($sqlPunto);
             $stmtPunto->execute([':id_punto' => $datos['id_punto']]);
             $punto = $stmtPunto->fetch(PDO::FETCH_ASSOC);
-            $idModalidad = $punto ? $punto['id_modalidad'] : null;
+            
+            // Si el punto no tiene modalidad, enviamos 1 (Urbano) por defecto para que no estalle la BD
+            $idModalidad = ($punto && !empty($punto['id_modalidad'])) ? $punto['id_modalidad'] : 1;
 
-            // 3. Insertar la orden (estado 2 = programado)
+            // 3. Insertar la orden
             $sql = "INSERT INTO ordenes_servicio 
                     (id_cliente, id_punto, id_modalidad, id_maquina, id_tecnico, id_tipo_mantenimiento, fecha_visita, estado) 
                     VALUES 
                     (:cliente, :punto, :modalidad, :maquina, :tecnico, :tipo_mantenimiento, :fecha, 2)";
             
             $stmt = $this->conn->prepare($sql);
-            return $stmt->execute([
+            $stmt->execute([
                 ':cliente' => $datos['id_cliente'],
                 ':punto' => $datos['id_punto'],
                 ':modalidad' => $idModalidad,
@@ -186,9 +188,13 @@ class tecnicoProgramacionModelo
                 ':tipo_mantenimiento' => $datos['id_tipo_mantenimiento'],
                 ':fecha' => $datos['fecha_visita']
             ]);
+
+            return ['success' => true];
+
         } catch (PDOException $e) {
+            // Retornamos el error exacto de SQL para verlo en pantalla
             error_log("Error guardando extra: " . $e->getMessage());
-            return false;
+            return ['success' => false, 'msj' => $e->getMessage()];
         }
     }
 

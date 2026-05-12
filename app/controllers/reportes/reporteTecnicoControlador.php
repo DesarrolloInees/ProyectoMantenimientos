@@ -70,6 +70,7 @@ class reporteTecnicoControlador
         
 
         $listaTecnicos = $this->modelo->obtenerTecnicos();
+        $listaFestivos = $this->modelo->obtenerFestivos($filtros['fecha_inicio'], $filtros['fecha_fin']);
         $titulo = "Reporte de Servicios por Técnico";
 
         $vistaContenido = "app/views/reportes/reporteTecnicoVista.php";

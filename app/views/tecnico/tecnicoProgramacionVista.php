@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
-     VISTA: tecnicoProgramacionVista.php
-     Descripción: Programación diaria del técnico logueado
-     ═══════════════════════════════════════════════════════════════ -->
+        VISTA: tecnicoProgramacionVista.php
+        Descripción: Programación diaria del técnico logueado
+        ═══════════════════════════════════════════════════════════════ -->
 
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -472,20 +472,24 @@
     .select2-container {
         width: 100% !important;
     }
+
     .select2-container .select2-selection--single {
         height: 38px;
         border: 1px solid var(--gris-borde);
         border-radius: 6px;
         outline: none;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__rendered {
         line-height: 36px;
         color: var(--texto-oscuro);
         font-size: 0.9rem;
     }
+
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 36px;
     }
+
     .select2-container--default.select2-container--focus .select2-selection--single {
         border-color: var(--azul-medio);
     }
@@ -505,7 +509,8 @@
                 <label for="fechaFiltro">Fecha de consulta</label>
                 <input type="date" id="fechaFiltro">
             </div>
-            <button onclick="abrirModalNuevoServicio()" style="background: #10b981; color: white; border: none; padding: 0.45rem 1rem; border-radius: 6px; font-weight: 700; cursor: pointer; height: fit-content;">
+            <button onclick="abrirModalNuevoServicio()"
+                style="background: #10b981; color: white; border: none; padding: 0.45rem 1rem; border-radius: 6px; font-weight: 700; cursor: pointer; height: fit-content;">
                 <i class="fas fa-plus"></i> Agregar Extra
             </button>
         </div>
@@ -555,51 +560,51 @@
     </div>
 
     <div class="modal-overlay" id="modalExtra">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-plus-circle text-green-600"></i> Agendar Servicio Extra</h3>
-            <button class="btn-cerrar" onclick="cerrarModalNuevoServicio()"><i class="fas fa-times"></i></button>
-        </div>
-        
-        <div class="form-group">
-            <label>Fecha de Visita</label>
-            <input type="date" id="extraFecha" class="form-control">
-        </div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus-circle text-green-600"></i> Agendar Servicio Extra</h3>
+                <button class="btn-cerrar" onclick="cerrarModalNuevoServicio()"><i class="fas fa-times"></i></button>
+            </div>
 
-        <div class="form-group">
-            <label>1. Cliente</label>
-            <select id="extraCliente" class="form-control">
-                <option value="">Cargando clientes...</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label>Fecha de Visita</label>
+                <input type="date" id="extraFecha" class="form-control">
+            </div>
 
-        <div class="form-group">
-            <label>2. Punto</label>
-            <select id="extraPunto" class="form-control" disabled>
-                <option value="">Seleccione primero un cliente</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label>1. Cliente</label>
+                <select id="extraCliente" class="form-control">
+                    <option value="">Cargando clientes...</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label>3. Máquina</label>
-            <select id="extraMaquina" class="form-control" disabled>
-                <option value="">Seleccione primero un punto</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label>2. Punto</label>
+                <select id="extraPunto" class="form-control" disabled>
+                    <option value="">Seleccione primero un cliente</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label>4. Tipo de Mantenimiento</label>
-            <select id="extraMantenimiento" class="form-control">
-                <option value="">Cargando mantenimientos...</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label>3. Máquina</label>
+                <select id="extraMaquina" class="form-control" disabled>
+                    <option value="">Seleccione primero un punto</option>
+                </select>
+            </div>
 
-        <div class="modal-footer">
-            <button class="btn-cancelar" onclick="cerrarModalNuevoServicio()">Cancelar</button>
-            <button class="btn-guardar" onclick="guardarServicioExtra()">Agendar Servicio</button>
+            <div class="form-group">
+                <label>4. Tipo de Mantenimiento</label>
+                <select id="extraMantenimiento" class="form-control">
+                    <option value="">Cargando mantenimientos...</option>
+                </select>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-cancelar" onclick="cerrarModalNuevoServicio()">Cancelar</button>
+                <button class="btn-guardar" onclick="guardarServicioExtra()">Agendar Servicio</button>
+            </div>
         </div>
     </div>
-</div>
 
 </div>
 
@@ -613,7 +618,7 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
 
         // ── Setear fecha ANTES de que DataTable haga su primera petición ──
         var hoy = new Date();
@@ -639,14 +644,14 @@
             ajax: {
                 url: 'index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerProgramacion',
                 type: 'POST',
-                data: function(d) {
+                data: function (d) {
                     d.fecha = $('#fechaFiltro').val();
                 },
-                beforeSend: function() {
+                beforeSend: function () {
                     $('#loadingOverlay').addClass('activo');
                     $('#alertDebug').hide();
                 },
-                dataSrc: function(respuesta) {
+                dataSrc: function (respuesta) {
                     $('#loadingOverlay').removeClass('activo');
 
                     // Si el servidor devuelve un error de sesión, lo mostramos
@@ -663,7 +668,7 @@
 
                     return datos;
                 },
-                error: function(xhr, error, thrown) {
+                error: function (xhr, error, thrown) {
                     $('#loadingOverlay').removeClass('activo');
                     $('#alertDebugTexto').text('Error de comunicación con el servidor: ' + thrown);
                     $('#alertDebug').show();
@@ -674,7 +679,7 @@
                 {
                     // 1. Cliente
                     data: 'nombre_cliente',
-                    render: function(data, type, row) {
+                    render: function (data, type, row) {
                         var cliente = data ? data : '<span class="text-gray-400">Sin cliente</span>';
                         return '<div class="cliente-info"><strong>' + cliente + '</strong></div>';
                     }
@@ -682,7 +687,7 @@
                 {
                     // 2. Punto / Dirección
                     data: 'nombre_punto',
-                    render: function(data, type, row) {
+                    render: function (data, type, row) {
                         var punto = data ? data : 'Sin punto';
                         var direccion = row.direccion_punto ? row.direccion_punto : '';
                         var dir = direccion ? '<small><i class="fas fa-map-marker-alt"></i> ' + direccion + '</small>' : '';
@@ -692,7 +697,7 @@
                 {
                     // 3. Máquina (Esta la habíamos borrado por error)
                     data: null,
-                    render: function(data, type, row) {
+                    render: function (data, type, row) {
                         var tipo = row.nombre_tipo_maquina ? row.nombre_tipo_maquina : 'N/A';
                         var device = row.device_id ? '<small>Device ID: ' + row.device_id + '</small>' : '<small>Sin Device ID</small>';
                         return '<div class="maquina-info"><strong>' + tipo + '</strong>' + device + '</div>';
@@ -701,7 +706,7 @@
                 {
                     // 4. Tipo Mantenimiento
                     data: 'tipo_mantenimiento',
-                    render: function(data) {
+                    render: function (data) {
                         if (!data) return '<span class="badge badge-gris">Sin definir</span>';
                         return '<span class="badge badge-azul"><i class="fas fa-tools"></i> ' + data + '</span>';
                     }
@@ -711,7 +716,7 @@
                     data: null,
                     className: 'text-center',
                     orderable: false,
-                    render: function(data, type, row) {
+                    render: function (data, type, row) {
                         return '<div style="display:flex; gap:0.5rem; justify-content:center;">' +
                             '<button class="btn-atender" onclick="abrirReporteMovil(' + row.id_ordenes_servicio + ')">' +
                             '<i class="fas fa-clipboard-check"></i> Atender</button>' +
@@ -728,7 +733,7 @@
         });
 
         // ── Recargar al cambiar fecha ──────────────────────────────────
-        $('#fechaFiltro').on('change', function() {
+        $('#fechaFiltro').on('change', function () {
             tabla.ajax.reload();
         });
 
@@ -741,7 +746,7 @@
             var fechaFormateada = partes[2] + '/' + partes[1] + '/' + partes[0];
 
             // Contar puntos únicos
-            var puntosUnicos = [...new Set(datos.map(function(r) {
+            var puntosUnicos = [...new Set(datos.map(function (r) {
                 return r.nombre_punto;
             }))].length;
 
@@ -763,7 +768,7 @@
                     id_orden: idOrden
                 },
                 dataType: 'json',
-                success: function(res) {
+                success: function (res) {
                     $('#loadingOverlay').removeClass('activo');
                     if (res.success) {
                         // Recargar el datatable para reflejar el borrado
@@ -772,7 +777,7 @@
                         alert("Error: " + res.msj);
                     }
                 },
-                error: function() {
+                error: function () {
                     $('#loadingOverlay').removeClass('activo');
                     alert("Error de comunicación con el servidor al intentar eliminar.");
                 }
@@ -782,12 +787,12 @@
 
 
     // ── LÓGICA DEL MODAL DE SERVICIO EXTRA ────────────────────────────
-    
+
     function abrirModalNuevoServicio() {
-        $('#extraFecha').val($('#fechaFiltro').val()); 
+        $('#extraFecha').val($('#fechaFiltro').val());
         $('#modalExtra').addClass('activo');
-        
-        if($('#extraCliente option').length <= 1) {
+
+        if ($('#extraCliente option').length <= 1) {
             cargarClientes();
             cargarMantenimientos();
         }
@@ -795,7 +800,7 @@
 
     function cerrarModalNuevoServicio() {
         $('#modalExtra').removeClass('activo');
-        
+
         // Resetear selects y avisarle a Select2
         $('#extraCliente').val('').trigger('change');
         $('#extraPunto').html('<option value="">Seleccione primero un cliente</option>').prop('disabled', true).trigger('change');
@@ -804,7 +809,7 @@
     }
 
     function cargarClientes() {
-        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerClientes', function(data) {
+        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerClientes', function (data) {
             let html = '<option value="">-- Seleccione Cliente --</option>';
             data.forEach(c => { html += `<option value="${c.id_cliente}">${c.nombre_cliente}</option>`; });
             $('#extraCliente').html(html).trigger('change'); // <- Avisar a Select2
@@ -812,7 +817,7 @@
     }
 
     function cargarMantenimientos() {
-        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerTiposMantenimiento', function(data) {
+        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerTiposMantenimiento', function (data) {
             let html = '<option value="">-- Seleccione Tipo --</option>';
             data.forEach(t => { html += `<option value="${t.id_tipo_mantenimiento}">${t.nombre_completo}</option>`; });
             $('#extraMantenimiento').html(html).trigger('change'); // <- Avisar a Select2
@@ -820,18 +825,18 @@
     }
 
     // Cascada Cliente -> Punto
-    $('#extraCliente').on('change', function() {
+    $('#extraCliente').on('change', function () {
         let id_cliente = $(this).val();
-        
-        if(!id_cliente) {
+
+        if (!id_cliente) {
             $('#extraPunto').html('<option value="">Seleccione primero un cliente</option>').prop('disabled', true).trigger('change');
             $('#extraMaquina').html('<option value="">Seleccione primero un punto</option>').prop('disabled', true).trigger('change');
             return;
         }
 
         $('#extraPunto').html('<option value="">Cargando puntos...</option>').prop('disabled', false).trigger('change');
-        
-        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerPuntos', {id_cliente: id_cliente}, function(data) {
+
+        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerPuntos', { id_cliente: id_cliente }, function (data) {
             let html = '<option value="">-- Seleccione Punto --</option>';
             data.forEach(p => { html += `<option value="${p.id_punto}">${p.nombre_punto} (${p.direccion || 'Sin dir'})</option>`; });
             $('#extraPunto').html(html).trigger('change'); // <- Avisar a Select2
@@ -839,17 +844,17 @@
     });
 
     // Cascada Punto -> Máquina
-    $('#extraPunto').on('change', function() {
+    $('#extraPunto').on('change', function () {
         let id_punto = $(this).val();
-        
-        if(!id_punto) {
+
+        if (!id_punto) {
             $('#extraMaquina').html('<option value="">Seleccione primero un punto</option>').prop('disabled', true).trigger('change');
             return;
         }
 
         $('#extraMaquina').html('<option value="">Cargando máquinas...</option>').prop('disabled', false).trigger('change');
-        
-        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerMaquinas', {id_punto: id_punto}, function(data) {
+
+        $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerMaquinas', { id_punto: id_punto }, function (data) {
             let html = '<option value="">-- Seleccione Máquina --</option>';
             data.forEach(m => { html += `<option value="${m.id_maquina}">${m.device_id} - ${m.nombre_tipo_maquina}</option>`; });
             $('#extraMaquina').html(html).trigger('change'); // <- Avisar a Select2
@@ -865,7 +870,7 @@
             id_tipo_mantenimiento: $('#extraMantenimiento').val()
         };
 
-        if(!data.fecha_visita || !data.id_cliente || !data.id_punto || !data.id_maquina || !data.id_tipo_mantenimiento) {
+        if (!data.fecha_visita || !data.id_cliente || !data.id_punto || !data.id_maquina || !data.id_tipo_mantenimiento) {
             alert("Por favor, complete todos los campos.");
             return;
         }
@@ -877,8 +882,8 @@
             type: 'POST',
             data: data,
             dataType: 'json',
-            success: function(res) {
-                if(res.success) {
+            success: function (res) {
+                if (res.success) {
                     cerrarModalNuevoServicio();
                     // Recargar el datatable para ver el nuevo servicio
                     $('#tablaProgramacion').DataTable().ajax.reload(null, false);
@@ -887,10 +892,10 @@
                     alert("Error: " + res.msj);
                 }
             },
-            error: function() {
+            error: function () {
                 alert("Error de red al guardar.");
             },
-            complete: function() {
+            complete: function () {
                 $('.btn-guardar').prop('disabled', false).text('Agendar Servicio');
                 $('.btn-cancelar').prop('disabled', false);
             }
@@ -912,7 +917,7 @@
         // Solicitamos el GPS
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                function(position) {
+                function (position) {
                     let lat = position.coords.latitude;
                     let lon = position.coords.longitude;
 
@@ -926,25 +931,25 @@
                             longitud_inicio: lon
                         },
                         dataType: 'json',
-                        success: function(res) {
-                            if(res.success) {
+                        success: function (res) {
+                            if (res.success) {
                                 // GPS Guardado, ahora sí lo mandamos al formulario
                                 window.location.href = 'index.php?pagina=tecnicoReporte&accion=index&orden=' + idOrden;
                             } else {
                                 Swal.fire('Error', res.msj, 'error');
                             }
                         },
-                        error: function() {
+                        error: function () {
                             Swal.fire('Error de red', 'No se pudo comunicar con el servidor para iniciar el servicio.', 'error');
                         }
                     });
                 },
-                function(error) {
+                function (error) {
                     let msjError = "Error desconocido.";
-                    if(error.code == 1) msjError = "Denegaste el permiso de ubicación. Es OBLIGATORIO permitirlo para iniciar el servicio.";
-                    if(error.code == 2) msjError = "No se pudo obtener la señal GPS. Sal a un lugar más despejado.";
-                    if(error.code == 3) msjError = "Se agotó el tiempo para obtener la ubicación.";
-                    
+                    if (error.code == 1) msjError = "Denegaste el permiso de ubicación. Es OBLIGATORIO permitirlo para iniciar el servicio.";
+                    if (error.code == 2) msjError = "No se pudo obtener la señal GPS. Sal a un lugar más despejado.";
+                    if (error.code == 3) msjError = "Se agotó el tiempo para obtener la ubicación.";
+
                     Swal.fire('GPS Requerido', msjError, 'error');
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }

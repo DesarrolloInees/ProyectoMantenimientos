@@ -5,11 +5,17 @@ let repuestosSeleccionados = [];
 let canvas, ctx;
 let dibujando = false;
 let firmaVacia = true;
+let totalFotosSubidasServidor = 0;
+
+// ---> NUEVAS VARIABLES PARA VALIDAR CADA TIPO
+let totalFotosAntes = 0;
+let totalFotosRemision = 0;
+let totalFotosDespues = 0;
 
 // ==========================================
 // INICIALIZACIÓN CUANDO CARGA LA PÁGINA
 // ==========================================
-$(document).ready(function() {
+$(document).ready(function () {
     // 1. Inicializar Select2
     $('.select2-movil').select2({
         width: '100%',
@@ -19,52 +25,40 @@ $(document).ready(function() {
     // 2. Eventos de cálculo de tiempo
     $('#hora_entrada, #hora_salida').on('change', calcularTiempoServicio);
 
-    // 3. Eventos de los inputs de fotos
-    $('#fotos_antes, #foto_remision, #fotos_despues').on('change', function() {
-        let numFiles = this.files ? this.files.length : 0;
-        let targetBadge = '';
-        let targetPreview = '';
+    // =========================================================
+    // 3. NUEVA LÓGICA DE FOTOS: SUBIDA INMEDIATA POR AJAX
+    // =========================================================
 
-        if (this.id === 'fotos_antes') {
-            targetBadge = '#badge_fotos_antes';
-            targetPreview = '#preview_antes';
-        }
-        if (this.id === 'foto_remision') {
-            targetBadge = '#badge_foto_remision';
-            targetPreview = '#preview_remision';
-        }
-        if (this.id === 'fotos_despues') {
-            targetBadge = '#badge_fotos_despues';
-            targetPreview = '#preview_despues';
-        }
+    // A. Cargar las fotos que ya estén en la Base de Datos al entrar
+    cargarEvidenciasExistentes();
 
-        if (numFiles > 0) {
-            $(targetBadge).removeClass('bg-gray-200 text-gray-700').addClass('bg-indigo-100 text-indigo-800').text(numFiles + ' seleccionadas');
-        } else {
-            $(targetBadge).removeClass('bg-indigo-100 text-indigo-800').addClass('bg-gray-200 text-gray-700').text('0 seleccionadas');
-        }
+    // B. Escuchar cuando el técnico selecciona fotos
+    $('#fotos_antes, #foto_remision, #fotos_despues').on('change', function (e) {
+        let files = e.target.files;
+        if (files.length === 0) return;
 
-        let previewContainer = $(targetPreview);
-        previewContainer.empty();
+        let tipoEvidencia = '';
+        let containerPreview = '';
 
-        if (this.files) {
-            $.each(this.files, function(index, file) {
-                if (file.type.match('image.*')) {
-                    let reader = new FileReader();
-                    reader.onload = function(e) {
-                        let imgHtml = '<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm">' +
-                            '<img src="' + e.target.result + '" class="w-full h-full object-cover"></div>';
-                        previewContainer.append(imgHtml);
-                    }
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
-        calcularTotalFotos();
+        if (this.id === 'fotos_antes') { tipoEvidencia = 'antes'; containerPreview = 'preview_antes'; }
+        if (this.id === 'foto_remision') { tipoEvidencia = 'remision'; containerPreview = 'preview_remision'; }
+        if (this.id === 'fotos_despues') { tipoEvidencia = 'despues'; containerPreview = 'preview_despues'; }
+
+        let remision = $('select[name="numero_remision"]').val() || '';
+        let idOrden = $('input[name="id_ordenes_servicio"]').val();
+
+        // Subir cada foto seleccionada al servidor
+        Array.from(files).forEach(file => {
+            subirFotoAjax(file, tipoEvidencia, remision, idOrden, containerPreview);
+        });
+
+        // Limpiar el input para que pueda volver a seleccionar la misma foto si la borra
+        $(this).val('');
     });
 
+
     // 4. Inicializar Modal de Repuestos
-    $('#btn_abrir_repuestos').on('click', function(e) {
+    $('#btn_abrir_repuestos').on('click', function (e) {
         e.preventDefault();
         $('#modalRepuestos').removeClass('hidden').addClass('flex');
 
@@ -88,7 +82,7 @@ $(document).ready(function() {
         canvas.addEventListener('touchstart', iniciarDibujo, { passive: false });
         canvas.addEventListener('touchmove', dibujar, { passive: false });
         canvas.addEventListener('touchend', detenerDibujo);
-        
+
         // Eventos de ratón (PC)
         canvas.addEventListener('mousedown', iniciarDibujo);
         canvas.addEventListener('mousemove', dibujar);
@@ -98,7 +92,128 @@ $(document).ready(function() {
 });
 
 // ==========================================
-// FUNCIONES DE TIEMPO Y FOTOS
+// NUEVAS FUNCIONES AJAX PARA FOTOS
+// ==========================================
+function subirFotoAjax(file, tipo, remision, idOrden, containerId) {
+    let formData = new FormData();
+    formData.append('foto', file);
+    formData.append('id_orden', idOrden);
+    formData.append('tipo_evidencia', tipo);
+    formData.append('numero_remision', remision);
+
+    // Crear un cuadrito de "Cargando..."
+    let tempId = 'loading_' + Date.now() + Math.floor(Math.random() * 100);
+    $('#' + containerId).append(`
+        <div id="${tempId}" class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm flex items-center justify-center bg-gray-100">
+            <i class="fas fa-spinner fa-spin text-blue-500 text-xl"></i>
+        </div>
+    `);
+
+    // Enviar al controlador
+    fetch('index.php?pagina=tecnicoReporte&accion=ajaxSubirFotoUnica', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            $('#' + tempId).remove(); // Quitar el "Cargando"
+            if (data.success) {
+                cargarEvidenciasExistentes(); // Recargar todas las fotos
+            } else {
+                Swal.fire('Error', data.msj, 'error');
+            }
+        })
+        .catch(err => {
+            $('#' + tempId).remove();
+            Swal.fire('Error', 'Fallo al subir la foto por red', 'error');
+        });
+}
+
+function cargarEvidenciasExistentes() {
+    let idOrden = $('input[name="id_ordenes_servicio"]').val();
+    let formData = new FormData();
+    formData.append('id_orden', idOrden);
+
+    fetch('index.php?pagina=tecnicoReporte&accion=ajaxObtenerEvidencias', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                $('#preview_antes, #preview_remision, #preview_despues').empty();
+
+                // Reiniciamos los contadores globales
+                totalFotosAntes = 0;
+                totalFotosRemision = 0;
+                totalFotosDespues = 0;
+
+                data.data.forEach(foto => {
+                    // OJO AQUÍ: Asegúrate de que diga foto.id_evidencia o foto.id_evidencia_servicio (según tu BD)
+                    let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
+                    let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
+                                <img src="/ProyectoMantenimientos/${foto.ruta_archivo}" class="w-full h-full object-cover">
+                                    ${btnDelete}
+                                </div>`;
+
+                    if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
+                    if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
+                    if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
+                });
+
+                // Actualizar Badges y Contadores visuales
+                actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
+                actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
+                actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
+
+                totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
+
+                let totalElement = $('#total_fotos_count');
+                totalElement.text(totalFotosSubidasServidor);
+
+                if (totalFotosSubidasServidor >= 8 && totalFotosSubidasServidor <= 10) {
+                    totalElement.removeClass('text-red-600 text-orange-500').addClass('text-green-600');
+                } else if (totalFotosSubidasServidor > 0 && totalFotosSubidasServidor < 8) {
+                    totalElement.removeClass('text-red-600 text-green-600').addClass('text-orange-500');
+                } else {
+                    totalElement.removeClass('text-green-600 text-orange-500').addClass('text-red-600');
+                }
+            }
+        });
+}
+
+function actualizarBadgeFotos(selector, cantidad) {
+    if (cantidad > 0) {
+        $(selector).removeClass('bg-gray-200 text-gray-700').addClass('bg-indigo-100 text-indigo-800').text(cantidad + ' subidas');
+    } else {
+        $(selector).removeClass('bg-indigo-100 text-indigo-800').addClass('bg-gray-200 text-gray-700').text('0 subidas');
+    }
+}
+
+// Para usarla desde el HTML tiene que estar en el window
+window.eliminarFotoAjax = function (idEvidencia) {
+    if (!confirm('¿Borrar esta foto permanentemente?')) return;
+
+    let formData = new FormData();
+    formData.append('id_evidencia', idEvidencia);
+
+    fetch('index.php?pagina=tecnicoReporte&accion=ajaxEliminarFotoUnica', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                cargarEvidenciasExistentes();
+            } else {
+                // AHORA TE MOSTRARÁ EL ERROR EXACTO:
+                Swal.fire('Error al borrar', data.msj, 'error');
+            }
+        });
+};
+
+// ==========================================
+// FUNCIONES DE TIEMPO
 // ==========================================
 function calcularTiempoServicio() {
     let hEntrada = $('#hora_entrada').val();
@@ -113,23 +228,6 @@ function calcularTiempoServicio() {
         let total = diffHrs.toString().padStart(2, '0') + ":" + diffMins.toString().padStart(2, '0');
         $('#tiempo_servicio').val(total);
         $('#tiempo_total_display').text(total + " hrs");
-    }
-}
-
-function calcularTotalFotos() {
-    let fAntes = document.getElementById('fotos_antes').files.length;
-    let fRemision = document.getElementById('foto_remision').files.length; 
-    let fDespues = document.getElementById('fotos_despues').files.length;
-    let total = fAntes + fRemision + fDespues;
-    let totalElement = $('#total_fotos_count');
-    totalElement.text(total);
-
-    if (total >= 8 && total <= 10) {
-        totalElement.removeClass('text-red-600 text-orange-500').addClass('text-green-600');
-    } else if (total > 0 && total < 8) {
-        totalElement.removeClass('text-red-600 text-green-600').addClass('text-orange-500');
-    } else {
-        totalElement.removeClass('text-green-600 text-orange-500').addClass('text-red-600');
     }
 }
 
@@ -217,10 +315,10 @@ function obtenerPosicion(evento) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
+
     let clientX = evento.clientX;
     let clientY = evento.clientY;
-    
+
     if (evento.touches && evento.touches.length > 0) {
         clientX = evento.touches[0].clientX;
         clientY = evento.touches[0].clientY;
@@ -233,7 +331,7 @@ function obtenerPosicion(evento) {
 }
 
 const iniciarDibujo = (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
     dibujando = true;
     const pos = obtenerPosicion(e);
     ctx.beginPath();
@@ -246,7 +344,7 @@ const dibujar = (e) => {
     const pos = obtenerPosicion(e);
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
-    firmaVacia = false; 
+    firmaVacia = false;
 };
 
 const detenerDibujo = (e) => {
@@ -260,38 +358,4 @@ function limpiarFirma() {
     document.getElementById('firma_base64').value = "";
 }
 
-// ==========================================
-// FUNCIÓN FINAL DE ENVÍO
-// ==========================================
-function validarYEnviar() {
-    let form = document.getElementById('formReporteMovil');
-    let fAntes = document.getElementById('fotos_antes').files.length;
-    let fRemision = document.getElementById('foto_remision').files.length; 
-    let fDespues = document.getElementById('fotos_despues').files.length;
-    let totalFotos = fAntes + fRemision + fDespues;
 
-    // Validar fotos
-    if (totalFotos < 8 || totalFotos > 10) {
-        alert("⚠️ Por favor seleccione entre 8 y 10 fotos en total de evidencia.\nActualmente ha seleccionado: " + totalFotos);
-        return false;
-    }
-
-    // Validar firma
-    if (firmaVacia) {
-        alert("⚠️ El cliente debe firmar el reporte antes de guardar.");
-        return false;
-    } else {
-        document.getElementById('firma_base64').value = canvas.toDataURL('image/png');
-    }
-
-    if (form.checkValidity()) {
-        // ---> NUEVO: Borramos la memoria local justo antes de enviar el formulario
-        if (typeof limpiarBorradorStorage === 'function') {
-            limpiarBorradorStorage(); 
-        }
-        
-        form.submit();
-    } else {
-        form.reportValidity();
-    }
-}

@@ -28,6 +28,20 @@ class ReporteTecnicoModelo
         }
     }
 
+    public function obtenerFestivos($inicio, $fin)
+{
+    try {
+        $sql = "SELECT fecha FROM dias_festivos WHERE fecha BETWEEN :inicio AND :fin";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':inicio', $inicio);
+        $stmt->bindParam(':fin', $fin);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN); // Retorna array simple de fechas ['2024-01-01', '2024-01-08']
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
     public function generarReporteServicios($id_tecnico, $fecha_inicio, $fecha_fin)
     {
         try {

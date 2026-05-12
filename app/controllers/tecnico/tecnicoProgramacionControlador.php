@@ -183,12 +183,15 @@ class tecnicoProgramacionControlador
             'fecha_visita' => $_POST['fecha_visita']
         ];
 
-        $guardado = $this->modelo->guardarServicioExtra($idUsuario, $datos);
+        // Ahora el modelo devuelve un array
+        $resultado = $this->modelo->guardarServicioExtra($idUsuario, $datos);
 
-        if ($guardado) {
+        if (is_array($resultado) && $resultado['success'] === true) {
             echo json_encode(["success" => true, "msj" => "Servicio extra agendado con éxito."]);
         } else {
-            echo json_encode(["success" => false, "msj" => "Error al guardar en la base de datos."]);
+            // Mostramos el error real de la base de datos
+            $errorReal = is_array($resultado) ? $resultado['msj'] : "Error desconocido";
+            echo json_encode(["success" => false, "msj" => "Error DB: " . $errorReal]);
         }
         exit;
     }

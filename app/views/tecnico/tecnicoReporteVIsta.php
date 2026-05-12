@@ -354,7 +354,7 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script src="<?= BASE_URL ?>js/tecnico/notificaciones.js"></script>
-<script src="<?= BASE_URL ?>js/tecnico/tecnicoReporte.js"></script>
-<script src="<?= BASE_URL ?>js/tecnico/autoGuardado.js"></script>
-<script src="<?= BASE_URL ?>js/tecnico/validaciones.js"></script>
+<script src="<?= BASE_URL ?>js/tecnico/notificaciones.js?v=2"></script>
+<script src="<?= BASE_URL ?>js/tecnico/tecnicoReporte.js?v=2"></script>
+<script src="<?= BASE_URL ?>js/tecnico/autoGuardado.js?v=2"></script>
+<script src="<?= BASE_URL ?>js/tecnico/validaciones.js?v=2"></script>

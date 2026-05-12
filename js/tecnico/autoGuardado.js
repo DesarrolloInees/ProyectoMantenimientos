@@ -1,4 +1,4 @@
-$(document).ready(function() {
+$(document).ready(function () {
     // Tomamos el ID de la orden para que el borrador sea único de este servicio
     const idOrden = $('input[name="id_ordenes_servicio"]').val();
     if (!idOrden) return; // Si no hay orden, no hacemos nada
@@ -13,7 +13,7 @@ $(document).ready(function() {
         let borrador = {};
 
         // Guardar inputs, selects y textareas
-        $('#formReporteMovil').find('input:not([type="file"]), select, textarea').each(function() {
+        $('#formReporteMovil').find('input:not([type="file"]), select, textarea').each(function () {
             let nombre = $(this).attr('name');
             if (nombre) {
                 borrador[nombre] = $(this).val();
@@ -33,7 +33,7 @@ $(document).ready(function() {
 
         // Convertir a texto y guardar en el celular
         localStorage.setItem(storageKey, JSON.stringify(borrador));
-        
+
         // Opcional: Mostrar un toast sutil para que sepa que se guardó
         // Notificaciones.toast('Borrador guardado auto...', 'success');
     }
@@ -51,7 +51,7 @@ $(document).ready(function() {
     // ==========================================
     function revisarBorradorPrevio() {
         let datosGuardados = localStorage.getItem(storageKey);
-        
+
         if (datosGuardados) {
             // ¡HAY UN BORRADOR! Detenemos todo y le preguntamos al técnico
             Swal.fire({
@@ -70,7 +70,7 @@ $(document).ready(function() {
                     let borrador = JSON.parse(datosGuardados);
 
                     // A. Restaurar textos y selects
-                    $.each(borrador, function(key, value) {
+                    $.each(borrador, function (key, value) {
                         if (key !== 'lista_repuestos' && key !== 'firma_canvas') {
                             let elemento = $('[name="' + key + '"]');
                             if (elemento.length > 0) {
@@ -95,17 +95,41 @@ $(document).ready(function() {
                         let canvas = document.getElementById('canvas_firma');
                         let ctx = canvas.getContext('2d');
                         let img = new Image();
-                        img.onload = function() {
+                        img.onload = function () {
                             ctx.drawImage(img, 0, 0);
                             firmaVacia = false;
                         };
                         img.src = borrador.firma_canvas;
                     }
 
+                    // ==========================================
+                    // D. NUEVO: FORZAR EL CÁLCULO DEL TIEMPO
+                    // ==========================================
+                    if (typeof calcularTiempoServicio === 'function') {
+                        calcularTiempoServicio();
+                    }
+
                     Notificaciones.toast('Información recuperada', 'success');
                 } else {
-                    // DIJO QUE NO: Destruimos el borrador viejo para limpiar todo
+                    // DIJO QUE NO: Destruimos el borrador viejo para limpiar los textos
                     localStorage.removeItem(storageKey);
+
+                    // NUEVO: Le decimos al servidor que borre las fotos físicas y de la BD
+                    let idOrdenABorrar = $('input[name="id_ordenes_servicio"]').val();
+                    let formData = new FormData();
+                    formData.append('id_orden', idOrdenABorrar);
+
+                    fetch('index.php?pagina=tecnicoReporte&accion=ajaxLimpiarEvidenciasOrden', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(() => {
+                            // Recargamos la grilla visual de fotos para que queden en 0
+                            if (typeof cargarEvidenciasExistentes === 'function') {
+                                cargarEvidenciasExistentes();
+                            }
+                        });
+
                     Notificaciones.toast('Empezando de cero...', 'info');
                 }
 

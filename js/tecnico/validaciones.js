@@ -2,50 +2,52 @@
 // VALIDACIONES Y CAPTURA DE GPS
 // ==========================================
 
+// ==========================================
+// FUNCIÓN FINAL DE ENVÍO (Versión Infalible)
+// ==========================================
 function validarYEnviar() {
+    console.log("🚀 Iniciando validación de reporte...");
+    
     let form = document.getElementById('formReporteMovil');
     
-    // 1. Contar Fotos
-    let fAntes = document.getElementById('fotos_antes').files.length;
-    let fRemision = document.getElementById('foto_remision').files.length; 
-    let fDespues = document.getElementById('fotos_despues').files.length;
-    let totalFotos = fAntes + fRemision + fDespues;
+    // Contamos las fotos que el técnico VE en la pantalla
+    let fAntes = $('#preview_antes img').length;
+    let fRemision = $('#preview_remision img').length;
+    let fDespues = $('#preview_despues img').length;
+    let total = fAntes + fRemision + fDespues;
 
-    // LA FOTO DE LA REMISIÓN ES SAGRADA
+    console.log("📊 Conteo de fotos -> Antes: " + fAntes + " | Remisión: " + fRemision + " | Después: " + fDespues);
+
+    // VALIDACIÓN DE LA REMISIÓN
     if (fRemision === 0) {
-        Notificaciones.error("Falta la Remisión", "La foto de la remisión física es OBLIGATORIA. Por favor, tómale la foto antes de guardar el reporte.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Falta la Remisión',
+            text: 'No detectamos la foto de la remisión. Por favor, tómale la foto antes de guardar.'
+        });
         return false;
     }
 
-    if (totalFotos < 8 || totalFotos > 10) {
-        Notificaciones.advertencia("Cantidad de Evidencias", `Por favor seleccione entre 8 y 10 fotos en total. Actualmente ha seleccionado: ${totalFotos}`);
+    // VALIDACIÓN DEL TOTAL (8 a 10)
+    if (total < 8 || total > 10) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Cantidad de fotos incorrecta',
+            text: "Debes tener entre 8 y 10 fotos. Actualmente tienes: " + total
+        });
         return false;
     }
 
-    // 2. Validar Firma Digital
+    // VALIDACIÓN DE FIRMA
+    // La variable 'firmaVacia' viene de tecnicoReporte.js
     if (typeof firmaVacia !== 'undefined' && firmaVacia) {
-        Notificaciones.advertencia("Firma Requerida", "El cliente o encargado debe firmar el reporte en el recuadro antes de guardar.");
+        Swal.fire('Atención', 'El cliente debe firmar el reporte.', 'warning');
         return false;
     }
 
-    // 3. Validar HTML5
-    if (!form.checkValidity()) {
-        form.reportValidity(); 
-        Notificaciones.error("Campos Incompletos", "Por favor, llene todos los campos obligatorios marcados en el formulario.");
-        return false;
-    }
-
-    document.getElementById('firma_base64').value = canvas.toDataURL('image/png');
-
-    // 4. Modal de Confirmación
-    Notificaciones.confirmar(
-        "¿Finalizar y Guardar?", 
-        "Asegúrese de que la información es correcta. Se capturará su ubicación GPS actual para finalizar el servicio.", 
-        function() {
-            // SI DIJO QUE SÍ, INICIAMOS LA CAPTURA GPS
-            capturarGPSyEnviar(form);
-        }
-    );
+    // Si todo está OK, capturamos el GPS y enviamos
+    // Esta función está en este mismo archivo abajo
+    capturarGPSyEnviar(form);
 }
 
 // ==========================================

@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/asistencia/asistenciaModelo.php';
@@ -30,27 +31,48 @@ class AsistenciaControlador
         include "app/views/plantillaVista.php";
     }
 
-    // 🔥 NUEVA FUNCIÓN MEJORADA: Respeta la Ñ y limpia solo tildes 🔥
-    private function normalizarTexto($str) {
-        // Aseguramos que el texto esté en UTF-8 puro
+    // Normaliza limpiando tildes, pero respetando la Ñ
+    private function normalizarTexto($str)
+    {
         if (!mb_check_encoding($str, 'UTF-8')) {
             $str = mb_convert_encoding($str, 'UTF-8', 'ISO-8859-1, Windows-1252, auto');
         }
-        
         $str = trim($str);
-        
-        // Reemplazamos vocales con tilde, diéresis, etc., PERO DEJAMOS LA Ñ INTACTA
+
         $unwanted_array = array(
-            'á'=>'a', 'é'=>'e', 'í'=>'i', 'ó'=>'o', 'ú'=>'u',
-            'Á'=>'A', 'É'=>'E', 'Í'=>'I', 'Ó'=>'O', 'Ú'=>'U',
-            'à'=>'a', 'è'=>'e', 'ì'=>'i', 'ò'=>'o', 'ù'=>'u',
-            'À'=>'A', 'È'=>'E', 'Ì'=>'I', 'Ò'=>'O', 'Ù'=>'U',
-            'ä'=>'a', 'ë'=>'e', 'ï'=>'i', 'ö'=>'o', 'ü'=>'u',
-            'Ä'=>'A', 'Ë'=>'E', 'Ï'=>'I', 'Ö'=>'O', 'Ü'=>'U'
+            'á' => 'a',
+            'é' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            'Á' => 'A',
+            'É' => 'E',
+            'Í' => 'I',
+            'Ó' => 'O',
+            'Ú' => 'U',
+            'à' => 'a',
+            'è' => 'e',
+            'ì' => 'i',
+            'ò' => 'o',
+            'ù' => 'u',
+            'À' => 'A',
+            'È' => 'E',
+            'Ì' => 'I',
+            'Ò' => 'O',
+            'Ù' => 'U',
+            'ä' => 'a',
+            'ë' => 'e',
+            'ï' => 'i',
+            'ö' => 'o',
+            'ü' => 'u',
+            'Ä' => 'A',
+            'Ë' => 'E',
+            'Ï' => 'I',
+            'Ö' => 'O',
+            'Ü' => 'U'
         );
         $str = strtr($str, $unwanted_array);
-        
-        // Usamos mb_strtoupper para que "ñ" pase a "Ñ" sin romperse
+
         return mb_strtoupper($str, 'UTF-8');
     }
 
@@ -68,7 +90,7 @@ class AsistenciaControlador
                 $minTs = PHP_INT_MAX;
                 $maxTs = 0;
 
-                // 1. LEER CSV Y RESPETAR LOS CARACTERES LATINOS
+                // 🔥 1. LEER EL CSV PRIMERO PARA AUTO-DETECTAR LAS FECHAS 🔥
                 if ($extension === 'csv') {
                     if (($gestor = fopen($rutaTemporal, "r")) !== FALSE) {
                         while (($fila = fgetcsv($gestor, 10000, ",")) !== FALSE) {
@@ -78,26 +100,33 @@ class AsistenciaControlador
 
                             if (count($fila) >= 3) {
                                 $nombreRaw = trim($fila[0]);
-                                // 🔥 CORRECCIÓN DE ENCODING LATINO (ISO-8859-1) 🔥
                                 $nombre = mb_convert_encoding($nombreRaw, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
-                                
-                                $fecha  = trim($fila[1]);
-                                $hora   = trim($fila[2]);
+                                $fecha = trim($fila[1]);
+                                $hora = trim($fila[2]);
 
-                                if (stripos($nombre, 'empleado') !== false || stripos($fecha, 'fecha') !== false) continue;
-                                if (empty($nombre) || empty($fecha) || empty($hora)) continue;
+                                if (stripos($nombre, 'empleado') !== false || stripos($fecha, 'fecha') !== false)
+                                    continue;
+                                if (empty($nombre) || empty($fecha) || empty($hora))
+                                    continue;
 
                                 $fechaFormat = str_replace('/', '-', $fecha);
                                 $ts = strtotime($fechaFormat);
-                                if (!$ts) continue;
+                                if (!$ts)
+                                    continue;
 
                                 $fechaYmd = date('Y-m-d', $ts);
+
+                                // Detectar límites de fecha automáticamente
+                                if ($ts < $minTs)
+                                    $minTs = $ts;
+                                if ($ts > $maxTs)
+                                    $maxTs = $ts;
 
                                 if (!isset($datosAgrupadosCSV[$nombre])) {
                                     $datosAgrupadosCSV[$nombre] = [];
                                 }
                                 if (!isset($datosAgrupadosCSV[$nombre][$fechaYmd])) {
-                                    $datosAgrupadosCSV[$nombre][$fechaYmd] = ['entrada' => $hora, 'salida'  => $hora];
+                                    $datosAgrupadosCSV[$nombre][$fechaYmd] = ['entrada' => $hora, 'salida' => $hora];
                                 } else {
                                     if (strtotime($hora) < strtotime($datosAgrupadosCSV[$nombre][$fechaYmd]['entrada'])) {
                                         $datosAgrupadosCSV[$nombre][$fechaYmd]['entrada'] = $hora;
@@ -106,179 +135,164 @@ class AsistenciaControlador
                                         $datosAgrupadosCSV[$nombre][$fechaYmd]['salida'] = $hora;
                                     }
                                 }
-
-                                if ($ts < $minTs) $minTs = $ts;
-                                if ($ts > $maxTs) $maxTs = $ts;
                             }
                         }
                         fclose($gestor);
                     }
                 }
 
-                // 2. OBTENER EMPLEADOS DEL MODELO (MVC)
-                $empleadosBd = $this->modelo->obtenerEmpleadosActivos();
+                if ($minTs === PHP_INT_MAX || $maxTs === 0) {
+                    throw new Exception("El archivo CSV está vacío o tiene un formato de fecha irreconocible.");
+                }
 
-                $mapaNombres = [];
-                foreach (array_keys($datosAgrupadosCSV) as $nomCsv) {
+                // 🔥 2. CREAR EL RANGO DE FECHAS AUTO-DETECTADO 🔥
+                $fechaInicioStr = date('Y-m-d', $minTs);
+                $fechaFinStr = date('Y-m-d', $maxTs);
+
+                $rangoFechas = [];
+                for ($i = $minTs; $i <= $maxTs; $i += 86400) {
+                    $rangoFechas[] = date('Y-m-d', $i);
+                }
+
+                // 🔥 3. CREAR MATRIZ PARA TODOS LOS EMPLEADOS CON EL RANGO ENCONTRADO 🔥
+                $empleadosBd = $this->modelo->obtenerEmpleadosActivos();
+                $datosOficiales = [];
+
+                foreach ($empleadosBd as $emp) {
+                    $nombreReal = $this->normalizarTexto($emp['nombre_bd']);
+                    $datosOficiales[$nombreReal] = [
+                        'nombre_original' => $emp['nombre_bd'],
+                        'cargo' => $emp['cargo'],
+                        'fechas' => []
+                    ];
+                    foreach ($rangoFechas as $f) {
+                        $datosOficiales[$nombreReal]['fechas'][$f] = [
+                            'entrada' => null,
+                            'salida' => null,
+                            'servicios' => 0
+                        ];
+                    }
+                }
+
+                // Match Difuso del CSV hacia los nombres oficiales
+                foreach ($datosAgrupadosCSV as $nomCsv => $fechasCsv) {
                     $nomLimpio = $this->normalizarTexto($nomCsv);
                     $partes = explode(' ', $nomLimpio);
-                    
-                    $mejorMatch = $nomCsv; 
-                    $cargo = 'No registrado en BD';
-                    $matchEncontrado = false;
 
-                    // A. Match Exacto
-                    foreach ($empleadosBd as $emp) {
-                        if ($this->normalizarTexto($emp['nombre_bd']) === $nomLimpio) {
-                            $mejorMatch = $emp['nombre_bd'];
-                            $cargo = $emp['cargo'];
-                            $matchEncontrado = true;
-                            break;
-                        }
-                    }
+                    $keyOficial = null;
 
-                    // B. Contiene partes
-                    if (!$matchEncontrado) {
-                        foreach ($empleadosBd as $emp) {
-                            $nomBdLimpio = $this->normalizarTexto($emp['nombre_bd']);
+                    if (isset($datosOficiales[$nomLimpio])) {
+                        $keyOficial = $nomLimpio;
+                    } else {
+                        $mejorPorcentaje = 0;
+                        $mejorCandidato = null;
+                        foreach (array_keys($datosOficiales) as $empClave) {
                             $todasLasPartes = true;
                             foreach ($partes as $p) {
-                                if (empty($p)) continue;
-                                if (strpos($nomBdLimpio, $p) === false) {
-                                    $todasLasPartes = false; break;
+                                if (empty($p))
+                                    continue;
+                                if (strpos($empClave, $p) === false) {
+                                    $todasLasPartes = false;
+                                    break;
                                 }
                             }
                             if ($todasLasPartes) {
-                                $mejorMatch = $emp['nombre_bd'];
-                                $cargo = $emp['cargo'];
-                                $matchEncontrado = true;
+                                $keyOficial = $empClave;
+                                break;
+                            }
+
+                            similar_text($nomLimpio, $empClave, $porcentaje);
+                            if ($porcentaje > $mejorPorcentaje) {
+                                $mejorPorcentaje = $porcentaje;
+                                $mejorCandidato = $empClave;
+                            }
+                        }
+
+                        if (!$keyOficial && $mejorPorcentaje >= 65) {
+                            $keyOficial = $mejorCandidato;
+                        }
+                    }
+
+                    if (!$keyOficial) {
+                        $keyOficial = $nomLimpio;
+                        $datosOficiales[$keyOficial] = [
+                            'nombre_original' => $nomCsv,
+                            'cargo' => 'No registrado en BD',
+                            'fechas' => []
+                        ];
+                        foreach ($rangoFechas as $f) {
+                            $datosOficiales[$keyOficial]['fechas'][$f] = ['entrada' => null, 'salida' => null, 'servicios' => 0];
+                        }
+                    }
+
+                    foreach ($fechasCsv as $fechaYmd => $horas) {
+                        $datosOficiales[$keyOficial]['fechas'][$fechaYmd]['entrada'] = $horas['entrada'];
+                        $datosOficiales[$keyOficial]['fechas'][$fechaYmd]['salida'] = $horas['salida'];
+                    }
+                }
+
+                // 🔥 4. CONSULTAR SERVICIOS EN EL INTERVALO DETECTADO 🔥
+                $serviciosApp = $this->modelo->obtenerResumenServicios($fechaInicioStr, $fechaFinStr);
+
+                foreach ($serviciosApp as $srv) {
+                    $nomBdSrv = $this->normalizarTexto($srv['nombre_bd']);
+                    $fechaYmd = $srv['fecha_ymd'];
+
+                    $keyOficial = null;
+                    if (isset($datosOficiales[$nomBdSrv])) {
+                        $keyOficial = $nomBdSrv;
+                    } else {
+                        foreach (array_keys($datosOficiales) as $empClave) {
+                            similar_text($empClave, $nomBdSrv, $perc);
+                            if ($perc > 80) {
+                                $keyOficial = $empClave;
                                 break;
                             }
                         }
                     }
 
-                    // C. Match Difuso
-                    if (!$matchEncontrado) {
-                        $mejorPorcentaje = 0;
-                        $mejorCandidato = null;
-                        foreach ($empleadosBd as $emp) {
-                            similar_text($nomLimpio, $this->normalizarTexto($emp['nombre_bd']), $porcentaje);
-                            if ($porcentaje > $mejorPorcentaje) {
-                                $mejorPorcentaje = $porcentaje;
-                                $mejorCandidato = $emp;
-                            }
-                        }
-                        if ($mejorPorcentaje >= 65) { 
-                            $mejorMatch = $mejorCandidato['nombre_bd'];
-                            $cargo = $mejorCandidato['cargo'];
+                    if (!$keyOficial)
+                        continue;
+
+                    // Ignorar servicios que caigan por fuera del rango del CSV (por seguridad)
+                    if (!isset($datosOficiales[$keyOficial]['fechas'][$fechaYmd])) {
+                        continue;
+                    }
+
+                    $curEntrada = $datosOficiales[$keyOficial]['fechas'][$fechaYmd]['entrada'];
+                    $curSalida = $datosOficiales[$keyOficial]['fechas'][$fechaYmd]['salida'];
+
+                    if (!empty($srv['entrada_srv'])) {
+                        if (empty($curEntrada) || strtotime($srv['entrada_srv']) < strtotime($curEntrada)) {
+                            $datosOficiales[$keyOficial]['fechas'][$fechaYmd]['entrada'] = $srv['entrada_srv'];
                         }
                     }
 
-                    $mapaNombres[$nomCsv] = ['oficial' => $mejorMatch, 'cargo' => $cargo];
-                }
-
-                // 3. PASAR CSV AL ARREGLO OFICIAL
-                $datosOficiales = [];
-                foreach ($datosAgrupadosCSV as $nombreCsv => $fechas) {
-                    $info = $mapaNombres[$nombreCsv];
-                    $nombreReal = $info['oficial'];
-
-                    if (!isset($datosOficiales[$nombreReal])) $datosOficiales[$nombreReal] = [];
-
-                    foreach ($fechas as $fechaYmd => $horas) {
-                        if (!isset($datosOficiales[$nombreReal][$fechaYmd])) {
-                            $datosOficiales[$nombreReal][$fechaYmd] = [
-                                'entrada' => $horas['entrada'],
-                                'salida' => $horas['salida'],
-                                'servicios' => 0,
-                                'cargo' => $info['cargo']
-                            ];
-                        } else {
-                            if (strtotime($horas['entrada']) < strtotime($datosOficiales[$nombreReal][$fechaYmd]['entrada']))
-                                $datosOficiales[$nombreReal][$fechaYmd]['entrada'] = $horas['entrada'];
-                            if (strtotime($horas['salida']) > strtotime($datosOficiales[$nombreReal][$fechaYmd]['salida']))
-                                $datosOficiales[$nombreReal][$fechaYmd]['salida'] = $horas['salida'];
+                    if (!empty($srv['salida_srv'])) {
+                        if (empty($curSalida) || strtotime($srv['salida_srv']) > strtotime($curSalida) || $curSalida === $curEntrada) {
+                            $datosOficiales[$keyOficial]['fechas'][$fechaYmd]['salida'] = $srv['salida_srv'];
                         }
                     }
+
+                    $datosOficiales[$keyOficial]['fechas'][$fechaYmd]['servicios'] = $srv['cant_servicios'];
                 }
 
-                // 4. CONSULTAR SERVICIOS EN EL MODELO Y EVITAR DUPLICADOS (MVC)
-                if ($minTs <= $maxTs) {
-                    $fechaIniStr = date('Y-m-d', $minTs);
-                    $fechaFinStr = date('Y-m-d', $maxTs);
-
-                    $serviciosApp = $this->modelo->obtenerResumenServicios($fechaIniStr, $fechaFinStr);
-
-                    foreach ($serviciosApp as $srv) {
-                        $nomBdSrv = $srv['nombre_bd'];
-                        $fechaYmd = $srv['fecha_ymd'];
-
-                        $keyToUse = $nomBdSrv;
-                        
-                        if (!isset($datosOficiales[$keyToUse])) {
-                            $encontrado = false;
-                            foreach (array_keys($datosOficiales) as $existingKey) {
-                                if ($this->normalizarTexto($existingKey) === $this->normalizarTexto($nomBdSrv)) {
-                                    $keyToUse = $existingKey;
-                                    $encontrado = true;
-                                    break;
-                                }
-                                similar_text($this->normalizarTexto($existingKey), $this->normalizarTexto($nomBdSrv), $perc);
-                                if ($perc > 80) { 
-                                    $keyToUse = $existingKey;
-                                    $encontrado = true;
-                                    break;
-                                }
-                            }
-                            
-                            if (!$encontrado) {
-                                $datosOficiales[$keyToUse] = [];
-                            }
-                        }
-
-                        if (!isset($datosOficiales[$keyToUse][$fechaYmd])) {
-                            $datosOficiales[$keyToUse][$fechaYmd] = [
-                                'entrada' => $srv['entrada_srv'],
-                                'salida' => $srv['salida_srv'],
-                                'servicios' => $srv['cant_servicios'],
-                                'cargo' => 'Técnico'
-                            ];
-                        } else {
-                            $curEntrada = $datosOficiales[$keyToUse][$fechaYmd]['entrada'];
-                            $curSalida = $datosOficiales[$keyToUse][$fechaYmd]['salida'];
-
-                            if (!empty($srv['entrada_srv'])) {
-                                if (empty($curEntrada) || strtotime($srv['entrada_srv']) < strtotime($curEntrada)) {
-                                    $datosOficiales[$keyToUse][$fechaYmd]['entrada'] = $srv['entrada_srv'];
-                                }
-                            }
-                            
-                            if (!empty($srv['salida_srv'])) {
-                                if (empty($curSalida) || strtotime($srv['salida_srv']) > strtotime($curSalida) || $curSalida === $curEntrada) {
-                                    $datosOficiales[$keyToUse][$fechaYmd]['salida'] = $srv['salida_srv'];
-                                }
-                            }
-
-                            $datosOficiales[$keyToUse][$fechaYmd]['servicios'] = $srv['cant_servicios'];
-                            if ($datosOficiales[$keyToUse][$fechaYmd]['cargo'] === 'No registrado en BD') {
-                                $datosOficiales[$keyToUse][$fechaYmd]['cargo'] = 'Técnico';
-                            }
-                        }
-                    }
-                }
-
-                // 5. PREPARAR RESPUESTA FINAL
+                $diasES = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
                 $resultadoFinal = [];
-                foreach ($datosOficiales as $nombrePersona => $fechas) {
-                    foreach ($fechas as $fechaYmd => $data) {
-                        $salidaReal = ($data['entrada'] === $data['salida'] && empty($data['servicios'])) ? 'Sin registro de salida' : $data['salida'];
+
+                foreach ($datosOficiales as $keyName => $personaInfo) {
+                    foreach ($personaInfo['fechas'] as $fechaYmd => $data) {
+
+                        $numeroDia = date('N', strtotime($fechaYmd));
+                        $nombreDiaStr = $diasES[$numeroDia] . ' ' . date('d/m/Y', strtotime($fechaYmd));
 
                         $resultadoFinal[] = [
-                            'nombre'    => $nombrePersona,
-                            'cargo'     => $data['cargo'],
-                            'fecha'     => date('d/m/Y', strtotime($fechaYmd)),
-                            'entrada'   => !empty($data['entrada']) ? date('H:i', strtotime($data['entrada'])) : 'Falta Entrada',
-                            'salida'    => ($salidaReal !== 'Sin registro de salida' && !empty($salidaReal)) ? date('H:i', strtotime($salidaReal)) : 'Sin registro de salida',
+                            'nombre' => $personaInfo['nombre_original'],
+                            'cargo' => $personaInfo['cargo'],
+                            'fecha_raw' => $fechaYmd,
+                            'fecha_formateada' => $nombreDiaStr,
+                            'entrada' => !empty($data['entrada']) ? date('H:i', strtotime($data['entrada'])) : 'Falta Entrada',
+                            'salida' => !empty($data['salida']) && $data['salida'] !== $data['entrada'] ? date('H:i', strtotime($data['salida'])) : (empty($data['servicios']) ? 'Falta Salida' : date('H:i', strtotime($data['entrada']))),
                             'servicios' => $data['servicios']
                         ];
                     }
@@ -289,10 +303,13 @@ class AsistenciaControlador
                 }
                 $_SESSION['datos_asistencia_procesados'] = $resultadoFinal;
 
+                // 🔥 AQUÍ ESTÁ LA MAGIA: Mandamos las fechas detectadas en el JSON 🔥
                 $respuestaArray = [
-                    'exito' => true, 
-                    'mensaje' => 'Archivo procesado correctamente',
-                    'datos' => $resultadoFinal
+                    'exito' => true,
+                    'mensaje' => 'Generado automáticamente del ' . date('d/m/Y', $minTs) . ' al ' . date('d/m/Y', $maxTs),
+                    'datos' => $resultadoFinal,
+                    'fecha_inicio_detectada' => $fechaInicioStr,
+                    'fecha_fin_detectada' => $fechaFinStr
                 ];
 
             } catch (\Throwable $e) {
@@ -311,7 +328,7 @@ class AsistenciaControlador
     public function descargarExcel()
     {
         ob_start();
-        
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -331,22 +348,21 @@ class AsistenciaControlador
         $spreadsheet->removeSheetByIndex(0);
         $sheetIndex = 0;
 
-        $timeToFraction = function($timeStr) {
-            if (!$timeStr || $timeStr === 'Sin registro de salida' || $timeStr === 'Falta Entrada') return null;
+        $timeToFraction = function ($timeStr) {
+            if (!$timeStr || strpos($timeStr, 'Falta') !== false)
+                return null;
             $p = explode(':', $timeStr);
-            $h = isset($p[0]) ? (int)$p[0] : 0;
-            $m = isset($p[1]) ? (int)$p[1] : 0;
+            $h = isset($p[0]) ? (int) $p[0] : 0;
+            $m = isset($p[1]) ? (int) $p[1] : 0;
             return ($h + ($m / 60)) / 24;
         };
 
         foreach ($empleados as $nombre => $registros) {
             $sheet = $spreadsheet->createSheet($sheetIndex);
-            
-            // 🔥 CORRECCIÓN: Ahora permite la letra Ñ en la pestaña del Excel 🔥
+
             $tituloHoja = mb_substr(preg_replace('/[^a-zA-Z0-9\sñÑáéíóúÁÉÍÓÚ]/u', '', $nombre), 0, 30, 'UTF-8');
             $sheet->setTitle($tituloHoja);
 
-            // --- DISEÑO CABECERAS GENERALES ---
             $sheet->setCellValue('A1', 'NOMBRE DEL TRABAJADOR');
             $sheet->setCellValue('C1', $nombre);
             $sheet->setCellValue('A2', 'CARGO');
@@ -356,13 +372,13 @@ class AsistenciaControlador
             $sheet->setCellValue('F1', 'S');
             $sheet->setCellValue('G1', 'LÍMITE EXTRAS');
             $sheet->setCellValue('H1', 'INICIO TURNO');
-            $sheet->setCellValue('I1', 'INICIO NOCTURNA'); 
-            
-            $sheet->setCellValue('E2', $timeToFraction('09:00'));
+            $sheet->setCellValue('I1', 'INICIO NOCTURNA');
+
+            $sheet->setCellValue('E2', $timeToFraction('08:00'));
             $sheet->setCellValue('F2', $timeToFraction('04:00'));
             $sheet->setCellValue('G2', $timeToFraction('02:00'));
-            $sheet->setCellValue('H2', $timeToFraction('07:00')); 
-            $sheet->setCellValue('I2', $timeToFraction('18:00')); 
+            $sheet->setCellValue('H2', $timeToFraction('07:00'));
+            $sheet->setCellValue('I2', $timeToFraction('19:00'));
 
             $sheet->getStyle('E2:I2')->getNumberFormat()->setFormatCode('hh:mm');
             $sheet->getStyle('A1:A2')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
@@ -370,9 +386,9 @@ class AsistenciaControlador
 
             $semanas = [];
             foreach ($registros as $reg) {
-                $fechaFormateada = str_replace('/', '-', $reg['fecha']);
-                $timestamp = strtotime($fechaFormateada);
-                
+                // USAR LA FECHA RAW (Y-m-d) PARA LOS CÁLCULOS MATEMÁTICOS DEL EXCEL
+                $timestamp = strtotime($reg['fecha_raw']);
+
                 if ($timestamp) {
                     $numeroSemana = date('W', $timestamp);
                     $semanas[$numeroSemana][] = $reg;
@@ -382,20 +398,20 @@ class AsistenciaControlador
             }
 
             ksort($semanas);
-            $fila = 4; 
+            $fila = 4;
 
             $celdasTotalesTrabajado = [];
             $celdasTotalesExtras = [];
             $celdasTotalesDominicales = [];
             $celdasTotalesNocturnas = [];
-            $celdasTotalesServicios = []; 
+            $celdasTotalesServicios = [];
 
             foreach ($semanas as $numSemana => $registrosSemana) {
                 $sheet->setCellValue('A' . $fila, "REPORTE SEMANA " . $numSemana);
                 $sheet->mergeCells("A{$fila}:H{$fila}");
                 $sheet->getStyle("A{$fila}:H{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $sheet->getStyle("A{$fila}:H{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78'); 
-                
+                $sheet->getStyle("A{$fila}:H{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+
                 $fila++;
 
                 $sheet->setCellValue('A' . $fila, 'FECHA');
@@ -411,48 +427,51 @@ class AsistenciaControlador
                 $sheet->getStyle("A{$fila}:H{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF385D22');
 
                 $fila++;
-                $startRow = $fila; 
+                $startRow = $fila;
 
-                usort($registrosSemana, function($a, $b) {
-                    return strtotime(str_replace('/', '-', $a['fecha'])) - strtotime(str_replace('/', '-', $b['fecha']));
+                usort($registrosSemana, function ($a, $b) {
+                    return strtotime($a['fecha_raw']) - strtotime($b['fecha_raw']);
                 });
 
                 foreach ($registrosSemana as $reg) {
-                    $fechaFormateada = str_replace('/', '-', $reg['fecha']);
-                    $timestamp = strtotime($fechaFormateada);
+                    $timestamp = strtotime($reg['fecha_raw']);
+
                     if ($timestamp) {
                         $sheet->setCellValue('A' . $fila, \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($timestamp));
-                        $sheet->getStyle('A' . $fila)->getNumberFormat()->setFormatCode('dd-mm-yy');
+                        // 🔥 MAGIA AQUÍ: Obliga a Excel a mostrar "lunes 15-05-2026" pero conservando la fórmula de fechas
+                        $sheet->getStyle('A' . $fila)->getNumberFormat()->setFormatCode('[$-es-ES]dddd dd-mm-yyyy;@');
                     } else {
-                        $sheet->setCellValue('A' . $fila, $reg['fecha']);
+                        $sheet->setCellValue('A' . $fila, $reg['fecha_formateada']);
                     }
-                    
+
                     $valEntrada = $timeToFraction($reg['entrada']);
                     $valSalida = $timeToFraction($reg['salida']);
 
                     if ($valEntrada !== null) {
                         $sheet->setCellValue('B' . $fila, $valEntrada);
-                        $sheet->getStyle('B' . $fila)->getNumberFormat()->setFormatCode('hh:mm'); 
+                        $sheet->getStyle('B' . $fila)->getNumberFormat()->setFormatCode('hh:mm');
                     } else {
                         $sheet->setCellValue('B' . $fila, 'FALTA ENT');
                     }
 
                     if ($valSalida !== null) {
                         $sheet->setCellValue('C' . $fila, $valSalida);
-                        $sheet->getStyle('C' . $fila)->getNumberFormat()->setFormatCode('hh:mm'); 
-                        
-                        $sheet->setCellValue('D' . $fila, "=IF(ISNUMBER(C{$fila}), C{$fila}-MAX(B{$fila}, \$H\$2), \"\")");
+                        $sheet->getStyle('C' . $fila)->getNumberFormat()->setFormatCode('hh:mm');
+
+                        // 🔥 CORRECCIÓN: DE LUNES A VIERNES RESTA 1 HORA (1/24), SÁBADOS (O DOMINGOS) RESTA 0 🔥
+                        $formulaTrabajado = "=IF(ISNUMBER(C{$fila}), MAX(0, C{$fila}-MAX(B{$fila}, \$H\$2) - IF(WEEKDAY(A{$fila},2)<6, 1/24, 0)), \"\")";
+                        $sheet->setCellValue('D' . $fila, $formulaTrabajado);
                         $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
 
                         $formulaExtras = "=IF(ISNUMBER(D{$fila}), IF((D{$fila}-IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2))>\$G\$2, \$G\$2, IF(D{$fila}>IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2), D{$fila}-IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2), 0)), \"\")";
                         $sheet->setCellValue('E' . $fila, $formulaExtras);
                         $sheet->getStyle('E' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-                        
+
                         $sheet->setCellValue('F' . $fila, "=IF(ISNUMBER(C{$fila}), MAX(0, C{$fila}-\$I\$2), \"\")");
                         $sheet->getStyle('F' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
                     } else {
                         $sheet->setCellValue('C' . $fila, 'FALTA SALIDA');
-                        $sheet->getStyle("A{$fila}:C{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF6666');
+
                     }
 
                     $sheet->setCellValue('G' . $fila, $reg['servicios'] > 0 ? $reg['servicios'] : '');
@@ -466,92 +485,93 @@ class AsistenciaControlador
                 $sheet->setCellValue('E' . $fila, "=SUM(E{$startRow}:E{$endRow})");
                 $sheet->setCellValue('F' . $fila, "=SUM(F{$startRow}:F{$endRow})");
                 $sheet->setCellValue('G' . $fila, "=SUM(G{$startRow}:G{$endRow})");
-                
-                $sheet->getStyle("A{$fila}:H{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF996600'); 
+
+                $sheet->getStyle("A{$fila}:H{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF996600');
                 $sheet->getStyle("A{$fila}:H{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
                 $sheet->getStyle("D{$fila}:F{$fila}")->getNumberFormat()->setFormatCode('[h]:mm');
-                
-                $celdasTotalesTrabajado[] = "D" . $fila; 
+
+                $celdasTotalesTrabajado[] = "D" . $fila;
                 $celdasTotalesServicios[] = "G" . $fila;
 
                 $fila++;
                 $sheet->setCellValue('C' . $fila, 'TOTAL HORAS EXTRAS A PAGAR');
-                $sheet->setCellValue('D' . $fila, "=E" . ($fila - 1)); 
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F5597'); 
+                $sheet->setCellValue('D' . $fila, "=E" . ($fila - 1));
+                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F5597');
                 $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
                 $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-                $celdasTotalesExtras[] = "D" . $fila; 
+                $celdasTotalesExtras[] = "D" . $fila;
 
                 $fila++;
                 $sheet->setCellValue('C' . $fila, 'TOTAL HORAS DOMINICALES A PAGAR');
-                $sheet->setCellValue('D' . $fila, 0); 
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFC55A11'); 
+                $sheet->setCellValue('D' . $fila, 0);
+                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFC55A11');
                 $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $celdasTotalesDominicales[] = "D" . $fila; 
+                $celdasTotalesDominicales[] = "D" . $fila;
 
                 $fila++;
                 $sheet->setCellValue('C' . $fila, 'TOTAL EXTRAS NOCTURNAS A PAGAR');
-                $sheet->setCellValue('D' . $fila, "=F" . ($fila - 3)); 
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF7F7F7F'); 
+                $sheet->setCellValue('D' . $fila, "=F" . ($fila - 3));
+                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF7F7F7F');
                 $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
                 $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-                $celdasTotalesNocturnas[] = "D" . $fila; 
+                $celdasTotalesNocturnas[] = "D" . $fila;
 
-                $fila += 3; 
+                $fila += 3;
             }
-            
+
             $sheet->setCellValue('B' . $fila, 'CONSOLIDADO FINAL DEL MES');
             $sheet->mergeCells("B{$fila}:D{$fila}");
-            
+
             $sheet->getStyle("B{$fila}:D{$fila}")->getFont()->setBold(true)->setSize(12);
             $sheet->getStyle("B{$fila}:D{$fila}")->getFont()->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle("B{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF000000');
-            
+
             $fila++;
             $sheet->setCellValue('C' . $fila, 'GRAN TOTAL HORAS TRABAJADAS');
             $sheet->setCellValue('D' . $fila, empty($celdasTotalesTrabajado) ? 0 : "=SUM(" . implode(',', $celdasTotalesTrabajado) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF996600'); 
+            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF996600');
             $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
 
             $fila++;
             $sheet->setCellValue('C' . $fila, 'GRAN TOTAL HORAS EXTRAS');
             $sheet->setCellValue('D' . $fila, empty($celdasTotalesExtras) ? 0 : "=SUM(" . implode(',', $celdasTotalesExtras) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F5597'); 
+            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F5597');
             $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
 
             $fila++;
             $sheet->setCellValue('C' . $fila, 'GRAN TOTAL DOMINICALES');
             $sheet->setCellValue('D' . $fila, empty($celdasTotalesDominicales) ? 0 : "=SUM(" . implode(',', $celdasTotalesDominicales) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFC55A11'); 
+            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFC55A11');
             $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
 
             $fila++;
             $sheet->setCellValue('C' . $fila, 'GRAN TOTAL NOCTURNAS');
             $sheet->setCellValue('D' . $fila, empty($celdasTotalesNocturnas) ? 0 : "=SUM(" . implode(',', $celdasTotalesNocturnas) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF7F7F7F'); 
+            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF7F7F7F');
             $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
 
             $fila++;
-            $sheet->setCellValue('C' . $fila, 'GRAN TOTAL SERVICIOS');
+            $sheet->setCellValue('C' . $fila, 'GRAN TOTAL SERVICIOS (TICKETS)');
             $sheet->setCellValue('D' . $fila, empty($celdasTotalesServicios) ? 0 : "=SUM(" . implode(',', $celdasTotalesServicios) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78'); 
+            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
             $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
 
-            $sheet->getStyle("A1:G{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("A1:G{$fila}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle("A1:H{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("A1:H{$fila}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
-            $sheet->getColumnDimension('A')->setWidth(15);
+            $sheet->getColumnDimension('A')->setWidth(25); // <--- Más ancho para que quepa "Miércoles 15-05-2026"
             $sheet->getColumnDimension('B')->setWidth(15);
-            $sheet->getColumnDimension('C')->setWidth(40);
+            $sheet->getColumnDimension('C')->setWidth(20);
             $sheet->getColumnDimension('D')->setWidth(20);
             $sheet->getColumnDimension('E')->setWidth(15);
             $sheet->getColumnDimension('F')->setWidth(15);
             $sheet->getColumnDimension('G')->setWidth(15);
-            
+            $sheet->getColumnDimension('H')->setWidth(15);
+
             $sheetIndex++;
         }
 
@@ -566,7 +586,7 @@ class AsistenciaControlador
         header('Cache-Control: max-age=0');
 
         $writer = new Xlsx($spreadsheet);
-        $writer->setPreCalculateFormulas(false); 
+        $writer->setPreCalculateFormulas(false);
         $writer->save('php://output');
         exit;
     }

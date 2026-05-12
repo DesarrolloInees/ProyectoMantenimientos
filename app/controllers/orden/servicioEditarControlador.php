@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/orden/servicioEditarModelo.php';
@@ -18,7 +19,7 @@ class servicioEditarControlador
 
     public function index()
     {
-        $idOrden = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        $idOrden = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
         if ($idOrden === 0) {
             echo "<script>alert('ID de orden no válido.'); window.history.back();</script>";
@@ -44,7 +45,7 @@ class servicioEditarControlador
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            $idOrdenServicio = (int)$_POST['id_ordenes_servicio'];
+            $idOrdenServicio = (int) $_POST['id_ordenes_servicio'];
             $numeroRemision = $_POST['numero_remision'] ?? '';
 
             $datos = [
@@ -91,6 +92,7 @@ class servicioEditarControlador
 
                                 $numeroParaNombre = !empty($numeroRemision) ? $numeroRemision : 'ORDEN-' . $idOrdenServicio;
                                 // Agregamos "ADMIN-" al nombre para saber que se subió desde este módulo
+                                // En la función guardar de servicioEditarControlador.php (Ya lo tienes así):
                                 $nombreNuevo = 'REM-' . $numeroParaNombre . '_ADMIN_' . $tipoEnum . '_' . uniqid() . '.jpg';
 
                                 $rutaFinalServidor = $carpetaDestino . $nombreNuevo;
@@ -127,7 +129,8 @@ class servicioEditarControlador
         }
 
         $info = @getimagesize($rutaOrigen);
-        if (!$info) return move_uploaded_file($rutaOrigen, $rutaDestino);
+        if (!$info)
+            return move_uploaded_file($rutaOrigen, $rutaDestino);
 
         $mime = $info['mime'];
         $anchoOriginal = $info[0];
@@ -156,7 +159,8 @@ class servicioEditarControlador
                     return move_uploaded_file($rutaOrigen, $rutaDestino);
             }
 
-            if (!$imagenOriginal) return move_uploaded_file($rutaOrigen, $rutaDestino);
+            if (!$imagenOriginal)
+                return move_uploaded_file($rutaOrigen, $rutaDestino);
 
             if ($anchoOriginal > $anchoMaximo) {
                 $ratio = $anchoMaximo / $anchoOriginal;

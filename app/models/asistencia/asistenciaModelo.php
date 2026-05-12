@@ -8,19 +8,31 @@ class AsistenciaModelo
         $this->conn = $db;
     }
 
-    // 1. OBTENER TODOS LOS EMPLEADOS ACTIVOS (Priorizando la tabla Tecnico)
+    // 1. OBTENER TODOS LOS EMPLEADOS ACTIVOS (Priorizando la tabla Tecnico y verificando Usuarios)
     public function obtenerEmpleadosActivos()
     {
         try {
-            // Priorizamos la tabla técnico para que el nombre oficial sea siempre el de los servicios
-            $sql = "SELECT nombre_tecnico as nombre_bd, 'Técnico' as cargo FROM tecnico WHERE estado = 1
+            // 🔥 CORRECCIÓN: Cruzamos técnico con usuarios. 
+            // Si el técnico tiene un usuario asignado, ESTE DEBE ESTAR ACTIVO.
+            // Si no tiene usuario asignado (IS NULL), solo verificamos que el técnico sea 1.
+            $sql = "SELECT t.nombre_tecnico as nombre_bd, 'Técnico' as cargo 
+                    FROM tecnico t
+                    LEFT JOIN usuarios u ON t.usuario_id = u.usuario_id
+                    WHERE t.estado = 1 AND (u.estado = 'activo' OR u.estado IS NULL)
+                    
                     UNION
-                    SELECT nombre as nombre_bd, cargo FROM usuarios WHERE estado = 'activo'";
+                    
+                    SELECT nombre as nombre_bd, cargo 
+                    FROM usuarios 
+                    WHERE estado = 'activo'";
+
             $stmt = $this->conn->query($sql);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            // Fallback por si hay un error con la tabla usuarios
-            $sql = "SELECT nombre_tecnico as nombre_bd, 'Técnico' as cargo FROM tecnico WHERE estado = 1";
+            // Fallback por si hay un error de sintaxis o conexión
+            $sql = "SELECT t.nombre_tecnico as nombre_bd, 'Técnico' as cargo 
+                    FROM tecnico t 
+                    WHERE t.estado = 1";
             $stmt = $this->conn->query($sql);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
@@ -41,7 +53,7 @@ class AsistenciaModelo
                     WHERE os.fecha_visita BETWEEN :ini AND :fin
                         AND os.estado != 0
                     GROUP BY t.id_tecnico, DATE(os.fecha_visita)";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([':ini' => $fechaInicio, ':fin' => $fechaFin]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
