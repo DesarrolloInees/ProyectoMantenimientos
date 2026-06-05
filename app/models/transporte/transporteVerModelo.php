@@ -12,9 +12,10 @@ class transporteVerModelo
     public function obtenerInstalaciones()
     {
         try {
+            // AQUÍ ESTÁ EL CAMBIO: Pedimos i.id_estado_operacion en lugar del viejo
             $sql = "SELECT 
                         i.id_instalacion, 
-                        i.tipo_operacion, 
+                        i.id_estado_operacion, 
                         i.fecha_solicitud, 
                         i.serial_maquina, 
                         t.nombre_tecnico, 

@@ -4,20 +4,26 @@
     <div class="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
         <div class="bg-blue-600 p-6">
             <h2 class="text-2xl font-bold text-white flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Exportar Reporte de Puntos
             </h2>
-            <p class="text-blue-100 mt-2">Descarga la información filtrada de Puntos con Máquinas en formato Excel (.xlsx).</p>
+            <p class="text-blue-100 mt-2">Descarga la información filtrada de Puntos con Máquinas en formato Excel
+                (.xlsx).</p>
         </div>
 
         <div class="p-8">
             <div class="flex justify-center">
-                <button onclick="generarExcelReal()" id="btnExportar" class="group relative w-full flex justify-center py-3 px-8 border border-transparent text-lg font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 shadow-md transform hover:-translate-y-1 cursor-pointer">
+                <button onclick="generarExcelReal()" id="btnExportar"
+                    class="group relative w-full flex justify-center py-3 px-8 border border-transparent text-lg font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 shadow-md transform hover:-translate-y-1 cursor-pointer">
                     <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                        <svg class="h-6 w-6 text-green-300 group-hover:text-green-100" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+                        <svg class="h-6 w-6 text-green-300 group-hover:text-green-100" fill="currentColor"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
                         </svg>
                     </span>
                     <span id="txtBoton">GENERAR EXCEL AHORA (.XLSX)</span>
@@ -86,15 +92,13 @@
                     "Cliente": fila.nombre_cliente || "",
                     "Nombre del Punto": fila.nombre_punto,
                     "Dirección": fila.direccion,
-
-                    // CORRECCIÓN AQUÍ: Usar 'nombre_municipio' en lugar de 'municipio'
                     "Municipio": fila.nombre_municipio || "",
-
                     "Zona": fila.zona || "",
                     "Delegación": fila.nombre_delegacion || "Sin Asignar",
                     "ID Dispositivo (Device)": fila.device_id,
                     "Fecha Última Visita": fechaObjeto,
-                    "Último Mantenimiento": fila.nombre_mantenimiento || ""
+                    "Último Mantenimiento": fila.nombre_mantenimiento || "",
+                    "Frecuencia (Días)": fila.frecuencia_mantenimiento_dias || "0" // Nueva columna
                 };
             });
 
@@ -127,36 +131,18 @@
             }
 
             // 5. Ajustar anchos
-            worksheet['!cols'] = [{
-                    wch: 15
-                }, // Codigo
-                {
-                    wch: 35
-                }, // Cliente
-                {
-                    wch: 30
-                }, // Punto
-                {
-                    wch: 40
-                }, // Direccion
-                {
-                    wch: 25
-                }, // Municipio (NUEVO)
-                {
-                    wch: 20
-                }, // Zona (NUEVO)
-                {
-                    wch: 20
-                }, // Delegacion
-                {
-                    wch: 25
-                }, // Device
-                {
-                    wch: 15
-                }, // Fecha
-                {
-                    wch: 25
-                } // Mantenimiento
+            worksheet['!cols'] = [
+                { wch: 15 }, // Codigo
+                { wch: 35 }, // Cliente
+                { wch: 30 }, // Punto
+                { wch: 40 }, // Direccion
+                { wch: 25 }, // Municipio
+                { wch: 20 }, // Zona
+                { wch: 20 }, // Delegacion
+                { wch: 25 }, // Device
+                { wch: 15 }, // Fecha
+                { wch: 25 }, // Mantenimiento
+                { wch: 20 }  // Frecuencia (Días) - Nuevo ancho
             ];
 
             // 6. Descargar

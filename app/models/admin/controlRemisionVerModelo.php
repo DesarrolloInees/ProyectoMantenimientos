@@ -10,6 +10,7 @@ class ControlRemisionVerModelo
         $this->conn = $db;
     }
 
+    // Método original (aún se puede usar para otras vistas, pero no para el datatable)
     public function listarRemisiones()
     {
         $sql = "SELECT 
@@ -27,6 +28,85 @@ class ControlRemisionVerModelo
                 ORDER BY cr.id_control DESC";
 
         $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Devuelve el total de registros (sin paginación)
+     */
+    public function contarTotalRemisiones($busqueda = null)
+    {
+        $sql = "SELECT COUNT(*) as total
+                FROM control_remisiones cr
+                INNER JOIN tecnico t ON cr.id_tecnico = t.id_tecnico
+                INNER JOIN estados_remision e ON cr.id_estado = e.id_estado
+                WHERE e.nombre_estado != 'ELIMINADO'";
+        
+        if ($busqueda) {
+            $sql .= " AND (cr.numero_remision LIKE :busqueda 
+                        OR t.nombre_tecnico LIKE :busqueda 
+                        OR e.nombre_estado LIKE :busqueda)";
+        }
+        
+        $stmt = $this->conn->prepare($sql);
+        if ($busqueda) {
+            $like = "%$busqueda%";
+            $stmt->bindParam(':busqueda', $like);
+        }
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (int)$result['total'];
+    }
+
+    /**
+     * Obtiene los registros paginados y filtrados para DataTables
+     */
+    public function obtenerRemisionesParaDatatable($start, $length, $columnaOrden, $direccionOrden, $busqueda = null)
+    {
+        // Mapeo de columnas permitidas para evitar inyección SQL
+        $columnasPermitidas = [
+            'numero_remision',
+            'nombre_tecnico',
+            'nombre_estado',
+            'fecha_asignacion',
+            'fecha_uso'
+        ];
+        
+        $orden = "cr.id_control DESC"; // por defecto
+        if (isset($columnasPermitidas[$columnaOrden])) {
+            $orden = $columnasPermitidas[$columnaOrden] . " " . ($direccionOrden === 'desc' ? 'DESC' : 'ASC');
+        }
+        
+        $sql = "SELECT 
+                    cr.id_control,
+                    cr.numero_remision,
+                    e.nombre_estado,
+                    cr.fecha_asignacion,
+                    cr.fecha_uso, 
+                    t.nombre_tecnico
+                FROM control_remisiones cr
+                INNER JOIN tecnico t ON cr.id_tecnico = t.id_tecnico
+                INNER JOIN estados_remision e ON cr.id_estado = e.id_estado
+                WHERE e.nombre_estado != 'ELIMINADO'";
+        
+        if ($busqueda) {
+            $sql .= " AND (cr.numero_remision LIKE :busqueda 
+                        OR t.nombre_tecnico LIKE :busqueda 
+                        OR e.nombre_estado LIKE :busqueda
+                        OR DATE_FORMAT(cr.fecha_asignacion, '%d/%m/%Y') LIKE :busqueda
+                        OR DATE_FORMAT(cr.fecha_uso, '%d/%m/%Y') LIKE :busqueda)";
+        }
+        
+        $sql .= " ORDER BY $orden LIMIT :limite OFFSET :offset";
+        
+        $stmt = $this->conn->prepare($sql);
+        if ($busqueda) {
+            $like = "%$busqueda%";
+            $stmt->bindParam(':busqueda', $like);
+        }
+        $stmt->bindParam(':limite', $length, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $start, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

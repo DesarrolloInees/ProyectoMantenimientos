@@ -15,6 +15,11 @@ class reporteTecnicoControlador
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
         $this->modelo = new ReporteTecnicoModelo($this->db);
+        
+        // Asegurarnos de que la sesión esté iniciada para leer el rol
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
     public function index()
@@ -30,7 +35,8 @@ class reporteTecnicoControlador
         $totalValor = 0;
         $mensaje = "";
 
-        
+        // 🔒 SEGURIDAD: Capturamos el rol actual
+        $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int)$_SESSION['nivel_acceso'] : 0;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filtros['id_tecnico'] = $_POST['id_tecnico'] ?? '';
@@ -40,7 +46,6 @@ class reporteTecnicoControlador
             if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
 
                 // 1. CONSULTA PARA LA VISTA (Tabla HTML)
-                // Respeta el filtro que haya elegido el usuario
                 $datosReporte = $this->modelo->generarReporteServicios(
                     $filtros['id_tecnico'],
                     $filtros['fecha_inicio'],
@@ -48,16 +53,30 @@ class reporteTecnicoControlador
                 );
 
                 // 2. CONSULTA PARA EL EXCEL (Javascript)
-                // Aquí mandamos '' (vacío) en el ID para forzar que traiga A TODOS
                 $datosExcel = $this->modelo->generarReporteServicios(
                     '', // <--- TRUCO: Forzamos vacío para traer todo
                     $filtros['fecha_inicio'],
                     $filtros['fecha_fin']
                 );
 
+                // 🛡️ FILTRO DE SEGURIDAD PARA ROL 5
+                if ($rolUsuario === 5) {
+                    if (!empty($datosReporte)) {
+                        foreach ($datosReporte as &$r) {
+                            $r['valor_servicio'] = 0;
+                        }
+                    }
+                    if (!empty($datosExcel)) {
+                        foreach ($datosExcel as &$e) {
+                            $e['valor_servicio'] = 0;
+                        }
+                    }
+                }
+
                 // Calcular total (Solo de lo que se ve en pantalla)
+                // Si es rol 5, como arriba pusimos todo en 0, el total dará 0 automáticamente
                 foreach ($datosReporte as $row) {
-                    $totalValor += $row['valor_servicio'];
+                    $totalValor += floatval($row['valor_servicio']);
                 }
 
                 if (empty($datosReporte)) {
@@ -68,7 +87,6 @@ class reporteTecnicoControlador
             }
         }
         
-
         $listaTecnicos = $this->modelo->obtenerTecnicos();
         $listaFestivos = $this->modelo->obtenerFestivos($filtros['fecha_inicio'], $filtros['fecha_fin']);
         $titulo = "Reporte de Servicios por Técnico";

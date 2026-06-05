@@ -54,14 +54,15 @@
     }
 </style>
 
-<div class="w-full max-w-7xl mx-auto px-2 py-4 md:py-6">
+<!-- Por esta línea: -->
+<div class="w-full px-4 py-4 md:py-6 md:px-8">
 
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">
                 <i class="fas fa-tools text-indigo-500 mr-2"></i> Instalaciones y Operaciones
             </h1>
-            <p class="text-sm text-gray-500 mt-1">Gestiona todas las instalaciones, desinstalaciones y traslados.</p>
+            <p class="text-sm text-gray-500 mt-1">Gestiona todas las instalaciones, desinstalaciones y cambios de máquina.</p>
         </div>
         <div>
             <a href="index.php?pagina=transporteCrear" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 flex items-center gap-2">

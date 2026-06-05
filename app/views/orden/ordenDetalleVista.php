@@ -1,9 +1,11 @@
 <?php
-
 /**
  * Vista: Edición Maestra de Servicios
  * Rediseño: industrial-elegante, responsivo, mínimo CSS extra
  */
+
+// 🔒 SEGURIDAD: Capturamos el nivel de acceso actual
+$rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
 ?>
 
 <style>
@@ -39,6 +41,16 @@
         font-family: 'DM Sans', sans-serif;
         background: var(--c-bg);
     }
+
+    /* 🔒 MAGIA CSS PARA OCULTAR LA COLUMNA DE PRECIOS SI ES ROL 5 */
+    <?php if ($rolActual === 5): ?>
+        /* La columna "Valor" es la 10ma en la tabla */
+        #tablaEdicion th:nth-child(10),
+        #tablaEdicion td:nth-child(10) {
+            display: none !important;
+        }
+
+    <?php endif; ?>
 
     /* ======================================
         HEADER PANEL
@@ -630,12 +642,8 @@
     }
 </style>
 
-    <!-- ======================================
-        LAYOUT PRINCIPAL
-    ====================================== -->
 <div style="background:var(--c-bg); min-height:100vh; padding: 0 0 5rem;">
 
-    <!-- HEADER -->
     <div class="det-header">
         <div style="display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
             <h2>
@@ -658,10 +666,8 @@
         </div>
     </div>
 
-    <!-- CONTENIDO -->
     <div style="padding: 1rem 1.25rem; display:flex; flex-direction:column; gap:.75rem;">
 
-        <!-- PAGINACIÓN TOP -->
         <div class="pag-bar">
             <div class="info">Mostrando <b><span id="infoPaginaTop">–</span></b></div>
             <div class="pag-controls">
@@ -676,7 +682,6 @@
             <div class="info">Total: <b><span id="totalRegistrosTop">0</span></b></div>
         </div>
 
-        <!-- FORMULARIO + TABLA -->
         <form id="formEdicionMaestra" action="<?= BASE_URL ?>ordenDetalle" method="POST">
             <input type="hidden" name="accion" value="guardarCambios">
             <input type="hidden" name="fecha_origen" value="<?= $fecha ?>">
@@ -708,7 +713,8 @@
                         <?php if (empty($servicios)): ?>
                             <tr>
                                 <td colspan="16" style="padding:3rem; text-align:center; color:var(--c-muted);">
-                                    <i class="fas fa-inbox" style="font-size:2rem; opacity:.3; display:block; margin-bottom:.5rem;"></i>
+                                    <i class="fas fa-inbox"
+                                        style="font-size:2rem; opacity:.3; display:block; margin-bottom:.5rem;"></i>
                                     No hay servicios para esta fecha.
                                 </td>
                             </tr>
@@ -722,14 +728,12 @@
                 </table>
             </div>
 
-            <!-- GUARDAR FLOTANTE -->
             <button type="button" class="btn-save-float" onclick="procesarGuardado()">
                 <i class="fas fa-save"></i>
                 GUARDAR CAMBIOS
             </button>
         </form>
 
-        <!-- PAGINACIÓN BOTTOM -->
         <div class="pag-bar">
             <div class="info">Mostrando <b><span id="infoPagina">–</span></b></div>
             <div class="pag-controls">
@@ -744,24 +748,19 @@
             <div class="info">Total: <b><span id="totalRegistros">0</span></b></div>
         </div>
 
-    </div><!-- /padding wrapper -->
-</div><!-- /layout -->
-
-<!-- MODALES -->
-<?php include __DIR__ . '/partials/modalRepuestos.php'; ?>
+    </div>
+</div><?php include __DIR__ . '/partials/modalRepuestos.php'; ?>
 <?php include __DIR__ . '/partials/modalNovedades.php'; ?>
 
-<!-- INYECCIÓN PHP → JS -->
 <script>
     window.DetalleConfig = window.DetalleConfig || {};
     window.DetalleConfig.BASE_URL = '<?= BASE_URL ?>'; // <--- AGREGA ESTA LÍNEA
-    window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos  ?? []) ?>;
-    window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos   ?? []) ?>;
-    window.DetalleConfig.listaNovedades = <?= json_encode($listaNovedades  ?? []) ?>;
+    window.DetalleConfig.catalogoRepuestos = <?= json_encode($listaRepuestos ?? []) ?>;
+    window.DetalleConfig.FESTIVOS_DB = <?= json_encode($listaFestivos ?? []) ?>;
+    window.DetalleConfig.listaNovedades = <?= json_encode($listaNovedades ?? []) ?>;
     window.DetalleConfig.remisionesGlobales = <?= json_encode($remisionesGlobales ?? []) ?>;
 </script>
 
-<!-- SCRIPTS MÓDULOS -->
 <script src="<?= BASE_URL ?>js/orden/ordenDetalle/detalleConfig.js"></script>
 <script src="<?= BASE_URL ?>js/orden/ordenDetalle/detalleAjax.js?v=<?= time() ?>"></script>
 <script src="<?= BASE_URL ?>js/orden/ordenDetalle/detalleFechaUtils.js"></script>
@@ -774,7 +773,7 @@
 <script src="<?= BASE_URL ?>js/orden/ordenDetalle/detalleApp.js?v=<?= time() ?>"></script>
 
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
         if (window.DetalleApp && window.DetalleApp.init) {
             window.DetalleApp.init();
         } else {
@@ -848,7 +847,7 @@
         // Verificamos si ya está expandido usando un atributo personalizado de HTML5 (data-expandido)
         if (textarea.dataset.expandido === "true") {
             // Si estaba expandido, lo regresamos a su tamaño original (CSS por defecto)
-            textarea.style.height = ""; 
+            textarea.style.height = "";
             textarea.dataset.expandido = "false";
         } else {
             // Si está pequeño, calculamos el tamaño de su contenido interior
@@ -869,7 +868,7 @@
 
         window.DetalleNotificaciones.mostrarModalConfirmacion(
             "¿Estás seguro de que deseas guardar todos los cambios de esta página?",
-            function() {
+            function () {
                 ejecutarGuardadoJSON();
             }
         );

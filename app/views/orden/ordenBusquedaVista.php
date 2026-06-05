@@ -8,7 +8,7 @@
 
 <style>
     /* ======================================
-       FUENTE Y VARIABLES (Misma base que Detalle)
+        FUENTE Y VARIABLES (Misma base que Detalle)
     ====================================== */
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -41,7 +41,7 @@
     }
 
     /* ======================================
-       HEADER PANEL
+        HEADER PANEL
     ====================================== */
     .det-header {
         background: var(--c-surface);
@@ -69,7 +69,7 @@
     }
 
     /* ======================================
-       PANEL DE BÚSQUEDA (NUEVO)
+        PANEL DE BÚSQUEDA (NUEVO)
     ====================================== */
     .search-card {
         background: var(--c-surface);
@@ -177,7 +177,7 @@
     }
 
     /* ======================================
-       PAGINACIÓN
+        PAGINACIÓN
     ====================================== */
     .pag-bar {
         background: var(--c-surface);
@@ -208,7 +208,7 @@
     }
 
     /* ======================================
-       TABLA Y CONTENEDOR (Igual a Detalle)
+        TABLA Y CONTENEDOR (Igual a Detalle)
     ====================================== */
     .tabla-wrapper {
         overflow-x: auto;
@@ -314,7 +314,7 @@
     }
 
     /* ======================================
-       CONTROLES EN TABLA
+        CONTROLES EN TABLA
     ====================================== */
     #tablaEdicion select,
     #tablaEdicion input[type="text"],
@@ -391,7 +391,7 @@
     }
 
     /* ======================================
-       BOTÓN GUARDAR FLOTANTE
+        BOTÓN GUARDAR FLOTANTE
     ====================================== */
     .btn-save-float {
         position: fixed;
@@ -815,6 +815,44 @@
             }
         );
     }
+
+    // ==========================================
+    // AUTO-AJUSTAR TEXTAREA CON DOBLE CLIC
+    // ==========================================
+    function toggleTextareaSize(textarea) {
+        // Verificamos si ya está expandido usando un atributo personalizado de HTML5 (data-expandido)
+        if (textarea.dataset.expandido === "true") {
+            // Si estaba expandido, lo regresamos a su tamaño original (CSS por defecto)
+            textarea.style.height = ""; 
+            textarea.dataset.expandido = "false";
+        } else {
+            // Si está pequeño, calculamos el tamaño de su contenido interior
+            textarea.style.height = "auto"; // Reseteamos la altura temporalmente para calcular el scroll real
+            textarea.style.height = (textarea.scrollHeight + 2) + "px"; // Le sumamos 2px para los bordes
+            textarea.dataset.expandido = "true";
+        }
+    }
+
+    $(document).ready(function() {
+    // ==========================================
+    // AUTO-AJUSTAR TEXTAREA CON DOBLE CLIC (Delegación)
+    // ==========================================
+    $(document).on('dblclick', '.expandible-textarea', function() {
+        let textarea = this; // 'this' hace referencia al textarea clickeado
+
+        // Verificamos si ya está expandido
+        if (textarea.dataset.expandido === "true") {
+            // Contraer: regresa a su tamaño CSS original
+            textarea.style.height = ""; 
+            textarea.dataset.expandido = "false";
+        } else {
+            // Expandir: calcula el tamaño del texto interior
+            textarea.style.height = "auto"; // Reset temporal
+            textarea.style.height = (textarea.scrollHeight + 2) + "px"; // Ajustar al scroll real + borde
+            textarea.dataset.expandido = "true";
+        }
+    });
+});
 
     // ==========================================
     // EL MOTOR JSON (¡Con recarga inteligente!)

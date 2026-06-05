@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 class ordenDetalleModelo
 {
@@ -77,7 +78,7 @@ class ordenDetalleModelo
                 o.id_estado_maquina as id_estado, em.nombre_estado as estado_maquina,
                 o.id_calificacion as id_calif, cal.nombre_calificacion,
 
-                -- ⭐⭐ CORRECCIÓN CRÍTICA: AGREGAR CANTIDAD AL TEXTO GENERADO POR SQL ⭐⭐
+                -- TEXTO REPUESTOS
                 IFNULL(
                     (SELECT GROUP_CONCAT(
                     CONCAT(
@@ -126,14 +127,11 @@ class ordenDetalleModelo
         $stmt->execute([$fecha]);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 🔧 PROCESAR LOS RESULTADOS EN BLOQUE (ADIÓS BUCLE LENTO)
         $idsOrdenes = array_column($resultados, 'id_ordenes_servicio');
 
         if (!empty($idsOrdenes)) {
-            // 1. Creamos interrogantes para la consulta ( ?, ?, ? )
             $placeholders = implode(',', array_fill(0, count($idsOrdenes), '?'));
 
-            // 2. Traemos TODOS los repuestos de todas las órdenes en UNA SOLA consulta
             $sqlRepTodos = "SELECT osr.id_orden_servicio, r.id_repuesto as id, r.nombre_repuesto as nombre, osr.origen, osr.cantidad 
                             FROM orden_servicio_repuesto osr
                             JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
@@ -143,31 +141,26 @@ class ordenDetalleModelo
             $stmtRepTodos->execute($idsOrdenes);
             $todosLosRepuestos = $stmtRepTodos->fetchAll(PDO::FETCH_ASSOC);
 
-            // 3. Agrupamos los repuestos por ID de orden usando PHP (es instantáneo)
             $repuestosAgrupados = [];
             foreach ($todosLosRepuestos as $rep) {
                 $idO = $rep['id_orden_servicio'];
-                unset($rep['id_orden_servicio']); // Quitamos el ID para el JSON
+                unset($rep['id_orden_servicio']);
                 $repuestosAgrupados[$idO][] = $rep;
             }
 
-            // 4. Asignamos a las filas
             foreach ($resultados as &$row) {
                 $idOrden = $row['id_ordenes_servicio'];
                 $row['repuestos_json'] = isset($repuestosAgrupados[$idOrden]) ? json_encode($repuestosAgrupados[$idOrden]) : '[]';
             }
         } else {
-            // Si no hay resultados, llenamos con vacío
             foreach ($resultados as &$row) {
                 $row['repuestos_json'] = '[]';
             }
         }
 
-        // 🔥 ¡AQUÍ ESTÁ LA LÍNEA QUE FALTABA! 🔥
         return $resultados;
-    } // <-- Cierre correcto de la función obtenerServiciosPorFecha
+    }
 
-    // ⭐⭐ FUNCIÓN PARA CONVERTIR TEXTO A JSON (MÁS ROBUSTA) ⭐⭐
     private function convertirTextoAJSON($texto)
     {
         $arrayRepuestos = [];
@@ -177,15 +170,11 @@ class ordenDetalleModelo
         }
 
         $palabrasIgnorar = ['NO', 'NINGUNO', 'NINGUNA', 'SIN REPUESTOS', 'N/A', 'NA', '.', '-', '0', 'VACIO', ''];
-
-        // Truco para proteger los paréntesis de origen
         $textoTemp = str_replace(' (PROSEGUR)', '_(PROSEGUR)', $texto);
         $textoTemp = str_replace(' (INEES)', '_(INEES)', $textoTemp);
-
         $items = explode(',', $textoTemp);
 
         foreach ($items as $item) {
-            // Restaurar origen
             $item = str_replace('_(PROSEGUR)', ' (PROSEGUR)', $item);
             $item = str_replace('_(INEES)', ' (INEES)', $item);
             $itemLimpio = trim($item);
@@ -194,19 +183,15 @@ class ordenDetalleModelo
                 continue;
             }
 
-            $cantidad = 1; // Default
-
-            // 1. DETECTAR CANTIDAD (xN)
+            $cantidad = 1;
             if (preg_match('/\(x(\d+)\)$/i', $itemLimpio, $matches)) {
                 $cantidad = intval($matches[1]);
-                // Quitamos el (x3) del nombre para buscar limpio el ID
                 $itemLimpio = trim(preg_replace('/\(x\d+\)$/i', '', $itemLimpio));
             }
 
             $origen = 'INEES';
             $nombre = $itemLimpio;
 
-            // 2. DETECTAR ORIGEN
             if (stripos($itemLimpio, '(PROSEGUR)') !== false) {
                 $origen = 'PROSEGUR';
                 $nombre = trim(str_ireplace('(PROSEGUR)', '', $itemLimpio));
@@ -221,32 +206,27 @@ class ordenDetalleModelo
                 'id' => $idRepuesto,
                 'nombre' => $nombre,
                 'origen' => $origen,
-                'cantidad' => $cantidad // Guardamos la cantidad
+                'cantidad' => $cantidad
             ];
         }
 
         return json_encode($arrayRepuestos, JSON_UNESCAPED_UNICODE);
     }
 
-    // ⭐⭐ BUSCAR ID DE REPUESTO POR NOMBRE ⭐⭐
     private function buscarIdRepuestoPorNombre($nombre)
     {
         try {
-            if (empty($nombre)) {
+            if (empty($nombre))
                 return '';
-            }
 
-            // Primero, buscar coincidencia exacta (case insensitive)
             $sql = "SELECT id_repuesto FROM repuesto WHERE LOWER(nombre_repuesto) = LOWER(?) LIMIT 1";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$nombre]);
             $id = $stmt->fetchColumn();
 
-            if ($id) {
+            if ($id)
                 return $id;
-            }
 
-            // Si no hay coincidencia exacta, buscar aproximada
             $sql = "SELECT id_repuesto FROM repuesto WHERE nombre_repuesto LIKE ? LIMIT 1";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute(["%$nombre%"]);
@@ -259,9 +239,6 @@ class ordenDetalleModelo
         }
     }
 
-    // ==========================================
-    // 2. LISTAS BÁSICAS
-    // ==========================================
     public function obtenerTodosLosClientes()
     {
         return $this->conn->query("SELECT id_cliente, nombre_cliente FROM cliente WHERE estado = 1 ORDER BY nombre_cliente ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -287,9 +264,6 @@ class ordenDetalleModelo
 
     public function obtenerTodosLosTecnicos()
     {
-        // 🔥 CORRECCIÓN CRÍTICA: Traemos a TODOS los técnicos.
-        // Si están desactivados, les ponemos "(INACTIVO)" al lado y los mandamos al final de la lista.
-        // Esto evita que HTML auto-seleccione al primer técnico activo cuando se editan servicios viejos.
         $sql = "SELECT 
                     id_tecnico, 
                     estado,
@@ -333,15 +307,10 @@ class ordenDetalleModelo
         return $stmt->fetchColumn() ?: "Sin Asignar";
     }
 
-    // ==========================================
-    // CAMBIO: AHORA RECIBE EL AÑO COMO PARÁMETRO
-    // ==========================================
     public function obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad, $anio)
     {
-        // Si no llega año, usamos el actual por seguridad
         $anioVigencia = $anio ? $anio : date('Y');
 
-        // 🔥 CAMBIO IMPORTANTE: Quitamos fetchColumn y usamos fetch para validar existencia
         $sql = "SELECT precio 
                 FROM tarifa 
                 WHERE id_tipo_maquina = ? 
@@ -360,12 +329,10 @@ class ordenDetalleModelo
 
         $fila = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // 🛑 Si no existe registro -> Retornamos -1
         if ($fila === false) {
             return -1;
         }
 
-        // ✅ Si existe (aunque sea 0) -> Retornamos el precio
         return floatval($fila['precio']);
     }
 
@@ -377,18 +344,12 @@ class ordenDetalleModelo
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("Error obteniendo repuestos: " . $e->getMessage());
             return [];
         }
     }
 
-    // ==========================================
-    // ==========================================
-    // REMISIONES: DISPONIBLES + ACTUAL DE LA ORDEN
-    // ==========================================
     public function obtenerRemisionesDisponiblesPorTecnico($idTecnico, $remisionActual = null)
     {
-        // Disponibles del técnico
         $sql = "SELECT numero_remision 
                 FROM control_remisiones 
                 WHERE id_tecnico = ? 
@@ -409,9 +370,6 @@ class ordenDetalleModelo
         return $disponibles;
     }
 
-    // ==========================================
-    // NUEVO: PARÁMETROS DE VIÁTICOS
-    // ==========================================
     private function obtenerValorParametro($clave)
     {
         try {
@@ -425,9 +383,6 @@ class ordenDetalleModelo
         }
     }
 
-    // ==========================================
-    // NUEVO: ID DELEGACIÓN DE UN PUNTO
-    // ==========================================
     private function obtenerIdDelegacionPunto($idPunto)
     {
         try {
@@ -442,35 +397,28 @@ class ordenDetalleModelo
     }
 
     // ==========================================
-    // 3. ACTUALIZACIÓN COMPLETA CON VIÁTICOS Y RECARGOS
+    // 🔥 ACTUALIZACIÓN: RECIBE EL ROL PARA SEGURIDAD
     // ==========================================
-    public function actualizarOrdenFull($id, $datos)
+    public function actualizarOrdenFull($id, $datos, $rolUsuario = 0)
     {
         try {
             $this->conn->beginTransaction();
 
-            // 🔥 DEFENSA FINAL: normalizar horas por si llegaron sin formato
             $datos['entrada'] = $this->normalizarHora($datos['entrada'] ?? '');
-            $datos['salida']  = $this->normalizarHora($datos['salida']  ?? '');
+            $datos['salida'] = $this->normalizarHora($datos['salida'] ?? '');
 
-            // 1. Obtener datos actuales (AÑADIMOS id_maquina, id_tipo_mantenimiento y valor_servicio)
             $sqlCheck = "SELECT numero_remision, id_tecnico, id_punto, fecha_visita, id_maquina, id_tipo_mantenimiento, valor_servicio, id_modalidad FROM ordenes_servicio WHERE id_ordenes_servicio = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
             $stmtCheck->execute([$id]);
             $actual = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
-            $nuevaRemision  = $datos['remision'] ?? '';
-            $nuevoTecnico   = $datos['id_tecnico'] ?? $actual['id_tecnico'];
-            $nuevoPunto     = $datos['id_punto'] ?? $actual['id_punto'];
-            $nuevaFecha     = $datos['fecha_individual'] ?? $actual['fecha_visita'] ?? date('Y-m-d');
-            $fechaUso       = $nuevaFecha . ' ' . ($datos['entrada'] ?? '00:00:00');
+            $nuevaRemision = $datos['remision'] ?? '';
+            $nuevoTecnico = $datos['id_tecnico'] ?? $actual['id_tecnico'];
+            $nuevoPunto = $datos['id_punto'] ?? $actual['id_punto'];
+            $nuevaFecha = $datos['fecha_individual'] ?? $actual['fecha_visita'] ?? date('Y-m-d');
+            $fechaUso = $nuevaFecha . ' ' . ($datos['entrada'] ?? '00:00:00');
 
-            // -----------------------------------------------------------------
-            // GESTIÓN DE REMISIONES
-            // -----------------------------------------------------------------
             if ($actual && ($actual['numero_remision'] != $nuevaRemision || $actual['id_tecnico'] != $nuevoTecnico)) {
-
-                // Liberar la vieja
                 $sqlLiberar = "UPDATE control_remisiones 
                                 SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'DISPONIBLE' LIMIT 1), 
                                     id_orden_servicio = NULL, 
@@ -478,7 +426,6 @@ class ordenDetalleModelo
                                 WHERE id_orden_servicio = ?";
                 $this->conn->prepare($sqlLiberar)->execute([$id]);
 
-                // Ocupar la nueva
                 if (!empty($nuevaRemision)) {
                     $sqlOcupar = "UPDATE control_remisiones 
                                     SET id_estado = (SELECT id_estado FROM estados_remision WHERE nombre_estado = 'USADA' LIMIT 1), 
@@ -495,29 +442,19 @@ class ordenDetalleModelo
                 }
             }
 
-            // -----------------------------------------------------------------
-            // LÓGICA DE VIÁTICOS Y REINICIO DE MODALIDAD
-            // -----------------------------------------------------------------
             $delegacionesPrincipales = [1, 2, 3, 4];
             $idDelegacionPunto = $this->obtenerIdDelegacionPunto($nuevoPunto);
 
-            // 🔥 CORRECCIÓN: Priorizamos la modalidad que viene de la vista.
             $idModalidad = isset($datos['id_modalidad']) ? intval($datos['id_modalidad']) : ($actual['id_modalidad'] ?? 1);
 
             $esFueraDelegacion = 0;
-            $diasViaticos      = 0;
-            $valorViaticos     = 0;
+            $diasViaticos = 0;
+            $valorViaticos = 0;
 
-            // =======================================================
-            // 🚨 BLINDAJE DE VIÁTICOS: SÓLO SI ES INTERURBANO (2) 🚨
-            // =======================================================
             if ($idModalidad == 2) {
-
-                // Checamos si el punto está fuera de las delegaciones principales
                 if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
                     $esFueraDelegacion = 1;
 
-                    // Verificamos si el técnico ya cobró viáticos hoy
                     $sqlCheckViat = "SELECT COUNT(*) as total
                                     FROM ordenes_servicio 
                                     WHERE id_tecnico = ? 
@@ -528,37 +465,31 @@ class ordenDetalleModelo
                     $stmtViat->execute([$nuevoTecnico, $nuevaFecha, $id]);
                     $yaCobroHoy = $stmtViat->fetch(PDO::FETCH_ASSOC)['total'];
 
-                    // Si NO ha cobrado hoy, le asignamos los viáticos
                     if ($yaCobroHoy == 0) {
-                        $diasViaticos  = isset($datos['dias_viaticos']) ? intval($datos['dias_viaticos']) : 1;
-                        $tarifaViat    = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
+                        $diasViaticos = isset($datos['dias_viaticos']) ? intval($datos['dias_viaticos']) : 1;
+                        $tarifaViat = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
                         $valorViaticos = $diasViaticos * $tarifaViat;
                     }
                 }
             }
 
             // =======================================================
-            // Si la modalidad NO ES 2 (Ej: Es 1 Urbano), las variables 
-            // de viáticos se quedan en 0 como se declararon arriba.
+            // 🛡️ LÓGICA DE PRECIO BLINDADA EN EL BACKEND
             // =======================================================
-
-
-            // -----------------------------------------------------------------
-            // LÓGICA DE PRECIO BASE Y DETECCIÓN DE CAMBIOS (FESTIVO / PUNTO)
-            // -----------------------------------------------------------------
             $valorServicio = $datos['valor'] ?? $actual['valor_servicio'];
+
+            $idMaqUso = $datos['id_maquina'] ?? $actual['id_maquina'];
+            $idMantoUso = $datos['id_manto'] ?? $actual['id_tipo_mantenimiento'];
 
             $cambioPunto = ($actual['id_punto'] != $nuevoPunto);
             $cambioFecha = ($actual['fecha_visita'] != $nuevaFecha);
             $cambioModalidad = ($actual['id_modalidad'] != $idModalidad);
+            $cambioMaquina = ($actual['id_maquina'] != $idMaqUso);
+            $cambioManto = ($actual['id_tipo_mantenimiento'] != $idMantoUso);
 
-            // Si le cambiaron la fecha, el punto o LA MODALIDAD
-            // Recalculamos la tarifa LIMPIA
-            if ($cambioPunto || $cambioFecha || $cambioModalidad) {
-                $idMaqUso   = $datos['id_maquina'] ?? $actual['id_maquina'];
-                $idMantoUso = $datos['id_manto'] ?? $actual['id_tipo_mantenimiento'];
+            // 🔥 Si es Rol 5, forzamos al servidor a ignorar lo que envió la vista y calcular todo él mismo
+            if ($cambioPunto || $cambioFecha || $cambioModalidad || $cambioMaquina || $cambioManto || $rolUsuario === 5) {
 
-                // Obtener el tipo de máquina necesario para consultar tarifa
                 $stmtTM = $this->conn->prepare("SELECT id_tipo_maquina FROM maquina WHERE id_maquina = ?");
                 $stmtTM->execute([$idMaqUso]);
                 $idTipoMaq = $stmtTM->fetchColumn();
@@ -566,8 +497,16 @@ class ordenDetalleModelo
                 $anioUso = date('Y', strtotime($nuevaFecha));
                 $precioLimpio = $this->obtenerPrecioTarifa($idTipoMaq, $idMantoUso, $idModalidad, $anioUso);
 
-                // Si encuentras la tarifa normal, se asigna. Si no existe, se blanquea a 0.
-                $valorServicio = ($precioLimpio);
+                if ($precioLimpio !== -1) {
+                    $valorServicio = $precioLimpio;
+                } else {
+                    // Si no existe tarifa y es rol 5 pero NO hizo cambios que alteren precio, dejamos la actual
+                    if ($rolUsuario === 5 && !$cambioPunto && !$cambioFecha && !$cambioModalidad && !$cambioMaquina && !$cambioManto) {
+                        $valorServicio = $actual['valor_servicio'];
+                    } else {
+                        $valorServicio = $precioLimpio;
+                    }
+                }
             }
 
             // -----------------------------------------------------------------
@@ -586,24 +525,24 @@ class ordenDetalleModelo
             $stmt = $this->conn->prepare($sql);
 
             $ejecucion = $stmt->execute([
-                $datos['id_cliente']  ?? null,
+                $datos['id_cliente'] ?? null,
                 $nuevoPunto,
-                $datos['id_maquina']  ?? null,
-                $idModalidad,           // 🔥 Modalidad limpia
+                $datos['id_maquina'] ?? null,
+                $idModalidad,
                 $nuevaRemision,
                 $nuevoTecnico,
-                $datos['id_manto']    ?? null,
-                $datos['id_estado']   ?? null,
-                $datos['id_calif']    ?? null,
-                $datos['entrada']     ?? '00:00',
-                $datos['salida']      ?? '00:00',
-                $datos['tiempo']      ?? '00:00',
-                $valorServicio,         // 🔥 Precio recalculado o limpio
-                $datos['obs']         ?? '',
+                $datos['id_manto'] ?? null,
+                $datos['id_estado'] ?? null,
+                $datos['id_calif'] ?? null,
+                $datos['entrada'] ?? '00:00',
+                $datos['salida'] ?? '00:00',
+                $datos['tiempo'] ?? '00:00',
+                $valorServicio,         // 🔥 Precio 100% verificado por backend
+                $datos['obs'] ?? '',
                 $datos['tiene_novedad'] ?? 0,
-                $esFueraDelegacion,     // Viáticos en 0 si es Urbano
-                $diasViaticos,          // Viáticos en 0 si es Urbano
-                $valorViaticos,         // Viáticos en 0 si es Urbano
+                $esFueraDelegacion,
+                $diasViaticos,
+                $valorViaticos,
                 $nuevaFecha,
                 $id
             ]);
@@ -612,12 +551,10 @@ class ordenDetalleModelo
                 throw new Exception("Error al ejecutar UPDATE en ordenes_servicio");
             }
 
-            // Actualizar info mantenimiento en punto
             if (!empty($nuevoPunto)) {
                 $this->actualizarInfoMantenimientoPunto($nuevoPunto);
             }
 
-            // 🔥 NUEVO: Si cambian al técnico de la orden completa, le pasamos la "deuda" de los repuestos al nuevo técnico
             if ($actual['id_tecnico'] != $nuevoTecnico) {
                 $sqlUpdDevTech = "UPDATE control_devolucion_repuestos SET id_tecnico = ? WHERE id_orden_servicio = ?";
                 $this->conn->prepare($sqlUpdDevTech)->execute([$nuevoTecnico, $id]);
@@ -632,17 +569,15 @@ class ordenDetalleModelo
         }
     }
 
-    // --- FUNCIÓN AUXILIAR PARA ACTUALIZAR INFO EN PUNTO ---
     private function actualizarInfoMantenimientoPunto($idPunto)
     {
         try {
-            // Buscamos la fecha MÁXIMA registrada, pero EXCLUYENDO los mantenimientos Fallidos (ID 4)
             $sql = "UPDATE punto p
                     JOIN (
                         SELECT id_punto, fecha_visita, id_tipo_mantenimiento
                         FROM ordenes_servicio
                         WHERE id_punto = :id_punto_b
-                          AND id_tipo_mantenimiento != 4 /* 🔥 IGNORAR MANTENIMIENTO FALLIDO */
+                          AND id_tipo_mantenimiento != 4 
                         ORDER BY fecha_visita DESC, id_ordenes_servicio DESC
                         LIMIT 1
                     ) AS ultima_real ON p.id_punto = ultima_real.id_punto
@@ -657,7 +592,6 @@ class ordenDetalleModelo
             ]);
             return true;
         } catch (PDOException $e) {
-            error_log("Error actualizando info mantenimiento punto: " . $e->getMessage());
             return false;
         }
     }
@@ -674,9 +608,6 @@ class ordenDetalleModelo
         }
     }
 
-    // ==========================================
-    // 4. GESTIÓN DE INVENTARIO
-    // ==========================================
     public function obtenerStockPorTecnico($idTecnico)
     {
         $sql = "SELECT 
@@ -703,9 +634,6 @@ class ordenDetalleModelo
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // ==========================================
-    // 5. BÚSQUEDA AVANZADA
-    // ==========================================
     public function buscarOrdenesFiltros($filtros)
     {
         $sql = "SELECT 
@@ -724,7 +652,6 @@ class ordenDetalleModelo
                 o.detalle_novedad,
                 o.repuestos_tecnico,
                 
-                -- MULTIPLES NOVEDADES (NOMBRES Y IDS)
                 IFNULL(
                     (SELECT GROUP_CONCAT(tn.nombre_novedad SEPARATOR ', ')
                     FROM orden_servicio_novedad osn
@@ -738,25 +665,20 @@ class ordenDetalleModelo
                     WHERE osn.id_orden_servicio = o.id_ordenes_servicio)
                 , '') as ids_novedades,
 
-                -- MÁQUINA
                 o.id_maquina,
                 m.device_id,
                 tm.nombre_tipo_maquina,
                 tm.id_tipo_maquina,
                 
-                -- CLIENTE
                 COALESCE(o.id_cliente, c_maq.id_cliente) as id_cliente,
                 COALESCE(c_directo.nombre_cliente, c_maq.nombre_cliente) as nombre_cliente,
                 
-                -- PUNTO
                 COALESCE(o.id_punto, p_maq.id_punto) as id_punto,
                 COALESCE(p_directo.nombre_punto, p_maq.nombre_punto) as nombre_punto,
                 
-                -- DELEGACIÓN
                 COALESCE(d_directo.nombre_delegacion, d_maq.nombre_delegacion) as delegacion,
                 COALESCE(p_directo.id_delegacion, p_maq.id_delegacion) as id_delegacion,
 
-                -- MODALIDAD
                 COALESCE(o.id_modalidad, 1) as id_modalidad,
                 CASE 
                     WHEN o.id_modalidad = 1 THEN 'URBANO'
@@ -764,13 +686,11 @@ class ordenDetalleModelo
                     ELSE 'NO DEFINIDO'
                 END as tipo_zona,
 
-                -- TÉCNICO Y DEMÁS
                 o.id_tecnico, t.nombre_tecnico,
                 o.id_tipo_mantenimiento as id_manto, tman.nombre_completo as tipo_servicio,
                 o.id_estado_maquina as id_estado, em.nombre_estado as estado_maquina,
                 o.id_calificacion as id_calif, cal.nombre_calificacion,
 
-                -- TEXTO REPUESTOS
                 IFNULL(
                     (SELECT GROUP_CONCAT(
                         CONCAT(r.nombre_repuesto, ' (', osr.origen, ')', IF(osr.cantidad>1, CONCAT(' x', osr.cantidad), ''))
@@ -798,59 +718,48 @@ class ordenDetalleModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE 1=1 ";
-        // Empezamos la parte de los filtros despues del WHERE 1=1
+
         $params = [];
 
-        // Filtro por Remisión
         if (!empty($filtros['remision'])) {
             $sql .= " AND o.numero_remision LIKE ?";
             $params[] = "%" . $filtros['remision'] . "%";
         }
 
-        // Filtro por Cliente
         if (!empty($filtros['id_cliente'])) {
             $sql .= " AND (o.id_cliente = ? OR c_maq.id_cliente = ?)";
             $params[] = $filtros['id_cliente'];
             $params[] = $filtros['id_cliente'];
         }
 
-        // Filtro por Punto
         if (!empty($filtros['id_punto'])) {
             $sql .= " AND (o.id_punto = ? OR m.id_punto = ?)";
             $params[] = $filtros['id_punto'];
             $params[] = $filtros['id_punto'];
         }
 
-        // --- NUEVOS FILTROS (LO QUE PEDISTE) ---
-
-        // 1. Rango de Fechas (Desde - Hasta)
         if (!empty($filtros['fecha_inicio'])) {
             $sql .= " AND o.fecha_visita >= ?";
             $params[] = $filtros['fecha_inicio'];
         }
 
         if (!empty($filtros['fecha_fin'])) {
-            // 🔥 TRUCO: Concatenamos la hora final del día para que incluya todo ese día
             $sql .= " AND o.fecha_visita <= ?";
             $params[] = $filtros['fecha_fin'] . ' 23:59:59';
         }
 
-        // 2. Delegación (Bogotá, Medellín, etc.)
-        // Verificamos tanto en el punto directo como en el punto de la máquina
         if (!empty($filtros['id_delegacion'])) {
             $sql .= " AND (p_directo.id_delegacion = ? OR p_maq.id_delegacion = ?)";
             $params[] = $filtros['id_delegacion'];
             $params[] = $filtros['id_delegacion'];
         }
 
-        // Ordenar y Limitar (Ojo: Si buscas por fecha, a veces querrás ver más de 50)
         $sql .= " ORDER BY o.fecha_visita DESC, o.id_ordenes_servicio DESC LIMIT 100";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute($params);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 🔧 PROCESAR LOS RESULTADOS EN BLOQUE
         $idsOrdenes = array_column($resultados, 'id_ordenes_servicio');
 
         if (!empty($idsOrdenes)) {
@@ -882,15 +791,9 @@ class ordenDetalleModelo
             }
         }
 
-        // 🔥 ¡TAMBIÉN FALTABA AQUÍ! 🔥
         return $resultados;
-    } // <-- Cierre correcto de la función buscarOrdenesFiltros
+    }
 
-    // ==========================================
-    // 6. GESTIÓN TIEMPO REAL (AJAX)
-    // ==========================================
-
-    // A. AGREGAR REPUESTO (CORREGIDO CON DEVOLUCIONES)
     public function agregarRepuestoRealTime($idOrden, $idRepuesto, $cantidad, $origen, $idTecnico)
     {
         try {
@@ -898,9 +801,6 @@ class ordenDetalleModelo
 
             $nuevoStockVisual = 0;
 
-            // =========================================================
-            // 1. PROTECCIÓN: SOLO TOCAMOS INVENTARIO SI ES INEES
-            // =========================================================
             if ($origen === 'INEES') {
                 $sqlStock = "SELECT cantidad_actual FROM inventario_tecnico 
                                 WHERE id_tecnico = ? AND id_repuesto = ? FOR UPDATE";
@@ -913,7 +813,6 @@ class ordenDetalleModelo
                     return ['status' => 'error', 'msg' => 'Stock insuficiente en la maleta del técnico.'];
                 }
 
-                // Descontar del Inventario Técnico
                 $sqlUpdInv = "UPDATE inventario_tecnico 
                                 SET cantidad_actual = cantidad_actual - ? 
                                 WHERE id_tecnico = ? AND id_repuesto = ?";
@@ -922,7 +821,6 @@ class ordenDetalleModelo
                 $nuevoStockVisual = $stockActual - $cantidad;
             }
 
-            // 2. Agregar o Actualizar en la Orden (ESTO SIEMPRE SE HACE)
             $sqlCheck = "SELECT cantidad FROM orden_servicio_repuesto 
                             WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $stmtCheck = $this->conn->prepare($sqlCheck);
@@ -930,39 +828,31 @@ class ordenDetalleModelo
             $cantOrden = $stmtCheck->fetchColumn();
 
             if ($cantOrden !== false) {
-                // Sumar
                 $sqlUpdOrden = "UPDATE orden_servicio_repuesto 
                                 SET cantidad = cantidad + ? 
                                 WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
                 $this->conn->prepare($sqlUpdOrden)->execute([$cantidad, $idOrden, $idRepuesto, $origen]);
             } else {
-                // Insertar
                 $sqlInsOrden = "INSERT INTO orden_servicio_repuesto 
                                 (id_orden_servicio, id_repuesto, origen, cantidad) 
                                 VALUES (?, ?, ?, ?)";
                 $this->conn->prepare($sqlInsOrden)->execute([$idOrden, $idRepuesto, $origen, $cantidad]);
             }
 
-            // =========================================================
-            // 🔥 3. NUEVO: LÓGICA DE CONTROL DE DEVOLUCIONES 🔥
-            // =========================================================
             $stmtCheckDev = $this->conn->prepare("SELECT requiere_devolucion FROM repuesto WHERE id_repuesto = ?");
             $stmtCheckDev->execute([$idRepuesto]);
             $reqDev = $stmtCheckDev->fetchColumn();
 
             if ($reqDev == 1) {
-                // Verificamos si ya está registrado en la tabla de devoluciones para esta orden
                 $sqlCheckCD = "SELECT cantidad FROM control_devolucion_repuestos WHERE id_orden_servicio = ? AND id_repuesto = ?";
                 $stmtCD = $this->conn->prepare($sqlCheckCD);
                 $stmtCD->execute([$idOrden, $idRepuesto]);
                 $cantCD = $stmtCD->fetchColumn();
 
                 if ($cantCD !== false) {
-                    // Si ya existe, le sumamos la cantidad extra
                     $sqlUpdCD = "UPDATE control_devolucion_repuestos SET cantidad = cantidad + ? WHERE id_orden_servicio = ? AND id_repuesto = ?";
                     $this->conn->prepare($sqlUpdCD)->execute([$cantidad, $idOrden, $idRepuesto]);
                 } else {
-                    // Si no existe, lo insertamos nuevo
                     $sqlInsCD = "INSERT INTO control_devolucion_repuestos (id_tecnico, id_orden_servicio, id_repuesto, cantidad, estado_devolucion) VALUES (?, ?, ?, ?, 'Pendiente')";
                     $this->conn->prepare($sqlInsCD)->execute([$idTecnico, $idOrden, $idRepuesto, $cantidad]);
                 }
@@ -976,13 +866,11 @@ class ordenDetalleModelo
         }
     }
 
-    // B. ELIMINAR REPUESTO (CORREGIDO CON DEVOLUCIONES)
     public function eliminarRepuestoRealTime($idOrden, $idRepuesto, $origen, $idTecnico)
     {
         try {
             $this->conn->beginTransaction();
 
-            // 1. Obtener cantidad a borrar
             $sqlGet = "SELECT cantidad FROM orden_servicio_repuesto 
                         WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $stmt = $this->conn->prepare($sqlGet);
@@ -994,9 +882,6 @@ class ordenDetalleModelo
                 return ['status' => 'error', 'msg' => 'El repuesto no existe en esta orden.'];
             }
 
-            // =========================================================
-            // 2. PROTECCIÓN: SOLO DEVOLVEMOS AL TÉCNICO SI ES INEES
-            // =========================================================
             if ($origen === 'INEES') {
                 $sqlDev = "INSERT INTO inventario_tecnico (id_tecnico, id_repuesto, cantidad_actual, estado) 
                             VALUES (?, ?, ?, 1) 
@@ -1004,24 +889,18 @@ class ordenDetalleModelo
                 $this->conn->prepare($sqlDev)->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
             }
 
-            // 3. Borrar de la Orden (ESTO SIEMPRE SE HACE)
             $sqlDel = "DELETE FROM orden_servicio_repuesto 
                         WHERE id_orden_servicio = ? AND id_repuesto = ? AND origen = ?";
             $this->conn->prepare($sqlDel)->execute([$idOrden, $idRepuesto, $origen]);
 
-            // =========================================================
-            // 🔥 4. NUEVO: LIMPIEZA EN CONTROL DE DEVOLUCIONES 🔥
-            // =========================================================
             $stmtCheckDev = $this->conn->prepare("SELECT requiere_devolucion FROM repuesto WHERE id_repuesto = ?");
             $stmtCheckDev->execute([$idRepuesto]);
             $reqDev = $stmtCheckDev->fetchColumn();
 
             if ($reqDev == 1) {
-                // Restamos la cantidad que acabamos de eliminar
                 $sqlUpdCD = "UPDATE control_devolucion_repuestos SET cantidad = cantidad - ? WHERE id_orden_servicio = ? AND id_repuesto = ?";
                 $this->conn->prepare($sqlUpdCD)->execute([$cantidad, $idOrden, $idRepuesto]);
 
-                // Si la cantidad de devoluciones quedó en 0 (o menos), limpiamos la basura
                 $sqlCleanCD = "DELETE FROM control_devolucion_repuestos WHERE id_orden_servicio = ? AND id_repuesto = ? AND cantidad <= 0";
                 $this->conn->prepare($sqlCleanCD)->execute([$idOrden, $idRepuesto]);
             }
@@ -1034,10 +913,8 @@ class ordenDetalleModelo
         }
     }
 
-    // B. Descontar del inventario (Lógica Segura)
     public function descontarStock($idTecnico, $idRepuesto, $cantidad)
     {
-        // 1. Verificamos si tiene saldo suficiente
         $sqlCheck = "SELECT cantidad_actual FROM inventario_tecnico 
                     WHERE id_tecnico = ? AND id_repuesto = ?";
         $stmtCheck = $this->conn->prepare($sqlCheck);
@@ -1045,7 +922,6 @@ class ordenDetalleModelo
         $actual = $stmtCheck->fetchColumn();
 
         if ($actual !== false && $actual >= $cantidad) {
-            // 2. Si tiene, descontamos
             $sqlUpd = "UPDATE inventario_tecnico 
                         SET cantidad_actual = cantidad_actual - ? 
                         WHERE id_tecnico = ? AND id_repuesto = ?";
@@ -1064,9 +940,6 @@ class ordenDetalleModelo
         return $stmt->execute([$idTecnico, $idRepuesto, $cantidad, $cantidad]);
     }
 
-    // ==========================================
-    // 7. NOVEDADES (MULTIPLE - TABLA PIVOTE)
-    // ==========================================
     public function obtenerTiposNovedad()
     {
         return $this->conn->query("SELECT * FROM tipo_novedad WHERE estado = 1 ORDER BY nombre_novedad ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -1077,11 +950,9 @@ class ordenDetalleModelo
         try {
             $this->conn->beginTransaction();
 
-            // 1. Limpiar novedades anteriores de la tabla pivote
             $sqlDel = "DELETE FROM orden_servicio_novedad WHERE id_orden_servicio = ?";
             $this->conn->prepare($sqlDel)->execute([$idOrden]);
 
-            // 2. Insertar las nuevas novedades si el arreglo no está vacío
             if (!empty($arrayNovedades) && is_array($arrayNovedades)) {
                 $sqlIns = "INSERT INTO orden_servicio_novedad (id_orden_servicio, id_tipo_novedad) VALUES (?, ?)";
                 $stmtIns = $this->conn->prepare($sqlIns);
@@ -1091,7 +962,6 @@ class ordenDetalleModelo
                 }
             }
 
-            // 3. Actualizar el flag "tiene_novedad" en la tabla principal
             $tieneNovedad = empty($arrayNovedades) ? 0 : 1;
             $sqlUpd = "UPDATE ordenes_servicio SET tiene_novedad = ? WHERE id_ordenes_servicio = ?";
             $this->conn->prepare($sqlUpd)->execute([$tieneNovedad, $idOrden]);
@@ -1100,7 +970,6 @@ class ordenDetalleModelo
             return true;
         } catch (Exception $e) {
             $this->conn->rollBack();
-            error_log("Error guardando novedades múltiples: " . $e->getMessage());
             return false;
         }
     }
@@ -1110,11 +979,9 @@ class ordenDetalleModelo
         try {
             $this->conn->beginTransaction();
 
-            // 1. Borrar todas las referencias de la tabla pivote
             $sqlDel = "DELETE FROM orden_servicio_novedad WHERE id_orden_servicio = ?";
             $this->conn->prepare($sqlDel)->execute([$idOrden]);
 
-            // 2. Apagar el flag en la tabla principal
             $sqlUpd = "UPDATE ordenes_servicio 
                 SET tiene_novedad = 0, 
                     detalle_novedad = NULL 
@@ -1129,9 +996,6 @@ class ordenDetalleModelo
         }
     }
 
-    // ==========================================
-    // 8. DELEGACIONES
-    // ==========================================
     public function obtenerDelegaciones()
     {
         return $this->conn->query("SELECT id_delegacion, nombre_delegacion FROM delegacion ORDER BY nombre_delegacion ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -1153,33 +1017,23 @@ class ordenDetalleModelo
         return $agrupado;
     }
 
-    /**
- * Normaliza hora a HH:MM:SS para MySQL TIME
- * Acepta: "1230", "12:30", "8:5", "12:30:00", ""
- */
-private function normalizarHora(?string $valor): string
-{
-    if (empty(trim($valor ?? ''))) return '00:00:00';
-
-    $valor = trim($valor);
-
-    // Ya viene HH:MM o HH:MM:SS
-    if (preg_match('/^(\d{1,2}):(\d{2})/', $valor, $m)) {
-        $h   = min(23, (int)$m[1]);
-        $min = min(59, (int)$m[2]);
+    private function normalizarHora(?string $valor): string
+    {
+        if (empty(trim($valor ?? '')))
+            return '00:00:00';
+        $valor = trim($valor);
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $valor, $m)) {
+            $h = min(23, (int) $m[1]);
+            $min = min(59, (int) $m[2]);
+            return sprintf('%02d:%02d:00', $h, $min);
+        }
+        $nums = preg_replace('/\D/', '', $valor);
+        if (!$nums)
+            return '00:00:00';
+        $nums = str_pad($nums, 4, '0', STR_PAD_RIGHT);
+        $nums = substr($nums, 0, 4);
+        $h = min(23, (int) substr($nums, 0, 2));
+        $min = min(59, (int) substr($nums, 2, 2));
         return sprintf('%02d:%02d:00', $h, $min);
     }
-
-    // Solo dígitos
-    $nums = preg_replace('/\D/', '', $valor);
-    if (!$nums) return '00:00:00';
-
-    $nums = str_pad($nums, 4, '0', STR_PAD_RIGHT);
-    $nums = substr($nums, 0, 4);
-
-    $h   = min(23, (int)substr($nums, 0, 2));
-    $min = min(59, (int)substr($nums, 2, 2));
-
-    return sprintf('%02d:%02d:00', $h, $min);
-}
 }

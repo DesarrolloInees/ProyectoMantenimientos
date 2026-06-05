@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/transporte/transporteEditarModelo.php';
@@ -41,7 +42,6 @@ class transporteEditarControlador
         $tecnicos      = $this->modelo->obtenerTecnicos();
         $delegaciones  = $this->modelo->obtenerDelegaciones();
         $tiposMaquina  = $this->modelo->obtenerTiposMaquina();
-        $tiposServicio = $this->modelo->obtenerTiposServicio();
         $clientes      = $this->modelo->obtenerClientes();
         $dirOrigen     = $this->modelo->obtenerDireccionOrigen();
 
@@ -108,11 +108,11 @@ class transporteEditarControlador
         }
 
         $valorLimpio = str_replace(['$', '.', ' ', ','], '', $_POST['valor_servicio'] ?? '0');
-        $valorFinal  = is_numeric($valorLimpio) ? floatval($valorLimpio) : 0;
+        $valorFinal = is_numeric($valorLimpio) ? floatval($valorLimpio) : 0;
 
         $datos = [
             'id_instalacion'        => intval($_POST['id_instalacion']),
-            'tipo_operacion'        => $_POST['tipo_operacion']        ?? 'instalacion',
+            'id_estado_operacion'   => $_POST['id_estado_operacion']   ?? '',
             'fecha_solicitud'       => $_POST['fecha_solicitud']       ?? date('Y-m-d'),
             'fecha_ejecucion'       => $_POST['fecha_ejecucion']       ?? null,
             'id_control_remision'   => $_POST['id_control_remision']   ?? null,
@@ -122,26 +122,28 @@ class transporteEditarControlador
             'id_delegacion_origen'  => $_POST['id_delegacion_origen']  ?? null,
             'id_delegacion_destino' => $_POST['id_delegacion_destino'] ?? null,
             'id_punto'              => $_POST['id_punto']              ?? null,
-            'id_tipo_servicio'      => $_POST['id_tipo_servicio']      ?? null,
             'valor_servicio'        => $valorFinal,
-            'comentarios'           => trim($_POST['comentarios']      ?? ''),
+            'comentarios'           => trim($_POST['comentarios']          ?? ''),
+            'incluye_capacitacion'  => isset($_POST['incluye_capacitacion']) ? 1 : 0,
+            'tema_capacitacion'     => trim($_POST['tema_capacitacion']    ?? ''),
+            'cantidad_asistentes'   => $_POST['cantidad_asistentes']  ?? null,
+            'horas_capacitacion'    => $_POST['horas_capacitacion'] ?? null,
         ];
-
+    
         if ($this->modelo->actualizarInstalacion($datos)) {
-            echo "<script>
-                alert('✅ Registro actualizado correctamente.');
-                window.location.href = 'index.php?pagina=transporteVer';
-            </script>";
+            $_SESSION['mensaje_exito'] = "✅ Registro actualizado correctamente.";
+            header("Location: index.php?pagina=transporteVer");
         } else {
-            echo "<script>
-                alert('❌ Error al actualizar el registro.');
-                history.back();
-            </script>";
+            $_SESSION['mensaje_error'] = "❌ Error al actualizar el registro.";
+            header("Location: index.php?pagina=transporteEditar&id=" . intval($_POST['id_instalacion']));
         }
+        exit;
     }
 
-    private function limpiarBuffer() {
-        while (ob_get_level()) ob_end_clean();
+    private function limpiarBuffer()
+    {
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
     }
 }

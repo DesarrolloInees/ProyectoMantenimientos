@@ -113,7 +113,7 @@
         color: #991b1b;
     }
 
-    .tipo-btn.active-traslado {
+    .tipo-btn.active-cambio-de-maquina {
         border-color: #d97706;
         background: #fffbeb;
         color: #92400e;
@@ -158,9 +158,11 @@
 </style>
 
 <div class="w-full max-w-5xl mx-auto px-2 py-4 md:py-6">
-    <div class="bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl p-5 mb-6 shadow-lg flex justify-between items-center">
+    <div
+        class="bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl p-5 mb-6 shadow-lg flex justify-between items-center">
         <div>
-            <h1 class="text-white font-bold text-xl"><i class="fas fa-edit text-amber-400 mr-2"></i> Editar Registro #<?= $instalacion['id_instalacion'] ?></h1>
+            <h1 class="text-white font-bold text-xl"><i class="fas fa-edit text-amber-400 mr-2"></i> Editar Registro
+                #<?= $instalacion['id_instalacion'] ?></h1>
             <p class="text-gray-400 text-xs mt-1">Actualice los datos necesarios y guarde los cambios.</p>
         </div>
         <a href="transporteVer" class="text-white text-sm hover:underline"><i class="fas fa-arrow-left"></i> Volver</a>
@@ -171,23 +173,34 @@
 
         <div class="form-section">
             <div class="form-section-title"><i class="fas fa-tag"></i> Tipo y Fechas</div>
+            
             <div class="mb-4">
                 <label class="form-label">Tipo de Operación <span class="req">*</span></label>
-                <input type="hidden" name="tipo_operacion" id="tipo_operacion" value="<?= htmlspecialchars($instalacion['tipo_operacion']) ?>">
+                <input type="hidden" name="id_estado_operacion" id="id_estado_operacion" value="<?= htmlspecialchars($instalacion['id_estado_operacion'] ?? '5') ?>">
+                
                 <div class="tipo-operacion-group">
-                    <button type="button" class="tipo-btn <?= $instalacion['tipo_operacion'] == 'instalacion' ? 'active-instalacion' : '' ?>" data-valor="instalacion" onclick="seleccionarTipo(this)"><i class="fas fa-plus-circle"></i> Instalación</button>
-                    <button type="button" class="tipo-btn <?= $instalacion['tipo_operacion'] == 'desinstalacion' ? 'active-desinstalacion' : '' ?>" data-valor="desinstalacion" onclick="seleccionarTipo(this)"><i class="fas fa-minus-circle"></i> Desinstalación</button>
-                    <button type="button" class="tipo-btn <?= $instalacion['tipo_operacion'] == 'traslado' ? 'active-traslado' : '' ?>" data-valor="traslado" onclick="seleccionarTipo(this)"><i class="fas fa-exchange-alt"></i> Traslado</button>
+                    <button type="button" class="tipo-btn" data-valor="5" data-tipo="instalacion" onclick="seleccionarTipo(this)">
+                        <i class="fas fa-plus-circle mr-1"></i> Instalación
+                    </button>
+                    <button type="button" class="tipo-btn" data-valor="6" data-tipo="desinstalacion" onclick="seleccionarTipo(this)">
+                        <i class="fas fa-minus-circle mr-1"></i> Desinstalación
+                    </button>
+                    <button type="button" class="tipo-btn" data-valor="7" data-tipo="traslado" onclick="seleccionarTipo(this)">
+                        <i class="fas fa-exchange-alt mr-1"></i> Cambio Máquina
+                    </button>
                 </div>
             </div>
+            
             <div class="grid-3">
                 <div>
                     <label class="form-label">Fecha Solicitud <span class="req">*</span></label>
-                    <input type="date" name="fecha_solicitud" class="form-control" value="<?= htmlspecialchars($instalacion['fecha_solicitud']) ?>" required>
+                    <input type="date" name="fecha_solicitud" class="form-control"
+                        value="<?= htmlspecialchars($instalacion['fecha_solicitud']) ?>" required>
                 </div>
                 <div>
                     <label class="form-label">Fecha Ejecución</label>
-                    <input type="date" name="fecha_ejecucion" class="form-control" value="<?= htmlspecialchars($instalacion['fecha_ejecucion'] ?? '') ?>">
+                    <input type="date" name="fecha_ejecucion" class="form-control"
+                        value="<?= htmlspecialchars($instalacion['fecha_ejecucion'] ?? '') ?>">
                 </div>
                 <div>
                     <label class="form-label">Técnico Asignado <span class="req">*</span></label>
@@ -221,25 +234,29 @@
             <div class="grid-3">
                 <div>
                     <label class="form-label">Serial Físico</label>
-                    <input type="text" name="serial_maquina" class="form-control" value="<?= htmlspecialchars($instalacion['serial_maquina']) ?>">
+                    <input type="text" name="serial_maquina" class="form-control"
+                        value="<?= htmlspecialchars($instalacion['serial_maquina']) ?>">
                 </div>
                 <div>
                     <label class="form-label">Tipo de Máquina <span class="req">*</span></label>
                     <select name="id_tipo_maquina" class="form-control select2-field" required>
                         <option value="">— Seleccione —</option>
                         <?php foreach ($tiposMaquina as $tm): ?>
-                            <option value="<?= $tm['id_tipo_maquina'] ?>" <?= $tm['id_tipo_maquina'] == $instalacion['id_tipo_maquina'] ? 'selected' : '' ?>><?= htmlspecialchars($tm['nombre_tipo_maquina']) ?></option>
+                            <option value="<?= $tm['id_tipo_maquina'] ?>"
+                                <?= $tm['id_tipo_maquina'] == $instalacion['id_tipo_maquina'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($tm['nombre_tipo_maquina']) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <!-- Reemplaza el de Tipo de Servicio con este botón -->
                 <div>
-                    <label class="form-label">Tipo de Servicio</label>
-                    <select name="id_tipo_servicio" class="form-control select2-field">
-                        <option value="">— Seleccione —</option>
-                        <?php foreach ($tiposServicio as $ts): ?>
-                            <option value="<?= $ts['id_tipo_servicio'] ?>" <?= $ts['id_tipo_servicio'] == $instalacion['id_tipo_servicio'] ? 'selected' : '' ?>><?= htmlspecialchars($ts['nombre_servicio']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label class="form-label">Capacitación al Cliente</label>
+                    <button type="button" onclick="toggleModalCapacitacion()"
+                        class="w-full bg-indigo-50 border border-indigo-200 text-indigo-700 py-2 rounded-lg hover:bg-indigo-100 transition text-sm font-bold flex justify-center items-center gap-2 cursor-pointer"
+                        style="min-height: 42px;">
+                        <i class="fas fa-graduation-cap text-indigo-500"></i> Ver / Editar Capacitación
+                    </button>
                 </div>
             </div>
         </div>
@@ -251,7 +268,10 @@
                     <label class="form-label">Delegación Origen <span class="req">*</span></label>
                     <select name="id_delegacion_origen" class="form-control select2-field" required>
                         <?php foreach ($delegaciones as $d): ?>
-                            <option value="<?= $d['id_delegacion'] ?>" <?= $d['id_delegacion'] == $instalacion['id_delegacion_origen'] ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre_delegacion']) ?></option>
+                            <option value="<?= $d['id_delegacion'] ?>"
+                                <?= $d['id_delegacion'] == $instalacion['id_delegacion_origen'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($d['nombre_delegacion']) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -260,7 +280,10 @@
                     <select name="id_delegacion_destino" class="form-control select2-field">
                         <option value="">— Seleccione —</option>
                         <?php foreach ($delegaciones as $d): ?>
-                            <option value="<?= $d['id_delegacion'] ?>" <?= $d['id_delegacion'] == $instalacion['id_delegacion_destino'] ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre_delegacion']) ?></option>
+                            <option value="<?= $d['id_delegacion'] ?>"
+                                <?= $d['id_delegacion'] == $instalacion['id_delegacion_destino'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($d['nombre_delegacion']) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -280,13 +303,17 @@
                     <select id="sel_punto" name="id_punto" class="form-control select2-field">
                         <option value="">— Seleccione —</option>
                         <?php foreach ($puntosCliente as $p): ?>
-                            <option value="<?= $p['id_punto'] ?>" data-dir="<?= htmlspecialchars($p['direccion']) ?>" <?= $p['id_punto'] == $instalacion['id_punto'] ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre_punto']) ?></option>
+                            <option value="<?= $p['id_punto'] ?>" data-dir="<?= htmlspecialchars($p['direccion']) ?>"
+                                <?= $p['id_punto'] == $instalacion['id_punto'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['nombre_punto']) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div>
                     <label class="form-label">Dirección Punto</label>
-                    <input type="text" id="direccion_punto" class="form-control" readonly value="<?= htmlspecialchars($instalacion['direccion_punto'] ?? '') ?>">
+                    <input type="text" id="direccion_punto" class="form-control" readonly
+                        value="<?= htmlspecialchars($instalacion['direccion_punto'] ?? '') ?>">
                 </div>
             </div>
         </div>
@@ -296,11 +323,14 @@
             <div class="grid-2">
                 <div>
                     <label class="form-label">Valor del Servicio</label>
-                    <input type="text" id="valor_servicio" name="valor_servicio" class="form-control" value="<?= number_format($instalacion['valor_servicio'], 0, '', '.') ?>" oninput="formatearValor(this)">
+                    <input type="text" id="valor_servicio" name="valor_servicio" class="form-control"
+                        value="<?= number_format($instalacion['valor_servicio'], 0, '', '.') ?>"
+                        oninput="formatearValor(this)">
                 </div>
                 <div>
                     <label class="form-label">Comentarios</label>
-                    <textarea name="comentarios" rows="3" class="form-control"><?= htmlspecialchars($instalacion['comentarios']) ?></textarea>
+                    <textarea name="comentarios" rows="3"
+                        class="form-control"><?= htmlspecialchars($instalacion['comentarios']) ?></textarea>
                 </div>
             </div>
         </div>
@@ -309,10 +339,66 @@
             <button type="submit" class="btn-guardar"><i class="fas fa-save mr-2"></i> ACTUALIZAR REGISTRO</button>
         </div>
     </form>
+
+
+    <!-- Mini Modal Capacitación -->
+    <div id="modalCapacitacion"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold text-gray-800"><i
+                        class="fas fa-chalkboard-teacher mr-2 text-indigo-500"></i>Detalles de Capacitación</h3>
+                <button type="button" onclick="toggleModalCapacitacion()" class="text-gray-400 hover:text-red-500">
+                    <i class="fas fa-times fa-lg"></i>
+                </button>
+            </div>
+
+            <div class="mb-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="incluye_capacitacion" id="incluye_capacitacion" form="formInstalacion"
+                        value="1" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        <?= ($instalacion['incluye_capacitacion'] == 1) ? 'checked' : '' ?>>
+                    <span class="text-sm font-bold text-gray-700 uppercase tracking-wide">Sí, se brindó
+                        capacitación</span>
+                </label>
+            </div>
+
+            <!-- Campos (Si viene checked de la BD, no le ponemos opacidad) -->
+            <div id="camposCapacitacion"
+                class="space-y-4 transition-opacity <?= ($instalacion['incluye_capacitacion'] == 1) ? '' : 'opacity-50 pointer-events-none' ?>">
+                <div>
+                    <label class="form-label">Tema Principal</label>
+                    <input type="text" name="tema_capacitacion" id="tema_capacitacion" form="formInstalacion"
+                        class="form-control" placeholder="Ej: Uso básico, Limpieza, etc."
+                        value="<?= htmlspecialchars($instalacion['tema_capacitacion'] ?? '') ?>">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">N° Asistentes</label>
+                        <input type="number" name="cantidad_asistentes" id="cantidad_asistentes" form="formInstalacion"
+                            class="form-control" placeholder="Ej: 3" min="1"
+                            value="<?= htmlspecialchars($instalacion['cantidad_asistentes'] ?? '') ?>">
+                    </div>
+                    <div>
+                        <label class="form-label">Duración (Horas)</label>
+                        <input type="number" step="0.5" name="horas_capacitacion" id="horas_capacitacion"
+                            form="formInstalacion" class="form-control" placeholder="Ej: 1.5" min="0"
+                            value="<?= htmlspecialchars($instalacion['horas_capacitacion'] ?? '') ?>">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" onclick="toggleModalCapacitacion()"
+                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold text-sm transition">CERRAR</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
         $('.select2-field').select2({
             width: '100%',
             allowClear: true,
@@ -320,7 +406,7 @@
         });
 
         // Cargar remisiones al cambiar técnico
-        $('#sel_tecnico').on('change', function() {
+        $('#sel_tecnico').on('change', function () {
             var idTecnico = $(this).val();
             var $sel = $('#sel_remision');
             $sel.empty().append('<option value="">Cargando...</option>');
@@ -330,16 +416,16 @@
             }
             $.post('index.php?pagina=transporteEditar&accion=ajaxRemisiones', {
                 id_tecnico: idTecnico
-            }, function(data) {
+            }, function (data) {
                 $sel.empty().append('<option value="">— Sin remisión —</option>');
-                $.each(data, function(i, r) {
+                $.each(data, function (i, r) {
                     $sel.append('<option value="' + r.id_control + '">' + r.numero_remision + '</option>');
                 });
             }, 'json');
         });
 
         // Cargar puntos al cambiar cliente
-        $('#sel_cliente').on('change', function() {
+        $('#sel_cliente').on('change', function () {
             var idCliente = $(this).val();
             var $selPunto = $('#sel_punto');
             $selPunto.empty().append('<option value="">Cargando...</option>');
@@ -350,27 +436,84 @@
             }
             $.post('index.php?pagina=transporteEditar&accion=ajaxPuntos', {
                 id_cliente: idCliente
-            }, function(data) {
+            }, function (data) {
                 $selPunto.empty().append('<option value="">— Seleccione —</option>');
-                $.each(data, function(i, p) {
+                $.each(data, function (i, p) {
                     $selPunto.append('<option value="' + p.id_punto + '" data-dir="' + (p.direccion || '') + '">' + p.nombre_punto + '</option>');
                 });
             }, 'json');
         });
 
         // Mostrar dirección al cambiar punto
-        $('#sel_punto').on('change', function() {
+        $('#sel_punto').on('change', function () {
             var dir = $(this).find('option:selected').data('dir');
             $('#direccion_punto').val(dir || '');
         });
     });
 
-    function seleccionarTipo(btn) {
-        var valor = btn.dataset.valor;
-        $('.tipo-btn').removeClass('active-instalacion active-desinstalacion active-traslado');
-        $(btn).addClass('active-' + valor);
-        $('#tipo_operacion').val(valor);
+    function toggleModalCapacitacion() {
+        document.getElementById('modalCapacitacion').classList.toggle('hidden');
     }
+
+    document.getElementById('incluye_capacitacion').addEventListener('change', function () {
+        const divCampos = document.getElementById('camposCapacitacion');
+        if (this.checked) {
+            divCampos.classList.remove('opacity-50', 'pointer-events-none');
+        } else {
+            divCampos.classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('tema_capacitacion').value = '';
+            document.getElementById('cantidad_asistentes').value = '';
+            document.getElementById('horas_capacitacion').value = '';
+        }
+    });
+
+    // ── Inicializar el botón correcto al abrir Editar ──
+    function initTipoOperacion() {
+        var idGuardado = document.getElementById('id_estado_operacion').value;
+        var btnEncontrado = document.querySelector('.tipo-btn[data-valor="' + idGuardado + '"]');
+        
+        if (btnEncontrado) {
+            seleccionarTipo(btnEncontrado); // Activa el botón correcto
+        } else {
+            // Si por algún error no hay, seleccionamos el 5 por defecto
+            seleccionarTipo(document.querySelector('.tipo-btn[data-valor="5"]'));
+        }
+    }
+
+    // ── Selección de tipo de operación ──
+    function seleccionarTipo(btn) {
+        var idValor = btn.dataset.valor; 
+        var tipoTxt = btn.dataset.tipo;  
+
+        // Quitar clases activas de todos
+        document.querySelectorAll('.tipo-btn').forEach(function (b) {
+            b.classList.remove('active-instalacion', 'active-desinstalacion', 'active-traslado');
+        });
+
+        // Agregar clase al seleccionado
+        btn.classList.add('active-' + tipoTxt);
+
+        // Actualizar hidden input con el ID NUMÉRICO
+        document.getElementById('id_estado_operacion').value = idValor;
+
+        // Actualizar badge header
+        var badge = document.getElementById('badgeOperacion');
+        if(badge) {
+            var iconos = {
+                instalacion: { cls: 'bg-emerald-100 text-emerald-800', icon: 'fas fa-circle text-emerald-500', txt: 'Instalación' },
+                desinstalacion: { cls: 'bg-red-100 text-red-800', icon: 'fas fa-circle text-red-500', txt: 'Desinstalación' },
+                traslado: { cls: 'bg-amber-100 text-amber-800', icon: 'fas fa-circle text-amber-500', txt: 'Cambio de Máquina' }
+            };
+            var cfg = iconos[tipoTxt];
+            badge.className = 'badge-operacion ' + cfg.cls;
+            badge.innerHTML = '<i class="' + cfg.icon + '" style="font-size:0.5rem"></i> ' + cfg.txt;
+        }
+    }
+
+    // Llamamos a la inicialización apenas cargue el documento
+    document.addEventListener("DOMContentLoaded", function() {
+        initTipoOperacion();
+    });
 
     function formatearValor(input) {
         var num = parseInt(input.value.replace(/[^\d]/g, '') || '0', 10);

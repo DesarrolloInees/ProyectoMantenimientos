@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 class exportarExcelModelo
 {
@@ -14,23 +15,25 @@ class exportarExcelModelo
     {
         try {
             $sql = "SELECT 
-                        c.codigo_cliente,
-                        c.nombre_cliente,
-                        p.nombre_punto, 
-                        p.direccion, 
-                        mu.nombre_municipio,          
-                        p.zona,                
-                        d.nombre_delegacion, 
-                        m.device_id, 
-                        p.fecha_ultima_visita,
-                        tm.nombre_completo as nombre_mantenimiento
+                c.codigo_cliente,
+                c.nombre_cliente,
+                p.nombre_punto, 
+                p.direccion, 
+                mu.nombre_municipio,          
+                p.zona,           
+                d.nombre_delegacion, 
+                m.device_id, 
+                p.fecha_ultima_visita,
+                tm.nombre_completo as nombre_mantenimiento,
+                p.frecuencia_mantenimiento_dias
                     FROM punto p
                     INNER JOIN maquina m ON p.id_punto = m.id_punto
                     INNER JOIN cliente c ON p.id_cliente = c.id_cliente
                     INNER JOIN municipio mu ON p.id_municipio = mu.id_municipio 
                     LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion
                     LEFT JOIN tipo_mantenimiento tm ON p.id_ultimo_tipo_mantenimiento = tm.id_tipo_mantenimiento
-                    WHERE p.fecha_actualizacion IS NOT NULL
+                    WHERE p.fecha_actualizacion IS NOT NULL 
+                        AND p.estado = 1
                     ORDER BY c.nombre_cliente ASC, p.nombre_punto ASC";
 
             $stmt = $this->conn->prepare($sql);

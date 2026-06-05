@@ -144,22 +144,66 @@
             text-align: center;
         }
 
+        .no-break {
+            page-break-inside: avoid;
+        }
+
+        .firmas {
+            display: table;
+            width: 100%;
+            margin-top: 40px;
+            table-layout: fixed;
+        }
+
         .firma-box {
             display: table-cell;
             width: 50%;
-            padding: 20px;
+            text-align: center;
+            vertical-align: bottom;
+            padding: 0 20px;
         }
 
-        .linea-firma {
-            border-top: 1px solid #9ca3af;
+        .firma-espacio {
+            height: 70px;
+            margin-bottom: 5px;
+        }
+
+        .img-firma {
+            max-width: 180px;
+            max-height: 70px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .firma-linea {
+            border-top: 1px solid #374151;
             width: 80%;
             margin: 0 auto 5px auto;
         }
 
-        .firma-label {
+        .firma-nombre {
             font-size: 11px;
             font-weight: bold;
-            color: #4b5563;
+            color: #111827;
+            text-transform: uppercase;
+        }
+
+        .firma-rol {
+            font-size: 10px;
+            color: #6b7280;
+        }
+
+        .footer-strip {
+            margin-top: 30px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 10px;
+            font-size: 9px;
+            color: #9ca3af;
+            text-align: center;
+        }
+
+        .footer-strip span {
+            margin: 0 10px;
         }
     </style>
 </head>
@@ -176,15 +220,36 @@
         </div>
         <div class="header-col title-box">
             <h1 class="title">Reporte de Operación</h1>
-            <p class="subtitle">Consecutivo: <strong>#<?= str_pad($instalacion['id_instalacion'], 5, '0', STR_PAD_LEFT) ?></strong></p>
-            <p class="subtitle" style="margin-top:2px;">Fecha Solicitud: <?= date('d/m/Y', strtotime($instalacion['fecha_solicitud'])) ?></p>
+            <p class="subtitle">Consecutivo:
+                <strong>#<?= str_pad($instalacion['id_instalacion'], 5, '0', STR_PAD_LEFT) ?></strong>
+            </p>
+            <p class="subtitle" style="margin-top:2px;">Fecha Solicitud:
+                <?= date('d/m/Y', strtotime($instalacion['fecha_solicitud'])) ?>
+            </p>
         </div>
     </div>
 
     <?php
+    // Ahora leemos el ID de la operación
+    $idOp = intval($instalacion['id_estado_operacion'] ?? 5);
+    
     $claseBadge = 'bg-inst';
-    if ($instalacion['tipo_operacion'] == 'desinstalacion') $claseBadge = 'bg-des';
-    if ($instalacion['tipo_operacion'] == 'traslado') $claseBadge = 'bg-tras';
+    $textoOperacion = 'INSTALACIÓN'; // Por defecto
+
+    // Validamos con los IDs reales (5, 6, 7)
+    if ($idOp === 6) {
+        $claseBadge = 'bg-des';
+        $textoOperacion = 'DESINSTALACIÓN';
+    } elseif ($idOp === 7) {
+        $claseBadge = 'bg-tras';
+        $textoOperacion = 'CAMBIO DE MÁQUINA';
+    } elseif ($idOp === 5) {
+        $claseBadge = 'bg-inst';
+        $textoOperacion = 'INSTALACIÓN';
+    } else {
+        // Fallback: Si por alguna razón es otro ID, imprimimos el nombre de la BD
+        $textoOperacion = strtoupper($instalacion['nombre_operacion'] ?? 'OPERACIÓN');
+    }
     ?>
 
     <div class="section">
@@ -193,7 +258,7 @@
             <div class="row">
                 <div class="col">
                     <span class="label">Tipo de Operación</span>
-                    <span class="badge <?= $claseBadge ?>"><?= htmlspecialchars($instalacion['tipo_operacion']) ?></span>
+                    <span class="badge <?= $claseBadge ?>"><?= $textoOperacion ?></span>
                 </div>
                 <div class="col">
                     <span class="label">Técnico Asignado</span>
@@ -203,18 +268,20 @@
             <div class="row">
                 <div class="col">
                     <span class="label">Fecha Ejecución</span>
-                    <span class="value"><?= !empty($instalacion['fecha_ejecucion']) ? date('d/m/Y', strtotime($instalacion['fecha_ejecucion'])) : 'Pendiente' ?></span>
+                    <span
+                        class="value"><?= !empty($instalacion['fecha_ejecucion']) ? date('d/m/Y', strtotime($instalacion['fecha_ejecucion'])) : 'Pendiente' ?></span>
                 </div>
                 <div class="col">
                     <span class="label">Número de Remisión</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['numero_remision'] ?? 'Sin remisión asignada') ?></span>
+                    <span
+                        class="value"><?= htmlspecialchars($instalacion['numero_remision'] ?? 'Sin remisión asignada') ?></span>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">2. Datos de la Máquina y Servicio</div>
+        <div class="section-title">2. Datos de la Máquina</div>
         <div class="section-body">
             <div class="row">
                 <div class="col">
@@ -227,11 +294,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col">
-                    <span class="label">Descripción del Servicio</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['nombre_servicio'] ?? 'No especificado') ?></span>
-                </div>
-                <div class="col">
+                <div class="col" style="width: 100%; display:block;">
                     <span class="label">Valor del Servicio</span>
                     <span class="value">$ <?= number_format($instalacion['valor_servicio'], 0, '', '.') ?></span>
                 </div>
@@ -271,8 +334,37 @@
         </div>
     </div>
 
+    <!-- NUEVA SECCIÓN DE CAPACITACIÓN (Se muestra solo si hubo capacitación) -->
+    <?php if (isset($instalacion['incluye_capacitacion']) && $instalacion['incluye_capacitacion'] == 1): ?>
+        <div class="section">
+            <div class="section-title">4. Capacitación al Cliente</div>
+            <div class="section-body">
+                <div class="row">
+                    <div class="col" style="width: 100%; display:block; padding-bottom: 8px;">
+                        <span class="label">Tema de Capacitación</span>
+                        <span
+                            class="value"><?= htmlspecialchars($instalacion['tema_capacitacion'] ?: 'No especificado') ?></span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <span class="label">Cantidad de Asistentes</span>
+                        <span class="value"><?= htmlspecialchars($instalacion['cantidad_asistentes'] ?: 'N/A') ?></span>
+                    </div>
+                    <div class="col">
+                        <span class="label">Duración (Horas)</span>
+                        <span class="value"><?= htmlspecialchars($instalacion['horas_capacitacion'] ?: 'N/A') ?> Hrs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <div class="section">
-        <div class="section-title">4. Observaciones y Comentarios</div>
+        <div class="section-title">
+            <?= (isset($instalacion['incluye_capacitacion']) && $instalacion['incluye_capacitacion'] == 1) ? '5' : '4' ?>.
+            Observaciones y Comentarios
+        </div>
         <div class="section-body" style="padding-top: 5px;">
             <div class="observaciones">
                 <?= nl2br(htmlspecialchars($instalacion['comentarios'] ?: 'Ninguna observación registrada.')) ?>
@@ -280,16 +372,39 @@
         </div>
     </div>
 
-    <div class="footer">
-        <div class="firma-box">
-            <div class="linea-firma"></div>
-            <span class="firma-label">Firma del Técnico</span><br>
-            <span style="font-size: 10px; color:#6b7280;"><?= htmlspecialchars($instalacion['nombre_tecnico'] ?? '_________________') ?></span>
+    <!-- Reemplaza el footer antiguo por este: -->
+    <div class="no-break">
+        <div class="firmas">
+            <div class="firma-box">
+                <div class="firma-espacio">
+                    <?php if (!empty($firmaTecnicoSrc)): ?>
+                        <img src="<?= $firmaTecnicoSrc ?>" alt="Firma Técnico" class="img-firma">
+                    <?php endif; ?>
+                </div>
+                <div class="firma-linea"></div>
+                <div class="firma-nombre">
+                    <?= htmlspecialchars($instalacion['nombre_tecnico'] ?? 'TÉCNICO NO ASIGNADO') ?>
+                </div>
+                <div class="firma-rol">Técnico de Servicio</div>
+            </div>
+
+            <div class="firma-box">
+                <div class="firma-espacio">
+                    <!-- Espacio en blanco para que el cliente firme a mano -->
+                </div>
+                <div class="firma-linea"></div>
+                <div class="firma-nombre">
+                    <?= htmlspecialchars($instalacion['nombre_cliente'] ?? 'RESPONSABLE EN SITIO') ?>
+                </div>
+                <div class="firma-rol">Recibido y Aprobado</div>
+            </div>
         </div>
-        <div class="firma-box">
-            <div class="linea-firma"></div>
-            <span class="firma-label">Firma Cliente / Recibe</span><br>
-            <span style="font-size: 10px; color:#6b7280;"><?= htmlspecialchars($instalacion['nombre_cliente'] ?? '_________________') ?></span>
+
+        <div class="footer-strip">
+            <span>INEES — Reporte Técnico de Operación</span>
+            <span class="remision-footer">Remisión
+                #<?= htmlspecialchars($instalacion['numero_remision'] ?? 'N/A') ?></span>
+            <span><?= date('d/m/Y', strtotime($instalacion['fecha_solicitud'])) ?></span>
         </div>
     </div>
 

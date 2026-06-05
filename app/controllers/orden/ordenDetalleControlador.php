@@ -1,9 +1,9 @@
 <?php
 // app/controllers/orden/ordenDetalleControlador.php
 
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
-// 1. IMPORTAR ARCHIVOS NECESARIOS (Sin esto, PHP no encuentra las clases)
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/orden/ordenDetalleModelo.php';
 
@@ -14,63 +14,72 @@ class ordenDetalleControlador
 
     public function __construct()
     {
-        // 2. CORRECCIÓN: Usamos la clase 'Conexion' (no 'db')
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
-
-        // 3. Instanciamos el modelo pasándole la conexión activa
         $this->modelo = new ordenDetalleModelo($this->db);
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
-    // ==========================================
-    // 0. PROCESAR AJAX
-    // ==========================================
     public function procesarAjax()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
 
             $accion = $_POST['accion'];
 
-            if ($accion === 'ajaxObtenerPuntos')         $this->ajaxObtenerPuntos();
-            if ($accion === 'ajaxObtenerMaquinas')        $this->ajaxObtenerMaquinas();
-            if ($accion === 'ajaxObtenerDelegacion')      $this->ajaxObtenerDelegacion();
-            if ($accion === 'ajaxObtenerPrecio')          $this->ajaxObtenerPrecio();
-            if ($accion === 'ajaxObtenerStockTecnico')    $this->ajaxObtenerStockTecnico();
-            if ($accion === 'ajaxGestionarRepuestoRT')    $this->ajaxGestionarRepuestoRT();
-            if ($accion === 'ajaxGuardarNovedad')         $this->ajaxGuardarNovedad();
-
-            // ✅ NUEVO: Remisiones disponibles del técnico
-            if ($accion === 'ajaxObtenerRemisiones')      $this->ajaxObtenerRemisiones();
-            if ($accion === 'ajaxExportarDetalle') $this->ajaxExportarDetalle();
-            // ✅ NUEVO: LLAMADA A LA IA
-            if ($accion === 'ajaxMejorarTextoIA')         $this->ajaxMejorarTextoIA();
-            if ($accion === 'ajaxGuardarCambiosJSON')   $this->ajaxGuardarCambiosJSON();
+            if ($accion === 'ajaxObtenerPuntos')
+                $this->ajaxObtenerPuntos();
+            if ($accion === 'ajaxObtenerMaquinas')
+                $this->ajaxObtenerMaquinas();
+            if ($accion === 'ajaxObtenerDelegacion')
+                $this->ajaxObtenerDelegacion();
+            if ($accion === 'ajaxObtenerPrecio')
+                $this->ajaxObtenerPrecio();
+            if ($accion === 'ajaxObtenerStockTecnico')
+                $this->ajaxObtenerStockTecnico();
+            if ($accion === 'ajaxGestionarRepuestoRT')
+                $this->ajaxGestionarRepuestoRT();
+            if ($accion === 'ajaxGuardarNovedad')
+                $this->ajaxGuardarNovedad();
+            if ($accion === 'ajaxObtenerRemisiones')
+                $this->ajaxObtenerRemisiones();
+            if ($accion === 'ajaxExportarDetalle')
+                $this->ajaxExportarDetalle();
+            if ($accion === 'ajaxMejorarTextoIA')
+                $this->ajaxMejorarTextoIA();
+            if ($accion === 'ajaxGuardarCambiosJSON')
+                $this->ajaxGuardarCambiosJSON();
         }
     }
 
-    // ============================================================
-    // EXPORTAR EXCEL DESDE EL BUSCADOR AVANZADO
-    // ============================================================
     public function ajaxExportarBusqueda()
     {
-        ob_clean(); // Limpiamos cualquier basura antes de imprimir el JSON
+        ob_clean();
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // 1. Recogemos los filtros del POST
             $filtros = [
-                'remision'      => $_POST['remision'] ?? '',
-                'id_cliente'    => $_POST['id_cliente'] ?? '',
-                'id_punto'      => $_POST['id_punto'] ?? '',
+                'remision' => $_POST['remision'] ?? '',
+                'id_cliente' => $_POST['id_cliente'] ?? '',
+                'id_punto' => $_POST['id_punto'] ?? '',
                 'id_delegacion' => $_POST['id_delegacion'] ?? '',
-                'fecha_inicio'  => $_POST['fecha_inicio'] ?? '',
-                'fecha_fin'     => $_POST['fecha_fin'] ?? ''
+                'fecha_inicio' => $_POST['fecha_inicio'] ?? '',
+                'fecha_fin' => $_POST['fecha_fin'] ?? ''
             ];
 
-            // 2. Buscamos usando el modelo
             $resultados = $this->modelo->buscarOrdenesFiltros($filtros);
 
-            // 3. Devolvemos el JSON para que SheetJS arme el Excel
+            // 🔒 SEGURIDAD EXCEL: Limpiamos los precios si es rol 5
+            $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
+            if ($rolUsuario === 5 && $resultados) {
+                foreach ($resultados as &$r) {
+                    $r['valor_servicio'] = 0;
+                    $r['valor_viaticos'] = 0;
+                }
+            }
+
             if ($resultados && count($resultados) > 0) {
                 echo json_encode(['status' => 'ok', 'datos' => $resultados]);
             } else {
@@ -80,12 +89,8 @@ class ordenDetalleControlador
         }
     }
 
-    // ==========================================
-    // 1. CARGA LA VISTA NORMAL
-    // ==========================================
     public function cargarVista()
     {
-        // Verificar sesión (Doble seguridad)
         if (!isset($_SESSION['usuario_id'])) {
             header('Location: ' . BASE_URL . 'login');
             exit;
@@ -93,31 +98,32 @@ class ordenDetalleControlador
 
         $fecha = $_GET['fecha'] ?? date('Y-m-d');
 
-        $servicios        = $this->modelo->obtenerServiciosPorFecha($fecha);
-        $listaClientes    = $this->modelo->obtenerTodosLosClientes();
-        $listaTecnicos    = $this->modelo->obtenerTodosLosTecnicos();
-        $listaMantos      = $this->modelo->obtenerTiposMantenimiento();
-        $listaRepuestos   = $this->modelo->obtenerListaRepuestos();
-        $listaEstados     = $this->modelo->obtenerEstados();
-        $listaCalifs      = $this->modelo->obtenerCalificaciones();
+        $servicios = $this->modelo->obtenerServiciosPorFecha($fecha);
+        $listaClientes = $this->modelo->obtenerTodosLosClientes();
+        $listaTecnicos = $this->modelo->obtenerTodosLosTecnicos();
+        $listaMantos = $this->modelo->obtenerTiposMantenimiento();
+        $listaRepuestos = $this->modelo->obtenerListaRepuestos();
+        $listaEstados = $this->modelo->obtenerEstados();
+        $listaCalifs = $this->modelo->obtenerCalificaciones();
         $listaModalidades = $this->modelo->obtenerModalidades();
-        $listaFestivos    = $this->modelo->obtenerFestivos();
-        $listaNovedades   = $this->modelo->obtenerTiposNovedad();
+        $listaFestivos = $this->modelo->obtenerFestivos();
+        $listaNovedades = $this->modelo->obtenerTiposNovedad();
         $remisionesGlobales = $this->modelo->obtenerTodasRemisionesDisponibles();
 
+        // 🔒 SEGURIDAD HTML F12: Limpiamos los precios antes de pasarlos a la Vista
+        $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
+        if ($rolUsuario === 5 && $servicios) {
+            foreach ($servicios as &$s) {
+                $s['valor_servicio'] = 0;
+                $s['valor_viaticos'] = 0;
+            }
+        }
+
         $titulo = "Edición Total: " . $fecha;
-
-        // Rutas relativas desde index.php
         $vistaContenido = "app/views/orden/ordenDetalleVista.php";
-
-        // Incluimos la plantilla maestra
-        // Salimos de 'orden' (..), salimos de 'controllers' (..), entramos a 'views'
         require_once __DIR__ . '/../../views/plantillaVista.php';
     }
 
-    // ==========================================
-    // 2. AJAX METHODS
-    // ==========================================
     public function ajaxObtenerPuntos()
     {
         ob_clean();
@@ -151,11 +157,20 @@ class ordenDetalleControlador
     public function ajaxObtenerPrecio()
     {
         ob_clean();
-        $id_tipo_maquina       = $_POST['id_tipo_maquina'] ?? 0;
+
+        // 🔒 SEGURIDAD RED AJAX: Devolvemos 0 al navegador para que la pestaña Red (F12) no filtre precios
+        $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
+        if ($rolUsuario === 5) {
+            header('Content-Type: application/json');
+            echo json_encode(['precio' => 0]);
+            exit;
+        }
+
+        $id_tipo_maquina = $_POST['id_tipo_maquina'] ?? 0;
         $id_tipo_mantenimiento = $_POST['id_tipo_mantenimiento'] ?? 0;
-        $id_modalidad          = $_POST['id_modalidad'] ?? 1;
-        $fechaVisita           = $_POST['fecha_visita'] ?? date('Y-m-d');
-        $anio                  = date('Y', strtotime($fechaVisita));
+        $id_modalidad = $_POST['id_modalidad'] ?? 1;
+        $fechaVisita = $_POST['fecha_visita'] ?? date('Y-m-d');
+        $anio = date('Y', strtotime($fechaVisita));
 
         $precio = $this->modelo->obtenerPrecioTarifa($id_tipo_maquina, $id_tipo_mantenimiento, $id_modalidad, $anio);
 
@@ -179,14 +194,13 @@ class ordenDetalleControlador
         exit;
     }
 
-    // ✅ NUEVO: Remisiones disponibles para el técnico
     public function ajaxObtenerRemisiones()
     {
         ob_clean();
         header('Content-Type: application/json');
 
-        $idTecnico      = intval($_POST['id_tecnico']      ?? 0);
-        $remisionActual = trim($_POST['remision_actual']   ?? '');
+        $idTecnico = intval($_POST['id_tecnico'] ?? 0);
+        $remisionActual = trim($_POST['remision_actual'] ?? '');
 
         if ($idTecnico > 0) {
             $remisiones = $this->modelo->obtenerRemisionesDisponiblesPorTecnico(
@@ -205,11 +219,11 @@ class ordenDetalleControlador
         ob_clean();
         header('Content-Type: application/json');
 
-        $tipo       = $_POST['tipo'];
-        $idOrden    = $_POST['id_orden'];
+        $tipo = $_POST['tipo'];
+        $idOrden = $_POST['id_orden'];
         $idRepuesto = $_POST['id_repuesto'];
-        $origen     = $_POST['origen'];
-        $idTecnico  = $_POST['id_tecnico'];
+        $origen = $_POST['origen'];
+        $idTecnico = $_POST['id_tecnico'];
 
         if ($tipo === 'agregar') {
             $cantidad = $_POST['cantidad'];
@@ -222,49 +236,47 @@ class ordenDetalleControlador
         exit;
     }
 
-    // ==========================================
-    // 3. GUARDAR CAMBIOS
-    // ==========================================
     public function guardarCambios()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            $servicios   = $_POST['servicios'] ?? [];
+            $servicios = $_POST['servicios'] ?? [];
             $fechaOrigen = $_POST['fecha_origen'] ?? date('Y-m-d');
-            $esBusqueda  = isset($_POST['es_busqueda']) && $_POST['es_busqueda'] == '1';
+            $esBusqueda = isset($_POST['es_busqueda']) && $_POST['es_busqueda'] == '1';
+
+            // Atrapamos el rol para pasárselo al Modelo
+            $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
 
             $errores = 0;
 
             foreach ($servicios as $id => $datos) {
 
-                // Limpiar precio
-                if (isset($datos['valor'])) {
-                    $valorLimpio   = str_replace('.', '', $datos['valor']);
+                // Formateamos los números como de costumbre si NO es rol 5
+                if ($rolUsuario !== 5 && isset($datos['valor'])) {
+                    $valorLimpio = str_replace('.', '', $datos['valor']);
                     $datos['valor'] = str_replace(',', '.', $valorLimpio);
                 }
 
-                // Calcular tiempo si no viene
                 if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
                     $datos['tiempo'] = '00:00';
                     if (!empty($datos['entrada']) && !empty($datos['salida'])) {
                         try {
                             $d1 = new DateTime($datos['entrada']);
                             $d2 = new DateTime($datos['salida']);
-                            if ($d2 < $d1) $d2->modify('+1 day');
+                            if ($d2 < $d1)
+                                $d2->modify('+1 day');
                             $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
                         } catch (Exception $e) {
                         }
                     }
                 }
 
-                // C. FECHA INDIVIDUAL
                 if (empty($datos['fecha_individual'])) {
                     $datos['fecha_individual'] = $fechaOrigen;
                 }
 
-                // D. GUARDAR EN BD
-                // Usamos la función robusta que ya corregimos en el Modelo
-                $resultado = $this->modelo->actualizarOrdenFull($id, $datos);
+                // 🔥 Le pasamos el $rolUsuario al Modelo para que sepa qué hacer con el precio
+                $resultado = $this->modelo->actualizarOrdenFull($id, $datos, $rolUsuario);
 
                 if (!$resultado) {
                     $errores++;
@@ -286,17 +298,13 @@ class ordenDetalleControlador
                     window.location.href = '$urlDestino';
                 </script>";
             }
-            exit; // Importante detener el script aquí
+            exit;
         } else {
-            // Si intentan entrar directo por URL sin POST
             header('Location: ' . BASE_URL . 'ordenDetalle');
             exit;
         }
     }
 
-    // ==========================================
-    // 4. BÚSQUEDA AVANZADA
-    // ==========================================
     public function cargarVistaBusqueda()
     {
         if (!isset($_SESSION['usuario_id'])) {
@@ -304,14 +312,14 @@ class ordenDetalleControlador
             exit;
         }
 
-        $listaClientes    = $this->modelo->obtenerTodosLosClientes();
-        $listaTecnicos    = $this->modelo->obtenerTodosLosTecnicos();
-        $listaMantos      = $this->modelo->obtenerTiposMantenimiento();
-        $listaRepuestos   = $this->modelo->obtenerListaRepuestos();
-        $listaEstados     = $this->modelo->obtenerEstados();
-        $listaCalifs      = $this->modelo->obtenerCalificaciones();
+        $listaClientes = $this->modelo->obtenerTodosLosClientes();
+        $listaTecnicos = $this->modelo->obtenerTodosLosTecnicos();
+        $listaMantos = $this->modelo->obtenerTiposMantenimiento();
+        $listaRepuestos = $this->modelo->obtenerListaRepuestos();
+        $listaEstados = $this->modelo->obtenerEstados();
+        $listaCalifs = $this->modelo->obtenerCalificaciones();
         $listaModalidades = $this->modelo->obtenerModalidades();
-        $listaFestivos    = $this->modelo->obtenerFestivos();
+        $listaFestivos = $this->modelo->obtenerFestivos();
 
         $vistaContenido = "app/views/orden/ordenBusquedaVista.php";
         require_once __DIR__ . '/../../views/plantillaVista.php';
@@ -321,30 +329,37 @@ class ordenDetalleControlador
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filtros = [
-                'remision'      => $_POST['remision']      ?? '',
-                'id_cliente'    => $_POST['id_cliente']    ?? '',
-                'id_punto'      => $_POST['id_punto']      ?? '',
+                'remision' => $_POST['remision'] ?? '',
+                'id_cliente' => $_POST['id_cliente'] ?? '',
+                'id_punto' => $_POST['id_punto'] ?? '',
                 'id_delegacion' => $_POST['id_delegacion'] ?? '',
-                'fecha_inicio'  => $_POST['fecha_inicio']  ?? '',
-                'fecha_fin'     => $_POST['fecha_fin']     ?? ''
+                'fecha_inicio' => $_POST['fecha_inicio'] ?? '',
+                'fecha_fin' => $_POST['fecha_fin'] ?? ''
             ];
 
-            $servicios        = $this->modelo->buscarOrdenesFiltros($filtros);
-            $listaClientes    = $this->modelo->obtenerTodosLosClientes();
-            $listaTecnicos    = $this->modelo->obtenerTodosLosTecnicos();
-            $listaMantos      = $this->modelo->obtenerTiposMantenimiento();
-            $listaEstados     = $this->modelo->obtenerEstados();
-            $listaCalifs      = $this->modelo->obtenerCalificaciones();
+            $servicios = $this->modelo->buscarOrdenesFiltros($filtros);
+            $listaClientes = $this->modelo->obtenerTodosLosClientes();
+            $listaTecnicos = $this->modelo->obtenerTodosLosTecnicos();
+            $listaMantos = $this->modelo->obtenerTiposMantenimiento();
+            $listaEstados = $this->modelo->obtenerEstados();
+            $listaCalifs = $this->modelo->obtenerCalificaciones();
             $listaModalidades = $this->modelo->obtenerModalidades();
 
-            // Renderizamos
+            // 🔒 SEGURIDAD HTML F12
+            $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
+            if ($rolUsuario === 5 && $servicios) {
+                foreach ($servicios as &$s) {
+                    $s['valor_servicio'] = 0;
+                    $s['valor_viaticos'] = 0;
+                }
+            }
+
             ob_start();
             if (empty($servicios)) {
                 echo '<tr><td colspan="16" class="p-4 text-center text-red-500 font-bold">No se encontraron servicios con esos filtros.</td></tr>';
             } else {
                 foreach ($servicios as $s) {
                     $idFila = $s['id_ordenes_servicio'];
-                    // Ahora sí, detalleFila tendrá acceso a $listaClientes y demás
                     include __DIR__ . '/../../views/orden/partials/detalleFila.php';
                 }
             }
@@ -355,36 +370,27 @@ class ordenDetalleControlador
         }
     }
 
-    // En ordenDetalleControlador.php -> function ajaxGuardarNovedad()
-
     public function ajaxGuardarNovedad()
     {
         ob_clean();
         header('Content-Type: application/json');
 
         $idOrden = $_POST['id_orden'] ?? 0;
-        // Ahora esperamos un arreglo de IDs desde el frontend
         $arrayNovedades = isset($_POST['novedades']) ? $_POST['novedades'] : [];
 
-        // Verificar que venga un ID válido
         if ($idOrden <= 0) {
             echo json_encode(['success' => false, 'msg' => 'ID de orden inválido']);
             exit;
         }
 
-        // Si mandaron un string vacío por accidente, lo convertimos a array vacío
         if (!is_array($arrayNovedades)) {
             $arrayNovedades = empty($arrayNovedades) ? [] : [$arrayNovedades];
         }
 
         $res = $this->modelo->guardarNovedadesOrden($idOrden, $arrayNovedades);
-
         echo json_encode(['success' => $res]);
         exit;
     }
-
-    // PASO 2: Agregar este método a la clase:
-    // ============================================================
 
     public function ajaxExportarDetalle()
     {
@@ -392,20 +398,23 @@ class ordenDetalleControlador
         header('Content-Type: application/json');
 
         $fecha = $_POST['fecha'] ?? date('Y-m-d');
-
-        // Reutilizamos exactamente el mismo método que ya usa cargarVista()
         $servicios = $this->modelo->obtenerServiciosPorFecha($fecha);
 
-        // Enriquecemos cada fila con el catálogo de novedades resuelto
-        // para que el JS no tenga que resolver IDs
         $catalogoNovedades = $this->modelo->obtenerTiposNovedad();
         $mapaNov = [];
         foreach ($catalogoNovedades as $n) {
             $mapaNov[$n['id_tipo_novedad']] = $n['nombre_novedad'];
         }
 
+        // 🔒 SEGURIDAD EXCEL
+        $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
+
         foreach ($servicios as &$s) {
-            // Resolver IDs de novedades a nombres legibles
+            if ($rolUsuario === 5) {
+                $s['valor_servicio'] = 0;
+                $s['valor_viaticos'] = 0;
+            }
+
             $idsNov = $s['ids_novedades'] ?? '';
             if (!empty($idsNov)) {
                 $ids = explode(',', $idsNov);
@@ -421,14 +430,11 @@ class ordenDetalleControlador
 
         echo json_encode([
             'status' => 'ok',
-            'datos'  => $servicios
+            'datos' => $servicios
         ]);
         exit;
     }
 
-    // ============================================================
-    // INTEGRACIÓN CON IA (GROQ API - GRATIS Y SÚPER RÁPIDA)
-    // ============================================================
     public function ajaxMejorarTextoIA()
     {
         ob_clean();
@@ -441,7 +447,6 @@ class ordenDetalleControlador
             exit;
         }
 
-        // 1. CORRECCIÓN: Respaldo con getenv() por si $_ENV está vacío por configuración del php.ini
         $apiKey = $_ENV['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY') ?? $_SERVER['GROQ_API_KEY'] ?? '';
 
         if (empty(trim($apiKey))) {
@@ -450,7 +455,6 @@ class ordenDetalleControlador
         }
 
         $url = 'https://api.groq.com/openai/v1/chat/completions';
-
         $prompt = "Eres un ingeniero supervisor de mantenimiento experto. Toma el siguiente reporte redactado por un técnico de campo y reescríbelo para que tenga una ortografía perfecta, gramática correcta y usando un lenguaje técnico, objetivo y muy profesional.\n\nReglas estrictas:\n- NO inventes repuestos, marcas o procedimientos que no estén en el texto original.\n- NO cambies ni omitas medidas (voltajes, amperajes), tiempos o códigos de error.\n- Devuelve ÚNICAMENTE el texto mejorado, sin introducciones, saludos ni comillas.\n\nTexto original: " . $textoOriginal;
 
         $data = [
@@ -470,11 +474,9 @@ class ordenDetalleControlador
             'Content-Type: application/json',
             'Authorization: Bearer ' . trim($apiKey)
         ]);
-
-        // 2. CORRECCIÓN: Apagar ambas validaciones SSL para entornos locales y añadir Timeout
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Máximo 30 segundos de espera
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -484,34 +486,23 @@ class ordenDetalleControlador
         if ($httpCode == 200) {
             $resultado = json_decode($response, true);
             $textoMejorado = $resultado['choices'][0]['message']['content'] ?? '';
-
-            echo json_encode([
-                'status' => 'ok',
-                'texto_mejorado' => trim($textoMejorado)
-            ]);
+            echo json_encode(['status' => 'ok', 'texto_mejorado' => trim($textoMejorado)]);
         } else {
-            // 3. CORRECCIÓN: Enviar el error real de cURL al frontend para saber exactamente qué pasa
             $detalleError = $error ? "Falla interna (cURL): $error" : "Groq respondió: $response";
-
-            echo json_encode([
-                'status' => 'error',
-                'msg' => "Error $httpCode. $detalleError"
-            ]);
+            echo json_encode(['status' => 'error', 'msg' => "Error $httpCode. $detalleError"]);
         }
         exit;
     }
 
-    // ==========================================
-    // NUEVO GUARDADO MASIVO VÍA JSON (CORREGIDO)
-    // ==========================================
     public function ajaxGuardarCambiosJSON()
     {
-        ob_clean(); // Limpiamos cualquier basura HTML previa
+        ob_clean();
         header('Content-Type: application/json');
 
-        // Recibimos el texto gigante y lo convertimos de vuelta a un Array de PHP
         $servicios = isset($_POST['json_data']) ? json_decode($_POST['json_data'], true) : [];
         $fechaOrigen = $_POST['fecha_origen'] ?? date('Y-m-d');
+
+        $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
 
         if (empty($servicios)) {
             echo json_encode(['status' => 'error', 'msg' => 'No se recibieron datos para guardar.']);
@@ -522,37 +513,35 @@ class ordenDetalleControlador
 
         foreach ($servicios as $id => $datos) {
 
-            // Limpiar precio
-            if (isset($datos['valor'])) {
-                $valorLimpio   = str_replace('.', '', $datos['valor']);
+            // Formateamos los números si NO es rol 5
+            if ($rolUsuario !== 5 && isset($datos['valor'])) {
+                $valorLimpio = str_replace('.', '', $datos['valor']);
                 $datos['valor'] = str_replace(',', '.', $valorLimpio);
             }
 
-            // ── NUEVO: sanitizar horas ANTES de usarlas ──
             $datos['entrada'] = $this->sanitizarHora($datos['entrada'] ?? '');
-            $datos['salida']  = $this->sanitizarHora($datos['salida']  ?? '');
+            $datos['salida'] = $this->sanitizarHora($datos['salida'] ?? '');
 
-            // Calcular tiempo si no viene
             if (!isset($datos['tiempo']) || empty($datos['tiempo'])) {
                 $datos['tiempo'] = '00:00';
                 if (!empty($datos['entrada']) && !empty($datos['salida'])) {
                     try {
                         $d1 = new DateTime($datos['entrada']);
                         $d2 = new DateTime($datos['salida']);
-                        if ($d2 < $d1) $d2->modify('+1 day');
+                        if ($d2 < $d1)
+                            $d2->modify('+1 day');
                         $datos['tiempo'] = $d1->diff($d2)->format('%H:%I');
                     } catch (Exception $e) {
                     }
                 }
             }
 
-            // Fecha individual
             if (empty($datos['fecha_individual'])) {
                 $datos['fecha_individual'] = $fechaOrigen;
             }
 
-            // GUARDAR EN BD
-            $resultado = $this->modelo->actualizarOrdenFull($id, $datos);
+            // 🔥 Le pasamos el $rolUsuario al Modelo 
+            $resultado = $this->modelo->actualizarOrdenFull($id, $datos, $rolUsuario);
 
             if (!$resultado) {
                 $errores++;
@@ -567,35 +556,23 @@ class ordenDetalleControlador
         exit;
     }
 
-/**
- * Convierte cualquier formato de hora a HH:MM
- * Acepta: "1230", "12:30", "830", "8:30", "12:30:00"
- * Devuelve siempre: "12:30" o "" si vacío
- */
-private function sanitizarHora(?string $valor): string
-{
-    if (empty(trim($valor ?? ''))) return '';
-
-    $valor = trim($valor);
-
-    // Ya tiene formato HH:MM o HH:MM:SS → tomamos solo HH:MM
-    if (preg_match('/^(\d{1,2}):(\d{2})/', $valor, $m)) {
-        $h   = min(23, (int)$m[1]);
-        $min = min(59, (int)$m[2]);
+    private function sanitizarHora(?string $valor): string
+    {
+        if (empty(trim($valor ?? '')))
+            return '';
+        $valor = trim($valor);
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $valor, $m)) {
+            $h = min(23, (int) $m[1]);
+            $min = min(59, (int) $m[2]);
+            return sprintf('%02d:%02d', $h, $min);
+        }
+        $nums = preg_replace('/\D/', '', $valor);
+        if (!$nums)
+            return '';
+        $nums = str_pad($nums, 4, '0', STR_PAD_RIGHT);
+        $nums = substr($nums, 0, 4);
+        $h = min(23, (int) substr($nums, 0, 2));
+        $min = min(59, (int) substr($nums, 2, 2));
         return sprintf('%02d:%02d', $h, $min);
     }
-
-    // Solo dígitos: "1230", "830", etc.
-    $nums = preg_replace('/\D/', '', $valor);
-    if (!$nums) return '';
-
-    // Completar a 4 dígitos
-    $nums = str_pad($nums, 4, '0', STR_PAD_RIGHT);
-    $nums = substr($nums, 0, 4);
-
-    $h   = min(23, (int)substr($nums, 0, 2));
-    $min = min(59, (int)substr($nums, 2, 2));
-
-    return sprintf('%02d:%02d', $h, $min);
-}
 }

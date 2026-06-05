@@ -35,7 +35,7 @@ class NotificacionesLogisticaControlador
     private function enviarNotificacion($destinatarioEmail, $asunto, $cuerpoMensaje)
     {
         // --- MODO PRUEBA ---
-        $redirigirCorreos = true; // PONER EN FALSE PARA PRODUCCIÓN
+        $redirigirCorreos = false; // PONER EN FALSE PARA PRODUCCIÓN
         $miCorreoDePruebas = 'aquilesbedoya37@gmail.com'; 
 
         $mail = new PHPMailer(true);

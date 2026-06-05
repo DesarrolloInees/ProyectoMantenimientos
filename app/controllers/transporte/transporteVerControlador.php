@@ -34,14 +34,15 @@ class transporteVerControlador
         $data = [];
 
         foreach ($datos as $row) {
-            // 1. Badge para el tipo de operación
-            $tipo = strtolower($row['tipo_operacion']);
-            if ($tipo == 'instalacion') {
+            // 1. Badge para el tipo de operación (AHORA EVALÚA EL ID)
+            $idOp = intval($row['id_estado_operacion']);
+            
+            if ($idOp === 5) { // 5 = Instalación
                 $badgeOp = '<span class="px-2 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-plus-circle mr-1"></i> Inst.</span>';
-            } elseif ($tipo == 'desinstalacion') {
+            } elseif ($idOp === 6) { // 6 = Desinstalación
                 $badgeOp = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-minus-circle mr-1"></i> Desinst.</span>';
-            } else {
-                $badgeOp = '<span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-exchange-alt mr-1"></i> Trasl.</span>';
+            } else { // 7 u otros = Cambio de máquina
+                $badgeOp = '<span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-exchange-alt mr-1"></i> Cambio M.</span>';
             }
 
             // 2. Info de la máquina

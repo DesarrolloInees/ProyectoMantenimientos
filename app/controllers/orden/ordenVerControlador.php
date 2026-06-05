@@ -1,10 +1,9 @@
 <?php
-
 if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
-// 1. IMPORTAR ARCHIVOS NECESARIOS (Sin esto, PHP no encuentra las clases)
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/orden/ordenVerModelo.php';
+
 class ordenVerControlador
 {
     private $modelo;
@@ -12,16 +11,11 @@ class ordenVerControlador
 
     public function __construct()
     {
-        // 2. CORRECCIÓN: Usamos la clase 'Conexion' (no 'db')
         $conexionObj = new Conexion();
         $this->db = $conexionObj->getConexion();
-
-        // 3. Instanciamos el modelo pasándole la conexión activa
         $this->modelo = new ordenVerModelo($this->db);
     }
 
-    // AGREGA ESTA FUNCIÓN AQUÍ 👇
-    // Sirve de puente: si el router busca "index", lo manda a "cargarVista"
     public function index()
     {
         $this->cargarVista();
@@ -29,17 +23,45 @@ class ordenVerControlador
 
     public function cargarVista()
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         $titulo = "Historial por Días";
+        // Cambia 'idTipoUsuario' por 'nivel_acceso'
+        $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int)$_SESSION['nivel_acceso'] : 0; 
+        
         $vistaContenido = "app/views/orden/ordenVerVista.php";
         include "app/views/plantillaVista.php";
     }
 
     public function ajaxListar()
     {
-        ob_clean();
+        // Limpiamos el buffer para asegurar que el JSON no se corrompa
+        if (ob_get_length()) {
+            ob_clean();
+        }
         header('Content-Type: application/json');
-        // Llamamos al método por fecha
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $rolUsuario = isset($_SESSION['nivel_acceso']) ? (int)$_SESSION['nivel_acceso'] : 0;
+            
+        // El modelo trae los datos limpios
         $datos = $this->modelo->listarOrdenesPorFecha();
+        
+        // SEGURIDAD: Si el rol es 5, ponemos todos los valores monetarios en cero
+        if ($rolUsuario === 5) {
+            foreach ($datos as &$dia) {
+                $dia['valor_total_dia'] = 0;
+                foreach ($dia['detalles_delegacion'] as &$det) {
+                    $det['valor'] = 0;
+                }
+            }
+        }
+        
         echo json_encode(['data' => $datos], JSON_UNESCAPED_UNICODE);
         exit;
     }

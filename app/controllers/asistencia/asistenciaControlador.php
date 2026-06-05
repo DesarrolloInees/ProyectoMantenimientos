@@ -208,7 +208,7 @@ class AsistenciaControlador
                             }
                         }
 
-                        if (!$keyOficial && $mejorPorcentaje >= 65) {
+                        if (!$keyOficial && $mejorPorcentaje >= 85) {
                             $keyOficial = $mejorCandidato;
                         }
                     }
@@ -244,7 +244,7 @@ class AsistenciaControlador
                     } else {
                         foreach (array_keys($datosOficiales) as $empClave) {
                             similar_text($empClave, $nomBdSrv, $perc);
-                            if ($perc > 80) {
+                            if ($perc > 85) {
                                 $keyOficial = $empClave;
                                 break;
                             }
@@ -374,13 +374,30 @@ class AsistenciaControlador
             $sheet->setCellValue('H1', 'INICIO TURNO');
             $sheet->setCellValue('I1', 'INICIO NOCTURNA');
 
-            $sheet->setCellValue('E2', $timeToFraction('08:00'));
+            // 🔥 AHORA SÍ: El turno dura 9 horas de corrido (8 horas de trabajo + 1 de almuerzo)
+            $sheet->setCellValue('E2', $timeToFraction('09:00')); 
             $sheet->setCellValue('F2', $timeToFraction('04:00'));
             $sheet->setCellValue('G2', $timeToFraction('02:00'));
-            $sheet->setCellValue('H2', $timeToFraction('07:00'));
+            
+            // Lógica dinámica para el Excel
+            $cargoEvaluar = mb_strtoupper($registros[0]['cargo'], 'UTF-8');
+            if (strpos($cargoEvaluar, 'TÉCNICO') !== false || strpos($cargoEvaluar, 'TECNICO') !== false) {
+                // Motorizados: Arrancan desde su primer servicio ("REAL")
+                $sheet->setCellValue('H2', 'REAL'); 
+            } else {
+                // Administrativos: Su turno SIEMPRE arranca a las 07:00
+                $sheet->setCellValue('H2', $timeToFraction('07:00'));
+            }
+
             $sheet->setCellValue('I2', $timeToFraction('19:00'));
 
-            $sheet->getStyle('E2:I2')->getNumberFormat()->setFormatCode('hh:mm');
+            // Dar formato
+            $sheet->getStyle('E2:G2')->getNumberFormat()->setFormatCode('hh:mm');
+            $sheet->getStyle('I2')->getNumberFormat()->setFormatCode('hh:mm');
+            if (!is_string($sheet->getCell('H2')->getValue())) {
+                $sheet->getStyle('H2')->getNumberFormat()->setFormatCode('hh:mm');
+            }
+            
             $sheet->getStyle('A1:A2')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle('A1:A2')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF548235');
 
@@ -458,17 +475,30 @@ class AsistenciaControlador
                         $sheet->setCellValue('C' . $fila, $valSalida);
                         $sheet->getStyle('C' . $fila)->getNumberFormat()->setFormatCode('hh:mm');
 
-                        // 🔥 CORRECCIÓN: DE LUNES A VIERNES RESTA 1 HORA (1/24), SÁBADOS (O DOMINGOS) RESTA 0 🔥
-                        $formulaTrabajado = "=IF(ISNUMBER(C{$fila}), MAX(0, C{$fila}-MAX(B{$fila}, \$H\$2) - IF(WEEKDAY(A{$fila},2)<6, 1/24, 0)), \"\")";
+                        // 🔥 1. FÓRMULA DE TOTAL TRABAJADO (Queda igual, duración pura)
+                        $formulaTrabajado = "=IF(AND(ISNUMBER(B{$fila}), ISNUMBER(C{$fila})), MAX(0, C{$fila} - IF(ISTEXT(\$H\$2), B{$fila}, MAX(B{$fila}, \$H\$2))), \"\")";
                         $sheet->setCellValue('D' . $fila, $formulaTrabajado);
                         $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
 
-                        $formulaExtras = "=IF(ISNUMBER(D{$fila}), IF((D{$fila}-IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2))>\$G\$2, \$G\$2, IF(D{$fila}>IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2), D{$fila}-IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2), 0)), \"\")";
-                        $sheet->setCellValue('E' . $fila, $formulaExtras);
-                        $sheet->getStyle('E' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
+                        // 🔥 2. TEXTOS DE FÓRMULAS BASE PARA SEPARAR DIURNAS DE NOCTURNAS
+                        // Primero determinamos el límite del día (9h L-V, 4h Sábados)
+                        $limiteHoras = "IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2)";
+                        // Calculamos cuántas extras reales se hicieron (Totales)
+                        $totalExtrasBruto = "MAX(0, D{$fila} - $limiteHoras)";
+                        // Le aplicamos el tope máximo de extras (Celda G2)
+                        $totalExtrasConTope = "IF($totalExtrasBruto > \$G\$2, \$G\$2, $totalExtrasBruto)";
 
-                        $sheet->setCellValue('F' . $fila, "=IF(ISNUMBER(C{$fila}), MAX(0, C{$fila}-\$I\$2), \"\")");
+                        // 🔥 3. FÓRMULA EXTRAS NOCTURNAS (Columna F)
+                        // Calcula el tiempo después de las 19:00, pero SIN pasarse de las extras totales permitidas
+                        $formulaNocturnas = "=IF(ISNUMBER(C{$fila}), MAX(0, MIN($totalExtrasConTope, MAX(0, C{$fila}-\$I\$2))), \"\")";
+                        $sheet->setCellValue('F' . $fila, $formulaNocturnas);
                         $sheet->getStyle('F' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
+
+                        // 🔥 4. FÓRMULA EXTRAS DIURNAS (Columna E)
+                        // A las extras totales le restamos las extras que ya se pagarán como nocturnas
+                        $formulaExtrasDiurnas = "=IF(ISNUMBER(D{$fila}), MAX(0, $totalExtrasConTope - F{$fila}), \"\")";
+                        $sheet->setCellValue('E' . $fila, $formulaExtrasDiurnas);
+                        $sheet->getStyle('E' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
                     } else {
                         $sheet->setCellValue('C' . $fila, 'FALTA SALIDA');
 

@@ -1,5 +1,10 @@
-<?php if (!defined('ENTRADA_PRINCIPAL'))
-    die("Acceso denegado."); ?>
+<?php
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
+
+// 🔒 SEGURIDAD: Capturamos el nivel de acceso actual
+$rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] : 0;
+?>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -56,6 +61,16 @@
         align-items: center;
         margin: 1.5rem 0;
     }
+
+    /* 🔒 MAGIA CSS PARA OCULTAR LA COLUMNA DE PRECIOS SI ES ROL 5 */
+    <?php if ($rolActual === 5): ?>
+        /* La columna "Valor" es la 6ta en la tabla */
+        #reporteTable th:nth-child(6),
+        #reporteTable td:nth-child(6) {
+            display: none !important;
+        }
+
+    <?php endif; ?>
 </style>
 
 <div class="w-full px-4 md:px-6">
@@ -108,15 +123,19 @@
     </div>
 
     <?php if (!empty($datosReporte)): ?>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-<?= ($rolActual === 5) ? '2' : '3' ?> gap-4 mb-6">
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <p class="text-sm text-blue-600 font-bold uppercase">Total Servicios</p>
                 <p class="text-2xl font-bold text-gray-800"><?= count($datosReporte) ?></p>
             </div>
-            <div class="bg-green-50 p-4 rounded-lg border border-green-100">
-                <p class="text-sm text-green-600 font-bold uppercase">Valor Total (Ingresos)</p>
-                <p class="text-2xl font-bold text-gray-800">$<?= number_format($totalValor, 2) ?></p>
-            </div>
+
+            <?php if ($rolActual !== 5): ?>
+                <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                    <p class="text-sm text-green-600 font-bold uppercase">Valor Total (Ingresos)</p>
+                    <p class="text-2xl font-bold text-gray-800">$<?= number_format($totalValor, 2) ?></p>
+                </div>
+            <?php endif; ?>
+
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <p class="text-sm text-gray-500 font-bold uppercase">Rango Consultado</p>
                 <p class="text-sm font-medium text-gray-800 mt-1"><?= date('d/m/Y', strtotime($filtros['fecha_inicio'])) ?>
@@ -173,7 +192,7 @@
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
 <script>
-    // Recibimos los datos COMPLETOS de PHP
+    // Recibimos los datos COMPLETOS de PHP (Si es rol 5, ya vienen con valor_servicio = 0)
     const datosServicios = <?= json_encode($datosExcel ?? []) ?>;
 
     $(document).ready(function () {
@@ -195,58 +214,57 @@
         }
     });
 
-
     function calcularHorasExtra(horaEntrada, horaSalida, fechaStr) {
-    let horas = { hed: 0, hen: 0, hedf: 0 };
-    
-    // Validamos que existan horas válidas
-    if (!horaEntrada || !horaSalida || horaEntrada === "null" || horaSalida === "null" || horaEntrada === "" || horaSalida === "") {
-        return horas;
-    }
+        let horas = { hed: 0, hen: 0, hedf: 0 };
 
-    // Convertimos horas a minutos totales para calcular fácil
-    const [hE, mE] = horaEntrada.split(':').map(Number);
-    const [hS, mS] = horaSalida.split(':').map(Number);
-    let inicio = hE * 60 + mE;
-    let fin = hS * 60 + mS;
-
-    // 1. Identificamos si es un día "especial" (Domingo o Festivo de tu tabla)
-    let fecha = new Date(fechaStr + 'T00:00:00');
-    let esEspecial = (fecha.getDay() === 0) || festivosDB.includes(fechaStr);
-
-    if (esEspecial) {
-        // REGLA CRACK: En festivos/domingos, TODO el tiempo trabajado va a H.E.D.F
-        // No importa si fue por la mañana o por la tarde.
-        let duracionMinutos = fin - inicio;
-        if (duracionMinutos > 0) {
-            horas.hedf = duracionMinutos / 60;
+        // Validamos que existan horas válidas
+        if (!horaEntrada || !horaSalida || horaEntrada === "null" || horaSalida === "null" || horaEntrada === "" || horaSalida === "") {
+            return horas;
         }
-    } else {
-        // REGLA DÍAS NORMALES: Solo cuenta después de las 17:00
-        const limite17 = 17 * 60; // 5:00 PM
-        const limite19 = 19 * 60; // 7:00 PM
 
-        if (fin > limite17) {
-            // Extra Diurna (17:00 a 19:00)
-            let comienzoD = Math.max(inicio, limite17);
-            let finalD = Math.min(fin, limite19);
-            if (finalD > comienzoD) {
-                horas.hed = (finalD - comienzoD) / 60;
+        // Convertimos horas a minutos totales para calcular fácil
+        const [hE, mE] = horaEntrada.split(':').map(Number);
+        const [hS, mS] = horaSalida.split(':').map(Number);
+        let inicio = hE * 60 + mE;
+        let fin = hS * 60 + mS;
+
+        // 1. Identificamos si es un día "especial" (Domingo o Festivo de tu tabla)
+        let fecha = new Date(fechaStr + 'T00:00:00');
+        let esEspecial = (fecha.getDay() === 0) || festivosDB.includes(fechaStr);
+
+        if (esEspecial) {
+            // REGLA CRACK: En festivos/domingos, TODO el tiempo trabajado va a H.E.D.F
+            // No importa si fue por la mañana o por la tarde.
+            let duracionMinutos = fin - inicio;
+            if (duracionMinutos > 0) {
+                horas.hedf = duracionMinutos / 60;
             }
+        } else {
+            // REGLA DÍAS NORMALES: Solo cuenta después de las 17:00
+            const limite17 = 17 * 60; // 5:00 PM
+            const limite19 = 19 * 60; // 7:00 PM
 
-            // Extra Nocturna (19:00 en adelante)
-            if (fin > limite19) {
-                let comienzoN = Math.max(inicio, limite19);
-                let finalN = fin;
-                if (finalN > comienzoN) {
-                    horas.hen = (finalN - comienzoN) / 60;
+            if (fin > limite17) {
+                // Extra Diurna (17:00 a 19:00)
+                let comienzoD = Math.max(inicio, limite17);
+                let finalD = Math.min(fin, limite19);
+                if (finalD > comienzoD) {
+                    horas.hed = (finalD - comienzoD) / 60;
+                }
+
+                // Extra Nocturna (19:00 en adelante)
+                if (fin > limite19) {
+                    let comienzoN = Math.max(inicio, limite19);
+                    let finalN = fin;
+                    if (finalN > comienzoN) {
+                        horas.hen = (finalN - comienzoN) / 60;
+                    }
                 }
             }
         }
-    }
 
-    return horas;
-}
+        return horas;
+    }
 
     // Recibimos los festivos parametrizados desde la base de datos
     const festivosDB = <?= json_encode($listaFestivos ?? []) ?>;
@@ -349,14 +367,12 @@
 
                 // 3. LOGICA RESTAURADA: Identificar la primera entrada y última salida reales
                 if (horaEnt && horaEnt !== "null" && horaEnt !== "") {
-                    // Si la hora de este servicio es menor que la que teníamos guardada, la reemplazamos
                     if (horaEnt < resumen[tecnico].fechas[fecha].primera_entrada) {
                         resumen[tecnico].fechas[fecha].primera_entrada = horaEnt;
                     }
                 }
 
                 if (horaSal && horaSal !== "null" && horaSal !== "") {
-                    // Si la hora de este servicio es mayor que la que teníamos guardada, la reemplazamos
                     if (horaSal > resumen[tecnico].fechas[fecha].ultima_salida) {
                         resumen[tecnico].fechas[fecha].ultima_salida = horaSal;
                     }
@@ -370,36 +386,21 @@
             // ---------------------------------------------------------
             // PASO 2.5: ORDENAR TÉCNICOS SEGÚN LISTA PERSONALIZADA
             // ---------------------------------------------------------
-            // Usamos palabras clave ÚNICAS (como apellidos o nombres raros) en el orden exacto que necesitas.
             const ordenPersonalizado = [
-                "MURGAS",      // 1. ANDRES CAMILO MURGAS GAMARRA
-                "JHONY",       // 2. JHONY ALEXANDER HERNANDEZ
-                "MAICOL",      // 3. MAICOL ANDRES GUZMAN
-                "RUIZ",        // 4. JOSE DANIEL RUIZ
-                "ORJUELA",     // 5. GIOVANNY ALEXANDER ORJUELA
-                "FORERO",      // 6. DANIEL FERNANDO FORERO
-                "ESPINOSA",    // 7. JHON SEBASTIAN ESPINOSA
-                "MAURICIO",    // 8. MAURICIO RODRIGUEZ NIÑO
-                "JHONATAN",    // 9. JHONATAN ANDRES SEPULVEDA
-                "ORTIZ",       // 10. JUAN DAVID ORTIZ CANO
-                "CERVERA",     // 11. BRAYAN CERVERA POLO
-                "VILORIA",     // 12. EDINSON RODRIGUEZ VILORIA
-                "SAAVEDRA",    // 13. LUIS ALFREDO SAAVEDRA
-                "BENAVIDES"    // 14. NELSON JAVIER BENAVIDES
+                "MURGAS", "JHONY", "MAICOL", "RUIZ", "ORJUELA", "FORERO",
+                "ESPINOSA", "MAURICIO", "JHONATAN", "ORTIZ", "CERVERA",
+                "VILORIA", "SAAVEDRA", "BENAVIDES"
             ];
 
             let tecnicosOrdenados = Object.keys(resumen);
 
             tecnicosOrdenados.sort((a, b) => {
-                // Quitamos tildes y pasamos a mayúsculas para que la búsqueda sea perfecta
                 let nombreA = a.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
                 let nombreB = b.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
-                // Buscamos si el nombre de la BD CONTIENE la palabra clave
                 let indexA = ordenPersonalizado.findIndex(clave => nombreA.includes(clave.toUpperCase()));
                 let indexB = ordenPersonalizado.findIndex(clave => nombreB.includes(clave.toUpperCase()));
 
-                // Si no encuentra coincidencia, lo manda al final
                 if (indexA === -1) indexA = 999;
                 if (indexB === -1) indexB = 999;
 
@@ -417,7 +418,6 @@
 
             tecnicosOrdenados.forEach(nombreTecnico => {
                 let datos = resumen[nombreTecnico];
-
                 hayDatos = true;
                 let totalTecnico = Object.values(datos.contadoresTipos).reduce((a, b) => a + b, 0);
                 let fila = [nombreTecnico, totalTecnico];
@@ -469,14 +469,8 @@
             }
 
             let wsResumen = XLSX.utils.aoa_to_sheet(matrizResumenGeneral);
-            let wscols = [{
-                wch: 40
-            }, {
-                wch: 20
-            }];
-            columnasTipos.forEach(() => wscols.push({
-                wch: 20
-            }));
+            let wscols = [{ wch: 40 }, { wch: 20 }];
+            columnasTipos.forEach(() => wscols.push({ wch: 20 }));
             wsResumen['!cols'] = wscols;
 
             XLSX.utils.book_append_sheet(workbook, wsResumen, "RESUMEN GENERAL");
@@ -484,28 +478,15 @@
             // =========================================================
             // PASO 3.6: CREAR NUEVA HOJA "TABLA DE LIQUIDACIÓN" (SEGÚN IMÁGEN)
             // =========================================================
-            
-            // 👇 ESTAS SON LAS 3 LÍNEAS QUE FALTABAN 👇
             const fechaDesde = document.getElementById('fecha_inicio').value;
             const fechaHasta = document.getElementById('fecha_fin').value;
             const metaRequerida = calcularMetaPeriodo(fechaDesde, fechaHasta);
-            // 👆 =================================== 👆
 
             let matrizLiquidacion = [];
 
-            // Encabezados de la tabla
             matrizLiquidacion.push([
-                'NOMBRE DEL TÉCNICO',
-                'SERVICIOS * MES',
-                'PP*1.5',
-                'MC*1.5',
-                'F+PB',
-                'KS + OTROS',
-                'TOTAL',
-                'TIME',
-                'H.E.D',
-                'H.E.N',
-                'H.E.D.F'
+                'NOMBRE DEL TÉCNICO', 'SERVICIOS * MES', 'PP*1.5', 'MC*1.5',
+                'F+PB', 'KS + OTROS', 'TOTAL', 'TIME', 'H.E.D', 'H.E.N', 'H.E.D.F'
             ]);
 
             let totalServiciosTodos = 0;
@@ -515,13 +496,12 @@
                 let datos = resumen[nombreTecnico];
                 let contadores = datos.contadoresTipos;
 
-                let serviciosMes = 0; // Base: sin multiplicar
-                let pp_15 = 0;        // Preventivo Profundo x 1.5
-                let mc_15 = 0;        // Correctivo x 1.5
-                let f_pb = 0;         // Fallidos + Preventivos Básicos
-                let ks_otros = 0;     // Kisan u otros
+                let serviciosMes = 0;
+                let pp_15 = 0;
+                let mc_15 = 0;
+                let f_pb = 0;
+                let ks_otros = 0;
 
-                // Clasificamos y aplicamos la ponderación
                 for (const [tipo, cantidad] of Object.entries(contadores)) {
                     let tipoUp = tipo.toUpperCase();
                     serviciosMes += cantidad;
@@ -537,13 +517,9 @@
                     }
                 }
 
-                // Suma total ponderada
                 let totalSuma = pp_15 + mc_15 + f_pb + ks_otros;
-
-                // Calculamos los días trabajados contando las fechas únicas en su registro
                 let diasTrabajados = Object.keys(datos.fechas).length;
 
-                // Para calcular promedios luego
                 if (serviciosMes > 0) {
                     totalServiciosTodos += serviciosMes;
                     tecnicosConServicios++;
@@ -564,32 +540,20 @@
                     ks_otros || "",
                     totalSuma || "",
                     diasTrabajados + " DIAS",
-                    datos.totalHED > 0 ? datos.totalHED.toFixed(1) : "",  // H.E.D
-                    datos.totalHEN > 0 ? datos.totalHEN.toFixed(1) : "",  // H.E.N
-                    datos.totalHEDF > 0 ? datos.totalHEDF.toFixed(1) : "" // H.E.D.F
+                    datos.totalHED > 0 ? datos.totalHED.toFixed(1) : "",
+                    datos.totalHEN > 0 ? datos.totalHEN.toFixed(1) : "",
+                    datos.totalHEDF > 0 ? datos.totalHEDF.toFixed(1) : ""
                 ]);
             });
 
-            // Promedio dinámico (sin quemar el mes de abril)
-            // 1. Primero, vamos a obtener el nombre del mes dinámicamente según la fecha filtrada
             const fechaObj = new Date(fechaDesde + 'T00:00:00');
             const nombreMes = fechaObj.toLocaleString('es-ES', { month: 'long' }).toUpperCase();
 
-            // 2. Localiza donde calculabas el "promedioGeneral" y cámbialo por esto:
-            // (Ya no calculamos el promedio de lo hecho, sino que usamos la metaRequerida)
-
-            // 3. Modifica la fila del pie de página para que se vea igualita a la imagen:
-            matrizLiquidacion.push(['']); // Espacio en blanco
-
-            // Fila verde de la imagen: "PROMEDIO DE SERVICIOS PARA [MES] [META]"
+            matrizLiquidacion.push(['']);
             matrizLiquidacion.push([`PROMEDIO DE SERVICIOS PARA ${nombreMes} ${metaRequerida}`]);
 
-            
-
-            // Convertimos la matriz en hoja de cálculo
             let wsLiquidacion = XLSX.utils.aoa_to_sheet(matrizLiquidacion);
 
-            // Ajustamos el ancho de las columnas para que se vea bien
             wsLiquidacion['!cols'] = [
                 { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 12 },
                 { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
@@ -602,12 +566,7 @@
                 { s: { r: indexPromedio, c: 0 }, e: { r: indexPromedio, c: 10 } }
             ];
 
-            // Añadimos la nueva hoja al archivo Excel
             XLSX.utils.book_append_sheet(workbook, wsLiquidacion, "REPORTE DETALLADO DE SERVICIOS");
-
-            // =========================================================
-            // FIN PASO 3.6
-            // =========================================================
 
             // ---------------------------------------------------------
             // PASO 4: CREAR HOJAS INDIVIDUALES POR TÉCNICO
@@ -633,40 +592,13 @@
                 });
 
                 let ws = XLSX.utils.aoa_to_sheet(matriz);
-                ws['!cols'] = [{
-                        wch: 12
-                    }, {
-                        wch: 18
-                    }, {
-                        wch: 18
-                    }, {
-                        wch: 10
-                    }, {
-                        wch: 10
-                    },
-                    {
-                        wch: 10
-                    }, {
-                        wch: 10
-                    }, {
-                        wch: 10
-                    }, {
-                        wch: 20
-                    }
+                ws['!cols'] = [
+                    { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 10 },
+                    { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 20 }
                 ];
-                ws['!merges'] = [{
-                    s: {
-                        r: 1,
-                        c: 0
-                    },
-                    e: {
-                        r: 1,
-                        c: 7
-                    }
-                }];
+                ws['!merges'] = [{ s: { r: 1, c: 0 }, e: { r: 1, c: 7 } }];
 
                 let nombreHoja = nombreTecnico.replace(/[\\/?*\[\]]/g, "").substring(0, 30);
-                // Asegurar que el nombre de la hoja no esté vacío
                 if (!nombreHoja) nombreHoja = "Técnico";
                 XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
             });
