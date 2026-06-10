@@ -12,22 +12,26 @@ class transporteVerModelo
     public function obtenerInstalaciones()
     {
         try {
-            // AQUÍ ESTÁ EL CAMBIO: Pedimos i.id_estado_operacion en lugar del viejo
             $sql = "SELECT 
                         i.id_instalacion, 
-                        i.id_estado_operacion, 
-                        i.fecha_solicitud, 
-                        i.serial_maquina, 
+                        i.fecha_instalacion, 
+                        i.categoria_servicio,
+                        i.tipo_servicio_nombre,
+                        i.es_maquina,
+                        i.serial_maquina,
+                        i.producto_otro,
                         t.nombre_tecnico, 
                         tm.nombre_tipo_maquina, 
                         c.nombre_cliente, 
+                        i.cliente_destino_texto,
                         p.nombre_punto,
+                        i.punto_destino_texto,
                         i.estado
                     FROM instalaciones_desinstalaciones i
                     LEFT JOIN tecnico t ON i.id_tecnico = t.id_tecnico
                     LEFT JOIN tipo_maquina tm ON i.id_tipo_maquina = tm.id_tipo_maquina
-                    LEFT JOIN punto p ON i.id_punto = p.id_punto
-                    LEFT JOIN cliente c ON p.id_cliente = c.id_cliente
+                    LEFT JOIN cliente c ON i.id_cliente_destino = c.id_cliente
+                    LEFT JOIN punto p ON i.id_punto_destino = p.id_punto
                     WHERE i.estado = 1
                     ORDER BY i.id_instalacion DESC";
 
@@ -44,7 +48,6 @@ class transporteVerModelo
     public function eliminarInstalacion($id)
     {
         try {
-            // Hacemos borrado lógico por seguridad, si prefieres borrar de raíz cambia a DELETE FROM
             $sql = "UPDATE instalaciones_desinstalaciones SET estado = 0 WHERE id_instalacion = :id";
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);

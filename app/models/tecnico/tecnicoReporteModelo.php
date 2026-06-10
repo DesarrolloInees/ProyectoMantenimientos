@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 class tecnicoReporteModelo
 {
@@ -112,6 +113,60 @@ class tecnicoReporteModelo
         }
     }
 
+    /**
+     * Obtiene la delegación de un punto
+     */
+    public function obtenerIdDelegacionPunto($idPunto)
+    {
+        try {
+            $sql = "SELECT id_delegacion FROM punto WHERE id_punto = :id LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id' => $idPunto]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $res ? (int) $res['id_delegacion'] : 0;
+        } catch (PDOException $e) {
+            return 0;
+        }
+    }
+
+    /**
+ * Obtiene valor de un parámetro
+ */
+private function obtenerValorParametro($clave)
+{
+    try {
+        $sql = "SELECT valor FROM parametros WHERE clave = :clave LIMIT 1";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':clave' => $clave]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $res ? floatval($res['valor']) : 0;
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/**
+ * Verifica si el técnico ya recibió viáticos hoy
+ */
+public function tecnicoYaCobroViaticosHoy($idTecnico, $fecha, $idOrdenActual = null)
+{
+    $sql = "SELECT COUNT(*) as total 
+            FROM ordenes_servicio 
+            WHERE id_tecnico = :id_tec 
+                AND fecha_visita = :fecha 
+                AND valor_viaticos > 0";
+    if ($idOrdenActual) {
+        $sql .= " AND id_ordenes_servicio != :id_orden";
+    }
+    $stmt = $this->conn->prepare($sql);
+    $params = [':id_tec' => $idTecnico, ':fecha' => $fecha];
+    if ($idOrdenActual) {
+        $params[':id_orden'] = $idOrdenActual;
+    }
+    $stmt->execute($params);
+    return $stmt->fetchColumn() > 0;
+}
+
     // --- NUEVA FUNCIÓN: Guardar ruta de la imagen ---
     public function guardarEvidenciaFoto($idOrden, $tipoEvidencia, $rutaArchivo)
     {
@@ -222,94 +277,118 @@ class tecnicoReporteModelo
 
     // Guardar la gestión del técnico (UPDATE con cálculo de tarifa automático)
     public function guardarReporteTecnico($datos)
-    {
-        try {
-            // ==========================================================
-            // 1. OBTENER DATOS PARA CALCULAR LA TARIFA (Silencioso)
-            // ==========================================================
-            $sqlInfo = "SELECT os.fecha_visita, p.id_modalidad, m.id_tipo_maquina
-                        FROM ordenes_servicio os
-                        LEFT JOIN punto p ON os.id_punto = p.id_punto
-                        LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
-                        WHERE os.id_ordenes_servicio = :id_orden";
-            $stmtInfo = $this->conn->prepare($sqlInfo);
-            $stmtInfo->execute([':id_orden' => $datos['id_ordenes_servicio']]);
-            $infoOrden = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+{
+    try {
+        // 1. Obtener datos de la orden (fecha, punto, modalidad, tipo máquina)
+        $sqlInfo = "SELECT os.fecha_visita, os.id_punto, p.id_modalidad, m.id_tipo_maquina
+                    FROM ordenes_servicio os
+                    LEFT JOIN punto p ON os.id_punto = p.id_punto
+                    LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
+                    WHERE os.id_ordenes_servicio = :id_orden";
+        $stmtInfo = $this->conn->prepare($sqlInfo);
+        $stmtInfo->execute([':id_orden' => $datos['id_ordenes_servicio']]);
+        $infoOrden = $stmtInfo->fetch(PDO::FETCH_ASSOC);
 
-            $valorServicio = 0;
+        $valorServicio = 0;
+        $esFueraDelegacion = 0;
+        $diasViaticos = 0;
+        $valorViaticos = 0;
 
-            if ($infoOrden) {
-                // Sacamos el año de la visita
-                $anio = !empty($infoOrden['fecha_visita']) ? date('Y', strtotime($infoOrden['fecha_visita'])) : date('Y');
-                $idModalidad = !empty($infoOrden['id_modalidad']) ? $infoOrden['id_modalidad'] : 1; // 1 = Urbano por defecto
+        if ($infoOrden) {
+            // --- Calcular tarifa base (igual que en ordenCrearModelo) ---
+            $anio = date('Y', strtotime($infoOrden['fecha_visita']));
+            $idModalidad = $infoOrden['id_modalidad'] ?? 1;
+            $idTipoMaquina = $infoOrden['id_tipo_maquina'];
+            $idTipoMantenimiento = $datos['id_tipo_mantenimiento'];
 
-                // Consultamos el precio exacto
-                $sqlTarifa = "SELECT precio FROM tarifa 
-                            WHERE id_tipo_maquina = :tipo_maq
-                                AND id_tipo_mantenimiento = :tipo_manto
-                                AND id_modalidad = :modalidad
-                                AND año_vigencia = :anio
-                            LIMIT 1";
-                $stmtTarifa = $this->conn->prepare($sqlTarifa);
-                $stmtTarifa->execute([
-                    ':tipo_maq'   => $infoOrden['id_tipo_maquina'],
-                    ':tipo_manto' => $datos['id_tipo_mantenimiento'],
-                    ':modalidad'  => $idModalidad,
-                    ':anio'       => $anio
-                ]);
+            $sqlTarifa = "SELECT precio FROM tarifa 
+                          WHERE id_tipo_maquina = :tipo_maq
+                              AND id_tipo_mantenimiento = :tipo_manto
+                              AND id_modalidad = :modalidad
+                              AND año_vigencia = :anio
+                          LIMIT 1";
+            $stmtTarifa = $this->conn->prepare($sqlTarifa);
+            $stmtTarifa->execute([
+                ':tipo_maq'   => $idTipoMaquina,
+                ':tipo_manto' => $idTipoMantenimiento,
+                ':modalidad'  => $idModalidad,
+                ':anio'       => $anio
+            ]);
+            $resTarifa = $stmtTarifa->fetch(PDO::FETCH_ASSOC);
+            if ($resTarifa && $resTarifa['precio'] !== false) {
+                $valorServicio = floatval($resTarifa['precio']);
+            }
 
-                $resTarifa = $stmtTarifa->fetch(PDO::FETCH_ASSOC);
-                if ($resTarifa && $resTarifa['precio'] !== false) {
-                    $valorServicio = $resTarifa['precio'];
+            // --- Calcular viáticos (SOLO basado en delegación, sin importar modalidad) ---
+            $delegacionesPrincipales = [1, 2, 3, 4];
+            $idDelegacionPunto = $this->obtenerIdDelegacionPunto($infoOrden['id_punto']);
+
+            if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
+                $esFueraDelegacion = 1;
+
+                // Verificar si el técnico ya recibió viáticos hoy (evita doble pago)
+                $yaCobroHoy = $this->tecnicoYaCobroViaticosHoy(
+                    $datos['id_tecnico'],
+                    $infoOrden['fecha_visita'],
+                    $datos['id_ordenes_servicio']
+                );
+
+                if (!$yaCobroHoy) {
+                    $diasViaticos = 1; // Puedes leerlo del formulario si permites varios días
+                    $tarifaViatico = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
+                    $valorViaticos = $diasViaticos * $tarifaViatico;
                 }
             }
-            // ==========================================================
-
-            // ==========================================================
-            // 2. AHORA SÍ, ACTUALIZAMOS TODO EN LA ORDEN (Sin la columna vieja)
-            // ==========================================================
-            $sql = "UPDATE ordenes_servicio SET 
-                        numero_remision = :remision,
-                        id_tipo_mantenimiento = :id_tipo_manto,
-                        valor_servicio = :valor_servicio,
-                        hora_entrada = :entrada,
-                        hora_salida = :salida,
-                        tiempo_servicio = :tiempo,
-                        actividades_realizadas = :actividades,
-                        id_estado_maquina = :id_estado,
-                        id_calificacion = :id_calif,
-                        tiene_novedad = :tiene_novedad,
-                        detalle_novedad = :detalle_novedad,
-                        soporte_remoto = :soporte_remoto,
-                        repuestos_tecnico = :repuestos_tecnico,
-                        estado = 1 /* Pasa a estado ejecutado/revisión */
-                    WHERE id_ordenes_servicio = :id_orden 
-                    AND id_tecnico = :id_tecnico";
-
-            $stmt = $this->conn->prepare($sql);
-            return $stmt->execute([
-                ':remision'          => $datos['numero_remision'],
-                ':id_tipo_manto'     => $datos['id_tipo_mantenimiento'],
-                ':valor_servicio'    => $valorServicio,
-                ':entrada'           => $datos['hora_entrada'],
-                ':salida'            => $datos['hora_salida'],
-                ':tiempo'            => $datos['tiempo_servicio'],
-                ':actividades'       => $datos['actividades_realizadas'],
-                ':id_estado'         => $datos['id_estado_maquina'],
-                ':id_calif'          => $datos['id_calificacion'],
-                ':tiene_novedad'     => $datos['tiene_novedad'],
-                ':detalle_novedad'   => $datos['detalle_novedad'],
-                ':soporte_remoto'    => $datos['soporte_remoto'],
-                ':repuestos_tecnico' => $datos['repuestos_tecnico'],
-                ':id_orden'          => $datos['id_ordenes_servicio'],
-                ':id_tecnico'        => $datos['id_tecnico']
-            ]);
-        } catch (PDOException $e) {
-            // Regresamos al log normal para que no se vea feo si llega a pasar algo
-            error_log("Error guardarReporteTecnico: " . $e->getMessage());
-            return false;
         }
+
+        // 2. Actualizar la orden con los valores calculados
+        $sql = "UPDATE ordenes_servicio SET 
+                    numero_remision = :remision,
+                    id_tipo_mantenimiento = :id_tipo_manto,
+                    valor_servicio = :valor_servicio,
+                    es_fuera_delegacion = :es_fuera,
+                    dias_viaticos = :dias_viaticos,
+                    valor_viaticos = :valor_viaticos,
+                    hora_entrada = :entrada,
+                    hora_salida = :salida,
+                    tiempo_servicio = :tiempo,
+                    actividades_realizadas = :actividades,
+                    id_estado_maquina = :id_estado,
+                    id_calificacion = :id_calif,
+                    tiene_novedad = :tiene_novedad,
+                    detalle_novedad = :detalle_novedad,
+                    soporte_remoto = :soporte_remoto,
+                    repuestos_tecnico = :repuestos_tecnico,
+                    estado = 1
+                WHERE id_ordenes_servicio = :id_orden 
+                AND id_tecnico = :id_tecnico";
+
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([
+            ':remision'          => $datos['numero_remision'],
+            ':id_tipo_manto'     => $datos['id_tipo_mantenimiento'],
+            ':valor_servicio'    => $valorServicio,
+            ':es_fuera'          => $esFueraDelegacion,
+            ':dias_viaticos'     => $diasViaticos,
+            ':valor_viaticos'    => $valorViaticos,
+            ':entrada'           => $datos['hora_entrada'],
+            ':salida'            => $datos['hora_salida'],
+            ':tiempo'            => $datos['tiempo_servicio'],
+            ':actividades'       => $datos['actividades_realizadas'],
+            ':id_estado'         => $datos['id_estado_maquina'],
+            ':id_calif'          => $datos['id_calificacion'],
+            ':tiene_novedad'     => $datos['tiene_novedad'],
+            ':detalle_novedad'   => $datos['detalle_novedad'],
+            ':soporte_remoto'    => $datos['soporte_remoto'],
+            ':repuestos_tecnico' => $datos['repuestos_tecnico'],
+            ':id_orden'          => $datos['id_ordenes_servicio'],
+            ':id_tecnico'        => $datos['id_tecnico']
+        ]);
+    } catch (PDOException $e) {
+        error_log("Error guardarReporteTecnico: " . $e->getMessage());
+        return false;
     }
+}
 
     // --- NUEVA FUNCIÓN: Guardar datos complementarios de la orden (Relación 1 a 1) ---
     public function guardarDatosComplementarios($datosComp)

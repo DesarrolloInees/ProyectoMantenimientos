@@ -16,7 +16,6 @@ class transporteVerControlador
         $this->modelo = new transporteVerModelo($this->db);
     }
 
-    // --- CARGAR LA VISTA PRINCIPAL ---
     public function index()
     {
         $titulo = "Gestión de Transportes";
@@ -24,7 +23,6 @@ class transporteVerControlador
         include "app/views/plantillaVista.php";
     }
 
-    // --- AJAX: LLENAR EL DATATABLE ---
     public function ajaxListar()
     {
         $this->limpiarBuffer();
@@ -34,24 +32,34 @@ class transporteVerControlador
         $data = [];
 
         foreach ($datos as $row) {
-            // 1. Badge para el tipo de operación (AHORA EVALÚA EL ID)
-            $idOp = intval($row['id_estado_operacion']);
+            // 1. Badge para la Categoría (Prosegur / Inees)
+            $cat = $row['categoria_servicio'];
+            $tipoServicio = htmlspecialchars($row['tipo_servicio_nombre'] ?: 'N/A');
             
-            if ($idOp === 5) { // 5 = Instalación
-                $badgeOp = '<span class="px-2 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-plus-circle mr-1"></i> Inst.</span>';
-            } elseif ($idOp === 6) { // 6 = Desinstalación
-                $badgeOp = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-minus-circle mr-1"></i> Desinst.</span>';
-            } else { // 7 u otros = Cambio de máquina
-                $badgeOp = '<span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-exchange-alt mr-1"></i> Cambio M.</span>';
+            if ($cat === 'Prosegur_Cobro') {
+                $badgeOp = '<span class="px-2 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-dollar-sign mr-1"></i> P. Cobro</span><br><small class="text-gray-500">'.$tipoServicio.'</small>';
+            } elseif ($cat === 'Prosegur_NoCobro') {
+                $badgeOp = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-handshake mr-1"></i> P. Sin Cobro</span><br><small class="text-gray-500">'.$tipoServicio.'</small>';
+            } else { // Inees
+                $badgeOp = '<span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full uppercase"><i class="fas fa-building mr-1"></i> Inees</span><br><small class="text-gray-500">'.$tipoServicio.'</small>';
             }
 
-            // 2. Info de la máquina
-            $maquinaInfo = "<strong>" . htmlspecialchars($row['serial_maquina'] ?: 'N/A') . "</strong><br><small class='text-gray-500'>" . htmlspecialchars($row['nombre_tipo_maquina']) . "</small>";
+            // 2. Info del Producto (Evalúa si es máquina o texto libre)
+            if ($row['es_maquina'] == 1) {
+                $serial = htmlspecialchars($row['serial_maquina'] ?: 'Sin serial');
+                $tipoMaq = htmlspecialchars($row['nombre_tipo_maquina'] ?: 'Tipo no definido');
+                $productoInfo = "<strong><i class='fas fa-hdd text-gray-400'></i> $serial</strong><br><small class='text-gray-500'>$tipoMaq</small>";
+            } else {
+                $otro = htmlspecialchars($row['producto_otro'] ?: 'No especificado');
+                $productoInfo = "<strong><i class='fas fa-box-open text-gray-400'></i> Otros:</strong><br><small class='text-gray-500'>$otro</small>";
+            }
 
-            // 3. Info del destino
-            $clientePunto = "<strong>" . htmlspecialchars($row['nombre_cliente'] ?: 'N/A') . "</strong><br><small class='text-gray-500'>" . htmlspecialchars($row['nombre_punto'] ?: 'Sin punto') . "</small>";
+            // 3. Info del Destino (Evalúa si viene de tabla Cliente/Punto o si es texto libre)
+            $cliente = htmlspecialchars($row['nombre_cliente'] ?: ($row['cliente_destino_texto'] ?: 'Sin cliente'));
+            $punto = htmlspecialchars($row['nombre_punto'] ?: ($row['punto_destino_texto'] ?: 'Sin punto'));
+            $clientePunto = "<strong>$cliente</strong><br><small class='text-gray-500'>$punto</small>";
 
-            // 4. Botones de Acción (CRUD)
+            // 4. Botones de Acción
             $id = $row['id_instalacion'];
             $btnVer = "<button onclick='verDetalle($id)' class='text-blue-500 hover:text-blue-700 mx-1' title='Ver Detalles'><i class='fas fa-eye'></i></button>";
             $btnEditar = "<a href='index.php?pagina=transporteEditar&id=$id' class='text-amber-500 hover:text-amber-700 mx-1' title='Editar'><i class='fas fa-edit'></i></a>";
@@ -62,10 +70,10 @@ class transporteVerControlador
             // Armar la fila
             $data[] = [
                 $id,
-                $row['fecha_solicitud'],
+                $row['fecha_instalacion'],
                 $badgeOp,
                 htmlspecialchars($row['nombre_tecnico']),
-                $maquinaInfo,
+                $productoInfo,
                 $clientePunto,
                 $acciones
             ];
@@ -75,7 +83,6 @@ class transporteVerControlador
         exit;
     }
 
-    // --- AJAX: ELIMINAR REGISTRO ---
     public function eliminar()
     {
         $this->limpiarBuffer();

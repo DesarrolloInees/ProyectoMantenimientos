@@ -59,6 +59,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fas fa-ticket-alt mr-3 w-5 text-center text-blue-300"></i> Administrar Remisiones
     </a>
+    <a href="<?= BASE_URL ?>asistencia"
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fas fa-ticket-alt mr-3 w-5 text-center text-blue-300"></i> Reporte Horas Extra
+    </a>
 
     <!-- Si NO quieres el enlace de Excel, elimina o comenta este bloque -->
     <!--

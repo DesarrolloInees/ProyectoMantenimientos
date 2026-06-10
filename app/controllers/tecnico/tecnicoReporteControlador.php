@@ -71,37 +71,37 @@ class tecnicoReporteControlador
 
             $datos = [
                 'id_ordenes_servicio' => $idOrdenServicio,
-                'id_tecnico'          => $idTecnicoActual,
-                'numero_remision'     => $_POST['numero_remision'],
-                'hora_entrada'        => $_POST['hora_entrada'],
-                'hora_salida'         => $_POST['hora_salida'],
-                'tiempo_servicio'     => $_POST['tiempo_servicio'],
+                'id_tecnico' => $idTecnicoActual,
+                'numero_remision' => $_POST['numero_remision'],
+                'hora_entrada' => $_POST['hora_entrada'],
+                'hora_salida' => $_POST['hora_salida'],
+                'tiempo_servicio' => $_POST['tiempo_servicio'],
                 'actividades_realizadas' => $_POST['actividades_realizadas'],
-                'id_estado_maquina'   => $_POST['id_estado_maquina'],
-                'id_calificacion'     => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
+                'id_estado_maquina' => $_POST['id_estado_maquina'],
+                'id_calificacion' => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
                 'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'],
-                'soporte_remoto'      => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
-                'tiene_novedad'       => isset($_POST['tiene_novedad']) ? 1 : 0,
-                'id_tipo_novedad'     => !empty($_POST['id_tipo_novedad']) ? $_POST['id_tipo_novedad'] : null,
-                'detalle_novedad'     => !empty($_POST['detalle_novedad']) ? $_POST['detalle_novedad'] : null,
-                'repuestos_tecnico'   => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
+                'soporte_remoto' => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
+                'tiene_novedad' => isset($_POST['tiene_novedad']) ? 1 : 0,
+                'id_tipo_novedad' => !empty($_POST['id_tipo_novedad']) ? $_POST['id_tipo_novedad'] : null,
+                'detalle_novedad' => !empty($_POST['detalle_novedad']) ? $_POST['detalle_novedad'] : null,
+                'repuestos_tecnico' => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
             ];
 
             // ==========================================
             // GUARDAR DATOS COMPLEMENTARIOS (Con GPS)
             // ==========================================
             $datosComplementarios = [
-                'id_orden_servicio'   => $idOrdenServicio,
-                'numero_maquina'      => !empty($_POST['numero_maquina']) ? $_POST['numero_maquina'] : null,
-                'serial_maquina'      => !empty($_POST['serial_maquina']) ? $_POST['serial_maquina'] : null,
-                'serial_router'       => !empty($_POST['serial_router']) ? $_POST['serial_router'] : null,
-                'serial_ups'          => !empty($_POST['serial_ups']) ? $_POST['serial_ups'] : null,
-                'pendientes'          => !empty($_POST['pendientes']) ? $_POST['pendientes'] : null,
+                'id_orden_servicio' => $idOrdenServicio,
+                'numero_maquina' => !empty($_POST['numero_maquina']) ? $_POST['numero_maquina'] : null,
+                'serial_maquina' => !empty($_POST['serial_maquina']) ? $_POST['serial_maquina'] : null,
+                'serial_router' => !empty($_POST['serial_router']) ? $_POST['serial_router'] : null,
+                'serial_ups' => !empty($_POST['serial_ups']) ? $_POST['serial_ups'] : null,
+                'pendientes' => !empty($_POST['pendientes']) ? $_POST['pendientes'] : null,
                 'administrador_punto' => !empty($_POST['administrador_punto']) ? $_POST['administrador_punto'] : null,
-                'celular_encargado'   => !empty($_POST['celular_encargado']) ? $_POST['celular_encargado'] : null,
-                'id_estado_inicial'   => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null,
-                'latitud_fin'         => !empty($_POST['latitud_fin']) ? $_POST['latitud_fin'] : null,
-                'longitud_fin'        => !empty($_POST['longitud_fin']) ? $_POST['longitud_fin'] : null
+                'celular_encargado' => !empty($_POST['celular_encargado']) ? $_POST['celular_encargado'] : null,
+                'id_estado_inicial' => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null,
+                'latitud_fin' => !empty($_POST['latitud_fin']) ? $_POST['latitud_fin'] : null,
+                'longitud_fin' => !empty($_POST['longitud_fin']) ? $_POST['longitud_fin'] : null
             ];
 
             $this->modelo->guardarDatosComplementarios($datosComplementarios);
@@ -117,7 +117,9 @@ class tecnicoReporteControlador
                 }
 
                 $remisionCarpeta = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'SIN_REMISION_' . $idOrdenServicio;
-                $carpetaDestino = __DIR__ . '/../../app/uploads/imagenes_servicios/' . $remisionCarpeta . '/';
+
+                // CORRECCIÓN: Quitamos el "app/" de la ruta física
+                $carpetaDestino = __DIR__ . '/../../uploads/imagenes_servicios/' . $remisionCarpeta . '/';
                 if (!file_exists($carpetaDestino)) {
                     mkdir($carpetaDestino, 0777, true);
                 }
@@ -137,7 +139,9 @@ class tecnicoReporteControlador
                         $nombreFirma = 'REM-' . $numeroParaNombreFirma . '_firma_' . uniqid() . '.png';
 
                         $rutaFinalFirmaServidor = $carpetaDestino . $nombreFirma;
-                        $rutaParaBDFirma = 'app/uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreFirma;
+
+                        // CORRECCIÓN: Quitamos el "app/" para la base de datos
+                        $rutaParaBDFirma = 'uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreFirma;
 
                         if (file_put_contents($rutaFinalFirmaServidor, $firmaDecodificada)) {
                             $this->modelo->guardarEvidenciaFoto($idOrdenServicio, 'firma', $rutaParaBDFirma);
@@ -193,6 +197,25 @@ class tecnicoReporteControlador
         $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
         $evidencias = $this->modelo->obtenerEvidenciasPorOrden($idOrden);
 
+        // Calculamos la URL base del proyecto (ej. http://localhost/ProyectoMantenimientos/app/)
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'];
+        // Obtenemos la ruta hasta la carpeta 'app' (suponiendo que el script está dentro de app/controllers/...)
+        $scriptPath = dirname($_SERVER['SCRIPT_NAME']); // Ej: /ProyectoMantenimientos/app/controllers
+        // Subimos dos niveles para llegar a la raíz del proyecto? No, queremos incluir 'app'
+        // La carpeta 'app' está a nivel del script? En realidad, si el script está en app/controllers/tecnico/..., entonces:
+        // /ProyectoMantenimientos/app/controllers/tecnico -> subimos 3 niveles para llegar a la raíz? Mejor construimos manualmente.
+        // Opción más segura: asumir que la carpeta 'app' está en la raíz del proyecto.
+        // Usaremos una variable de entorno o constante BASE_URL si la tienes definida globalmente.
+        // Si no, la construimos así:
+        $baseUrl = $protocol . $host . '/ProyectoMantenimientos/app/'; // Ajusta el nombre de tu proyecto si es diferente
+
+        foreach ($evidencias as &$ev) {
+            // La ruta guardada en BD: "uploads/imagenes_servicios/..."
+            // La URL final debe ser: http://localhost/ProyectoMantenimientos/app/uploads/imagenes_servicios/...
+            $ev['ruta_archivo'] = $baseUrl . $ev['ruta_archivo'];
+        }
+
         echo json_encode(['success' => true, 'data' => $evidencias]);
         exit;
     }
@@ -233,7 +256,8 @@ class tecnicoReporteControlador
 
         // 3. Proceso normal si no hay errores
         if ($idOrden > 0) {
-            $carpetaDestino = __DIR__ . '/../../app/uploads/imagenes_servicios/' . $remision . '/';
+            // CORRECCIÓN: Quitamos el "app/" de la ruta física
+            $carpetaDestino = __DIR__ . '/../../uploads/imagenes_servicios/' . $remision . '/';
 
             // Verificamos si podemos crear la carpeta
             if (!file_exists($carpetaDestino)) {
@@ -249,7 +273,9 @@ class tecnicoReporteControlador
             $nombreNuevo = 'REM-' . $remision . '_TEC_' . $tipoEvidencia . '_' . uniqid() . '.jpg';
 
             $rutaFinalServidor = $carpetaDestino . $nombreNuevo;
-            $rutaParaBD = 'app/uploads/imagenes_servicios/' . $remision . '/' . $nombreNuevo;
+
+            // CORRECCIÓN: Quitamos el "app/" para la BD
+            $rutaParaBD = 'uploads/imagenes_servicios/' . $remision . '/' . $nombreNuevo;
 
             // Intentamos optimizar y guardar
             if ($this->optimizarImagen($tmpName, $rutaFinalServidor, 800, 70)) {
@@ -330,6 +356,7 @@ class tecnicoReporteControlador
         echo json_encode(['success' => false, 'msj' => 'ID de orden inválido.']);
         exit;
     }
+
     private function optimizarImagen($rutaOrigen, $rutaDestino, $anchoMaximo = 800, $calidad = 70)
     {
         // 1. Aumentamos temporalmente la memoria de PHP. 
@@ -352,68 +379,101 @@ class tecnicoReporteControlador
         $anchoOriginal = $info[0];
         $altoOriginal = $info[1];
 
-        // 4. Crear recurso de imagen según el tipo, con protecciones adicionales
-        try {
-            switch ($mime) {
-                case 'image/jpeg':
-                case 'image/jpg':
-                    $imagenOriginal = @imagecreatefromjpeg($rutaOrigen);
-                    break;
-                case 'image/png':
-                    $imagenOriginal = @imagecreatefrompng($rutaOrigen);
-                    break;
-                case 'image/gif':
-                    $imagenOriginal = @imagecreatefromgif($rutaOrigen);
-                    break;
-                case 'image/webp':
-                    if (function_exists('imagecreatefromwebp')) {
-                        $imagenOriginal = @imagecreatefromwebp($rutaOrigen);
-                    } else {
-                        return move_uploaded_file($rutaOrigen, $rutaDestino);
-                    }
-                    break;
-                default:
-                    return move_uploaded_file($rutaOrigen, $rutaDestino);
-            }
-
-            if (!$imagenOriginal) {
+        // Cargar imagen según tipo
+        $imagenOriginal = null;
+        switch ($mime) {
+            case 'image/jpeg':
+            case 'image/jpg':
+                $imagenOriginal = @imagecreatefromjpeg($rutaOrigen);
+                break;
+            case 'image/png':
+                $imagenOriginal = @imagecreatefrompng($rutaOrigen);
+                break;
+            case 'image/gif':
+                $imagenOriginal = @imagecreatefromgif($rutaOrigen);
+                break;
+            case 'image/webp':
+                if (function_exists('imagecreatefromwebp')) {
+                    $imagenOriginal = @imagecreatefromwebp($rutaOrigen);
+                }
+                break;
+            default:
                 return move_uploaded_file($rutaOrigen, $rutaDestino);
-            }
+        }
 
-            // Calcular nuevas dimensiones manteniendo la proporción
-            if ($anchoOriginal > $anchoMaximo) {
-                $ratio = $anchoMaximo / $anchoOriginal;
-                $nuevoAncho = $anchoMaximo;
-                $nuevoAlto = round($altoOriginal * $ratio);
-            } else {
-                $nuevoAncho = $anchoOriginal;
-                $nuevoAlto = $altoOriginal;
-            }
-
-            // Crear lienzo nuevo
-            $imagenRedimensionada = imagecreatetruecolor($nuevoAncho, $nuevoAlto);
-
-            // Mantener transparencia si es PNG
-            if ($mime == 'image/png') {
-                imagealphablending($imagenRedimensionada, false);
-                imagesavealpha($imagenRedimensionada, true);
-                $colorTransparente = imagecolorallocatealpha($imagenRedimensionada, 255, 255, 255, 127);
-                imagefill($imagenRedimensionada, 0, 0, $colorTransparente);
-            }
-
-            // Copiar, redimensionar y guardar como JPG
-            imagecopyresampled($imagenRedimensionada, $imagenOriginal, 0, 0, 0, 0, $nuevoAncho, $nuevoAlto, $anchoOriginal, $altoOriginal);
-            $exito = imagejpeg($imagenRedimensionada, $rutaDestino, $calidad);
-
-            // Liberar memoria
-            imagedestroy($imagenOriginal);
-            imagedestroy($imagenRedimensionada);
-
-            return $exito;
-        } catch (Exception $e) {
-            error_log("Error comprimiendo imagen: " . $e->getMessage());
-            // Si algo explota en el proceso, nos aseguramos de que al menos guarde la foto original
+        if (!$imagenOriginal) {
             return move_uploaded_file($rutaOrigen, $rutaDestino);
         }
+
+        // ==========================================
+        // 🔥 CORRECCIÓN DE ORIENTACIÓN POR EXIF
+        // ==========================================
+        if (function_exists('exif_read_data') && ($mime == 'image/jpeg' || $mime == 'image/jpg')) {
+            $exif = @exif_read_data($rutaOrigen);
+            if ($exif && isset($exif['Orientation'])) {
+                $orientacion = $exif['Orientation'];
+                switch ($orientacion) {
+                    case 3: // 180 grados
+                        $imagenOriginal = imagerotate($imagenOriginal, 180, 0);
+                        break;
+                    case 6: // 90 grados a la derecha (necesita rotar -90)
+                        $imagenOriginal = imagerotate($imagenOriginal, -90, 0);
+                        // Intercambiar ancho y alto tras rotación
+                        $temp = $anchoOriginal;
+                        $anchoOriginal = $altoOriginal;
+                        $altoOriginal = $temp;
+                        break;
+                    case 8: // 90 grados a la izquierda (necesita rotar +90)
+                        $imagenOriginal = imagerotate($imagenOriginal, 90, 0);
+                        $temp = $anchoOriginal;
+                        $anchoOriginal = $altoOriginal;
+                        $altoOriginal = $temp;
+                        break;
+                }
+            }
+        }
+
+        // ==========================================
+        // FORZAR ORIENTACIÓN VERTICAL (opcional)
+        // Si después de corregir EXIF la imagen sigue apaisada (ancho > alto)
+        // la rotamos 90 grados para que quede vertical.
+        // ==========================================
+        if ($anchoOriginal > $altoOriginal) {
+            $imagenOriginal = imagerotate($imagenOriginal, 90, 0);
+            $temp = $anchoOriginal;
+            $anchoOriginal = $altoOriginal;
+            $altoOriginal = $temp;
+        }
+
+        // Redimensionar manteniendo proporción
+        if ($anchoOriginal > $anchoMaximo) {
+            $ratio = $anchoMaximo / $anchoOriginal;
+            $nuevoAncho = $anchoMaximo;
+            $nuevoAlto = round($altoOriginal * $ratio);
+        } else {
+            $nuevoAncho = $anchoOriginal;
+            $nuevoAlto = $altoOriginal;
+        }
+
+        // Crear lienzo nuevo
+        $imagenRedimensionada = imagecreatetruecolor($nuevoAncho, $nuevoAlto);
+
+        // Mantener transparencia si es PNG
+        if ($mime == 'image/png') {
+            imagealphablending($imagenRedimensionada, false);
+            imagesavealpha($imagenRedimensionada, true);
+            $colorTransparente = imagecolorallocatealpha($imagenRedimensionada, 255, 255, 255, 127);
+            imagefill($imagenRedimensionada, 0, 0, $colorTransparente);
+        }
+
+        // Copiar, redimensionar y guardar como JPG
+        imagecopyresampled($imagenRedimensionada, $imagenOriginal, 0, 0, 0, 0, $nuevoAncho, $nuevoAlto, $anchoOriginal, $altoOriginal);
+        $exito = imagejpeg($imagenRedimensionada, $rutaDestino, $calidad);
+
+        // Liberar memoria
+        imagedestroy($imagenOriginal);
+        imagedestroy($imagenRedimensionada);
+
+        return $exito;
     }
 }

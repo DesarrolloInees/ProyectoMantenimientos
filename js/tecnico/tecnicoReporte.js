@@ -46,6 +46,7 @@ $(document).ready(function () {
 
         let remision = $('select[name="numero_remision"]').val() || '';
         let idOrden = $('input[name="id_ordenes_servicio"]').val();
+        
 
         // Subir cada foto seleccionada al servidor
         Array.from(files).forEach(file => {
@@ -138,48 +139,35 @@ function cargarEvidenciasExistentes() {
         method: 'POST',
         body: formData
     })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                $('#preview_antes, #preview_remision, #preview_despues').empty();
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            $('#preview_antes, #preview_remision, #preview_despues').empty();
+            totalFotosAntes = 0;
+            totalFotosRemision = 0;
+            totalFotosDespues = 0;
 
-                // Reiniciamos los contadores globales
-                totalFotosAntes = 0;
-                totalFotosRemision = 0;
-                totalFotosDespues = 0;
+            data.data.forEach(foto => {
+                // 🔥 Usamos directamente la ruta que devuelve el servidor (absoluta)
+                let rutaImagen = foto.ruta_archivo;
+                let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
+                let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
+                                <img src="${rutaImagen}" class="w-full h-full object-cover">
+                                ${btnDelete}
+                            </div>`;
 
-                data.data.forEach(foto => {
-                    // OJO AQUÍ: Asegúrate de que diga foto.id_evidencia o foto.id_evidencia_servicio (según tu BD)
-                    let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
-                    let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
-                                <img src="/ProyectoMantenimientos/${foto.ruta_archivo}" class="w-full h-full object-cover">
-                                    ${btnDelete}
-                                </div>`;
+                if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
+                if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
+                if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
+            });
 
-                    if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
-                    if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
-                    if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
-                });
-
-                // Actualizar Badges y Contadores visuales
-                actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
-                actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
-                actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
-
-                totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
-
-                let totalElement = $('#total_fotos_count');
-                totalElement.text(totalFotosSubidasServidor);
-
-                if (totalFotosSubidasServidor >= 8 && totalFotosSubidasServidor <= 10) {
-                    totalElement.removeClass('text-red-600 text-orange-500').addClass('text-green-600');
-                } else if (totalFotosSubidasServidor > 0 && totalFotosSubidasServidor < 8) {
-                    totalElement.removeClass('text-red-600 text-green-600').addClass('text-orange-500');
-                } else {
-                    totalElement.removeClass('text-green-600 text-orange-500').addClass('text-red-600');
-                }
-            }
-        });
+            actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
+            actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
+            actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
+            totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
+            $('#total_fotos_count').text(totalFotosSubidasServidor);
+        }
+    });
 }
 
 function actualizarBadgeFotos(selector, cantidad) {

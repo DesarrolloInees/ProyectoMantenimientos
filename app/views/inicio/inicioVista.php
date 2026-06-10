@@ -170,6 +170,14 @@ $horaActual = date('H:i');
                 <h3 class="font-bold text-gray-800 text-lg">Descargar Excel Programación</h3>
                 <p class="text-xs text-gray-500 mt-1">Descargar Excel de Programación de los Motorizados</p>
             </a>
+            <!-- Opción 6: Reporte Horas Extra -->
+            <a href="<?= BASE_URL ?>asistencia" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
+                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
+                    <i class="fa-solid fa-truck text-2xl text-amber-600 group-hover:text-white"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 text-lg">Reporte Horas Extra</h3>
+                <p class="text-xs text-gray-500 mt-1">Descargar Excel de Horas Extra</p>
+            </a>
         </div>
 
         <!-- Footer con logout -->

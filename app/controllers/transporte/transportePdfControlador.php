@@ -22,7 +22,7 @@ class transportePdfControlador
     public function index()
     {
         if (!isset($_GET['id']) || empty($_GET['id'])) {
-            die("Error: ID de instalación no proporcionado.");
+            die("Error: ID de registro no proporcionado.");
         }
 
         $id = intval($_GET['id']);
@@ -32,40 +32,49 @@ class transportePdfControlador
             die("Error: No se encontró el registro o fue eliminado.");
         }
 
-        // Cargar logo en base64 para que el PDF lo pueda incrustar sin problemas
-        $rutaLogo = __DIR__ . '/../../logos/logoInees.jpg';
+        // Cargar logo en base64
+        $rutaLogo = realpath(__DIR__ . '/../../logos/logoInees.jpg');
         $logoBase64 = "";
-        if (file_exists($rutaLogo)) {
+        if ($rutaLogo && file_exists($rutaLogo)) {
             $type = pathinfo($rutaLogo, PATHINFO_EXTENSION);
             $data = file_get_contents($rutaLogo);
             $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
         }
 
-        // =========================================================
-        // PROCESAR FIRMA DEL TÉCNICO (CORREGIDO PARA CARPETA IMAGENES)
-        // =========================================================
+        // PROCESAR FIRMA DEL TÉCNICO
         $firmaTecnicoSrc = '';
         if (!empty($instalacion['ruta_firma'])) {
-            // Extraemos SOLO el nombre del archivo (ej: "firmaAndresMurgas.png")
-            // sin importar cómo esté guardada la ruta en la base de datos
             $nombreArchivoFirma = basename($instalacion['ruta_firma']);
-            
-            // Construimos la ruta exacta basada en tu estructura de carpetas
-            // Si el controlador está en app/controllers/transporte/:
-            // Subimos 2 niveles (../../) hasta llegar a 'app' y entramos a Imagenes/firmas/
-            $rutaFisica = realpath(__DIR__ . '/../../Imagenes/firmas/' . $nombreArchivoFirma);
+            $rutaFirmaFisica = realpath(__DIR__ . '/../../Imagenes/firmas/' . $nombreArchivoFirma);
 
-            if ($rutaFisica && file_exists($rutaFisica) && !is_dir($rutaFisica)) {
-                $extension = strtolower(pathinfo($rutaFisica, PATHINFO_EXTENSION));
+            if ($rutaFirmaFisica && file_exists($rutaFirmaFisica) && !is_dir($rutaFirmaFisica)) {
+                $extension = strtolower(pathinfo($rutaFirmaFisica, PATHINFO_EXTENSION));
                 $mime = ($extension === 'jpg') ? 'jpeg' : $extension;
-                $data = file_get_contents($rutaFisica);
+                $data = file_get_contents($rutaFirmaFisica);
                 $firmaTecnicoSrc = 'data:image/' . $mime . ';base64,' . base64_encode($data);
-            } else {
-                // Dejamos un registro en el log de XAMPP por si llega a fallar otro día, 
-                // así sabrás exactamente qué ruta intentó buscar.
-                error_log("PDF Error: No se encontró la firma física en la ruta -> " . __DIR__ . '/../../Imagenes/firmas/' . $nombreArchivoFirma);
             }
         }
+
+        // =================================================================
+        // NUEVO: PROCESAR IMÁGENES DE EVIDENCIA (Convertir a Base64)
+        // =================================================================
+        $obtenerBase64 = function($rutaRelativa) {
+            if (empty($rutaRelativa)) return null;
+            // La ruta guardada suele ser "app/uploads/transporte/..."
+            $rutaAbsoluta = realpath(__DIR__ . '/../../../' . $rutaRelativa);
+            if ($rutaAbsoluta && file_exists($rutaAbsoluta) && !is_dir($rutaAbsoluta)) {
+                $ext = strtolower(pathinfo($rutaAbsoluta, PATHINFO_EXTENSION));
+                $mime = ($ext === 'jpg') ? 'jpeg' : ($ext === 'pdf' ? 'pdf' : $ext);
+                $data = file_get_contents($rutaAbsoluta);
+                return 'data:' . ($mime === 'pdf' ? 'application/pdf' : 'image/' . $mime) . ';base64,' . base64_encode($data);
+            }
+            return null;
+        };
+
+        $evidenciaRemision = $obtenerBase64($instalacion['foto_remision']);
+        $evidenciaMaquina  = $obtenerBase64($instalacion['foto_maquina']);
+        $evidenciaChazos   = $obtenerBase64($instalacion['foto_chazos']);
+        // =================================================================
 
         // Capturar el HTML de la vista
         if (ob_get_length()) ob_end_clean();
@@ -95,7 +104,7 @@ class transportePdfControlador
                 ->setNodeBinary($nodePath)
                 ->setNpmBinary($npmPath)
                 ->setOption('args', ['--no-sandbox'])
-                ->format('Letter') // Formato carta, ideal para estas constancias
+                ->format('Letter') 
                 ->margins(10, 10, 10, 10)
                 ->showBackground();
 
@@ -105,10 +114,10 @@ class transportePdfControlador
 
             $pdfContent = $browsershot->pdf();
 
-            // Configurar headers para mostrar en el navegador
-            $nombreArchivo = "Reporte Remision" . $instalacion['numero_remision'] . ".pdf";
+            // Configurar headers
+            $nombrePdf = "Transporte_" . ($instalacion['numero_remision'] ?: 'SinRemision') . ".pdf";
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');
+            header('Content-Disposition: inline; filename="' . $nombrePdf . '"');
             header('Content-Length: ' . strlen($pdfContent));
             echo $pdfContent;
             exit;

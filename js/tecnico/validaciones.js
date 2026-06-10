@@ -2,13 +2,24 @@
 // VALIDACIONES Y CAPTURA DE GPS
 // ==========================================
 
+// Definir constante para el ID de Fallido (según tu BD es 4)
+const ID_TIPO_FALLIDO = 4;
+
 // ==========================================
-// FUNCIÓN FINAL DE ENVÍO (Versión Infalible)
+// FUNCIÓN FINAL DE ENVÍO (Versión Infalible con soporte para Fallido)
 // ==========================================
 function validarYEnviar() {
     console.log("🚀 Iniciando validación de reporte...");
     
     let form = document.getElementById('formReporteMovil');
+    
+    // Obtener el tipo de servicio seleccionado (convertir a número)
+    let selectTipo = document.querySelector('select[name="id_tipo_mantenimiento"]');
+    let valorSeleccionado = selectTipo ? parseInt(selectTipo.value) : 0;
+    let esFallido = (valorSeleccionado === ID_TIPO_FALLIDO);
+    
+    console.log("📌 Tipo de servicio seleccionado (ID): " + valorSeleccionado);
+    console.log("🛠️ ¿Es fallido? " + esFallido);
     
     // Contamos las fotos que el técnico VE en la pantalla
     let fAntes = $('#preview_antes img').length;
@@ -18,7 +29,7 @@ function validarYEnviar() {
 
     console.log("📊 Conteo de fotos -> Antes: " + fAntes + " | Remisión: " + fRemision + " | Después: " + fDespues);
 
-    // VALIDACIÓN DE LA REMISIÓN
+    // VALIDACIÓN DE LA REMISIÓN (SIEMPRE OBLIGATORIA)
     if (fRemision === 0) {
         Swal.fire({
             icon: 'error',
@@ -28,21 +39,29 @@ function validarYEnviar() {
         return false;
     }
 
-    // VALIDACIÓN DEL TOTAL (8 a 10)
-    if (total < 8 || total > 10) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Cantidad de fotos incorrecta',
-            text: "Debes tener entre 8 y 10 fotos. Actualmente tienes: " + total
-        });
-        return false;
-    }
+    // ==========================================
+    // VALIDACIÓN SEGÚN TIPO DE SERVICIO
+    // ==========================================
+    if (esFallido) {
+        // Para fallidos: SOLO se requiere la foto de remisión (ya validada arriba)
+        console.log("✅ Servicio Fallido: validación exitosa (solo remisión).");
+        // No exigimos más fotos ni firma
+    } else {
+        // Para servicios normales: validar total de fotos (8 a 10)
+        if (total < 8 || total > 10) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cantidad de fotos incorrecta',
+                text: "Debes tener entre 8 y 10 fotos. Actualmente tienes: " + total
+            });
+            return false;
+        }
 
-    // VALIDACIÓN DE FIRMA
-    // La variable 'firmaVacia' viene de tecnicoReporte.js
-    if (typeof firmaVacia !== 'undefined' && firmaVacia) {
-        Swal.fire('Atención', 'El cliente debe firmar el reporte.', 'warning');
-        return false;
+        // VALIDACIÓN DE FIRMA (solo si no es fallido)
+        if (typeof firmaVacia !== 'undefined' && firmaVacia) {
+            Swal.fire('Atención', 'El cliente debe firmar el reporte.', 'warning');
+            return false;
+        }
     }
 
     // Si todo está OK, capturamos el GPS y enviamos
@@ -98,12 +117,20 @@ function capturarGPSyEnviar(form) {
                 if(error.code == 2) msjError = "No se pudo obtener la señal GPS. Intenta salir a un lugar despejado.";
                 if(error.code == 3) msjError = "Se agotó el tiempo para obtener la ubicación.";
                 
-                Notificaciones.error("GPS Obligatorio", msjError);
+                if (typeof Notificaciones !== 'undefined' && Notificaciones.error) {
+                    Notificaciones.error("GPS Obligatorio", msjError);
+                } else {
+                    Swal.fire("GPS Obligatorio", msjError, "error");
+                }
             },
             // Opciones del GPS (Alta precisión)
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     } else {
-        Notificaciones.error("Incompatible", "Tu navegador o celular no soporta geolocalización.");
+        if (typeof Notificaciones !== 'undefined' && Notificaciones.error) {
+            Notificaciones.error("Incompatible", "Tu navegador o celular no soporta geolocalización.");
+        } else {
+            Swal.fire("Incompatible", "Tu navegador o celular no soporta geolocalización.", "error");
+        }
     }
 }

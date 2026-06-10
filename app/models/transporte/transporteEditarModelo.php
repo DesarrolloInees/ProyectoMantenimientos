@@ -12,12 +12,8 @@ class transporteEditarModelo
     public function obtenerInstalacionPorId($id)
     {
         try {
-            // Traemos también el id_cliente asociado al punto para poder precargar los selects
-            $sql = "SELECT i.*, p.id_cliente, p.direccion as direccion_punto
-                    FROM instalaciones_desinstalaciones i
-                    LEFT JOIN punto p ON i.id_punto = p.id_punto
-                    WHERE i.id_instalacion = :id AND i.estado = 1
-                    LIMIT 1";
+            $sql = "SELECT * FROM instalaciones_desinstalaciones 
+                    WHERE id_instalacion = :id AND estado = 1 LIMIT 1";
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
@@ -33,10 +29,6 @@ class transporteEditarModelo
         $stmt = $this->conn->prepare("SELECT id_tecnico, nombre_tecnico FROM tecnico WHERE estado = 1 ORDER BY nombre_tecnico ASC");
         $stmt->execute(); return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    public function obtenerDelegaciones() {
-        $stmt = $this->conn->prepare("SELECT id_delegacion, nombre_delegacion FROM delegacion WHERE estado = 1 ORDER BY nombre_delegacion ASC");
-        $stmt->execute(); return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
     public function obtenerTiposMaquina() {
         $stmt = $this->conn->prepare("SELECT id_tipo_maquina, nombre_tipo_maquina FROM tipo_maquina WHERE estado = 1 ORDER BY nombre_tipo_maquina ASC");
         $stmt->execute(); return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -49,16 +41,6 @@ class transporteEditarModelo
         $stmt = $this->conn->prepare("SELECT id_punto, nombre_punto, direccion FROM punto WHERE id_cliente = :id_cliente AND estado = 1 ORDER BY nombre_punto ASC");
         $stmt->bindParam(':id_cliente', $idCliente, PDO::PARAM_INT);
         $stmt->execute(); return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    public function obtenerDetallePunto($idPunto) {
-        $stmt = $this->conn->prepare("SELECT direccion FROM punto WHERE id_punto = :id_punto LIMIT 1");
-        $stmt->bindParam(':id_punto', $idPunto, PDO::PARAM_INT);
-        $stmt->execute(); return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-    public function obtenerDireccionOrigen() {
-        $stmt = $this->conn->prepare("SELECT valor FROM parametros WHERE clave = 'direccion_origen_instalacion' LIMIT 1");
-        $stmt->execute(); $res = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $res ? $res['valor'] : 'No configurada';
     }
 
     // --- REMISIONES (Disponibles + La actual asignada) ---
@@ -86,55 +68,61 @@ class transporteEditarModelo
     public function actualizarInstalacion($datos)
     {
         try {
-            // Cambiamos tipo_operacion por id_estado_operacion
             $sql = "UPDATE instalaciones_desinstalaciones SET 
-                        id_estado_operacion = :id_estado_operacion,
-                        fecha_solicitud = :fecha_solicitud,
-                        fecha_ejecucion = :fecha_ejecucion,
-                        id_control_remision = :id_control_remision,
-                        serial_maquina = :serial_maquina,
-                        id_tipo_maquina = :id_tipo_maquina,
                         id_tecnico = :id_tecnico,
-                        id_delegacion_origen = :id_delegacion_origen,
-                        id_delegacion_destino = :id_delegacion_destino,
-                        id_punto = :id_punto,
-                        valor_servicio = :valor_servicio,
-                        comentarios = :comentarios,
-                        incluye_capacitacion = :incluye_capacitacion,
-                        tema_capacitacion = :tema_capacitacion,
-                        cantidad_asistentes = :cantidad_asistentes,
-                        horas_capacitacion = :horas_capacitacion
+                        id_control_remision = :id_control_remision,
+                        fecha_instalacion = :fecha_instalacion,
+                        categoria_servicio = :categoria_servicio,
+                        tipo_servicio_nombre = :tipo_servicio_nombre,
+                        notas = :notas,
+                        descripcion_inees = :descripcion_inees,
+                        lugar_recogida = :lugar_recogida,
+                        fecha_recogida = :fecha_recogida,
+                        es_maquina = :es_maquina,
+                        id_tipo_maquina = :id_tipo_maquina,
+                        serial_maquina = :serial_maquina,
+                        producto_otro = :producto_otro,
+                        id_cliente_origen = :id_cliente_origen,
+                        cliente_origen_texto = :cliente_origen_texto,
+                        id_punto_origen = :id_punto_origen,
+                        punto_origen_texto = :punto_origen_texto,
+                        id_cliente_destino = :id_cliente_destino,
+                        cliente_destino_texto = :cliente_destino_texto,
+                        id_punto_destino = :id_punto_destino,
+                        punto_destino_texto = :punto_destino_texto,
+                        valor_servicio = :valor_servicio
                     WHERE id_instalacion = :id_instalacion";
 
             $stmt = $this->conn->prepare($sql);
             $resultado = $stmt->execute([
-                ':id_estado_operacion'  => intval($datos['id_estado_operacion']),
-                ':fecha_solicitud'      => $datos['fecha_solicitud'],
-                ':fecha_ejecucion'      => !empty($datos['fecha_ejecucion']) ? $datos['fecha_ejecucion'] : null,
-                ':id_control_remision'  => !empty($datos['id_control_remision']) ? intval($datos['id_control_remision']) : null,
-                ':serial_maquina'       => $datos['serial_maquina'] ?? null,
-                ':id_tipo_maquina'      => intval($datos['id_tipo_maquina']),
-                ':id_tecnico'           => intval($datos['id_tecnico']),
-                ':id_delegacion_origen' => intval($datos['id_delegacion_origen']),
-                ':id_delegacion_destino'=> !empty($datos['id_delegacion_destino']) ? intval($datos['id_delegacion_destino']) : null,
-                ':id_punto'             => !empty($datos['id_punto']) ? intval($datos['id_punto']) : null,
-                ':valor_servicio'       => floatval($datos['valor_servicio'] ?? 0),
-                ':comentarios'          => $datos['comentarios'] ?? null,
-                ':incluye_capacitacion' => intval($datos['incluye_capacitacion'] ?? 0),
-                ':tema_capacitacion'    => $datos['tema_capacitacion'] ?? null,
-                ':cantidad_asistentes'  => !empty($datos['cantidad_asistentes']) ? intval($datos['cantidad_asistentes']) : null,
-                ':horas_capacitacion'   => !empty($datos['horas_capacitacion']) ? floatval($datos['horas_capacitacion']) : null,
-                ':id_instalacion'       => intval($datos['id_instalacion'])
+                ':id_tecnico'            => intval($datos['id_tecnico']),
+                ':id_control_remision'   => !empty($datos['id_control_remision']) ? intval($datos['id_control_remision']) : null,
+                ':fecha_instalacion'     => !empty($datos['fecha_instalacion']) ? $datos['fecha_instalacion'] : null,
+                ':categoria_servicio'    => $datos['categoria_servicio'] ?? null,
+                ':tipo_servicio_nombre'  => $datos['tipo_servicio_nombre'] ?? null,
+                ':notas'                 => $datos['notas'] ?? null,
+                ':descripcion_inees'     => $datos['descripcion_inees'] ?? null,
+                ':lugar_recogida'        => $datos['lugar_recogida'] ?? null,
+                ':fecha_recogida'        => !empty($datos['fecha_recogida']) ? $datos['fecha_recogida'] : null,
+                ':es_maquina'            => intval($datos['es_maquina']),
+                ':id_tipo_maquina'       => !empty($datos['id_tipo_maquina']) ? intval($datos['id_tipo_maquina']) : null,
+                ':serial_maquina'        => $datos['serial_maquina'] ?? null,
+                ':producto_otro'         => $datos['producto_otro'] ?? null,
+                ':id_cliente_origen'     => !empty($datos['id_cliente_origen']) ? intval($datos['id_cliente_origen']) : null,
+                ':cliente_origen_texto'  => $datos['cliente_origen_texto'] ?? null,
+                ':id_punto_origen'       => !empty($datos['id_punto_origen']) ? intval($datos['id_punto_origen']) : null,
+                ':punto_origen_texto'    => $datos['punto_origen_texto'] ?? null,
+                ':id_cliente_destino'    => !empty($datos['id_cliente_destino']) ? intval($datos['id_cliente_destino']) : null,
+                ':cliente_destino_texto' => $datos['cliente_destino_texto'] ?? null,
+                ':id_punto_destino'      => !empty($datos['id_punto_destino']) ? intval($datos['id_punto_destino']) : null,
+                ':punto_destino_texto'   => $datos['punto_destino_texto'] ?? null,
+                ':valor_servicio'        => floatval($datos['valor_servicio'] ?? 0),
+                ':id_instalacion'        => intval($datos['id_instalacion'])
             ]);
 
-            // Actualizar la remisión enviando el ID del estado
+            // Si cambiaron la remisión, marcar la nueva como usada
             if ($resultado && !empty($datos['id_control_remision'])) {
-                $this->actualizarEstadoRemision(
-                    $datos['id_control_remision'], 
-                    $datos['id_tecnico'], 
-                    $datos['id_estado_operacion'], 
-                    $datos['id_instalacion']
-                );
+                $this->actualizarEstadoRemision($datos['id_control_remision'], $datos['id_tecnico'], $datos['id_instalacion']);
             }
 
             return $resultado;
@@ -145,22 +133,19 @@ class transporteEditarModelo
         }
     }
 
-    // --- ACTUALIZAR ESTADO DE LA REMISIÓN AL EDITAR ---
-    private function actualizarEstadoRemision($idControl, $idTecnico, $idEstadoOperacion, $idInstalacion)
+    private function actualizarEstadoRemision($idControl, $idTecnico, $idInstalacion)
     {
         try {
-            // Se quitó la subconsulta, inyectamos el ID directamente
+            $idEstadoUsada = 2; // ID de Estado "Usada"
             $sql = "UPDATE control_remisiones 
-                    SET id_estado = :id_estado_operacion,
-                        id_instalacion = :id_instalacion
+                    SET id_estado = :id_estado, id_instalacion = :id_instalacion, fecha_uso = NOW()
                     WHERE id_control = :id_control AND id_tecnico = :id_tecnico";
-
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
-                ':id_estado_operacion' => $idEstadoOperacion,
-                ':id_instalacion'      => $idInstalacion,
-                ':id_control'          => $idControl,
-                ':id_tecnico'          => $idTecnico
+                ':id_estado' => $idEstadoUsada,
+                ':id_instalacion' => $idInstalacion,
+                ':id_control' => $idControl,
+                ':id_tecnico' => $idTecnico
             ]);
         } catch (PDOException $e) {
             error_log("ERROR actualizando estado de remisión (editar): " . $e->getMessage());

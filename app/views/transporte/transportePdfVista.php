@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Número de Remisión #<?= $instalacion['numero_remision'] ?></title>
+    <title>Reporte de Transporte #<?= $instalacion['id_instalacion'] ?></title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -60,15 +60,15 @@
             color: #fff;
         }
 
-        .bg-inst {
+        .bg-cobro {
             background-color: #059669;
         }
 
-        .bg-des {
-            background-color: #dc2626;
+        .bg-nocobro {
+            background-color: #2563eb;
         }
 
-        .bg-tras {
+        .bg-inees {
             background-color: #d97706;
         }
 
@@ -106,6 +106,12 @@
             padding: 4px 10px 8px 0;
         }
 
+        .col-full {
+            display: block;
+            width: 100%;
+            padding: 4px 0 8px 0;
+        }
+
         .label {
             font-size: 10px;
             font-weight: bold;
@@ -121,12 +127,6 @@
             font-weight: 500;
         }
 
-        .full-width {
-            width: 100%;
-            display: block;
-            margin-bottom: 10px;
-        }
-
         .observaciones {
             background-color: #f9fafb;
             padding: 10px;
@@ -135,6 +135,35 @@
             font-size: 12px;
             color: #4b5563;
             min-height: 40px;
+        }
+
+        /* Evidencias */
+        .evidencia-container {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            margin-top: 10px;
+        }
+
+        .evidencia-box {
+            display: table-cell;
+            text-align: center;
+            padding: 5px;
+            border: 1px dashed #d1d5db;
+        }
+
+        .evidencia-img {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+        }
+
+        .evidencia-titulo {
+            font-size: 10px;
+            font-weight: bold;
+            color: #4b5563;
+            margin-bottom: 5px;
+            text-transform: uppercase;
         }
 
         .footer {
@@ -215,145 +244,139 @@
             <?php if (!empty($logoBase64)): ?>
                 <img src="<?= $logoBase64 ?>" class="logo" alt="Logo">
             <?php else: ?>
-                <h2 style="margin:0; color:#1e3a8a;">SISTEMA</h2>
+                <h2 style="margin:0; color:#1e3a8a;">SISTEMA LOGÍSTICO</h2>
             <?php endif; ?>
         </div>
         <div class="header-col title-box">
             <h1 class="title">Reporte de Operación</h1>
             <p class="subtitle">Consecutivo:
-                <strong>#<?= str_pad($instalacion['id_instalacion'], 5, '0', STR_PAD_LEFT) ?></strong>
-            </p>
-            <p class="subtitle" style="margin-top:2px;">Fecha Solicitud:
-                <?= date('d/m/Y', strtotime($instalacion['fecha_solicitud'])) ?>
-            </p>
+                <strong>#<?= str_pad($instalacion['id_instalacion'], 5, '0', STR_PAD_LEFT) ?></strong></p>
+            <p class="subtitle" style="margin-top:2px;">Fecha Realización:
+                <?= date('d/m/Y', strtotime($instalacion['fecha_instalacion'])) ?></p>
         </div>
     </div>
 
     <?php
-    // Ahora leemos el ID de la operación
-    $idOp = intval($instalacion['id_estado_operacion'] ?? 5);
-    
-    $claseBadge = 'bg-inst';
-    $textoOperacion = 'INSTALACIÓN'; // Por defecto
+    // Configurar Badge de Categoría
+    $cat = $instalacion['categoria_servicio'];
+    $claseBadge = 'bg-cobro';
+    $textoCat = 'PROSEGUR - COBRO';
 
-    // Validamos con los IDs reales (5, 6, 7)
-    if ($idOp === 6) {
-        $claseBadge = 'bg-des';
-        $textoOperacion = 'DESINSTALACIÓN';
-    } elseif ($idOp === 7) {
-        $claseBadge = 'bg-tras';
-        $textoOperacion = 'CAMBIO DE MÁQUINA';
-    } elseif ($idOp === 5) {
-        $claseBadge = 'bg-inst';
-        $textoOperacion = 'INSTALACIÓN';
-    } else {
-        // Fallback: Si por alguna razón es otro ID, imprimimos el nombre de la BD
-        $textoOperacion = strtoupper($instalacion['nombre_operacion'] ?? 'OPERACIÓN');
+    if ($cat === 'Prosegur_NoCobro') {
+        $claseBadge = 'bg-nocobro';
+        $textoCat = 'PROSEGUR - SIN COBRO';
+    } elseif ($cat === 'Inees') {
+        $claseBadge = 'bg-inees';
+        $textoCat = 'INEES (INTERNO)';
     }
     ?>
 
     <div class="section">
-        <div class="section-title">1. Información de la Operación</div>
+        <div class="section-title">1. Información General</div>
         <div class="section-body">
             <div class="row">
                 <div class="col">
-                    <span class="label">Tipo de Operación</span>
-                    <span class="badge <?= $claseBadge ?>"><?= $textoOperacion ?></span>
+                    <span class="label">Categoría del Servicio</span>
+                    <span class="badge <?= $claseBadge ?>"><?= $textoCat ?></span>
                 </div>
                 <div class="col">
-                    <span class="label">Técnico Asignado</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['nombre_tecnico'] ?? 'N/A') ?></span>
+                    <span class="label">Tipo de Servicio</span>
+                    <span
+                        class="value font-bold"><?= htmlspecialchars($instalacion['tipo_servicio_nombre'] ?: 'N/A') ?></span>
                 </div>
             </div>
             <div class="row">
                 <div class="col">
-                    <span class="label">Fecha Ejecución</span>
-                    <span
-                        class="value"><?= !empty($instalacion['fecha_ejecucion']) ? date('d/m/Y', strtotime($instalacion['fecha_ejecucion'])) : 'Pendiente' ?></span>
+                    <span class="label">Técnico Asignado</span>
+                    <span class="value"><?= htmlspecialchars($instalacion['nombre_tecnico'] ?: 'N/A') ?></span>
                 </div>
                 <div class="col">
                     <span class="label">Número de Remisión</span>
                     <span
-                        class="value"><?= htmlspecialchars($instalacion['numero_remision'] ?? 'Sin remisión asignada') ?></span>
+                        class="value"><?= htmlspecialchars($instalacion['numero_remision'] ?: 'Sin remisión asignada') ?></span>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="section">
-        <div class="section-title">2. Datos de la Máquina</div>
-        <div class="section-body">
-            <div class="row">
-                <div class="col">
-                    <span class="label">Serial Físico</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['serial_maquina'] ?: 'N/A') ?></span>
-                </div>
-                <div class="col">
-                    <span class="label">Tipo de Máquina</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['nombre_tipo_maquina'] ?? 'N/A') ?></span>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col" style="width: 100%; display:block;">
-                    <span class="label">Valor del Servicio</span>
-                    <span class="value">$ <?= number_format($instalacion['valor_servicio'], 0, '', '.') ?></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="section">
-        <div class="section-title">3. Detalles de Ubicación</div>
-        <div class="section-body">
-            <div class="row">
-                <div class="col">
-                    <span class="label">Delegación Origen</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['delegacion_origen'] ?? 'N/A') ?></span>
-                </div>
-                <div class="col">
-                    <span class="label">Delegación Destino</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['delegacion_destino'] ?? 'N/A') ?></span>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col">
-                    <span class="label">Cliente Destino</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['nombre_cliente'] ?? 'N/A') ?></span>
-                </div>
-                <div class="col">
-                    <span class="label">Punto Destino</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['nombre_punto'] ?? 'N/A') ?></span>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col" style="width: 100%; display:block;">
-                    <span class="label">Dirección Punto Destino</span>
-                    <span class="value"><?= htmlspecialchars($instalacion['direccion_punto'] ?? 'N/A') ?></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- NUEVA SECCIÓN DE CAPACITACIÓN (Se muestra solo si hubo capacitación) -->
-    <?php if (isset($instalacion['incluye_capacitacion']) && $instalacion['incluye_capacitacion'] == 1): ?>
+    <?php if ($cat === 'Inees' && !empty($instalacion['descripcion_inees'])): ?>
         <div class="section">
-            <div class="section-title">4. Capacitación al Cliente</div>
+            <div class="section-title">2. Actividades Internas (Inees)</div>
+            <div class="section-body">
+                <div class="col-full">
+                    <span class="label">Descripción de lo realizado</span>
+                    <span class="value"><?= nl2br(htmlspecialchars($instalacion['descripcion_inees'])) ?></span>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($cat !== 'Inees'): ?>
+        <div class="section">
+            <div class="section-title">2. Logística y Producto</div>
             <div class="section-body">
                 <div class="row">
-                    <div class="col" style="width: 100%; display:block; padding-bottom: 8px;">
-                        <span class="label">Tema de Capacitación</span>
+                    <div class="col">
+                        <span class="label">Lugar de Recogida</span>
+                        <span class="value"><?= htmlspecialchars($instalacion['lugar_recogida'] ?: 'N/A') ?></span>
+                    </div>
+                    <div class="col">
+                        <span class="label">Fecha de Recogida</span>
                         <span
-                            class="value"><?= htmlspecialchars($instalacion['tema_capacitacion'] ?: 'No especificado') ?></span>
+                            class="value"><?= !empty($instalacion['fecha_recogida']) ? date('d/m/Y', strtotime($instalacion['fecha_recogida'])) : 'N/A' ?></span>
                     </div>
                 </div>
+
+                <div class="row">
+                    <?php if ($instalacion['es_maquina'] == 1): ?>
+                        <div class="col">
+                            <span class="label">Tipo de Máquina</span>
+                            <span class="value"><?= htmlspecialchars($instalacion['nombre_tipo_maquina'] ?: 'N/A') ?></span>
+                        </div>
+                        <div class="col">
+                            <span class="label">Serial Físico</span>
+                            <span
+                                class="value font-bold"><?= htmlspecialchars($instalacion['serial_maquina'] ?: 'N/A') ?></span>
+                        </div>
+                    <?php else: ?>
+                        <div class="col-full">
+                            <span class="label">Producto / Elementos Transportados</span>
+                            <span class="value"><?= htmlspecialchars($instalacion['producto_otro'] ?: 'N/A') ?></span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="row">
+                    <div class="col-full" style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px;">
+                        <span class="label text-emerald-600">Tarifa de Cobro del Servicio</span>
+                        <span class="value font-bold" style="font-size:16px;">$
+                            <?= number_format($instalacion['valor_servicio'], 0, '', '.') ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">3. Origen y Destino</div>
+            <div class="section-body">
+                <?php
+                $origenCliente = htmlspecialchars($instalacion['cliente_origen_nombre'] ?: ($instalacion['cliente_origen_texto'] ?: 'N/A'));
+                $origenPunto = htmlspecialchars($instalacion['punto_origen_nombre'] ?: ($instalacion['punto_origen_texto'] ?: 'N/A'));
+
+                $destinoCliente = htmlspecialchars($instalacion['cliente_destino_nombre'] ?: ($instalacion['cliente_destino_texto'] ?: 'N/A'));
+                $destinoPunto = htmlspecialchars($instalacion['punto_destino_nombre'] ?: ($instalacion['punto_destino_texto'] ?: 'N/A'));
+                ?>
                 <div class="row">
                     <div class="col">
-                        <span class="label">Cantidad de Asistentes</span>
-                        <span class="value"><?= htmlspecialchars($instalacion['cantidad_asistentes'] ?: 'N/A') ?></span>
+                        <span class="label">Cliente Origen</span>
+                        <span class="value"><?= $origenCliente ?></span><br>
+                        <span class="label" style="margin-top:5px;">Punto Origen</span>
+                        <span class="value"><?= $origenPunto ?></span>
                     </div>
                     <div class="col">
-                        <span class="label">Duración (Horas)</span>
-                        <span class="value"><?= htmlspecialchars($instalacion['horas_capacitacion'] ?: 'N/A') ?> Hrs</span>
+                        <span class="label">Cliente Destino</span>
+                        <span class="value font-bold"><?= $destinoCliente ?></span><br>
+                        <span class="label" style="margin-top:5px;">Punto Destino</span>
+                        <span class="value font-bold"><?= $destinoPunto ?></span>
                     </div>
                 </div>
             </div>
@@ -361,18 +384,48 @@
     <?php endif; ?>
 
     <div class="section">
-        <div class="section-title">
-            <?= (isset($instalacion['incluye_capacitacion']) && $instalacion['incluye_capacitacion'] == 1) ? '5' : '4' ?>.
-            Observaciones y Comentarios
-        </div>
+        <div class="section-title">Observaciones</div>
         <div class="section-body" style="padding-top: 5px;">
             <div class="observaciones">
-                <?= nl2br(htmlspecialchars($instalacion['comentarios'] ?: 'Ninguna observación registrada.')) ?>
+                <?= nl2br(htmlspecialchars($instalacion['notas'] ?: 'Ninguna observación registrada.')) ?>
             </div>
         </div>
     </div>
 
-    <!-- Reemplaza el footer antiguo por este: -->
+    <?php if (!empty($evidenciaRemision) || !empty($evidenciaMaquina) || !empty($evidenciaChazos)): ?>
+        <div class="section no-break">
+            <div class="section-title"><i class="fas fa-camera"></i> Evidencias del Servicio</div>
+            <div class="section-body">
+                <div class="evidencia-container">
+                    <?php if (!empty($evidenciaRemision)): ?>
+                        <div class="evidencia-box">
+                            <div class="evidencia-titulo">Remisión</div>
+                            <?php if (strpos($evidenciaRemision, 'application/pdf') !== false): ?>
+                                <span style="font-size:10px; color:#666;">(Documento PDF Adjunto)</span>
+                            <?php else: ?>
+                                <img src="<?= $evidenciaRemision ?>" class="evidencia-img">
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($evidenciaMaquina)): ?>
+                        <div class="evidencia-box">
+                            <div class="evidencia-titulo">Máquina</div>
+                            <img src="<?= $evidenciaMaquina ?>" class="evidencia-img">
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($evidenciaChazos)): ?>
+                        <div class="evidencia-box">
+                            <div class="evidencia-titulo">Chazos</div>
+                            <img src="<?= $evidenciaChazos ?>" class="evidencia-img">
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <div class="no-break">
         <div class="firmas">
             <div class="firma-box">
@@ -389,22 +442,20 @@
             </div>
 
             <div class="firma-box">
-                <div class="firma-espacio">
-                    <!-- Espacio en blanco para que el cliente firme a mano -->
-                </div>
+                <div class="firma-espacio"></div>
                 <div class="firma-linea"></div>
                 <div class="firma-nombre">
-                    <?= htmlspecialchars($instalacion['nombre_cliente'] ?? 'RESPONSABLE EN SITIO') ?>
+                    <?= $cat !== 'Inees' ? $destinoCliente : 'SUPERVISOR INEES' ?>
                 </div>
                 <div class="firma-rol">Recibido y Aprobado</div>
             </div>
         </div>
 
         <div class="footer-strip">
-            <span>INEES — Reporte Técnico de Operación</span>
+            <span>SISTEMA LOGÍSTICO Y TRANSPORTES</span>
             <span class="remision-footer">Remisión
                 #<?= htmlspecialchars($instalacion['numero_remision'] ?? 'N/A') ?></span>
-            <span><?= date('d/m/Y', strtotime($instalacion['fecha_solicitud'])) ?></span>
+            <span>Generado el: <?= date('d/m/Y H:i') ?></span>
         </div>
     </div>
 

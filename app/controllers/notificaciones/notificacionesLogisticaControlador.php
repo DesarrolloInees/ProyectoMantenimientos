@@ -122,7 +122,7 @@ class NotificacionesLogisticaControlador
                     }
 
                     // Enviar al supervisor (Cambia este correo por el real)
-                    $correoSupervisor = 'supervisorsat@inees.co' . '; ' . 'laboratorio@inees.co';
+                    $correoSupervisor = 'supervisorsat@inees.co' . '; ' . 'operaciones@inees.co';
                     $asunto = "[Alertas Operativas] Reporte Logístico - " . date('d/m/Y');
                     
                     $enviado = $this->enviarNotificacion($correoSupervisor, $asunto, $mensajeHTML);
