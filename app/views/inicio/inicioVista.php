@@ -163,7 +163,7 @@ $horaActual = date('H:i');
             </a>
 
             <!-- Opción 5: Gestión de Vehículos -->
-            <a href="<?= BASE_URL ?>ordenReporte" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
+            <a href="<?= BASE_URL ?>exportarExcel" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
                 <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
                     <i class="fa-solid fa-truck text-2xl text-amber-600 group-hover:text-white"></i>
                 </div>
