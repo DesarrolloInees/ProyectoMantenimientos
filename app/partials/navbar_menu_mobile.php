@@ -47,6 +47,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fas fa-puzzle-piece mr-3 w-5 text-center text-blue-300"></i> Ver Repuestos
     </a>
+    <a href="<?= BASE_URL ?>inventarioTecnicoVer"
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fas fa-puzzle-piece mr-3 w-5 text-center text-blue-300"></i> Administrar Repuestos
+    </a>
     <a href="<?= BASE_URL ?>reporteTecnico"
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fas fa-chart-line mr-3 w-5 text-center text-blue-300"></i> Reporte de Técnicos
@@ -59,17 +63,17 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fas fa-ticket-alt mr-3 w-5 text-center text-blue-300"></i> Administrar Remisiones
     </a>
-    <a href="<?= BASE_URL ?>asistencia"
+
+    <a href="<?= BASE_URL ?>exportarExcel"
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-ticket-alt mr-3 w-5 text-center text-blue-300"></i> Reporte Horas Extra
+        <i class="fas fa-file-excel mr-3 w-5 text-center text-blue-300"></i> Exportar Excel
     </a>
 
-    <!-- Si NO quieres el enlace de Excel, elimina o comenta este bloque -->
-    <!--
-    <a href="<?= BASE_URL ?>ordenReporte" class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-file-excel mr-3 w-5 text-center text-blue-300"></i> Descargar Excel Programación
+    <a href="<?= BASE_URL ?>asistencia"
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fas fa-file mr-3 w-5 text-center text-blue-300"></i> Reporte Horas Extra
     </a>
-    -->
+
 
 <?php else: ?>
     <!-- MENÚ COMPLETO PARA ADMINISTRADORES Y OTROS ROLES -->

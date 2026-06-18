@@ -43,6 +43,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
         <i class="fas fa-puzzle-piece mr-1"></i> Gestionar Repuestos
     </a>
+    <a href="<?= BASE_URL ?>inventarioTecnicoVer"
+        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
+        <i class="fas fa-gears mr-1"></i> Administrar Repuestos
+    </a>
     <a href="<?= BASE_URL ?>reporteTecnico"
         class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
         <i class="fas fa-chart-line mr-1"></i> Reporte Técnico
@@ -55,9 +59,13 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
         <i class="fas fa-ticket-alt mr-1"></i> Administrar Remisiones
     </a>
+    <a href="<?= BASE_URL ?>exportarExcel"
+        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
+        <i class="fas fa-file-excel mr-1"></i> Exportar Excel
+    </a>
     <a href="<?= BASE_URL ?>asistencia"
         class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-ticket-alt mr-1"></i> Reporte Horas Extra
+        <i class="fas fa-file mr-1"></i> Reporte Horas Extra
     </a>
 
 <?php else: ?>

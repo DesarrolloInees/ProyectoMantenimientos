@@ -402,7 +402,81 @@
                 let nombreHoja = del.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Data";
                 XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
             }
+            // =========================================================================
+            // 7. NUEVO: GENERAR HOJA "RESUMEN TOTAL" CON TODOS LOS SERVICIOS Y AUTOSUMA
+            // =========================================================================
+            
+            let matrizResumen = [
+                [
+                    "Device_id", "Número de Remisión", "Cliente", "Nombre Punto",
+                    "Preventivo Básico", "Preventivo Profundo", "Correctivo", "Tarifa",
+                    "Observaciones", "Delegación", "Fecha", "Técnico",
+                    "Tipo de Máquina", "Tipo de Servicio", "Hora Entrada", "Hora Salida",
+                    "Duración", "Desplazamiento", "Repuestos", "Estado", "Calificación", "Modalidad"
+                ]
+            ];
 
+            let filaActual = 2; // La fila 1 son los encabezados
+
+            // Recorremos nuevamente todos los datos ya procesados (incluyendo viáticos calculados)
+            for (let del in serviciosPorDelegacion) {
+                let filasDel = serviciosPorDelegacion[del];
+                filasDel.forEach(f => {
+                    matrizResumen.push([
+                        f.device_id, f.remision, f.cliente, f.punto,
+                        f.prev_basico, f.prev_profundo, f.correctivo, f.valor,
+                        f.obs, f.delegacion, f.fecha, f.tecnico,
+                        f.tipo_maquina, f.tipo_servicio, f.hora_entrada, f.hora_salida,
+                        f.duracion, f.desplazamiento, f.repuestos, f.estado, f.calificacion, f.modalidad
+                    ]);
+                    filaActual++;
+                });
+            }
+
+            // --- LA MAGIA DE LA AUTOSUMA ---
+            // Creamos una fila vacía, ponemos un texto de TOTAL y agregamos la fórmula
+            let filaTotal = ["", "", "", "", "", "", "TOTAL GENERAL:"];
+            
+            // Inyectamos la fórmula de suma nativa de Excel en la columna H (índice 7 = Tarifa)
+            filaTotal.push({ t: 'n', f: 'SUM(H2:H' + (filaActual - 1) + ')' });
+            
+            // Rellenamos el resto del array para que no descuadre la tabla
+            for(let i = 8; i < 22; i++) filaTotal.push("");
+            
+            matrizResumen.push(filaTotal);
+
+            // Convertimos la matriz en una hoja de SheetJS
+            let wsResumen = XLSX.utils.aoa_to_sheet(matrizResumen);
+
+            // Le damos formato de contabilidad a la columna de Tarifas (Columna H)
+            const formatoMoneda = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
+            if (wsResumen['!ref']) {
+                const rangeResumen = XLSX.utils.decode_range(wsResumen['!ref']);
+                for (let R = rangeResumen.s.r + 1; R <= rangeResumen.e.r; ++R) {
+                    let cellRef = XLSX.utils.encode_cell({ c: 7, r: R });
+                    // Solo aplicar a celdas que tengan valor o la fórmula
+                    if (wsResumen[cellRef]) {
+                        wsResumen[cellRef].z = formatoMoneda;
+                    }
+                }
+            }
+
+            // Copiamos los mismos anchos de columna que ya tenías
+            wsResumen["!cols"] = [
+                { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 },
+                { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 15 },
+                { wch: 50 }, { wch: 15 }, { wch: 12 }, { wch: 20 },
+                { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 },
+                { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 15 },
+                { wch: 15 }, { wch: 15 }
+            ];
+
+            // Enganchamos la hoja al libro final
+            XLSX.utils.book_append_sheet(wb, wsResumen, "RESUMEN TOTAL");
+
+            // =========================================================================
+
+            // ¡Ahora sí guardamos el Excel!
             XLSX.writeFile(wb, `Reporte_Servicios_${inicio}_a_${fin}.xlsx`);
         }
 

@@ -348,6 +348,8 @@ class AsistenciaControlador
         $spreadsheet->removeSheetByIndex(0);
         $sheetIndex = 0;
 
+        $resumenParaHojaFinal = [];
+
         $timeToFraction = function ($timeStr) {
             if (!$timeStr || strpos($timeStr, 'Falta') !== false)
                 return null;
@@ -569,6 +571,7 @@ class AsistenciaControlador
             $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F5597');
             $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
+            $filaTotalDiurnas = $fila;
 
             $fila++;
             $sheet->setCellValue('C' . $fila, 'GRAN TOTAL DOMINICALES');
@@ -583,6 +586,7 @@ class AsistenciaControlador
             $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF7F7F7F');
             $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
             $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
+            $filaTotalNocturnas = $fila;
 
             $fila++;
             $sheet->setCellValue('C' . $fila, 'GRAN TOTAL SERVICIOS (TICKETS)');
@@ -602,7 +606,67 @@ class AsistenciaControlador
             $sheet->getColumnDimension('G')->setWidth(15);
             $sheet->getColumnDimension('H')->setWidth(15);
 
+            $resumenParaHojaFinal[] = [
+                'nombre' => $nombre,
+                'hoja' => $tituloHoja,
+                'celda_diurnas' => 'D' . $filaTotalDiurnas,
+                'celda_nocturnas' => 'D' . $filaTotalNocturnas
+            ];
+
             $sheetIndex++;
+        }
+
+        // CREAR LA HOJA DE RESUMEN FINAL CON CELDAS VACÍAS SI ESTÁ EN CERO
+        if (!empty($resumenParaHojaFinal)) {
+            $sheetResumen = $spreadsheet->createSheet($sheetIndex);
+            $sheetResumen->setTitle('Resumen Extras');
+
+            $sheetResumen->setCellValue('A1', 'NOMBRE DE LA PERSONA');
+            $sheetResumen->setCellValue('B1', 'HORAS EXTRA DIURNAS');
+            $sheetResumen->setCellValue('C1', 'HORAS EXTRA NOCTURNAS');
+            $sheetResumen->setCellValue('D1', 'ACTIVIDAD REALIZADA');
+            $sheetResumen->setCellValue('E1', 'QUIEN AUTORIZA');
+
+            $sheetResumen->getStyle('A1:E1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+            $sheetResumen->getStyle('A1:E1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+            $sheetResumen->getStyle('A1:E1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheetResumen->getStyle('A1:E1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+
+            $filaResumen = 2;
+            foreach ($resumenParaHojaFinal as $res) {
+                $sheetResumen->setCellValue('A' . $filaResumen, $res['nombre']);
+
+                // 🔥 AQUÍ ESTÁ LA MAGIA: Condicional IF para que quede en blanco si es 0
+                $hoja = "'" . $res['hoja'] . "'";
+                $celdaD = $res['celda_diurnas'];
+                $celdaN = $res['celda_nocturnas'];
+
+                $sheetResumen->setCellValue('B' . $filaResumen, "=IF({$hoja}!{$celdaD}=0, \"\", {$hoja}!{$celdaD})");
+                $sheetResumen->setCellValue('C' . $filaResumen, "=IF({$hoja}!{$celdaN}=0, \"\", {$hoja}!{$celdaN})");
+
+                // Formato para horas con ;; que fuerza a ocultar ceros adicionales
+                $sheetResumen->getStyle("B{$filaResumen}:C{$filaResumen}")->getNumberFormat()->setFormatCode('[h]:mm;;');
+                $sheetResumen->getStyle("A{$filaResumen}:E{$filaResumen}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                $sheetResumen->getStyle("B{$filaResumen}:C{$filaResumen}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                $filaResumen++;
+            }
+
+            $sheetResumen->getColumnDimension('A')->setWidth(35);
+            $sheetResumen->getColumnDimension('B')->setWidth(25);
+            $sheetResumen->getColumnDimension('C')->setWidth(25);
+            $sheetResumen->getColumnDimension('D')->setWidth(40);
+            $sheetResumen->getColumnDimension('E')->setWidth(25);
+
+            $styleArrayBordes = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => 'FF000000'],
+                    ],
+                ],
+            ];
+            $sheetResumen->getStyle('A1:E' . ($filaResumen - 1))->applyFromArray($styleArrayBordes);
         }
 
         if ($sheetIndex > 0) {
