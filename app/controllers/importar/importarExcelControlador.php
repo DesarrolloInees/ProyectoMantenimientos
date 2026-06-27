@@ -129,15 +129,15 @@ class importarExcelControlador
                 
                 $filasConDatosEnEsteLote++;
 
-                $codClienteStr = $fila['A']; 
-                $nombreCliente = $fila['B']; 
-                $deviceId      = trim($fila['C'] ?? ''); 
-                $cod1          = $fila['D']; 
-                $cod2          = $fila['E']; 
-                $nombrePunto   = $fila['F']; 
-                $delegacionTxt = $fila['I']; 
-                $tipoMaquina   = $fila['K']; 
-                $direccion     = $fila['AK'] ?? ''; 
+                $codClienteStr = $fila['A'];
+                $nombreCliente = trim($fila['B'] ?? ''); // <-- Limpia solo los espacios fantasma
+                $deviceId = trim($fila['C'] ?? ''); // <-- (Ya la tenías así, y es totalmente segura)
+                $cod1 = $fila['D'];
+                $cod2 = $fila['E'];
+                $nombrePunto = trim($fila['F'] ?? ''); // <-- Limpia solo los espacios fantasma 
+                $delegacionTxt = $fila['I'];
+                $tipoMaquina = $fila['K'];
+                $direccion = $fila['AK'] ?? '';
 
                 if (empty($deviceId)) continue;
 

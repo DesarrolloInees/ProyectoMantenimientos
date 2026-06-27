@@ -321,6 +321,7 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             // PASO 1: DETECTAR TODOS LOS TIPOS DE MANTENIMIENTO ÚNICOS
             // ---------------------------------------------------------
             let tiposMantenimientoSet = new Set();
+            
             datosServicios.forEach(item => {
                 let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
                 tiposMantenimientoSet.add(tipo);
@@ -378,9 +379,18 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
                     }
                 }
 
-                // 4. Sumar contadores
-                resumen[tecnico].fechas[fecha].cantidad += 1;
-                resumen[tecnico].contadoresTipos[tipoMant] += 1;
+                // 4. Sumar contadores (con multiplicador)
+                let pesoServicio = 1;
+                let tipoUpper = tipoMant.toUpperCase();
+                
+                if (tipoUpper.includes('INSTALACIÓN MÁS CAPACITACIÓN') || tipoUpper.includes('INTALACIÓN')) {
+                    pesoServicio = 3;
+                } else if (tipoUpper.includes('INSTALACIÓN SIN CAPACITACIÓN')) {
+                    pesoServicio = 2;
+                }
+
+                resumen[tecnico].fechas[fecha].cantidad += pesoServicio;
+                resumen[tecnico].contadoresTipos[tipoMant] += pesoServicio;
             });
 
             // ---------------------------------------------------------
