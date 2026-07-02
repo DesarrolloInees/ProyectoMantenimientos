@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 class tecnicoProgramacionModelo
 {
@@ -17,56 +18,105 @@ class tecnicoProgramacionModelo
      * @param string $fecha             Fecha en formato Y-m-d
      * @return array
      */
-    public function obtenerServiciosProgramadosTecnico(int $idUsuarioLogueado, string $fecha): array
+    public function obtenerServiciosProgramadosTecnico(int $idUsuarioLogueado, string $fecha, string $estado = 'pendientes'): array
     {
         try {
+            // Determinar estado según filtro
+            $estadoBD = ($estado === 'pendientes') ? 2 : 1; // 2=Programado, 1=Finalizado
+
             $sql = "SELECT
-                        os.id_ordenes_servicio,
-                        os.fecha_visita,
-                        os.estado,
-                        c.nombre_cliente,
-                        p.nombre_punto,
-                        p.direccion        AS direccion_punto,
-                        m.device_id,
-                        tm.nombre_tipo_maquina,
-                        tmt.nombre_completo AS tipo_mantenimiento,
-                        t.nombre_tecnico
-                    FROM ordenes_servicio os
-                    
-                    INNER JOIN tecnico t
-                        ON os.id_tecnico = t.id_tecnico
-                        AND t.usuario_id  = :id_usuario   
-                        AND t.estado      = 1             
-                    LEFT JOIN cliente c
-                        ON os.id_cliente = c.id_cliente
-                    LEFT JOIN punto p
-                        ON os.id_punto = p.id_punto
-                    LEFT JOIN maquina m
-                        ON os.id_maquina = m.id_maquina
-                    
-                    LEFT JOIN tipo_maquina tm 
-                        ON m.id_tipo_maquina = tm.id_tipo_maquina
-                    LEFT JOIN tipo_mantenimiento tmt
-                        ON os.id_tipo_mantenimiento = tmt.id_tipo_mantenimiento
-                    WHERE os.fecha_visita = :fecha
-                    AND   os.estado       = 2             
-                    ORDER BY p.nombre_punto ASC, os.id_ordenes_servicio ASC";
+                    os.id_ordenes_servicio,
+                    os.fecha_visita,
+                    os.estado,
+                    c.nombre_cliente,
+                    p.nombre_punto,
+                    p.direccion        AS direccion_punto,
+                    m.device_id,
+                    tm.nombre_tipo_maquina,
+                    tmt.nombre_completo AS tipo_mantenimiento,
+                    t.nombre_tecnico,
+                    os.hora_entrada,
+                    os.hora_salida,
+                    os.tiempo_servicio,
+                    os.actividades_realizadas
+                FROM ordenes_servicio os
+                
+                INNER JOIN tecnico t
+                    ON os.id_tecnico = t.id_tecnico
+                    AND t.usuario_id  = :id_usuario   
+                    AND t.estado      = 1             
+                LEFT JOIN cliente c
+                    ON os.id_cliente = c.id_cliente
+                LEFT JOIN punto p
+                    ON os.id_punto = p.id_punto
+                LEFT JOIN maquina m
+                    ON os.id_maquina = m.id_maquina
+                
+                LEFT JOIN tipo_maquina tm 
+                    ON m.id_tipo_maquina = tm.id_tipo_maquina
+                LEFT JOIN tipo_mantenimiento tmt
+                    ON os.id_tipo_mantenimiento = tmt.id_tipo_mantenimiento
+                WHERE os.fecha_visita = :fecha
+                AND   os.estado       = :estado
+                ORDER BY p.nombre_punto ASC, os.id_ordenes_servicio ASC";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
                 ':id_usuario' => $idUsuarioLogueado,
-                ':fecha'      => $fecha,
+                ':fecha' => $fecha,
+                ':estado' => $estadoBD
             ]);
-
-            error_log("PARAMS: usuario=" . $idUsuarioLogueado . " | fecha=" . $fecha);
-            error_log("FILAS ENCONTRADAS: " . $stmt->rowCount());
-            error_log("FILAS: " . $stmt->rowCount() . " | SQL OK");
-            error_log("ERRORINFO: " . print_r($stmt->errorInfo(), true));
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("[tecnicoProgramacionModelo] Error en obtenerServiciosProgramadosTecnico: " . $e->getMessage());
             return [];
+        }
+    }
+
+
+
+    public function obtenerDetalleServicioCompleto($idOrden, $idUsuario)
+    {
+        try {
+            $sql = "SELECT 
+                    os.id_ordenes_servicio,
+                    os.fecha_visita,
+                    os.hora_entrada,
+                    os.hora_salida,
+                    os.tiempo_servicio,
+                    os.actividades_realizadas,
+                    os.valor_servicio,
+                    c.nombre_cliente,
+                    p.nombre_punto,
+                    p.direccion,
+                    m.device_id,
+                    tm.nombre_tipo_maquina,
+                    tmt.nombre_completo AS tipo_mantenimiento,
+                    em.nombre_estado AS estado_final,
+                    cs.nombre_calificacion AS calificacion,
+                    os.soporte_remoto,
+                    os.detalle_novedad
+                FROM ordenes_servicio os
+                INNER JOIN tecnico t ON os.id_tecnico = t.id_tecnico AND t.usuario_id = :id_usuario
+                LEFT JOIN cliente c ON os.id_cliente = c.id_cliente
+                LEFT JOIN punto p ON os.id_punto = p.id_punto
+                LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
+                LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
+                LEFT JOIN tipo_mantenimiento tmt ON os.id_tipo_mantenimiento = tmt.id_tipo_mantenimiento
+                LEFT JOIN estado_maquina em ON os.id_estado_maquina = em.id_estado
+                LEFT JOIN calificacion_servicio cs ON os.id_calificacion = cs.id_calificacion
+                WHERE os.id_ordenes_servicio = :id_orden";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([
+                ':id_usuario' => $idUsuario,
+                ':id_orden' => $idOrden
+            ]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obtenerDetalleServicioCompleto: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -137,7 +187,7 @@ class tecnicoProgramacionModelo
                     ON DUPLICATE KEY UPDATE 
                     latitud_inicio = IFNULL(latitud_inicio, VALUES(latitud_inicio)), 
                     longitud_inicio = IFNULL(longitud_inicio, VALUES(longitud_inicio))";
-            
+
             $stmt = $this->conn->prepare($sql);
             return $stmt->execute([
                 ':id_orden' => $idOrden,
@@ -161,14 +211,15 @@ class tecnicoProgramacionModelo
             $stmtTec->execute([':uid' => $idUsuarioLogueado]);
             $tecnico = $stmtTec->fetch(PDO::FETCH_ASSOC);
 
-            if (!$tecnico) return ['success' => false, 'msj' => 'No se encontró el perfil de técnico.'];
+            if (!$tecnico)
+                return ['success' => false, 'msj' => 'No se encontró el perfil de técnico.'];
 
             // 2. Obtener la modalidad del punto seleccionado
             $sqlPunto = "SELECT id_modalidad FROM punto WHERE id_punto = :id_punto";
             $stmtPunto = $this->conn->prepare($sqlPunto);
             $stmtPunto->execute([':id_punto' => $datos['id_punto']]);
             $punto = $stmtPunto->fetch(PDO::FETCH_ASSOC);
-            
+
             // Si el punto no tiene modalidad, enviamos 1 (Urbano) por defecto para que no estalle la BD
             $idModalidad = ($punto && !empty($punto['id_modalidad'])) ? $punto['id_modalidad'] : 1;
 
@@ -177,7 +228,7 @@ class tecnicoProgramacionModelo
                     (id_cliente, id_punto, id_modalidad, id_maquina, id_tecnico, id_tipo_mantenimiento, fecha_visita, estado) 
                     VALUES 
                     (:cliente, :punto, :modalidad, :maquina, :tecnico, :tipo_mantenimiento, :fecha, 2)";
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
                 ':cliente' => $datos['id_cliente'],
@@ -212,7 +263,8 @@ class tecnicoProgramacionModelo
             $stmtTec->execute([':uid' => $idUsuarioLogueado]);
             $tecnico = $stmtTec->fetch(PDO::FETCH_ASSOC);
 
-            if (!$tecnico) return false;
+            if (!$tecnico)
+                return false;
 
             // 2. Eliminar la orden (Solo si está en estado 2 = Programado)
             $sql = "DELETE FROM ordenes_servicio 

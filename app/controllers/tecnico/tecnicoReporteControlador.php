@@ -55,6 +55,12 @@ class tecnicoReporteControlador
         // --- NUEVO: Traemos el inventario físico del técnico ---
         $inventario = $this->modelo->obtenerInventarioTecnico($idTecnicoActual);
 
+        // 🔥 GUARDAMOS LA FECHA DE APERTURA EN SESIÓN
+        $_SESSION['fecha_apertura_orden_' . $idOrden] = date('Y-m-d H:i:s');
+
+        // También la pasamos al frontend como hidden
+        $fechaApertura = $_SESSION['fecha_apertura_orden_' . $idOrden];
+
         // 3. Cargar Vista
         $titulo = "Atender Servicio";
         $vistaContenido = "app/views/tecnico/tecnicoReporteVista.php";
@@ -69,9 +75,69 @@ class tecnicoReporteControlador
 
             $idOrdenServicio = (int) $_POST['id_ordenes_servicio'];
 
+            // 🔥 LOG PARA DEPURAR
+            error_log("=== GUARDAR REPORTE ===");
+            error_log("id_cliente recibido: " . ($_POST['id_cliente'] ?? 'NULL'));
+            error_log("id_punto recibido: " . ($_POST['id_punto'] ?? 'NULL'));
+            error_log("id_orden: " . $idOrdenServicio);
+
+            // 🔥 VALIDACIÓN: Si no llegan, obtenerlos de la orden existente
+            $idCliente = $_POST['id_cliente'] ?? null;
+            $idPunto = $_POST['id_punto'] ?? null;
+
+            if (empty($idCliente) || empty($idPunto)) {
+                // Obtener los datos actuales de la orden
+                $ordenActual = $this->modelo->obtenerDetalleOrden($idOrdenServicio, $idTecnicoActual);
+                if ($ordenActual) {
+                    $idCliente = $idCliente ?: $ordenActual['id_cliente'];
+                    $idPunto = $idPunto ?: $ordenActual['id_punto'];
+                    error_log("Usando valores de la orden existente: cliente=$idCliente, punto=$idPunto");
+                }
+            }
+
+            // 🔥 VALIDACIÓN FINAL: Si sigue vacío, mostrar error
+            if (empty($idCliente) || empty($idPunto)) {
+                echo "<script>
+                alert('❌ Error: No se puede determinar el cliente o punto del servicio. Contacte a soporte.');
+                window.history.back();
+            </script>";
+                return;
+            }
+
+            // Validar que el cliente exista en la BD
+            $sqlCheck = "SELECT id_cliente FROM cliente WHERE id_cliente = :id";
+            $stmtCheck = $this->db->prepare($sqlCheck);
+            $stmtCheck->execute([':id' => $idCliente]);
+            if (!$stmtCheck->fetch()) {
+                echo "<script>
+                alert('❌ Error: El cliente con ID $idCliente no existe en la base de datos.');
+                window.history.back();
+            </script>";
+                return;
+            }
+
+            // 🔥 PASO 1: Validar modificación
+            $fechaApertura = $_POST['fecha_apertura'] ?? null;
+            $fechaUltimaModificacion = $this->modelo->obtenerUltimaModificacion($idOrdenServicio);
+
+            if ($fechaApertura && $fechaUltimaModificacion) {
+                if (strtotime($fechaUltimaModificacion) > strtotime($fechaApertura)) {
+                    echo "<script>
+                    alert('⚠️ El servicio fue modificado por otro usuario mientras estabas en campo.');
+                    window.history.back();
+                </script>";
+                    return;
+                }
+            }
+
+            // 🔥 PASO 2: Guardar la fecha de modificación antes de actualizar
+            $this->modelo->actualizarFechaModificacion($idOrdenServicio);
+
             $datos = [
                 'id_ordenes_servicio' => $idOrdenServicio,
                 'id_tecnico' => $idTecnicoActual,
+                'id_cliente' => $_POST['id_cliente'] ?? null,
+                'id_punto' => $_POST['id_punto'] ?? null,
                 'numero_remision' => $_POST['numero_remision'],
                 'hora_entrada' => $_POST['hora_entrada'],
                 'hora_salida' => $_POST['hora_salida'],
@@ -217,6 +283,25 @@ class tecnicoReporteControlador
         }
 
         echo json_encode(['success' => true, 'data' => $evidencias]);
+        exit;
+    }
+
+    public function ajaxVerificarModificacion()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idOrden = $_POST['id_orden'] ?? 0;
+        $fechaApertura = $_POST['fecha_apertura'] ?? null;
+
+        if ($idOrden && $fechaApertura) {
+            $fechaUltimaModificacion = $this->modelo->obtenerUltimaModificacion($idOrden);
+            $fueModificado = $fechaUltimaModificacion && strtotime($fechaUltimaModificacion) > strtotime($fechaApertura);
+            echo json_encode(['fue_modificado' => $fueModificado]);
+        } else {
+            echo json_encode(['fue_modificado' => false]);
+        }
         exit;
     }
 

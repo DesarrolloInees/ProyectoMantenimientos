@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 // 1. IMPORTAR ARCHIVOS NECESARIOS (Sin esto, PHP no encuentra las clases)
 require_once __DIR__ . '/../../config/conexion.php';
@@ -27,13 +28,13 @@ class ordenCrearControlador
 
     public function cargarVista()
     {
-        $clientes   = $this->modelo->obtenerClientes();
+        $clientes = $this->modelo->obtenerClientes();
         $tiposManto = $this->modelo->obtenerTiposMantenimiento();
-        $tecnicos   = $this->modelo->obtenerTecnicos();
+        $tecnicos = $this->modelo->obtenerTecnicos();
 
         // --- NUEVO: TRAER LISTAS DINÁMICAS ---
-        $estados    = $this->modelo->obtenerEstadosMaquina();
-        $califs     = $this->modelo->obtenerCalificaciones();
+        $estados = $this->modelo->obtenerEstadosMaquina();
+        $califs = $this->modelo->obtenerCalificaciones();
         $listaRepuestos = $this->modelo->obtenerListaRepuestos();
         $listaFestivos = $this->modelo->obtenerFestivos();
 
@@ -100,7 +101,8 @@ class ordenCrearControlador
     public function ajaxCalcularPrecio()
     {
         // Limpiamos buffer
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
@@ -133,7 +135,8 @@ class ordenCrearControlador
     // 1. NUEVO AJAX: CONSULTAR STOCK EN VIVO
     public function ajaxInventarioTecnico()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
@@ -156,7 +159,8 @@ class ordenCrearControlador
 
     public function ajaxValidarRemision()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
@@ -187,7 +191,8 @@ class ordenCrearControlador
 
     public function ajaxProgramacion()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
@@ -229,25 +234,30 @@ class ordenCrearControlador
                         continue; // 🛑 Salta esta iteración y sigue con la siguiente fila
                     }
 
+                    // Antes de guardar, actualizar la fecha de modificación
+                    if (!empty($datosParaModelo['id_orden_previa'])) {
+                        $this->modelo->actualizarFechaModificacion($datosParaModelo['id_orden_previa']);
+                    }
+
                     $valorLimpio = str_replace(['$', '.', ' '], '', $fila['valor']);
                     $valorFinal = is_numeric($valorLimpio) ? $valorLimpio : 0;
 
                     $datosParaModelo = [
                         'id_orden_previa' => !empty($fila['id_orden_previa']) ? intval($fila['id_orden_previa']) : null,
-                        'remision'      => $fila['remision'],
-                        'id_cliente'    => $fila['id_cliente'] ?? null,
-                        'id_punto'      => $fila['id_punto'] ?? null,
-                        'id_modalidad'  => $fila['id_modalidad'] ?? 1,
-                        'fecha'         => $fechaReporte,
-                        'id_maquina'    => $fila['id_maquina'],
-                        'id_tecnico'    => $fila['id_tecnico'],
+                        'remision' => $fila['remision'],
+                        'id_cliente' => $fila['id_cliente'] ?? null,
+                        'id_punto' => $fila['id_punto'] ?? null,
+                        'id_modalidad' => $fila['id_modalidad'] ?? 1,
+                        'fecha' => $fechaReporte,
+                        'id_maquina' => $fila['id_maquina'],
+                        'id_tecnico' => $fila['id_tecnico'],
                         'tipo_servicio' => $fila['tipo_servicio'],
-                        'valor'         => $valorFinal,
-                        'hora_entrada'  => $fila['hora_in'],
-                        'hora_salida'   => $fila['hora_out'],
-                        'estado'        => $fila['estado'],
-                        'calif'         => $fila['calif'],
-                        'obs'           => $fila['obs'],
+                        'valor' => $valorFinal,
+                        'hora_entrada' => $fila['hora_in'],
+                        'hora_salida' => $fila['hora_out'],
+                        'estado' => $fila['estado'],
+                        'calif' => $fila['calif'],
+                        'obs' => $fila['obs'],
                         'json_repuestos' => $fila['json_repuestos']
                     ];
 
@@ -280,7 +290,8 @@ class ordenCrearControlador
     public function ajaxRemisiones()
     {
         // Limpieza de buffer por seguridad
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
@@ -306,7 +317,8 @@ class ordenCrearControlador
     public function ajaxGuardarJSON()
     {
         // Limpiamos cualquier basura HTML para que devuelva JSON puro
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
@@ -341,21 +353,21 @@ class ordenCrearControlador
 
                     $datosParaModelo = [
                         'id_orden_previa' => !empty($fila['id_orden_previa']) ? intval($fila['id_orden_previa']) : null,
-                        'remision'      => $fila['remision'] ?? '',
-                        'id_cliente'    => $fila['id_cliente'],
-                        'id_punto'      => $fila['id_punto'],
-                        'id_modalidad'  => $fila['id_modalidad'] ?? 1,
-                        'fecha'         => $fechaReporte,
-                        'id_maquina'    => $fila['id_maquina'],
-                        'id_tecnico'    => $fila['id_tecnico'] ?? null,
+                        'remision' => $fila['remision'] ?? '',
+                        'id_cliente' => $fila['id_cliente'],
+                        'id_punto' => $fila['id_punto'],
+                        'id_modalidad' => $fila['id_modalidad'] ?? 1,
+                        'fecha' => $fechaReporte,
+                        'id_maquina' => $fila['id_maquina'],
+                        'id_tecnico' => $fila['id_tecnico'] ?? null,
                         'tipo_servicio' => $fila['tipo_servicio'] ?? null,
-                        'valor'         => $valorFinal,
-                        'hora_entrada'  => $fila['hora_in'] ?? null,
-                        'hora_salida'   => $fila['hora_out'] ?? null,
-                        'estado'        => $fila['estado'] ?? null,
-                        'calif'         => $fila['calif'] ?? null,
-                        'obs'           => $fila['obs'] ?? '',
-                        'json_repuestos'=> $fila['json_repuestos'] ?? '[]'
+                        'valor' => $valorFinal,
+                        'hora_entrada' => $fila['hora_in'] ?? null,
+                        'hora_salida' => $fila['hora_out'] ?? null,
+                        'estado' => $fila['estado'] ?? null,
+                        'calif' => $fila['calif'] ?? null,
+                        'obs' => $fila['obs'] ?? '',
+                        'json_repuestos' => $fila['json_repuestos'] ?? '[]'
                     ];
 
                     $idOrden = $this->modelo->guardarOrden($datosParaModelo);

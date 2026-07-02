@@ -516,6 +516,20 @@
         </div>
     </div>
 
+    <!-- Pestañas -->
+    <div class="flex border-b border-gray-200 mb-4 bg-white rounded-t-lg overflow-hidden">
+        <button onclick="cambiarPestana('pendientes')" id="tabPendientes" class="flex-1 py-3 px-4 text-center font-bold text-sm transition-all duration-200 
+                    bg-blue-600 text-white border-b-4 border-blue-800">
+            <i class="fas fa-clock mr-2"></i> Pendientes
+            <span id="badgePendientes" class="ml-2 bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs">0</span>
+        </button>
+        <button onclick="cambiarPestana('finalizados')" id="tabFinalizados" class="flex-1 py-3 px-4 text-center font-bold text-sm transition-all duration-200 
+                    bg-gray-100 text-gray-600 hover:bg-gray-200">
+            <i class="fas fa-check-circle mr-2"></i> Finalizados
+            <span id="badgeFinalizados" class="ml-2 bg-gray-300 text-gray-700 px-2 py-0.5 rounded-full text-xs">0</span>
+        </button>
+    </div>
+
 
     <!-- Alert de debug (solo aparece si hay error de sesión) -->
     <div class="alert-debug" id="alertDebug">
@@ -605,6 +619,29 @@
             </div>
         </div>
     </div>
+    <!-- Modal Ver Detalle (Solo lectura) -->
+    <div id="modalDetalle" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-lg font-bold text-gray-800">
+                    <i class="fas fa-info-circle text-green-600"></i> Detalle del Servicio
+                </h3>
+                <button onclick="cerrarDetalle()" class="text-gray-400 hover:text-red-500 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div id="contenidoDetalle" class="space-y-2 text-sm">
+                <!-- Se llena con AJAX -->
+            </div>
+
+            <div class="mt-4 border-t pt-3 text-right">
+                <button onclick="cerrarDetalle()" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded font-bold">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
 
 </div>
 
@@ -618,23 +655,27 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    $(document).ready(function () {
+    // ── VARIABLE GLOBAL ──
+    let estadoFiltro = 'pendientes'; // 'pendientes' o 'finalizados'
+    let tabla; // Variable para el DataTable
 
-        // ── Setear fecha ANTES de que DataTable haga su primera petición ──
+    $(document).ready(function () {
+        // ── Setear fecha ──
         var hoy = new Date();
         var fechaHoy = hoy.getFullYear() + '-' +
             String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
             String(hoy.getDate()).padStart(2, '0');
         $('#fechaFiltro').val(fechaHoy);
-        // ── Inicializar Select2 ────────────────────────────────────────
+
+        // ── Inicializar Select2 ──
         $('#extraCliente, #extraPunto, #extraMaquina, #extraMantenimiento').select2({
-            dropdownParent: $('#modalExtra') // Fundamental para modales custom o Bootstrap
+            dropdownParent: $('#modalExtra')
         });
 
-        // ── Inicializar DataTable ──────────────────────────────────────
-        var tabla = $('#tablaProgramacion').DataTable({
+        // ── Inicializar DataTable ──
+        tabla = $('#tablaProgramacion').DataTable({
             responsive: true,
-            processing: false, // Usamos nuestro propio loader
+            processing: false,
             serverSide: false,
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json',
@@ -646,6 +687,7 @@
                 type: 'POST',
                 data: function (d) {
                     d.fecha = $('#fechaFiltro').val();
+                    d.estado = estadoFiltro;
                 },
                 beforeSend: function () {
                     $('#loadingOverlay').addClass('activo');
@@ -654,7 +696,6 @@
                 dataSrc: function (respuesta) {
                     $('#loadingOverlay').removeClass('activo');
 
-                    // Si el servidor devuelve un error de sesión, lo mostramos
                     if (respuesta.error) {
                         $('#alertDebugTexto').text(respuesta.error +
                             (respuesta.debug ? ' | ' + respuesta.debug : ''));
@@ -662,10 +703,7 @@
                     }
 
                     var datos = respuesta.data || [];
-
-                    // Actualizar tarjetas de resumen
                     actualizarStats(datos);
-
                     return datos;
                 },
                 error: function (xhr, error, thrown) {
@@ -677,7 +715,6 @@
             },
             columns: [
                 {
-                    // 1. Cliente
                     data: 'nombre_cliente',
                     render: function (data, type, row) {
                         var cliente = data ? data : '<span class="text-gray-400">Sin cliente</span>';
@@ -685,7 +722,6 @@
                     }
                 },
                 {
-                    // 2. Punto / Dirección
                     data: 'nombre_punto',
                     render: function (data, type, row) {
                         var punto = data ? data : 'Sin punto';
@@ -695,7 +731,6 @@
                     }
                 },
                 {
-                    // 3. Máquina (Esta la habíamos borrado por error)
                     data: null,
                     render: function (data, type, row) {
                         var tipo = row.nombre_tipo_maquina ? row.nombre_tipo_maquina : 'N/A';
@@ -704,7 +739,6 @@
                     }
                 },
                 {
-                    // 4. Tipo Mantenimiento
                     data: 'tipo_mantenimiento',
                     render: function (data) {
                         if (!data) return '<span class="badge badge-gris">Sin definir</span>';
@@ -712,17 +746,24 @@
                     }
                 },
                 {
-                    // 5. Acción (Aquí van los botones de Atender y Borrar)
                     data: null,
                     className: 'text-center',
                     orderable: false,
                     render: function (data, type, row) {
-                        return '<div style="display:flex; gap:0.5rem; justify-content:center;">' +
-                            '<button class="btn-atender" onclick="abrirReporteMovil(' + row.id_ordenes_servicio + ')">' +
-                            '<i class="fas fa-clipboard-check"></i> Atender</button>' +
-                            '<button onclick="eliminarServicio(' + row.id_ordenes_servicio + ')" style="background:#dc2626; color:white; border:none; padding:0.5rem 0.75rem; border-radius:7px; cursor:pointer;" title="Cancelar servicio">' +
-                            '<i class="fas fa-trash-alt"></i></button>' +
-                            '</div>';
+                        let html = '<div style="display:flex; gap:0.5rem; justify-content:center;">';
+
+                        if (row.estado === 2) {
+                            html += '<button class="btn-atender" onclick="abrirReporteMovil(' + row.id_ordenes_servicio + ')">' +
+                                '<i class="fas fa-clipboard-check"></i> Atender</button>' +
+                                '<button onclick="eliminarServicio(' + row.id_ordenes_servicio + ')" style="background:#dc2626; color:white; border:none; padding:0.5rem 0.75rem; border-radius:7px; cursor:pointer;" title="Cancelar servicio">' +
+                                '<i class="fas fa-trash-alt"></i></button>';
+                        } else {
+                            html += '<button onclick="verDetalleServicio(' + row.id_ordenes_servicio + ')" style="background:#16a34a; color:white; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer;">' +
+                                '<i class="fas fa-eye"></i> Ver</button>';
+                        }
+
+                        html += '</div>';
+                        return html;
                     }
                 }
             ],
@@ -732,31 +773,58 @@
             pageLength: 25
         });
 
-        // ── Recargar al cambiar fecha ──────────────────────────────────
+        // ── Recargar al cambiar fecha ──
         $('#fechaFiltro').on('change', function () {
             tabla.ajax.reload();
         });
-
-        // ── Actualizar tarjetas de resumen ─────────────────────────────
-        function actualizarStats(datos) {
-            var fecha = $('#fechaFiltro').val();
-
-            // Formatear fecha para mostrar
-            var partes = fecha.split('-');
-            var fechaFormateada = partes[2] + '/' + partes[1] + '/' + partes[0];
-
-            // Contar puntos únicos
-            var puntosUnicos = [...new Set(datos.map(function (r) {
-                return r.nombre_punto;
-            }))].length;
-
-            $('#statTotal').text(datos.length);
-            $('#statFecha').text(fechaFormateada);
-            $('#statPuntos').text(puntosUnicos);
-        }
     });
 
-    // ── Función para eliminar un servicio ────────────────────────────
+    // ── FUNCIÓN PARA CAMBIAR DE PESTAÑA (GLOBAL) ──
+    window.cambiarPestana = function (estado) {
+        estadoFiltro = estado;
+
+        // Actualizar estilos de pestañas
+        if (estado === 'pendientes') {
+            $('#tabPendientes').removeClass('bg-gray-100 text-gray-600').addClass('bg-blue-600 text-white border-b-4 border-blue-800');
+            $('#tabFinalizados').removeClass('bg-blue-600 text-white border-b-4 border-blue-800').addClass('bg-gray-100 text-gray-600');
+        } else {
+            $('#tabFinalizados').removeClass('bg-gray-100 text-gray-600').addClass('bg-green-600 text-white border-b-4 border-green-800');
+            $('#tabPendientes').removeClass('bg-blue-600 text-white border-b-4 border-blue-800').addClass('bg-gray-100 text-gray-600');
+        }
+
+        // Recargar DataTable con el nuevo filtro
+        if (tabla) {
+            tabla.ajax.reload();
+        }
+    };
+
+    // ── ACTUALIZAR TARJETAS DE RESUMEN ──
+    function actualizarStats(datos) {
+        var fecha = $('#fechaFiltro').val();
+        var partes = fecha.split('-');
+        var fechaFormateada = partes[2] + '/' + partes[1] + '/' + partes[0];
+
+        var puntosUnicos = [...new Set(datos.map(function (r) {
+            return r.nombre_punto;
+        }))].length;
+
+        var pendientes = datos.filter(r => r.estado === 2).length;
+        var finalizados = datos.filter(r => r.estado === 1).length;
+
+        $('#badgePendientes').text(pendientes);
+        $('#badgeFinalizados').text(finalizados);
+
+        if (estadoFiltro === 'pendientes') {
+            $('#statTotal').text(pendientes);
+        } else {
+            $('#statTotal').text(finalizados);
+        }
+
+        $('#statFecha').text(fechaFormateada);
+        $('#statPuntos').text(puntosUnicos);
+    }
+
+    // ── ELIMINAR SERVICIO ──
     function eliminarServicio(idOrden) {
         if (confirm("¿Estás seguro de que Prosegur canceló este servicio? Esta acción lo borrará de tu programación de forma definitiva.")) {
             $('#loadingOverlay').addClass('activo');
@@ -764,15 +832,12 @@
             $.ajax({
                 url: 'index.php?pagina=tecnicoProgramacion&accion=ajaxEliminarServicio',
                 type: 'POST',
-                data: {
-                    id_orden: idOrden
-                },
+                data: { id_orden: idOrden },
                 dataType: 'json',
                 success: function (res) {
                     $('#loadingOverlay').removeClass('activo');
                     if (res.success) {
-                        // Recargar el datatable para reflejar el borrado
-                        $('#tablaProgramacion').DataTable().ajax.reload(null, false);
+                        tabla.ajax.reload(null, false);
                     } else {
                         alert("Error: " + res.msj);
                     }
@@ -785,9 +850,56 @@
         }
     }
 
+    // ── VER DETALLE DEL SERVICIO ──
+    function verDetalleServicio(idOrden) {
+        $('#modalDetalle').addClass('flex').removeClass('hidden');
 
-    // ── LÓGICA DEL MODAL DE SERVICIO EXTRA ────────────────────────────
+        $.ajax({
+            url: 'index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerDetalleServicio',
+            type: 'POST',
+            data: { id_orden: idOrden },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    let d = res.data;
+                    let html = `
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><strong>Cliente:</strong></div>
+                        <div>${d.nombre_cliente || 'N/A'}</div>
+                        <div><strong>Punto:</strong></div>
+                        <div>${d.nombre_punto || 'N/A'}</div>
+                        <div><strong>Máquina:</strong></div>
+                        <div>${d.nombre_tipo_maquina || 'N/A'}</div>
+                        <div><strong>Tipo Mantenimiento:</strong></div>
+                        <div>${d.tipo_mantenimiento || 'N/A'}</div>
+                        <div><strong>Estado Final:</strong></div>
+                        <div>${d.estado_final || 'N/A'}</div>
+                        <div><strong>Hora Entrada:</strong></div>
+                        <div>${d.hora_entrada || 'N/A'}</div>
+                        <div><strong>Hora Salida:</strong></div>
+                        <div>${d.hora_salida || 'N/A'}</div>
+                        <div><strong>Tiempo:</strong></div>
+                        <div>${d.tiempo_servicio || 'N/A'}</div>
+                        <div><strong>Actividades:</strong></div>
+                        <div class="col-span-2 bg-gray-50 p-2 rounded">${d.actividades_realizadas || 'N/A'}</div>
+                    </div>
+                `;
+                    $('#contenidoDetalle').html(html);
+                } else {
+                    $('#contenidoDetalle').html('<p class="text-red-500">Error al cargar el detalle: ' + res.msj + '</p>');
+                }
+            },
+            error: function () {
+                $('#contenidoDetalle').html('<p class="text-red-500">Error de comunicación con el servidor.</p>');
+            }
+        });
+    }
 
+    function cerrarDetalle() {
+        $('#modalDetalle').removeClass('flex').addClass('hidden');
+    }
+
+    // ── MODAL NUEVO SERVICIO ──
     function abrirModalNuevoServicio() {
         $('#extraFecha').val($('#fechaFiltro').val());
         $('#modalExtra').addClass('activo');
@@ -800,8 +912,6 @@
 
     function cerrarModalNuevoServicio() {
         $('#modalExtra').removeClass('activo');
-
-        // Resetear selects y avisarle a Select2
         $('#extraCliente').val('').trigger('change');
         $('#extraPunto').html('<option value="">Seleccione primero un cliente</option>').prop('disabled', true).trigger('change');
         $('#extraMaquina').html('<option value="">Seleccione primero un punto</option>').prop('disabled', true).trigger('change');
@@ -812,7 +922,7 @@
         $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerClientes', function (data) {
             let html = '<option value="">-- Seleccione Cliente --</option>';
             data.forEach(c => { html += `<option value="${c.id_cliente}">${c.nombre_cliente}</option>`; });
-            $('#extraCliente').html(html).trigger('change'); // <- Avisar a Select2
+            $('#extraCliente').html(html).trigger('change');
         });
     }
 
@@ -820,7 +930,7 @@
         $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerTiposMantenimiento', function (data) {
             let html = '<option value="">-- Seleccione Tipo --</option>';
             data.forEach(t => { html += `<option value="${t.id_tipo_mantenimiento}">${t.nombre_completo}</option>`; });
-            $('#extraMantenimiento').html(html).trigger('change'); // <- Avisar a Select2
+            $('#extraMantenimiento').html(html).trigger('change');
         });
     }
 
@@ -839,7 +949,7 @@
         $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerPuntos', { id_cliente: id_cliente }, function (data) {
             let html = '<option value="">-- Seleccione Punto --</option>';
             data.forEach(p => { html += `<option value="${p.id_punto}">${p.nombre_punto} (${p.direccion || 'Sin dir'})</option>`; });
-            $('#extraPunto').html(html).trigger('change'); // <- Avisar a Select2
+            $('#extraPunto').html(html).trigger('change');
         });
     });
 
@@ -857,7 +967,7 @@
         $.post('index.php?pagina=tecnicoProgramacion&accion=ajaxObtenerMaquinas', { id_punto: id_punto }, function (data) {
             let html = '<option value="">-- Seleccione Máquina --</option>';
             data.forEach(m => { html += `<option value="${m.id_maquina}">${m.device_id} - ${m.nombre_tipo_maquina}</option>`; });
-            $('#extraMaquina').html(html).trigger('change'); // <- Avisar a Select2
+            $('#extraMaquina').html(html).trigger('change');
         });
     });
 
@@ -885,8 +995,7 @@
             success: function (res) {
                 if (res.success) {
                     cerrarModalNuevoServicio();
-                    // Recargar el datatable para ver el nuevo servicio
-                    $('#tablaProgramacion').DataTable().ajax.reload(null, false);
+                    tabla.ajax.reload(null, false);
                     alert("¡Servicio agregado!");
                 } else {
                     alert("Error: " + res.msj);
@@ -902,9 +1011,8 @@
         });
     }
 
-    // ── Función para abrir el reporte móvil y capturar GPS de Inicio ──
+    // ── ABRIR REPORTE MÓVIL ──
     function abrirReporteMovil(idOrden) {
-        // Mostramos el modal de carga
         Swal.fire({
             title: 'Iniciando Servicio...',
             text: 'Obteniendo tu ubicación actual. Asegúrate de tener el GPS encendido.',
@@ -914,14 +1022,12 @@
             }
         });
 
-        // Solicitamos el GPS
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 function (position) {
                     let lat = position.coords.latitude;
                     let lon = position.coords.longitude;
 
-                    // Mandamos los datos a PHP por AJAX
                     $.ajax({
                         url: 'index.php?pagina=tecnicoProgramacion&accion=ajaxIniciarServicio',
                         type: 'POST',
@@ -933,7 +1039,6 @@
                         dataType: 'json',
                         success: function (res) {
                             if (res.success) {
-                                // GPS Guardado, ahora sí lo mandamos al formulario
                                 window.location.href = 'index.php?pagina=tecnicoReporte&accion=index&orden=' + idOrden;
                             } else {
                                 Swal.fire('Error', res.msj, 'error');

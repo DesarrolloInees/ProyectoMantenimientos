@@ -181,7 +181,7 @@ class ordenCrearModels
                 $stmtCheck = $this->conn->prepare($sqlCheck);
                 $stmtCheck->execute([
                     ':id_tec' => $datos['id_tecnico'],
-                    ':fecha'  => $datos['fecha']
+                    ':fecha' => $datos['fecha']
                 ]);
                 $yaCobroHoy = $stmtCheck->fetch(PDO::FETCH_ASSOC)['total'];
 
@@ -235,21 +235,21 @@ class ordenCrearModels
 
                 $stmt = $this->conn->prepare($sql);
                 $stmt->execute([
-                    ':id_orden'     => $datos['id_orden_previa'],
+                    ':id_orden' => $datos['id_orden_previa'],
                     ':id_modalidad' => $datos['id_modalidad'],
-                    ':remision'     => $datos['remision'],
-                    ':id_maquina'   => $datos['id_maquina'],
-                    ':id_manto'     => $datos['tipo_servicio'],
-                    ':valor'        => $datos['valor'],
-                    ':es_fuera'     => $esFueraDelegacion,
-                    ':dias'         => $diasViaticos,
+                    ':remision' => $datos['remision'],
+                    ':id_maquina' => $datos['id_maquina'],
+                    ':id_manto' => $datos['tipo_servicio'],
+                    ':valor' => $datos['valor'],
+                    ':es_fuera' => $esFueraDelegacion,
+                    ':dias' => $diasViaticos,
                     ':val_viaticos' => $valorViaticos,
-                    ':entrada'      => $datos['hora_entrada'],
-                    ':salida'       => $datos['hora_salida'],
-                    ':tiempo'       => $tiempoCalculado,
-                    ':id_estado'    => $datos['estado'],
-                    ':id_calif'     => $datos['calif'],
-                    ':actividades'  => $datos['obs']
+                    ':entrada' => $datos['hora_entrada'],
+                    ':salida' => $datos['hora_salida'],
+                    ':tiempo' => $tiempoCalculado,
+                    ':id_estado' => $datos['estado'],
+                    ':id_calif' => $datos['calif'],
+                    ':actividades' => $datos['obs']
                 ]);
 
                 $idOrden = $datos['id_orden_previa'];
@@ -266,22 +266,22 @@ class ordenCrearModels
                 $stmt = $this->conn->prepare($sql);
                 $stmt->execute([
                     ':id_cliente' => $datos['id_cliente'],
-                    ':id_punto'   => $datos['id_punto'],
+                    ':id_punto' => $datos['id_punto'],
                     ':id_modalidad' => $datos['id_modalidad'],
-                    ':remision'   => $datos['remision'],
-                    ':fecha'      => $datos['fecha'],
+                    ':remision' => $datos['remision'],
+                    ':fecha' => $datos['fecha'],
                     ':id_maquina' => $datos['id_maquina'],
                     ':id_tecnico' => $datos['id_tecnico'],
-                    ':id_manto'   => $datos['tipo_servicio'],
-                    ':valor'      => $datos['valor'],
-                    ':es_fuera'   => $esFueraDelegacion,
-                    ':dias'       => $diasViaticos,
+                    ':id_manto' => $datos['tipo_servicio'],
+                    ':valor' => $datos['valor'],
+                    ':es_fuera' => $esFueraDelegacion,
+                    ':dias' => $diasViaticos,
                     ':val_viaticos' => $valorViaticos,
-                    ':entrada'    => $datos['hora_entrada'],
-                    ':salida'     => $datos['hora_salida'],
-                    ':tiempo'     => $tiempoCalculado,
-                    ':id_estado'  => $datos['estado'],
-                    ':id_calif'   => $datos['calif'],
+                    ':entrada' => $datos['hora_entrada'],
+                    ':salida' => $datos['hora_salida'],
+                    ':tiempo' => $tiempoCalculado,
+                    ':id_estado' => $datos['estado'],
+                    ':id_calif' => $datos['calif'],
                     ':actividades' => $datos['obs']
                 ]);
 
@@ -360,7 +360,7 @@ class ordenCrearModels
             $stmt = $this->conn->prepare($sql);
             return $stmt->execute([
                 ':modalidad' => $idModalidad,
-                ':id_punto'  => $idPunto
+                ':id_punto' => $idPunto
             ]);
         } catch (PDOException $e) {
             error_log("Error actualizando modalidad punto: " . $e->getMessage());
@@ -581,5 +581,22 @@ class ordenCrearModels
         } catch (PDOException $e) {
             return [];
         }
+    }
+
+    public function actualizarFechaModificacion($idOrden)
+    {
+        // Usar archivo JSON o sesión
+        $this->actualizarFechaModificacionJSON($idOrden);
+    }
+
+    private function actualizarFechaModificacionJSON($idOrden)
+    {
+        $file = __DIR__ . '/../temp/modificaciones.json';
+        $data = [];
+        if (file_exists($file)) {
+            $data = json_decode(file_get_contents($file), true);
+        }
+        $data[$idOrden] = date('Y-m-d H:i:s');
+        file_put_contents($file, json_encode($data));
     }
 }

@@ -54,7 +54,8 @@
     <div>
         <h1 class="font-bold text-lg leading-tight">Ejecutar Servicio</h1>
         <p class="text-blue-200 text-xs">Orden #<?= htmlspecialchars($orden['id_ordenes_servicio']) ?> |
-            <?= date('d/m/Y', strtotime($orden['fecha_visita'])) ?></p>
+            <?= date('d/m/Y', strtotime($orden['fecha_visita'])) ?>
+        </p>
     </div>
 </div>
 
@@ -91,7 +92,14 @@
 
     <form action="index.php?pagina=tecnicoReporte&accion=guardar" method="POST" id="formReporteMovil"
         enctype="multipart/form-data">
+
         <input type="hidden" name="id_ordenes_servicio" value="<?= htmlspecialchars($orden['id_ordenes_servicio']) ?>">
+
+        <!-- 🔥 CAMPOS OCULTOS CON VALORES -->
+        <input type="hidden" name="id_cliente" value="<?= htmlspecialchars($orden['id_cliente'] ?? '') ?>">
+        <input type="hidden" name="id_punto" value="<?= htmlspecialchars($orden['id_punto'] ?? '') ?>">
+        <input type="hidden" name="fecha_apertura"
+            value="<?= $_SESSION['fecha_apertura_orden_' . $orden['id_ordenes_servicio']] ?? date('Y-m-d H:i:s') ?>">
 
         <input type="hidden" name="latitud_fin" id="latitud_fin" value="">
         <input type="hidden" name="longitud_fin" id="longitud_fin" value="">
@@ -119,11 +127,13 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora (Entrada)</label>
                     <input type="time" name="hora_entrada" id="hora_entrada" required
+                        onchange="calcularTiempoServicio()" oninput="calcularTiempoServicio()"
                         class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora (Salida)</label>
-                    <input type="time" name="hora_salida" id="hora_salida" required
+                    <input type="time" name="hora_salida" id="hora_salida" required onchange="calcularTiempoServicio()"
+                        oninput="calcularTiempoServicio()"
                         class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div class="col-span-2 pt-2 border-t border-gray-200 flex justify-between items-center">
@@ -133,220 +143,222 @@
                     <input type="hidden" name="tiempo_servicio" id="tiempo_servicio" value="00:00">
                 </div>
             </div>
+        </div>
 
-            <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 space-y-3">
-                <div class="flex items-center gap-2 border-b border-blue-200 pb-1">
-                    <i class="fas fa-microchip text-blue-500"></i>
-                    <h3 class="font-bold text-blue-800 text-xs uppercase">Información de Equipos</h3>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Máquina</label>
-                        <input type="text" name="numero_maquina" placeholder="Ej: 159"
-                            class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Serial</label>
-                        <input type="text" name="serial_maquina" placeholder="Ej: 0.100.C2/..."
-                            class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Serial router</label>
-                        <input type="text" name="serial_router" placeholder=" "
-                            class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Serial ups</label>
-                        <input type="text" name="serial_ups"
-                            class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
-                    </div>
-                </div>
+        <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 space-y-3">
+            <div class="flex items-center gap-2 border-b border-blue-200 pb-1">
+                <i class="fas fa-microchip text-blue-500"></i>
+                <h3 class="font-bold text-blue-800 text-xs uppercase">Información de Equipos</h3>
             </div>
-
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">N° Remisión </label>
-                <select name="numero_remision" class="w-full border-gray-300 rounded-lg select2-movil" required>
-                    <option value="">- Seleccione Remisión -</option>
-                    <?php foreach ($remisiones as $rem): ?>
-                        <option value="<?= htmlspecialchars($rem['numero_remision']) ?>">
-                            <?= htmlspecialchars($rem['numero_remision']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
-                <div class="flex justify-between items-center border-b border-gray-300 pb-2">
-                    <h2 class="font-bold text-gray-700 text-sm uppercase"><i
-                            class="fas fa-box-open text-blue-500 mr-1 text-lg"></i> Componentes</h2>
-                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold"
-                        id="badge_repuestos">0</span>
-                </div>
-
-                <button type="button" id="btn_abrir_repuestos"
-                    class="w-full border-2 border-dashed border-blue-300 text-blue-600 font-bold py-3 rounded-lg hover:bg-blue-50 transition flex items-center justify-center gap-2 bg-white">
-                    <i class="fas fa-plus"></i> Añadir Componente (Repuesto)
-                </button>
-
-                <ul id="lista_repuestos_agregados" class="space-y-2 mt-2"></ul>
-                <input type="hidden" name="json_repuestos" id="json_repuestos" value="[]">
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-orange-600 uppercase mb-1">Pendientes</label>
-                <textarea name="pendientes" rows="2" placeholder="N/A o detalle pendientes..."
-                    class="w-full bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-orange-500"></textarea>
-            </div>
-
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nombre admin</label>
-                    <input type="text" name="administrador_punto" placeholder="Juana ..."
-                        class="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500">
+                    <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Máquina</label>
+                    <input type="text" name="numero_maquina" placeholder="Ej: 159"
+                        class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Celular</label>
-                    <input type="tel" name="celular_encargado" placeholder="321257..."
-                        class="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500">
+                    <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Serial</label>
+                    <input type="text" name="serial_maquina" placeholder="Ej: 0.100.C2/..."
+                        class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
                 </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Estado inicial</label>
-                <select name="id_estado_inicial" class="w-full border-gray-300 rounded-lg select2-movil" required>
-                    <option value="">- Seleccione Estado Inicial -</option>
-                    <?php foreach ($estados as $est): ?>
-                        <option value="<?= htmlspecialchars($est['id_estado']) ?>">
-                            <?= htmlspecialchars($est['nombre_estado']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Estado final</label>
-                <select name="id_estado_maquina" class="w-full border-gray-300 rounded-lg select2-movil" required>
-                    <option value="">- Seleccione Estado -</option>
-                    <?php foreach ($estados as $est): ?>
-                        <option value="<?= htmlspecialchars($est['id_estado']) ?>">
-                            <?= htmlspecialchars($est['nombre_estado']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <hr class="border-gray-200 my-4">
-
-            <div class="space-y-5">
-                <h3 class="font-bold text-gray-400 text-xs uppercase text-center">--- Completar para el Sistema ---</h3>
-
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Actividades Realizadas</label>
-                    <textarea name="actividades_realizadas" rows="3" required
-                        placeholder="Describa el trabajo realizado..."
-                        class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500"></textarea>
+                    <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Serial router</label>
+                    <input type="text" name="serial_router" placeholder=" "
+                        class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
                 </div>
-
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Soporte Remoto</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-headset text-gray-400"></i>
-                        </div>
-                        <input type="text" name="soporte_remoto" id="soporte_remoto"
-                            placeholder="Nombre de quien apoyó..."
-                            class="w-full bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500">
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-4 space-y-4">
-                    <div class="flex items-center gap-2 mb-1 border-b pb-2">
-                        <i class="fas fa-camera text-indigo-500 text-lg"></i>
-                        <h2 class="font-bold text-gray-700 text-sm uppercase">Evidencia Fotográfica</h2>
-                    </div>
-                    <p class="text-xs text-gray-500">Requerido: 8 a 10 fotos en total.</p>
-
-                    <div>
-                        <div
-                            class="border border-dashed border-gray-300 rounded-lg p-3 bg-white text-center file-upload-btn transition hover:bg-gray-100 relative">
-                            <i class="fas fa-images text-gray-400 text-2xl mb-2"></i>
-                            <p class="text-sm font-bold text-gray-700">1. Fotos del "Antes"</p>
-                            <span id="badge_fotos_antes"
-                                class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0
-                                seleccionadas</span>
-                            <input type="file" name="fotos_antes[]" id="fotos_antes" multiple accept="image/*"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
-                        </div>
-                        <div id="preview_antes" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
-                    </div>
-
-                    <div>
-                        <div
-                            class="border border-dashed border-gray-300 rounded-lg p-3 bg-white text-center file-upload-btn transition hover:bg-gray-100 relative">
-                            <i class="fas fa-file-signature text-gray-400 text-2xl mb-2"></i>
-                            <p class="text-sm font-bold text-gray-700">2. Foto de la Remisión</p>
-                            <span id="badge_foto_remision"
-                                class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0
-                                seleccionadas</span>
-                            <input type="file" name="foto_remision[]" id="foto_remision" multiple accept="image/*"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
-                        </div>
-                        <div id="preview_remision" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
-                    </div>
-
-                    <div>
-                        <div
-                            class="border border-dashed border-gray-300 rounded-lg p-3 bg-white text-center file-upload-btn transition hover:bg-gray-100 relative">
-                            <i class="fas fa-check-double text-gray-400 text-2xl mb-2"></i>
-                            <p class="text-sm font-bold text-gray-700">3. Fotos del "Después"</p>
-                            <span id="badge_fotos_despues"
-                                class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0
-                                seleccionadas</span>
-                            <input type="file" name="fotos_despues[]" id="fotos_despues" multiple accept="image/*"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
-                        </div>
-                        <div id="preview_despues" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
-                    </div>
-
-                    <div class="text-center pt-2 border-t border-gray-200">
-                        <span class="text-sm font-bold text-gray-600">Total Evidencias: <span id="total_fotos_count"
-                                class="text-red-600 text-lg">0</span>/10</span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Firma / Calificación del
-                        Cliente</label>
-                    <select name="id_calificacion" class="w-full border-gray-300 rounded-lg select2-movil" required>
-                        <option value="">- Seleccione Calificación -</option>
-                        <?php foreach ($calificaciones as $calif): ?>
-                            <option value="<?= htmlspecialchars($calif['id_calificacion']) ?>">
-                                <?= htmlspecialchars($calif['nombre_calificacion']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
-                    <div class="flex items-center gap-2 mb-1 border-b pb-2">
-                        <i class="fas fa-signature text-blue-500 text-lg"></i>
-                        <h2 class="font-bold text-gray-700 text-sm uppercase">Firma del Cliente</h2>
-                    </div>
-
-                    <div
-                        class="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50 touch-none">
-                        <canvas id="canvas_firma" width="400" height="200"
-                            class="w-full h-48 bg-white cursor-crosshair"></canvas>
-                    </div>
-
-                    <button type="button" onclick="limpiarFirma()"
-                        class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                        <i class="fas fa-eraser"></i> Limpiar Firma
-                    </button>
-
-                    <input type="hidden" name="firma_base64" id="firma_base64">
+                    <label class="block text-[10px] font-bold text-blue-600 uppercase mb-1">Serial ups</label>
+                    <input type="text" name="serial_ups"
+                        class="w-full bg-white border border-blue-200 rounded-lg p-2 text-sm shadow-sm outline-none focus:border-blue-500">
                 </div>
             </div>
-
         </div>
-    </form>
+
+        <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1">N° Remisión </label>
+            <select name="numero_remision" class="w-full border-gray-300 rounded-lg select2-movil" required>
+                <option value="">- Seleccione Remisión -</option>
+                <?php foreach ($remisiones as $rem): ?>
+                    <option value="<?= htmlspecialchars($rem['numero_remision']) ?>">
+                        <?= htmlspecialchars($rem['numero_remision']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
+            <div class="flex justify-between items-center border-b border-gray-300 pb-2">
+                <h2 class="font-bold text-gray-700 text-sm uppercase"><i
+                        class="fas fa-box-open text-blue-500 mr-1 text-lg"></i> Componentes</h2>
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold"
+                    id="badge_repuestos">0</span>
+            </div>
+
+            <button type="button" id="btn_abrir_repuestos"
+                class="w-full border-2 border-dashed border-blue-300 text-blue-600 font-bold py-3 rounded-lg hover:bg-blue-50 transition flex items-center justify-center gap-2 bg-white">
+                <i class="fas fa-plus"></i> Añadir Componente (Repuesto)
+            </button>
+
+            <ul id="lista_repuestos_agregados" class="space-y-2 mt-2"></ul>
+            <input type="hidden" name="json_repuestos" id="json_repuestos" value="[]">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-orange-600 uppercase mb-1">Pendientes</label>
+            <textarea name="pendientes" rows="2" placeholder="N/A o detalle pendientes..."
+                class="w-full bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-orange-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nombre admin</label>
+                <input type="text" name="administrador_punto" placeholder="Juana ..."
+                    class="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Celular</label>
+                <input type="tel" name="celular_encargado" placeholder="321257..."
+                    class="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500">
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Estado inicial</label>
+            <select name="id_estado_inicial" class="w-full border-gray-300 rounded-lg select2-movil" required>
+                <option value="">- Seleccione Estado Inicial -</option>
+                <?php foreach ($estados as $est): ?>
+                    <option value="<?= htmlspecialchars($est['id_estado']) ?>">
+                        <?= htmlspecialchars($est['nombre_estado']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Estado final</label>
+            <select name="id_estado_maquina" class="w-full border-gray-300 rounded-lg select2-movil" required>
+                <option value="">- Seleccione Estado -</option>
+                <?php foreach ($estados as $est): ?>
+                    <option value="<?= htmlspecialchars($est['id_estado']) ?>">
+                        <?= htmlspecialchars($est['nombre_estado']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <hr class="border-gray-200 my-4">
+
+        <div class="space-y-5">
+            <h3 class="font-bold text-gray-400 text-xs uppercase text-center">--- Completar para el Sistema ---</h3>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Actividades Realizadas</label>
+                <textarea name="actividades_realizadas" rows="3" required placeholder="Describa el trabajo realizado..."
+                    class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Soporte Remoto</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-headset text-gray-400"></i>
+                    </div>
+                    <input type="text" name="soporte_remoto" id="soporte_remoto" placeholder="Nombre de quien apoyó..."
+                        class="w-full bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-4 space-y-4">
+                <div class="flex items-center gap-2 mb-1 border-b pb-2">
+                    <i class="fas fa-camera text-indigo-500 text-lg"></i>
+                    <h2 class="font-bold text-gray-700 text-sm uppercase">Evidencia Fotográfica</h2>
+                </div>
+                <p class="text-xs text-gray-500">Requerido: 8 a 10 fotos en total.</p>
+
+                <div>
+                    <div
+                        class="border border-dashed border-gray-300 rounded-lg p-3 bg-white text-center file-upload-btn transition hover:bg-gray-100 relative">
+                        <i class="fas fa-images text-gray-400 text-2xl mb-2"></i>
+                        <p class="text-sm font-bold text-gray-700">1. Fotos del "Antes"</p>
+                        <span id="badge_fotos_antes"
+                            class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0
+                            seleccionadas</span>
+                        <input type="file" name="fotos_antes[]" id="fotos_antes" multiple accept="image/*"
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                    </div>
+                    <div id="preview_antes" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
+                </div>
+
+                <div>
+                    <div
+                        class="border border-dashed border-gray-300 rounded-lg p-3 bg-white text-center file-upload-btn transition hover:bg-gray-100 relative">
+                        <i class="fas fa-file-signature text-gray-400 text-2xl mb-2"></i>
+                        <p class="text-sm font-bold text-gray-700">2. Foto de la Remisión</p>
+                        <span id="badge_foto_remision"
+                            class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0
+                            seleccionadas</span>
+                        <input type="file" name="foto_remision[]" id="foto_remision" multiple accept="image/*"
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                    </div>
+                    <div id="preview_remision" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
+                </div>
+
+                <div>
+                    <div
+                        class="border border-dashed border-gray-300 rounded-lg p-3 bg-white text-center file-upload-btn transition hover:bg-gray-100 relative">
+                        <i class="fas fa-check-double text-gray-400 text-2xl mb-2"></i>
+                        <p class="text-sm font-bold text-gray-700">3. Fotos del "Después"</p>
+                        <span id="badge_fotos_despues"
+                            class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold inline-block relative z-10">0
+                            seleccionadas</span>
+                        <input type="file" name="fotos_despues[]" id="fotos_despues" multiple accept="image/*"
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                    </div>
+                    <div id="preview_despues" class="flex flex-wrap gap-2 mt-2 justify-center"></div>
+                </div>
+
+                <div class="text-center pt-2 border-t border-gray-200">
+                    <span class="text-sm font-bold text-gray-600">Total Evidencias: <span id="total_fotos_count"
+                            class="text-red-600 text-lg">0</span>/10</span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Firma / Calificación del
+                    Cliente</label>
+                <select name="id_calificacion" class="w-full border-gray-300 rounded-lg select2-movil" required>
+                    <option value="">- Seleccione Calificación -</option>
+                    <?php foreach ($calificaciones as $calif): ?>
+                        <option value="<?= htmlspecialchars($calif['id_calificacion']) ?>">
+                            <?= htmlspecialchars($calif['nombre_calificacion']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-3">
+                <div class="flex items-center gap-2 mb-1 border-b pb-2">
+                    <i class="fas fa-signature text-blue-500 text-lg"></i>
+                    <h2 class="font-bold text-gray-700 text-sm uppercase">Firma del Cliente</h2>
+                </div>
+
+                <div class="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50 touch-none">
+                    <canvas id="canvas_firma" width="400" height="200"
+                        class="w-full h-48 bg-white cursor-crosshair"></canvas>
+                </div>
+
+                <button type="button" onclick="limpiarFirma()"
+                    class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                    <i class="fas fa-eraser"></i> Limpiar Firma
+                </button>
+
+                <input type="hidden" name="firma_base64" id="firma_base64">
+            </div>
+        </div>
+
+</div>
+</form>
 </div>
 
 <div
@@ -415,6 +427,45 @@
     })();
     console.log("BASE_URL calculada:", window.BASE_URL);
 </script>
+
+<script>
+
+    // Cuando el técnico abre el servicio
+    let idOrden = <?= $orden['id_ordenes_servicio'] ?>;
+    let fechaApertura = document.querySelector('input[name="fecha_apertura"]').value;
+
+    // Cada 30 segundos, verificar si alguien más modificó la orden
+    setInterval(function () {
+        $.ajax({
+            url: 'index.php?pagina=tecnicoReporte&accion=ajaxVerificarModificacion',
+            type: 'POST',
+            data: {
+                id_orden: idOrden,
+                fecha_apertura: fechaApertura
+            },
+            dataType: 'json',
+            success: function (res) {
+                if (res.fue_modificado) {
+                    // Mostrar alerta visual sin interrumpir
+                    let alerta = document.getElementById('alerta_modificacion');
+                    if (!alerta) {
+                        alerta = document.createElement('div');
+                        alerta.id = 'alerta_modificacion';
+                        alerta.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4';
+                        alerta.innerHTML = `
+                        <strong class="font-bold">⚠️ ¡Atención!</strong>
+                        <span class="block sm:inline">Este servicio fue modificado por otro usuario. 
+                        <a href="#" onclick="location.reload()" class="underline font-bold">Recarga la página</a> 
+                        para ver los cambios antes de guardar.</span>
+                    `;
+                        document.querySelector('.max-w-lg').prepend(alerta);
+                    }
+                }
+            }
+        });
+    }, 30000); // Cada 30 segundos
+</script>
+
 
 <script>
     window.BASE_URL = '<?= BASE_URL ?>';

@@ -12,6 +12,109 @@ let totalFotosAntes = 0;
 let totalFotosRemision = 0;
 let totalFotosDespues = 0;
 
+
+// ==========================================
+// INICIALIZACIÓN DEL CANVAS
+// ==========================================
+$(document).ready(function () {
+    // Inicializar el Canvas para la Firma
+    canvas = document.getElementById('canvas_firma');
+    if (canvas) {
+        ctx = canvas.getContext('2d');
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#0f172a';
+
+        // Eventos táctiles (Celulares)
+        canvas.addEventListener('touchstart', iniciarDibujo, { passive: false });
+        canvas.addEventListener('touchmove', dibujar, { passive: false });
+        canvas.addEventListener('touchend', detenerDibujo, { passive: false });
+        canvas.addEventListener('touchcancel', detenerDibujo, { passive: false });
+
+        // Eventos de ratón (PC)
+        canvas.addEventListener('mousedown', iniciarDibujo);
+        canvas.addEventListener('mousemove', dibujar);
+        canvas.addEventListener('mouseup', detenerDibujo);
+        canvas.addEventListener('mouseout', detenerDibujo);
+    }
+});
+
+// ==========================================
+// FUNCIONES DE LA FIRMA DIGITAL
+// ==========================================
+function obtenerPosicion(evento) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let clientX, clientY;
+
+    if (evento.touches && evento.touches.length > 0) {
+        clientX = evento.touches[0].clientX;
+        clientY = evento.touches[0].clientY;
+    } else {
+        clientX = evento.clientX;
+        clientY = evento.clientY;
+    }
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+function iniciarDibujo(e) {
+    e.preventDefault();
+    dibujando = true;
+    const pos = obtenerPosicion(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+}
+
+function dibujar(e) {
+    if (!dibujando) return;
+    e.preventDefault();
+    const pos = obtenerPosicion(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    firmaVacia = false;
+}
+
+function detenerDibujo(e) {
+    if (e) e.preventDefault();
+    dibujando = false;
+
+    // 🔥 CLAVE: Actualizar el campo base64 CADA VEZ que se detiene el dibujo
+    if (!firmaVacia) {
+        const dataURL = canvas.toDataURL('image/png');
+        document.getElementById('firma_base64').value = dataURL;
+        console.log('✅ Firma guardada en base64, longitud:', dataURL.length);
+    }
+}
+
+function limpiarFirma() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    firmaVacia = true;
+    document.getElementById('firma_base64').value = "";
+    console.log('🗑️ Firma limpiada');
+}
+
+// 🔥 NUEVA FUNCIÓN: Verificar si el canvas tiene algo dibujado
+function tieneFirmaEnCanvas() {
+    if (!canvas || !ctx) return false;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Buscar cualquier píxel que no sea blanco (255,255,255)
+    for (let i = 0; i < data.length; i += 4) {
+        if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // ==========================================
 // INICIALIZACIÓN CUANDO CARGA LA PÁGINA
 // ==========================================
@@ -22,9 +125,17 @@ $(document).ready(function () {
         minimumResultsForSearch: 8
     });
 
-    // 2. Eventos de cálculo de tiempo
-    $('#hora_entrada, #hora_salida').on('change', calcularTiempoServicio);
+    // 2. Eventos de cálculo de tiempo - MEJORADO
+    $('#hora_entrada, #hora_salida').on('change input', function () {
+        calcularTiempoServicio();
+    });
 
+    // Si ya hay valores al cargar, calcular automáticamente
+    setTimeout(function () {
+        if ($('#hora_entrada').val() && $('#hora_salida').val()) {
+            calcularTiempoServicio();
+        }
+    }, 500);
     // =========================================================
     // 3. NUEVA LÓGICA DE FOTOS: SUBIDA INMEDIATA POR AJAX
     // =========================================================
@@ -46,7 +157,7 @@ $(document).ready(function () {
 
         let remision = $('select[name="numero_remision"]').val() || '';
         let idOrden = $('input[name="id_ordenes_servicio"]').val();
-        
+
 
         // Subir cada foto seleccionada al servidor
         Array.from(files).forEach(file => {
@@ -139,35 +250,35 @@ function cargarEvidenciasExistentes() {
         method: 'POST',
         body: formData
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            $('#preview_antes, #preview_remision, #preview_despues').empty();
-            totalFotosAntes = 0;
-            totalFotosRemision = 0;
-            totalFotosDespues = 0;
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                $('#preview_antes, #preview_remision, #preview_despues').empty();
+                totalFotosAntes = 0;
+                totalFotosRemision = 0;
+                totalFotosDespues = 0;
 
-            data.data.forEach(foto => {
-                // 🔥 Usamos directamente la ruta que devuelve el servidor (absoluta)
-                let rutaImagen = foto.ruta_archivo;
-                let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
-                let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
+                data.data.forEach(foto => {
+                    // 🔥 Usamos directamente la ruta que devuelve el servidor (absoluta)
+                    let rutaImagen = foto.ruta_archivo;
+                    let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
+                    let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
                                 <img src="${rutaImagen}" class="w-full h-full object-cover">
                                 ${btnDelete}
                             </div>`;
 
-                if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
-                if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
-                if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
-            });
+                    if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
+                    if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
+                    if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
+                });
 
-            actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
-            actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
-            actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
-            totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
-            $('#total_fotos_count').text(totalFotosSubidasServidor);
-        }
-    });
+                actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
+                actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
+                actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
+                totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
+                $('#total_fotos_count').text(totalFotosSubidasServidor);
+            }
+        });
 }
 
 function actualizarBadgeFotos(selector, cantidad) {
@@ -201,21 +312,48 @@ window.eliminarFotoAjax = function (idEvidencia) {
 };
 
 // ==========================================
-// FUNCIONES DE TIEMPO
+// FUNCIONES DE TIEMPO - CORREGIDAS
 // ==========================================
 function calcularTiempoServicio() {
     let hEntrada = $('#hora_entrada').val();
     let hSalida = $('#hora_salida').val();
+
+    console.log('Calculando tiempo... Entrada:', hEntrada, 'Salida:', hSalida);
+
     if (hEntrada && hSalida) {
-        let entrada = new Date("1970-01-01T" + hEntrada + ":00");
-        let salida = new Date("1970-01-01T" + hSalida + ":00");
-        if (salida < entrada) salida.setDate(salida.getDate() + 1);
-        let diffMs = salida - entrada;
-        let diffHrs = Math.floor((diffMs % 86400000) / 3600000);
-        let diffMins = Math.round(((diffMs % 86400000) % 3600000) / 60000);
-        let total = diffHrs.toString().padStart(2, '0') + ":" + diffMins.toString().padStart(2, '0');
+        // Convertir a minutos para mejor precisión
+        let partesEntrada = hEntrada.split(':');
+        let partesSalida = hSalida.split(':');
+
+        let minutosEntrada = parseInt(partesEntrada[0]) * 60 + parseInt(partesEntrada[1]);
+        let minutosSalida = parseInt(partesSalida[0]) * 60 + parseInt(partesSalida[1]);
+
+        // Si la salida es menor que la entrada (pasó de medianoche)
+        if (minutosSalida < minutosEntrada) {
+            minutosSalida += 1440; // Sumar 24 horas
+        }
+
+        let diferenciaMinutos = minutosSalida - minutosEntrada;
+
+        // Calcular horas y minutos
+        let horas = Math.floor(diferenciaMinutos / 60);
+        let minutos = diferenciaMinutos % 60;
+
+        // Formatear con ceros a la izquierda
+        let total = String(horas).padStart(2, '0') + ':' + String(minutos).padStart(2, '0');
+
+        console.log('Tiempo calculado:', total);
+
+        // Actualizar campos
         $('#tiempo_servicio').val(total);
-        $('#tiempo_total_display').text(total + " hrs");
+        $('#tiempo_total_display').text(total + ' hrs');
+
+        return total;
+    } else {
+        // Si falta alguna hora, resetear
+        $('#tiempo_servicio').val('00:00');
+        $('#tiempo_total_display').text('00:00 hrs');
+        return '00:00';
     }
 }
 
@@ -294,6 +432,35 @@ function renderizarListaRepuestos() {
 function borrarRepuesto(index) {
     repuestosSeleccionados.splice(index, 1);
     renderizarListaRepuestos();
+}
+
+// ==========================================
+// ACTUALIZAR FIRMA EN TIEMPO REAL
+// ==========================================
+function actualizarFirmaBase64() {
+    if (!firmaVacia) {
+        // Convertir el canvas a base64
+        const dataURL = canvas.toDataURL('image/png');
+        document.getElementById('firma_base64').value = dataURL;
+        console.log('✅ Firma capturada en base64');
+    }
+}
+
+// Modificar la función detenerDibujo para que actualice el campo
+const detenerDibujo = (e) => {
+    e.preventDefault();
+    dibujando = false;
+    if (!firmaVacia) {
+        actualizarFirmaBase64();
+    }
+};
+
+// Modificar la función limpiarFirma para limpiar el campo oculto
+function limpiarFirma() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    firmaVacia = true;
+    document.getElementById('firma_base64').value = "";
+    console.log('🗑️ Firma limpiada');
 }
 
 // ==========================================

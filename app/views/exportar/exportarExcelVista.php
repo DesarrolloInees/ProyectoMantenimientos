@@ -98,7 +98,8 @@
                     "ID Dispositivo (Device)": fila.device_id,
                     "Fecha Última Visita": fechaObjeto,
                     "Último Mantenimiento": fila.nombre_mantenimiento || "",
-                    "Frecuencia (Días)": fila.frecuencia_mantenimiento_dias || "0" // Nueva columna
+                    "Frecuencia (Días)": fila.frecuencia_mantenimiento_dias || "0",
+                    "Tipo de Máquina": fila.nombre_tipo_maquina || "" // <- NUEVA COLUMNA AGREGADA AQUÍ
                 };
             });
 
@@ -111,7 +112,8 @@
             // 4. 🔥 ELIMINAR HORA VISUALMENTE 🔥
             if (worksheet['!ref']) {
                 const range = XLSX.utils.decode_range(worksheet['!ref']);
-                const columnaFechaIndex = 6; // Columna G (La 7ma columna, índice 6)
+                // CAMBIO: Al meter "Tipo de Máquina", "Fecha Última Visita" pasa de la columna G (6) a la H (7)
+                const columnaFechaIndex = 6;
 
                 for (let R = range.s.r + 1; R <= range.e.r; ++R) {
                     const address = XLSX.utils.encode_cell({
@@ -123,9 +125,6 @@
                     if (worksheet[address] && worksheet[address].t === 'd') {
                         // Forzamos el formato estricto de solo fecha
                         worksheet[address].z = 'dd/mm/yyyy';
-
-                        // Opcional: Si lo anterior no basta, usa el numFmt 14 (Fecha corta estándar)
-                        // worksheet[address].z = 'm/d/yy'; 
                     }
                 }
             }
@@ -142,7 +141,8 @@
                 { wch: 25 }, // Device
                 { wch: 15 }, // Fecha
                 { wch: 25 }, // Mantenimiento
-                { wch: 20 }  // Frecuencia (Días) - Nuevo ancho
+                { wch: 20 },  // Frecuencia (Días)
+                { wch: 25 } // Tipo de Máquina - NUEVO ANCHO
             ];
 
             // 6. Descargar

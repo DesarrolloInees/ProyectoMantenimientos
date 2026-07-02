@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/tecnico/tecnicoProgramacionModelo.php';
@@ -25,47 +26,41 @@ class tecnicoProgramacionControlador
 
     public function ajaxObtenerProgramacion()
     {
-        // Limpiamos cualquier output buffer previo para no contaminar el JSON
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         ob_start();
         header('Content-Type: application/json; charset=utf-8');
 
         try {
-            // La sesión ya está iniciada por index.php, no hace falta session_start() aquí.
-            // ─────────────────────────────────────────────────────────────
-            // OBTENER ID DEL USUARIO LOGUEADO DESDE LA SESIÓN
-            // Confirmado en index.php: la clave es $_SESSION['usuario_id']
-            // ─────────────────────────────────────────────────────────────
             $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
 
             if ($idUsuarioLogueado === 0) {
-                echo json_encode([
-                    "data"  => [],
-                    "error" => "No hay sesión de usuario activa."
-                ]);
+                echo json_encode(["data" => [], "error" => "No hay sesión de usuario activa."]);
                 ob_end_flush();
                 exit;
             }
 
-            // Fecha enviada desde el frontend (por defecto hoy)
             $fecha = isset($_POST['fecha']) && !empty($_POST['fecha'])
                 ? $_POST['fecha']
                 : date('Y-m-d');
 
-            // Validar formato de fecha para evitar inyecciones
+            // 🔥 NUEVO: Recibir el estado desde el frontend
+            $estado = isset($_POST['estado']) ? $_POST['estado'] : 'pendientes';
+
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
                 echo json_encode(["data" => [], "error" => "Formato de fecha inválido."]);
                 ob_end_flush();
                 exit;
             }
 
-            // Consultamos el modelo
-            $datos = $this->modelo->obtenerServiciosProgramadosTecnico($idUsuarioLogueado, $fecha);
+            // Consultamos el modelo con el filtro
+            $datos = $this->modelo->obtenerServiciosProgramadosTecnico($idUsuarioLogueado, $fecha, $estado);
 
             echo json_encode([
-                "data"        => $datos,
-                "debug_id"    => $idUsuarioLogueado,
-                "debug_fecha" => $fecha
+                "data" => $datos,
+                "debug_id" => $idUsuarioLogueado,
+                "debug_fecha" => $fecha,
+                "estado" => $estado // Para debug
             ]);
         } catch (Exception $e) {
             error_log("[tecnicoProgramacion] Error en ajaxObtenerProgramacion: " . $e->getMessage());
@@ -75,9 +70,34 @@ class tecnicoProgramacionControlador
         ob_end_flush();
         exit;
     }
+
+    public function ajaxObtenerDetalleServicio()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idUsuario = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+        $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
+
+        if ($idUsuario === 0 || $idOrden === 0) {
+            echo json_encode(['success' => false, 'msj' => 'Sesión expirada o orden inválida']);
+            exit;
+        }
+
+        $detalle = $this->modelo->obtenerDetalleServicioCompleto($idOrden, $idUsuario);
+
+        if ($detalle) {
+            echo json_encode(['success' => true, 'data' => $detalle]);
+        } else {
+            echo json_encode(['success' => false, 'msj' => 'No se encontró el servicio']);
+        }
+        exit;
+    }
     public function ajaxEliminarServicio()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json; charset=utf-8');
 
         $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
@@ -103,7 +123,8 @@ class tecnicoProgramacionControlador
 
     public function ajaxObtenerClientes()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json');
         echo json_encode($this->modelo->obtenerClientesActivos());
         exit;
@@ -111,18 +132,20 @@ class tecnicoProgramacionControlador
 
     public function ajaxObtenerPuntos()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json');
-        $id = isset($_POST['id_cliente']) ? (int)$_POST['id_cliente'] : 0;
+        $id = isset($_POST['id_cliente']) ? (int) $_POST['id_cliente'] : 0;
         echo json_encode($this->modelo->obtenerPuntosPorCliente($id));
         exit;
     }
 
     public function ajaxObtenerMaquinas()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json');
-        $id = isset($_POST['id_punto']) ? (int)$_POST['id_punto'] : 0;
+        $id = isset($_POST['id_punto']) ? (int) $_POST['id_punto'] : 0;
         echo json_encode($this->modelo->obtenerMaquinasPorPunto($id));
         exit;
     }
@@ -130,11 +153,12 @@ class tecnicoProgramacionControlador
     // ── ENDPOINT PARA INICIAR SERVICIO (GPS) ──
     public function ajaxIniciarServicio()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json');
 
-        $idUsuario = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
-        $idOrden = isset($_POST['id_orden']) ? (int)$_POST['id_orden'] : 0;
+        $idUsuario = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+        $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
         $lat = isset($_POST['latitud_inicio']) ? $_POST['latitud_inicio'] : null;
         $lon = isset($_POST['longitud_inicio']) ? $_POST['longitud_inicio'] : null;
 
@@ -155,7 +179,8 @@ class tecnicoProgramacionControlador
 
     public function ajaxObtenerTiposMantenimiento()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json');
         echo json_encode($this->modelo->obtenerTiposMantenimiento());
         exit;
@@ -165,10 +190,11 @@ class tecnicoProgramacionControlador
 
     public function ajaxGuardarExtra()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json');
 
-        $idUsuario = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
+        $idUsuario = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
 
         if ($idUsuario === 0 || empty($_POST['id_cliente']) || empty($_POST['id_punto']) || empty($_POST['id_maquina']) || empty($_POST['id_tipo_mantenimiento']) || empty($_POST['fecha_visita'])) {
             echo json_encode(["success" => false, "msj" => "Faltan datos o sesión expirada."]);
@@ -176,10 +202,10 @@ class tecnicoProgramacionControlador
         }
 
         $datos = [
-            'id_cliente' => (int)$_POST['id_cliente'],
-            'id_punto' => (int)$_POST['id_punto'],
-            'id_maquina' => (int)$_POST['id_maquina'],
-            'id_tipo_mantenimiento' => (int)$_POST['id_tipo_mantenimiento'],
+            'id_cliente' => (int) $_POST['id_cliente'],
+            'id_punto' => (int) $_POST['id_punto'],
+            'id_maquina' => (int) $_POST['id_maquina'],
+            'id_tipo_mantenimiento' => (int) $_POST['id_tipo_mantenimiento'],
             'fecha_visita' => $_POST['fecha_visita']
         ];
 

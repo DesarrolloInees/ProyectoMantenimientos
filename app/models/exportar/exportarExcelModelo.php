@@ -23,6 +23,7 @@ class exportarExcelModelo
                 p.zona,           
                 d.nombre_delegacion, 
                 m.device_id, 
+                tmq.nombre_tipo_maquina, 
                 p.fecha_ultima_visita,
                 tm.nombre_completo as nombre_mantenimiento,
                 p.frecuencia_mantenimiento_dias
@@ -30,6 +31,7 @@ class exportarExcelModelo
                     INNER JOIN maquina m ON p.id_punto = m.id_punto
                     INNER JOIN cliente c ON p.id_cliente = c.id_cliente
                     INNER JOIN municipio mu ON p.id_municipio = mu.id_municipio 
+                    INNER JOIN tipo_maquina tmq ON m.id_tipo_maquina = tmq.id_tipo_maquina 
                     LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion
                     LEFT JOIN tipo_mantenimiento tm ON p.id_ultimo_tipo_mantenimiento = tm.id_tipo_mantenimiento
                     WHERE p.fecha_actualizacion IS NOT NULL 
