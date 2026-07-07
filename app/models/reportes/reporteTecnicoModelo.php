@@ -46,6 +46,7 @@ class ReporteTecnicoModelo
     {
         try {
             // 1. OBTENER ÓRDENES DE SERVICIO NORMALES
+            // Excluimos las instalaciones de aquí para que no se cuenten como servicios estándar
             $sql1 = "SELECT 
                 os.id_ordenes_servicio,
                 os.numero_remision,
@@ -67,7 +68,9 @@ class ReporteTecnicoModelo
                     LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion 
                     INNER JOIN maquina m ON os.id_maquina = m.id_maquina
                     LEFT JOIN tipo_mantenimiento tm ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
-                    WHERE os.fecha_visita BETWEEN :inicio AND :fin";
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    AND UPPER(tm.nombre_completo) NOT LIKE '%INSTALACIÓN%' 
+                    AND UPPER(tm.nombre_completo) NOT LIKE '%INSTALACION%'";
 
             if (!empty($id_tecnico)) {
                 $sql1 .= " AND os.id_tecnico = :id_tecnico";
@@ -80,9 +83,10 @@ class ReporteTecnicoModelo
                 $stmt1->bindParam(':id_tecnico', $id_tecnico, PDO::PARAM_INT);
             }
             $stmt1->execute();
-            $ordenesNormales = $stmt1->fetchAll(PDO::FETCH_ASSOC) ?: []; // Evita errores si viene vacío
+            $ordenesNormales = $stmt1->fetchAll(PDO::FETCH_ASSOC) ?: []; 
 
             // 2. OBTENER REMISIONES SUELTAS (Disfrazadas de servicio)
+            // Aquí agregamos los estados de Instalación y Capacitación
             $sql2 = "SELECT 
                 cr.id_control AS id_ordenes_servicio,
                 cr.numero_remision,
@@ -100,8 +104,6 @@ class ReporteTecnicoModelo
                 FROM control_remisiones cr
                 INNER JOIN tecnico t ON cr.id_tecnico = t.id_tecnico
                 INNER JOIN estados_remision er ON cr.id_estado = er.id_estado
-                
-                -- 🔥 AQUI ESTÁ LA MAGIA DEL FILTRO ESTRICTO DE FECHAS
                 WHERE cr.fecha_uso IS NOT NULL 
                 AND cr.fecha_uso != '0000-00-00 00:00:00' 
                 AND cr.fecha_uso != ''
@@ -112,8 +114,14 @@ class ReporteTecnicoModelo
                 $sql2 .= " AND cr.id_tecnico = :id_tecnico";
             }
 
-            // Usamos UPPER y TRIM por si los estados guardan espacios invisibles en la BD
-            $sql2 .= " AND UPPER(TRIM(er.nombre_estado)) IN ('KISAN', 'DESINSTALACIÓN', 'DESINSTALACION', 'CAMBIO DE MÁQUINA', 'CAMBIO DE MAQUINA', 'INSTALACIÓN FALLIDA', 'INSTALACION FALLIDA', 'DESANCLAJE', 'ANCLAJE')";
+            // Agregamos las variaciones de instalación al IN
+            $sql2 .= " AND UPPER(TRIM(er.nombre_estado)) IN (
+                'KISAN', 'DESINSTALACIÓN', 'DESINSTALACION', 'CAMBIO DE MÁQUINA', 'CAMBIO DE MAQUINA', 
+                'INSTALACIÓN FALLIDA', 'INSTALACION FALLIDA', 'DESANCLAJE', 'ANCLAJE',
+                'INSTALACIÓN MÁS CAPACITACIÓN', 'INSTALACION MAS CAPACITACION',
+                'INSTALACIÓN SIN CAPACITACIÓN', 'INSTALACION SIN CAPACITACION',
+                'INSTALACIÓN', 'INSTALACION'
+            )";
 
             $stmt2 = $this->conn->prepare($sql2);
             $stmt2->bindParam(':inicio', $fecha_inicio);
@@ -122,7 +130,7 @@ class ReporteTecnicoModelo
                 $stmt2->bindParam(':id_tecnico', $id_tecnico, PDO::PARAM_INT);
             }
             $stmt2->execute();
-            $remisionesExtra = $stmt2->fetchAll(PDO::FETCH_ASSOC) ?: []; // Evita errores si no hay ninguna
+            $remisionesExtra = $stmt2->fetchAll(PDO::FETCH_ASSOC) ?: []; 
 
             // 3. COMBINAR AMBOS ARRAYS Y ORDENAR
             $resultadoFinal = array_merge($ordenesNormales, $remisionesExtra);

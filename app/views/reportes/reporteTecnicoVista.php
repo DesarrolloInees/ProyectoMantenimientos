@@ -321,7 +321,7 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             // PASO 1: DETECTAR TODOS LOS TIPOS DE MANTENIMIENTO ÚNICOS
             // ---------------------------------------------------------
             let tiposMantenimientoSet = new Set();
-            
+
             datosServicios.forEach(item => {
                 let tipo = item.tipo_mantenimiento || "SIN ESPECIFICAR";
                 tiposMantenimientoSet.add(tipo);
@@ -382,10 +382,21 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
                 // 4. Sumar contadores (con multiplicador)
                 let pesoServicio = 1;
                 let tipoUpper = tipoMant.toUpperCase();
-                
-                if (tipoUpper.includes('INSTALACIÓN MÁS CAPACITACIÓN') || tipoUpper.includes('INTALACIÓN')) {
+
+                // 1. Primero filtramos todo lo que sea "FALLIDA" o "FALLIDO" para asegurar que valga 1
+                if (tipoUpper.includes('FALLID')) {
+                    pesoServicio = 1;
+                }
+                // 2. Instalación MÁS Capacitación (Peso 3)
+                else if (tipoUpper.includes('MÁS CAPACITACIÓN') || tipoUpper.includes('MAS CAPACITACION')) {
                     pesoServicio = 3;
-                } else if (tipoUpper.includes('INSTALACIÓN SIN CAPACITACIÓN')) {
+                }
+                // 3. Instalación SIN Capacitación (Peso 2)
+                else if (tipoUpper.includes('SIN CAPACITACIÓN') || tipoUpper.includes('SIN CAPACITACION')) {
+                    pesoServicio = 2;
+                }
+                // 4. Si el estado es exactamente la palabra "INSTALACIÓN" sola (Peso 3)
+                else if (tipoUpper === 'INSTALACIÓN' || tipoUpper === 'INSTALACION') {
                     pesoServicio = 2;
                 }
 
