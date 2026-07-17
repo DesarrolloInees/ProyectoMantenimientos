@@ -69,6 +69,11 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         <i class="fas fa-file-excel mr-3 w-5 text-center text-blue-300"></i> Exportar Excel
     </a>
 
+    <a href="<?= BASE_URL ?>ordenReporte"
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fas fa-brands fa-cloudflare mr-3 w-5 text-center text-blue-300"></i> Excel Servicios
+    </a>
+
     <a href="<?= BASE_URL ?>asistencia"
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fas fa-file mr-3 w-5 text-center text-blue-300"></i> Reporte Horas Extra

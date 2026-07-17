@@ -171,7 +171,7 @@ $horaActual = date('H:i');
                 <p class="text-xs text-gray-500 mt-1">Mantenimiento y asignación de remisiones</p>
             </a>
 
-            <!-- Opción 5: Gestión de Vehículos -->
+            <!-- Opción 6: Gestión de Reportes de Servicios -->
             <a href="<?= BASE_URL ?>exportarExcel" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
                 <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
                     <i class="fa-solid fa-file-excel text-2xl text-amber-600 group-hover:text-white"></i>
@@ -179,7 +179,17 @@ $horaActual = date('H:i');
                 <h3 class="font-bold text-gray-800 text-lg">Descargar Excel Programación</h3>
                 <p class="text-xs text-gray-500 mt-1">Descargar Excel de Programación de los Motorizados</p>
             </a>
-            <!-- Opción 6: Reporte Horas Extra -->
+
+            <!-- Opción 6: Gestión de Reportes de Servicios -->
+            <a href="<?= BASE_URL ?>ordenReporte" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
+                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
+                    <i class="fa-brands fa-cloudflare text-2xl text-amber-600 group-hover:text-white"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 text-lg">Excel Servicios</h3>
+                <p class="text-xs text-gray-500 mt-1">Descargar Excel de los Servicios Por Tipo de Mantenimiento</p>
+            </a>
+            
+            <!-- Opción 7: Reporte Horas Extra -->
             <a href="<?= BASE_URL ?>asistencia" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
                 <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
                     <i class="fa-solid fa-file text-2xl text-amber-600 group-hover:text-white"></i>
