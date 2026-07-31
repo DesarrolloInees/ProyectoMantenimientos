@@ -1,4 +1,5 @@
-<?php if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado."); ?>
+<?php if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado."); ?>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
@@ -12,8 +13,9 @@
         width: 100% !important;
         margin: 0 !important;
     }
-    
-    .dataTables_length select, .dataTables_filter input {
+
+    .dataTables_length select,
+    .dataTables_filter input {
         background-color: white !important;
         color: #374151 !important;
         border: 1px solid #d1d5db !important;
@@ -21,45 +23,69 @@
         padding: 0.5rem 0.75rem;
         margin: 0 0.5rem;
     }
-    .dataTables_length label, .dataTables_filter label {
+
+    .dataTables_length label,
+    .dataTables_filter label {
         color: #4b5563 !important;
         font-weight: 500;
-        display: flex; align-items: center;
+        display: flex;
+        align-items: center;
     }
-    #tablaInventario tbody tr { background-color: white !important; }
-    #tablaInventario tbody tr:hover { background-color: #f9fafb !important; }
-    .dataTables_paginate .paginate_button.current, .dataTables_paginate .paginate_button:hover {
+
+    #tablaInventario tbody tr {
+        background-color: white !important;
+    }
+
+    #tablaInventario tbody tr:hover {
+        background-color: #f9fafb !important;
+    }
+
+    .dataTables_paginate .paginate_button.current,
+    .dataTables_paginate .paginate_button:hover {
         background-color: #4f46e5 !important;
         color: white !important;
         border-color: #4f46e5 !important;
     }
-    .dataTables_wrapper>div:first-child, .dataTables_wrapper>div:last-of-type {
-        display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin: 1.5rem 0;
+
+    .dataTables_wrapper>div:first-child,
+    .dataTables_wrapper>div:last-of-type {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin: 1.5rem 0;
     }
 </style>
 
 <div class="w-full px-4 md:px-6">
     <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
 
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-dolly-flatbed text-indigo-600 mr-2"></i> Inventario de Técnicos
-                </h1>
-                <p class="text-gray-500 mt-1">Control de stock asignado.</p>
-            </div>
-            
-            <div class="flex gap-2">
-                <?php if (!empty($inventario)): ?>
-                    <button type="button" onclick="generarExcelInventario()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-md flex items-center gap-2">
-                        <i class="fas fa-file-excel"></i> Exportar
-                    </button>
-                <?php endif; ?>
+        <div class="flex gap-2 items-center flex-wrap">
+            <!-- Formulario para PDF con fechas -->
+            <form action="<?= BASE_URL ?>reporteRepuestos" method="GET" target="_blank"
+                class="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                <input type="date" name="fecha_desde" class="border rounded px-2 py-1 text-sm bg-white"
+                    placeholder="Desde">
+                <input type="date" name="fecha_hasta" class="border rounded px-2 py-1 text-sm bg-white"
+                    placeholder="Hasta">
+                <button type="submit"
+                    class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition shadow-md flex items-center gap-2 text-sm">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+            </form>
 
-                <a href="<?= BASE_URL ?>inventarioTecnicoCrear" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md flex items-center gap-2">
-                    <i class="fas fa-plus"></i> Asignar Stock
-                </a>
-            </div>
+            <?php if (!empty($inventario)): ?>
+                <button type="button" onclick="generarExcelInventario()"
+                    class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-md flex items-center gap-2 text-sm">
+                    <i class="fas fa-file-excel"></i> Exportar
+                </button>
+            <?php endif; ?>
+
+            <a href="<?= BASE_URL ?>inventarioTecnicoCrear"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md flex items-center gap-2 text-sm">
+                <i class="fas fa-plus"></i> Asignar Stock
+            </a>
         </div>
 
 
@@ -88,9 +114,11 @@
                             </td>
                             <td class="p-4 text-center">
                                 <?php if ($item['cantidad_actual'] > 0): ?>
-                                    <span class="bg-green-100 text-green-800 py-1 px-3 rounded-full font-bold text-xs"><?= $item['cantidad_actual'] ?></span>
+                                    <span
+                                        class="bg-green-100 text-green-800 py-1 px-3 rounded-full font-bold text-xs"><?= $item['cantidad_actual'] ?></span>
                                 <?php else: ?>
-                                    <span class="bg-red-100 text-red-800 py-1 px-3 rounded-full font-bold text-xs">Agotado</span>
+                                    <span
+                                        class="bg-red-100 text-red-800 py-1 px-3 rounded-full font-bold text-xs">Agotado</span>
                                 <?php endif; ?>
                             </td>
                             <td class="p-4 text-center text-xs text-gray-500">
@@ -99,8 +127,13 @@
                                 </span>
                             </td>
                             <td class="p-4 text-right space-x-2">
-                                <a href="<?= BASE_URL ?>inventarioTecnicoEditar?id=<?= $item['id_inventario'] ?>" class="text-blue-500 hover:text-blue-700 bg-blue-50 p-2 rounded-full hover:bg-blue-100 transition inline-block"><i class="fas fa-edit"></i></a>
-                                <a href="<?= BASE_URL ?>inventarioTecnicoEliminar?id=<?= $item['id_inventario'] ?>" onclick="return confirm('¿Seguro?');" class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-full hover:bg-red-100 transition inline-block"><i class="fas fa-trash-alt"></i></a>
+                                <a href="<?= BASE_URL ?>inventarioTecnicoEditar?id=<?= $item['id_inventario'] ?>"
+                                    class="text-blue-500 hover:text-blue-700 bg-blue-50 p-2 rounded-full hover:bg-blue-100 transition inline-block"><i
+                                        class="fas fa-edit"></i></a>
+                                <a href="<?= BASE_URL ?>inventarioTecnicoEliminar?id=<?= $item['id_inventario'] ?>"
+                                    onclick="return confirm('¿Seguro?');"
+                                    class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-full hover:bg-red-100 transition inline-block"><i
+                                        class="fas fa-trash-alt"></i></a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -121,7 +154,7 @@
     // 3. Pasamos los datos de PHP a JS tal como en tu ejemplo
     const datosInventario = <?= json_encode($inventario ?? []) ?>;
 
-    $(document).ready(function() {
+    $(document).ready(function () {
         var table = $('#tablaInventario').DataTable({
             responsive: true,
             language: { url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' },
@@ -135,7 +168,7 @@
             width: '100%'
         });
 
-        $('#filtroTecnico').on('change', function() {
+        $('#filtroTecnico').on('change', function () {
             var val = $(this).val();
             table.column(0).search(val ? val : '', true, false).draw();
         });
@@ -152,15 +185,15 @@
 
         // 1. Agrupar los datos por técnico
         const datosPorTecnico = {};
-        
+
         datosInventario.forEach(d => {
             const tecnico = d.nombre_tecnico || "Sin Asignar";
-            
+
             // Si el técnico no existe en nuestro objeto, le creamos su array
             if (!datosPorTecnico[tecnico]) {
                 datosPorTecnico[tecnico] = [];
             }
-            
+
             // Metemos el repuesto en el array de este técnico
             // Quitamos la columna "Técnico" porque ya va a ser el nombre de la hoja
             datosPorTecnico[tecnico].push({
@@ -177,10 +210,10 @@
 
             // Ajustamos ancho de columnas
             ws['!cols'] = [
-                {wch: 35}, // Repuesto
-                {wch: 15}, // Ref
-                {wch: 15}, // Cantidad Actual
-                {wch: 25}  // Última Actualización
+                { wch: 35 }, // Repuesto
+                { wch: 15 }, // Ref
+                { wch: 15 }, // Cantidad Actual
+                { wch: 25 }  // Última Actualización
             ];
 
             // IMPORTANTÍSIMO: Excel no permite ciertos caracteres en los nombres de las hojas 
@@ -190,9 +223,9 @@
             // Agregamos la hoja al libro (Workbook)
             XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
         }
-        
+
         // 3. Generamos el archivo
-        const fechaHoy = new Date().toISOString().slice(0,10);
+        const fechaHoy = new Date().toISOString().slice(0, 10);
         XLSX.writeFile(wb, `Inventario_Tecnicos_${fechaHoy}.xlsx`);
     }
 </script>

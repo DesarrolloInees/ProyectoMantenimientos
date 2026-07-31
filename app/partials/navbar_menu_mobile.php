@@ -17,6 +17,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fa-regular fa-envelope mr-3 w-5 text-center text-blue-300"></i> Programación Servicios
     </a>
+    <a href="<?= BASE_URL ?>parqueaderoHistorial"
+        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
+        <i class="fa-solid fa-square-parking mr-3 w-5 text-center text-blue-300"></i> Historial de Parqueaderos
+    </a>
 
 <?php elseif ($rol == 4): ?>
     <!-- MENÚ PROSEGUR -->
@@ -152,6 +156,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <a href="<?= BASE_URL ?>rastreoTecnico"
                 class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
                 <i class="fa-solid fa-street-view mr-2"></i> Rastreó Técnico
+            </a>
+            <a href="<?= BASE_URL ?>parqueaderoAdmin"
+                class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-receipt mr-2"></i> Administrar Facturas Parqueadero
             </a>
         </div>
     </details>
