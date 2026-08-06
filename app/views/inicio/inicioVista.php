@@ -10,46 +10,82 @@ $horaActual = date('H:i');
 ?>
 
 <?php if ($nivel == 3): ?>
-    <!-- Panel Técnico (igual que antes, solo diseño claro) -->
+    <!-- Panel Técnico (Vista Principal) -->
     <div class="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
-        <div class="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden bg-white">
-            <div class="bg-gradient-to-br from-indigo-600 to-blue-500 p-6 text-center text-white">
-                <div class="inline-block bg-white/20 p-3 rounded-full mb-3">
-                    <i class="fas fa-user-astronaut fa-3x"></i>
+        <div class="w-full max-w-lg rounded-2xl shadow-xl overflow-hidden bg-white border border-gray-100">
+            
+            <!-- Encabezado -->
+            <div class="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 p-6 text-center text-white relative">
+                <div class="inline-block bg-white/20 p-3.5 rounded-full mb-3 backdrop-blur-sm border border-white/20 shadow-inner">
+                    <i class="fas fa-user-astronaut text-3xl"></i>
                 </div>
-                <h1 class="text-2xl font-bold">¡Hola, <?= htmlspecialchars($nombreUsuario) ?>!</h1>
-                <p class="text-indigo-100 text-sm"><?= htmlspecialchars($rolUsuario) ?></p>
-                <p class="text-indigo-100 text-xs mt-1"><?= $fechaHoy ?> · <?= $horaActual ?></p>
+                <h1 class="text-2xl font-bold tracking-tight">¡Hola, <?= htmlspecialchars($nombreUsuario) ?>!</h1>
+                <p class="text-indigo-100 text-sm font-medium mt-0.5"><?= htmlspecialchars($rolUsuario) ?></p>
+                <div class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-black/20 backdrop-blur-sm rounded-full text-xs text-indigo-100">
+                    <i class="far fa-clock"></i>
+                    <span><?= $fechaHoy ?> · <?= $horaActual ?></span>
+                </div>
             </div>
-            <div class="p-6 space-y-4">
-                <p class="text-center text-sm text-gray-500">¿Qué necesitas hacer hoy?</p>
+
+            <!-- Menú de Opciones -->
+            <div class="p-6 space-y-3">
+                <p class="text-center text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">¿Qué necesitas hacer hoy?</p>
                 
+                <!-- Programación Servicios -->
                 <a href="<?= BASE_URL ?>tecnicoProgramacion" 
-                   class="group flex items-center gap-4 bg-white p-4 rounded-xl border border-indigo-100 hover:border-indigo-500 transition-all hover:shadow-lg">
-                    <div class="bg-indigo-50 p-3 rounded-full group-hover:bg-indigo-600 transition">
-                        <i class="fa-regular fa-envelope text-indigo-600 group-hover:text-white text-xl"></i>
+                   class="group flex items-center gap-4 bg-gray-50/80 hover:bg-indigo-50/50 p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all hover:shadow-md">
+                    <div class="bg-indigo-100 p-3 rounded-lg group-hover:bg-indigo-600 transition shrink-0">
+                        <i class="fa-solid fa-envelope text-indigo-600 group-hover:text-white text-lg"></i>
                     </div>
                     <div class="flex-1">
-                        <h3 class="font-bold text-gray-800">Programación Servicios</h3>
-                        <p class="text-xs text-gray-500">Ver servicios agendados</p>
+                        <h3 class="font-bold text-gray-800 text-sm group-hover:text-indigo-700 transition">Programación Servicios</h3>
+                        <p class="text-xs text-gray-500">Ver y gestionar servicios agendados</p>
                     </div>
-                    <i class="fas fa-chevron-right text-gray-400"></i>
+                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition"></i>
                 </a>
 
+                <!-- Consultar Historial -->
                 <a href="<?= BASE_URL ?>ordenMovil" 
-                   class="group flex items-center gap-4 bg-white p-4 rounded-xl border border-indigo-100 hover:border-indigo-500 transition-all hover:shadow-lg">
-                    <div class="bg-indigo-50 p-3 rounded-full group-hover:bg-indigo-600 transition">
-                        <i class="fas fa-search text-indigo-600 group-hover:text-white text-xl"></i>
+                   class="group flex items-center gap-4 bg-gray-50/80 hover:bg-indigo-50/50 p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all hover:shadow-md">
+                    <div class="bg-indigo-100 p-3 rounded-lg group-hover:bg-indigo-600 transition shrink-0">
+                        <i class="fas fa-search text-indigo-600 group-hover:text-white text-lg"></i>
                     </div>
                     <div class="flex-1">
-                        <h3 class="font-bold text-gray-800">Consultar Historial</h3>
-                        <p class="text-xs text-gray-500">Buscar por cliente o punto</p>
+                        <h3 class="font-bold text-gray-800 text-sm group-hover:text-indigo-700 transition">Consultar Historial</h3>
+                        <p class="text-xs text-gray-500">Buscar por cliente, punto o máquina</p>
                     </div>
-                    <i class="fas fa-chevron-right text-gray-400"></i>
+                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition"></i>
                 </a>
 
+                <!-- Historial de Parqueaderos -->
+                <a href="<?= BASE_URL ?>parqueaderoHistorial" 
+                   class="group flex items-center gap-4 bg-gray-50/80 hover:bg-indigo-50/50 p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all hover:shadow-md">
+                    <div class="bg-indigo-100 p-3 rounded-lg group-hover:bg-indigo-600 transition shrink-0">
+                        <i class="fa-solid fa-square-parking text-indigo-600 group-hover:text-white text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-sm group-hover:text-indigo-700 transition">Historial de Parqueaderos</h3>
+                        <p class="text-xs text-gray-500">Consultar registros y recibos de parqueo</p>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition"></i>
+                </a>
+
+                <!-- Historial de Horas Extra -->
+                <a href="<?= BASE_URL ?>horaExtraHistorial" 
+                   class="group flex items-center gap-4 bg-gray-50/80 hover:bg-indigo-50/50 p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all hover:shadow-md">
+                    <div class="bg-indigo-100 p-3 rounded-lg group-hover:bg-indigo-600 transition shrink-0">
+                        <i class="fa-solid fa-clock text-indigo-600 group-hover:text-white text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-sm group-hover:text-indigo-700 transition">Historial Horas Extra</h3>
+                        <p class="text-xs text-gray-500">Revisar reporte y registros de asistencia</p>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition"></i>
+                </a>
+
+                <!-- Logout -->
                 <div class="pt-4 text-center">
-                    <a href="<?= BASE_URL ?>logout" class="text-sm text-gray-400 hover:text-red-500 inline-flex items-center gap-1">
+                    <a href="<?= BASE_URL ?>logout" class="text-xs font-medium text-gray-400 hover:text-red-500 inline-flex items-center gap-1.5 transition">
                         <i class="fas fa-sign-out-alt"></i> Cerrar sesión
                     </a>
                 </div>
@@ -90,122 +126,188 @@ $horaActual = date('H:i');
         </div>
     </div>
 
-    <?php elseif ($nivel == 5): ?>
-    <!-- Panel Supervisor Motorizados (diseño PC horizontal) -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    Aquí tienes la reorganización del panel para Supervisor de Motorizados.
+
+Se agrupó la información por secciones temáticas (Gestión Operativa, Repuestos e Inventario, y Reportes & Exportaciones) y se corrigió el grid a 3 columnas adaptativas (lg:grid-cols-3), evitando filas descompensadas. También se incluyó la opción de Buscar Servicio (ordenDetalleBuscar) y se eliminaron todos los caracteres invisibles \u00a0.
+
+PHP
+<?php elseif ($nivel == 5): ?>
+    <!-- Panel Supervisor Motorizados -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+
         <!-- Encabezado de bienvenida -->
-        <div class="mb-8 rounded-2xl bg-gradient-to-r from-amber-700 to-orange-600 p-6 shadow-xl text-white">
+        <div class="rounded-2xl bg-gradient-to-r from-amber-700 via-orange-600 to-amber-600 p-6 shadow-xl text-white">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <div class="flex items-center gap-3 mb-2">
-                        <i class="fa-solid fa-truck-fast text-3xl"></i>
-                        <h1 class="text-3xl font-bold tracking-tight">Panel de Supervisor Motorizados</h1>
+                    <div class="flex items-center gap-3 mb-1">
+                        <i class="fa-solid fa-truck-fast text-3xl text-amber-200"></i>
+                        <h1 class="text-3xl font-bold tracking-tight">Panel Supervisor Motorizados</h1>
                     </div>
-                    <p class="text-orange-100 text-sm mt-1">Gestión de rutas, técnicos y operatividad móvil</p>
-                    <div class="mt-2 flex items-center gap-2 text-sm">
+                    <p class="text-orange-100 text-sm">Gestión de rutas, técnicos y operatividad móvil</p>
+                    <div class="mt-3 flex items-center gap-2 text-xs bg-black/20 backdrop-blur-sm px-3 py-1.5 rounded-full w-fit">
                         <i class="fas fa-user-circle"></i>
                         <span><?= htmlspecialchars($nombreUsuario) ?> (<?= htmlspecialchars($rolUsuario) ?>)</span>
                     </div>
                 </div>
-                <div class="text-right">
-                    <p class="text-3xl font-mono font-bold"><?= $horaActual ?></p>
-                    <p class="text-sm opacity-80"><?= $fechaHoy ?></p>
+                <div class="text-left md:text-right bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/10">
+                    <p class="text-2xl font-mono font-bold tracking-wider"><?= $horaActual ?></p>
+                    <p class="text-xs text-orange-100 opacity-90"><?= $fechaHoy ?></p>
                 </div>
             </div>
         </div>
 
-        <!-- 5 Opciones principales en grid horizontal (PC) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
-            
-            <!-- Opción 1: Programación de Rutas -->
-            <a href="<?= BASE_URL ?>ordenVer" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-map-marked-alt text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Revisar Servicios</h3>
-                <p class="text-xs text-gray-500 mt-1">Revisar los Servicios de los Motorizados</p>
-            </a>
+        <!-- SECCIÓN 1: Gestión Operativa -->
+        <div>
+            <div class="flex items-center gap-2 mb-4">
+                <i class="fas fa-tasks text-amber-600 text-lg"></i>
+                <h2 class="text-lg font-bold text-gray-800 uppercase tracking-wide">Gestión Operativa & Servicios</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                
+                <!-- Revisar Servicios -->
+                <a href="<?= BASE_URL ?>ordenVer" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-amber-400 flex items-start gap-4">
+                    <div class="bg-amber-100 p-3.5 rounded-xl group-hover:bg-amber-600 transition shrink-0">
+                        <i class="fa-solid fa-clipboard-list text-xl text-amber-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-amber-600 transition">Revisar Servicios</h3>
+                        <p class="text-xs text-gray-500 mt-1">Monitorear órdenes y estado de servicios asignados.</p>
+                    </div>
+                </a>
 
-            <!-- Opción 2: Asignar Técnicos -->
-            <a href="<?= BASE_URL ?>repuestoVer" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-users-gear text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Ver Repuestos</h3>
-                <p class="text-xs text-gray-500 mt-1">Consultar y gestionar repuestos disponibles</p>
-            </a>
+                <!-- Buscar Servicio -->
+                <a href="<?= BASE_URL ?>ordenDetalleBuscar" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-amber-400 flex items-start gap-4">
+                    <div class="bg-amber-100 p-3.5 rounded-xl group-hover:bg-amber-600 transition shrink-0">
+                        <i class="fa-solid fa-magnifying-glass text-xl text-amber-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-amber-600 transition">Buscar Servicio</h3>
+                        <p class="text-xs text-gray-500 mt-1">Búsqueda rápida y detallada de órdenes específicas.</p>
+                    </div>
+                </a>
 
-            <!-- Opción 2: Administrar Inventario -->
-            <a href="<?= BASE_URL ?>inventarioTecnicoVer" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-gears text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Administrar Repuestos</h3>
-                <p class="text-xs text-gray-500 mt-1">Consultar y gestionar inventario de Motorizados</p>
-            </a>
+                <!-- Administrar Remisiones -->
+                <a href="<?= BASE_URL ?>controlRemisionVer" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-amber-400 flex items-start gap-4">
+                    <div class="bg-amber-100 p-3.5 rounded-xl group-hover:bg-amber-600 transition shrink-0">
+                        <i class="fa-solid fa-ticket text-xl text-amber-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-amber-600 transition">Administrar Remisiones</h3>
+                        <p class="text-xs text-gray-500 mt-1">Control y asignación de remisiones operativas.</p>
+                    </div>
+                </a>
 
-            <!-- Opción 3: Reporte de Técnicos -->
-            <a href="<?= BASE_URL ?>reporteTecnico" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-chart-simple text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Reporte de Técnicos</h3>
-                <p class="text-xs text-gray-500 mt-1">KPIs de flota y productividad</p>
-            </a>
+            </div>
+        </div>
 
-            <!-- Opción 4: Monitoreo en Vivo -->
-            <a href="<?= BASE_URL ?>reporteEjecutivo" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-location-dot text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Reporte Ejecutivo</h3>
-                <p class="text-xs text-gray-500 mt-1">Resumen ejecutivo de operaciones</p>
-            </a>
+        <!-- SECCIÓN 2: Repuestos e Inventarios -->
+        <div>
+            <div class="flex items-center gap-2 mb-4">
+                <i class="fas fa-boxes-stacked text-orange-600 text-lg"></i>
+                <h2 class="text-lg font-bold text-gray-800 uppercase tracking-wide">Repuestos e Inventario</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-            <!-- Opción 5: Gestión de Vehículos -->
-            <a href="<?= BASE_URL ?>controlRemisionVer" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-truck text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Administrar Remisiones</h3>
-                <p class="text-xs text-gray-500 mt-1">Mantenimiento y asignación de remisiones</p>
-            </a>
+                <!-- Ver Repuestos -->
+                <a href="<?= BASE_URL ?>repuestoVer" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-orange-400 flex items-start gap-4">
+                    <div class="bg-orange-100 p-3.5 rounded-xl group-hover:bg-orange-600 transition shrink-0">
+                        <i class="fa-solid fa-puzzle-piece text-xl text-orange-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-orange-600 transition">Ver Repuestos</h3>
+                        <p class="text-xs text-gray-500 mt-1">Consulta del catálogo y stock general de repuestos.</p>
+                    </div>
+                </a>
 
-            <!-- Opción 6: Gestión de Reportes de Servicios -->
-            <a href="<?= BASE_URL ?>exportarExcel" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-file-excel text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Descargar Excel Programación</h3>
-                <p class="text-xs text-gray-500 mt-1">Descargar Excel de Programación de los Motorizados</p>
-            </a>
+                <!-- Administrar Repuestos -->
+                <a href="<?= BASE_URL ?>inventarioTecnicoVer" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-orange-400 flex items-start gap-4">
+                    <div class="bg-orange-100 p-3.5 rounded-xl group-hover:bg-orange-600 transition shrink-0">
+                        <i class="fa-solid fa-gears text-xl text-orange-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-orange-600 transition">Inventario Técnicos</h3>
+                        <p class="text-xs text-gray-500 mt-1">Gestión de repuestos asignados a la flota motorizada.</p>
+                    </div>
+                </a>
 
-            <!-- Opción 6: Gestión de Reportes de Servicios -->
-            <a href="<?= BASE_URL ?>ordenReporte" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-brands fa-cloudflare text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Excel Servicios</h3>
-                <p class="text-xs text-gray-500 mt-1">Descargar Excel de los Servicios Por Tipo de Mantenimiento</p>
-            </a>
-            
-            <!-- Opción 7: Reporte Horas Extra -->
-            <a href="<?= BASE_URL ?>asistencia" class="group bg-white rounded-xl shadow-md p-5 text-center hover:shadow-xl transition-all hover:-translate-y-1 border border-gray-100 hover:border-amber-300">
-                <div class="bg-amber-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-600 transition">
-                    <i class="fa-solid fa-file text-2xl text-amber-600 group-hover:text-white"></i>
-                </div>
-                <h3 class="font-bold text-gray-800 text-lg">Reporte Horas Extra</h3>
-                <p class="text-xs text-gray-500 mt-1">Descargar Excel de Horas Extra</p>
-            </a>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 3: Reportes y Exportaciones -->
+        <div>
+            <div class="flex items-center gap-2 mb-4">
+                <i class="fas fa-chart-pie text-emerald-600 text-lg"></i>
+                <h2 class="text-lg font-bold text-gray-800 uppercase tracking-wide">Reportes & Descargas Excel</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+                <!-- Reporte de Técnicos -->
+                <a href="<?= BASE_URL ?>reporteTecnico" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-emerald-400 flex items-start gap-4">
+                    <div class="bg-emerald-100 p-3.5 rounded-xl group-hover:bg-emerald-600 transition shrink-0">
+                        <i class="fa-solid fa-chart-line text-xl text-emerald-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-emerald-600 transition">Reporte de Técnicos</h3>
+                        <p class="text-xs text-gray-500 mt-1">Métricas de rendimiento y productividad de la flota.</p>
+                    </div>
+                </a>
+
+                <!-- Reporte Ejecutivo -->
+                <a href="<?= BASE_URL ?>reporteEjecutivo" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-emerald-400 flex items-start gap-4">
+                    <div class="bg-emerald-100 p-3.5 rounded-xl group-hover:bg-emerald-600 transition shrink-0">
+                        <i class="fa-solid fa-chart-pie text-xl text-emerald-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-emerald-600 transition">Reporte Ejecutivo</h3>
+                        <p class="text-xs text-gray-500 mt-1">Resumen general y consolidado de operaciones.</p>
+                    </div>
+                </a>
+
+                <!-- Excel Programación -->
+                <a href="<?= BASE_URL ?>exportarExcel" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-emerald-400 flex items-start gap-4">
+                    <div class="bg-emerald-100 p-3.5 rounded-xl group-hover:bg-emerald-600 transition shrink-0">
+                        <i class="fa-solid fa-file-excel text-xl text-emerald-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-emerald-600 transition">Excel Programación</h3>
+                        <p class="text-xs text-gray-500 mt-1">Descargar programación de rutas motorizadas.</p>
+                    </div>
+                </a>
+
+                <!-- Excel Servicios -->
+                <a href="<?= BASE_URL ?>ordenReporte" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-emerald-400 flex items-start gap-4">
+                    <div class="bg-emerald-100 p-3.5 rounded-xl group-hover:bg-emerald-600 transition shrink-0">
+                        <i class="fa-solid fa-file-csv text-xl text-emerald-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-emerald-600 transition">Excel Servicios</h3>
+                        <p class="text-xs text-gray-500 mt-1">Reporte detallado por tipo de mantenimiento.</p>
+                    </div>
+                </a>
+
+                <!-- Reporte Horas Extra -->
+                <a href="<?= BASE_URL ?>asistencia" class="group bg-white rounded-xl shadow-sm hover:shadow-md p-5 transition-all hover:-translate-y-1 border border-gray-200 hover:border-emerald-400 flex items-start gap-4">
+                    <div class="bg-emerald-100 p-3.5 rounded-xl group-hover:bg-emerald-600 transition shrink-0">
+                        <i class="fa-solid fa-clock text-xl text-emerald-700 group-hover:text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-base group-hover:text-emerald-600 transition">Reporte Horas Extra</h3>
+                        <p class="text-xs text-gray-500 mt-1">Descargar planilla y registros de horas extra.</p>
+                    </div>
+                </a>
+
+            </div>
         </div>
 
         <!-- Footer con logout -->
         <div class="text-center pt-6 border-t border-gray-200">
-            <a href="<?= BASE_URL ?>logout" class="inline-flex items-center gap-2 text-gray-500 hover:text-red-600 transition">
+            <a href="<?= BASE_URL ?>logout" class="inline-flex items-center gap-2 text-gray-500 hover:text-red-600 font-medium transition">
                 <i class="fas fa-sign-out-alt"></i> Cerrar sesión
             </a>
         </div>
+
     </div>
+
 
 <?php else: ?>
     <!-- Dashboard Administrador (claro) -->

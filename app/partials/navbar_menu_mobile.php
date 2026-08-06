@@ -4,23 +4,46 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
 ?>
 
 <?php if ($rol == 3): ?>
-    <!-- MENÚ TÉCNICO -->
-    <a href="<?= BASE_URL ?>inicio"
-        class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
-        <i class="fas fa-home mr-3 w-5 text-center"></i> Inicio
-    </a>
-    <a href="<?= BASE_URL ?>ordenMovil"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-search mr-3 w-5 text-center text-blue-300"></i> Consultar Historial
-    </a>
-    <a href="<?= BASE_URL ?>tecnicoProgramacion"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fa-regular fa-envelope mr-3 w-5 text-center text-blue-300"></i> Programación Servicios
-    </a>
-    <a href="<?= BASE_URL ?>parqueaderoHistorial"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fa-solid fa-square-parking mr-3 w-5 text-center text-blue-300"></i> Historial de Parqueaderos
-    </a>
+    <!-- MENÚ TÉCNICO - VISTA MÓVIL (rol 3) -->
+    <div class="space-y-1 py-1">
+
+        <!-- Inicio -->
+        <a href="<?= BASE_URL ?>inicio"
+            class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
+            <i class="fas fa-home w-6 text-center text-blue-400 mr-2"></i> Inicio
+        </a>
+
+        <!-- Programación Servicios (Acceso Directo Principal) -->
+        <a href="<?= BASE_URL ?>tecnicoProgramacion"
+            class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
+            <i class="fa-regular fa-envelope w-6 text-center text-blue-400 mr-2"></i> Programación Servicios
+        </a>
+
+        <!-- Acordeón: Historiales y Consultas -->
+        <details class="group border-b border-gray-700/50">
+            <summary class="flex items-center justify-between text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold cursor-pointer transition select-none">
+                <span class="flex items-center">
+                    <i class="fas fa-history w-6 text-center text-blue-400 mr-2"></i> Historiales
+                </span>
+                <i class="fas fa-chevron-down text-xs transition-transform duration-200 group-open:rotate-180 text-gray-400"></i>
+            </summary>
+            <div class="pl-8 pr-2 py-1 space-y-1 bg-gray-800/40 rounded-b-md">
+                <a href="<?= BASE_URL ?>ordenMovil"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-search w-5 text-center mr-2 text-gray-400"></i> Consultar Historial
+                </a>
+                <a href="<?= BASE_URL ?>parqueaderoHistorial"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fa-solid fa-square-parking w-5 text-center mr-2 text-gray-400"></i> Historial Parqueaderos
+                </a>
+                <a href="<?= BASE_URL ?>horaExtraHistorial"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fa-solid fa-clock w-5 text-center mr-2 text-gray-400"></i> Historial Horas Extra
+                </a>
+            </div>
+        </details>
+
+    </div>
 
 <?php elseif ($rol == 4): ?>
     <!-- MENÚ PROSEGUR -->
@@ -38,51 +61,98 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
     </a>
 
 <?php elseif ($rol == 5): ?>
-    <!-- MENÚ SUPERVISOR MOTORIZADO (rol 5) -->
-    <a href="<?= BASE_URL ?>inicio"
-        class="block text-gray-300 py-3 px-3 rounded hover:bg-gray-700 border-b border-gray-700 font-bold">
-        <i class="fas fa-home mr-3 w-5 text-center"></i> Inicio
-    </a>
-    <a href="<?= BASE_URL ?>ordenVer"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-clipboard-list mr-3 w-5 text-center text-blue-300"></i> Revisar Servicios
-    </a>
-    <a href="<?= BASE_URL ?>repuestoVer"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-puzzle-piece mr-3 w-5 text-center text-blue-300"></i> Ver Repuestos
-    </a>
-    <a href="<?= BASE_URL ?>inventarioTecnicoVer"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-puzzle-piece mr-3 w-5 text-center text-blue-300"></i> Administrar Repuestos
-    </a>
-    <a href="<?= BASE_URL ?>reporteTecnico"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-chart-line mr-3 w-5 text-center text-blue-300"></i> Reporte de Técnicos
-    </a>
-    <a href="<?= BASE_URL ?>reporteEjecutivo"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-chart-pie mr-3 w-5 text-center text-blue-300"></i> Reporte Ejecutivo
-    </a>
-    <a href="<?= BASE_URL ?>controlRemisionVer"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-ticket-alt mr-3 w-5 text-center text-blue-300"></i> Administrar Remisiones
-    </a>
+    <!-- MENÚ SUPERVISOR MOTORIZADO - VISTA MÓVIL (rol 5) -->
+    <div class="space-y-1 py-1">
 
-    <a href="<?= BASE_URL ?>exportarExcel"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-file-excel mr-3 w-5 text-center text-blue-300"></i> Exportar Excel
-    </a>
+        <!-- Inicio -->
+        <a href="<?= BASE_URL ?>inicio"
+            class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
+            <i class="fas fa-home w-6 text-center text-blue-400 mr-2"></i> Inicio
+        </a>
 
-    <a href="<?= BASE_URL ?>ordenReporte"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-brands fa-cloudflare mr-3 w-5 text-center text-blue-300"></i> Excel Servicios
-    </a>
+        <!-- Acordeón: Gestión -->
+        <details class="group border-b border-gray-700/50">
+            <summary
+                class="flex items-center justify-between text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold cursor-pointer transition select-none">
+                <span class="flex items-center">
+                    <i class="fas fa-tasks w-6 text-center text-blue-400 mr-2"></i> Gestión
+                </span>
+                <i
+                    class="fas fa-chevron-down text-xs transition-transform duration-200 group-open:rotate-180 text-gray-400"></i>
+            </summary>
+            <div class="pl-8 pr-2 py-1 space-y-1 bg-gray-800/40 rounded-b-md">
+                <a href="<?= BASE_URL ?>ordenVer"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-clipboard-list w-5 text-center mr-2 text-gray-400"></i> Revisar Servicios
+                </a>
+                <a href="<?= BASE_URL ?>repuestoVer"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-puzzle-piece w-5 text-center mr-2 text-gray-400"></i> Ver Repuestos
+                </a>
+                <a href="<?= BASE_URL ?>inventarioTecnicoVer"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-gears w-5 text-center mr-2 text-gray-400"></i> Administrar Repuestos
+                </a>
+                <a href="<?= BASE_URL ?>controlRemisionVer"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-ticket-alt w-5 text-center mr-2 text-gray-400"></i> Administrar Remisiones
+                </a>
+            </div>
+        </details>
 
-    <a href="<?= BASE_URL ?>asistencia"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fas fa-file mr-3 w-5 text-center text-blue-300"></i> Reporte Horas Extra
-    </a>
+        <!-- Acordeón: Reportes -->
+        <details class="group border-b border-gray-700/50">
+            <summary
+                class="flex items-center justify-between text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold cursor-pointer transition select-none">
+                <span class="flex items-center">
+                    <i class="fas fa-chart-bar w-6 text-center text-blue-400 mr-2"></i> Reportes
+                </span>
+                <i
+                    class="fas fa-chevron-down text-xs transition-transform duration-200 group-open:rotate-180 text-gray-400"></i>
+            </summary>
+            <div class="pl-8 pr-2 py-1 space-y-1 bg-gray-800/40 rounded-b-md">
+                <a href="<?= BASE_URL ?>reporteTecnico"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-chart-line w-5 text-center mr-2 text-gray-400"></i> Reporte de Técnicos
+                </a>
+                <a href="<?= BASE_URL ?>reporteEjecutivo"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-chart-pie w-5 text-center mr-2 text-gray-400"></i> Reporte Ejecutivo
+                </a>
+                <a href="<?= BASE_URL ?>asistencia"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-clock w-5 text-center mr-2 text-gray-400"></i> Reporte Horas Extra
+                </a>
+            </div>
+        </details>
 
+        <!-- Acordeón: Herramientas -->
+        <details class="group border-b border-gray-700/50">
+            <summary
+                class="flex items-center justify-between text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold cursor-pointer transition select-none">
+                <span class="flex items-center">
+                    <i class="fas fa-tools w-6 text-center text-blue-400 mr-2"></i> Herramientas & Excel
+                </span>
+                <i
+                    class="fas fa-chevron-down text-xs transition-transform duration-200 group-open:rotate-180 text-gray-400"></i>
+            </summary>
+            <div class="pl-8 pr-2 py-1 space-y-1 bg-gray-800/40 rounded-b-md">
+                <a href="<?= BASE_URL ?>ordenDetalleBuscar"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-search w-5 text-center mr-2 text-gray-400"></i> Buscar Servicio
+                </a>
+                <a href="<?= BASE_URL ?>exportarExcel"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-file-excel w-5 text-center mr-2 text-gray-400"></i> Exportar General
+                </a>
+                <a href="<?= BASE_URL ?>ordenReporte"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-file-csv w-5 text-center mr-2 text-gray-400"></i> Excel Servicios
+                </a>
+            </div>
+        </details>
+
+    </div>
 
 <?php else: ?>
     <!-- MENÚ COMPLETO PARA ADMINISTRADORES Y OTROS ROLES -->

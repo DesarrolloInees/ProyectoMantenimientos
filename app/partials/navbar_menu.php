@@ -4,24 +4,40 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
 ?>
 
 <?php if ($rol == 3): ?>
-    <!-- MENÚ TÉCNICO -->
-    <a href="<?= BASE_URL ?>inicio"
-        class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
-        <i class="fas fa-home mr-1"></i> Inicio
-    </a>
-    <a href="<?= BASE_URL ?>ordenMovil"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-search mr-1"></i> Consultar Historial
-    </a>
-    <a href="<?= BASE_URL ?>tecnicoProgramacion"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fa-solid fa-envelope mr-1"></i> Programación Servicios
-    </a>
+    <!-- MENÚ TÉCNICO (rol 3) -->
+    <div class="flex items-center space-x-1 flex-wrap py-1 relative">
+        
+        <!-- Inicio -->
+        <a href="<?= BASE_URL ?>inicio"
+            class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+            <i class="fas fa-home mr-1.5"></i> Inicio
+        </a>
 
-    <a href="<?= BASE_URL ?>parqueaderoHistorial"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fa-solid fa-square-parking mr-1"></i> Historial de Parqueaderos
-    </a>
+        <!-- Programación Servicios -->
+        <a href="<?= BASE_URL ?>tecnicoProgramacion"
+            class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+            <i class="fa-solid fa-envelope mr-1.5"></i> Programación Servicios
+        </a>
+
+        <!-- Dropdown: Historiales -->
+        <div class="relative group">
+            <button type="button" class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+                <i class="fas fa-history mr-1.5"></i> Historiales <i class="fas fa-chevron-down ml-1.5 text-xs opacity-75"></i>
+            </button>
+            <div class="absolute left-0 mt-0 w-56 bg-gray-800 rounded-md shadow-lg py-1 hidden group-hover:block z-[9999] border border-gray-700">
+                <a href="<?= BASE_URL ?>ordenMovil" class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-search w-5"></i> Consultar Historial
+                </a>
+                <a href="<?= BASE_URL ?>parqueaderoHistorial" class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fa-solid fa-square-parking w-5"></i> Parqueaderos
+                </a>
+                <a href="<?= BASE_URL ?>horaExtraHistorial" class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fa-solid fa-clock w-5"></i> Horas Extra
+                </a>
+            </div>
+        </div>
+
+    </div>
 
 <?php elseif ($rol == 4): ?>
     <!-- MENÚ PROSEGUR -->
@@ -36,46 +52,90 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
 
 <?php elseif ($rol == 5): ?>
     <!-- MENÚ SUPERVISOR MOTORIZADO (rol 5) -->
-    <a href="<?= BASE_URL ?>inicio"
-        class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">
-        <i class="fas fa-home mr-1"></i> Inicio
-    </a>
-    <a href="<?= BASE_URL ?>ordenVer"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-clipboard-list mr-1"></i> Gestionar Servicios
-    </a>
-    <a href="<?= BASE_URL ?>repuestoVer"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-puzzle-piece mr-1"></i> Gestionar Repuestos
-    </a>
-    <a href="<?= BASE_URL ?>inventarioTecnicoVer"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-gears mr-1"></i> Administrar Repuestos
-    </a>
-    <a href="<?= BASE_URL ?>reporteTecnico"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-chart-line mr-1"></i> Reporte Técnico
-    </a>
-    <a href="<?= BASE_URL ?>reporteEjecutivo"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-chart-pie mr-1"></i> Reporte Ejecutivo
-    </a>
-    <a href="<?= BASE_URL ?>controlRemisionVer"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-ticket-alt mr-1"></i> Administrar Remisiones
-    </a>
-    <a href="<?= BASE_URL ?>exportarExcel"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-file-excel mr-1"></i> Exportar Excel
-    </a>
-    <a href="<?= BASE_URL ?>ordenReporte"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-brands fa-cloudflare mr-1"></i> Excel Servicios
-    </a>
-    <a href="<?= BASE_URL ?>asistencia"
-        class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition ml-2">
-        <i class="fas fa-file mr-1"></i> Reporte Horas Extra
-    </a>
+    <div class="flex items-center space-x-1 flex-wrap py-1 relative">
+
+        <!-- Inicio -->
+        <a href="<?= BASE_URL ?>inicio"
+            class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+            <i class="fas fa-home mr-1.5"></i> Inicio
+        </a>
+
+        <!-- Dropdown: Gestión -->
+        <div class="relative group">
+            <button type="button"
+                class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+                <i class="fas fa-tasks mr-1.5"></i> Gestión <i class="fas fa-chevron-down ml-1.5 text-xs opacity-75"></i>
+            </button>
+            <div
+                class="absolute left-0 mt-0 w-48 bg-gray-800 rounded-md shadow-lg py-1 hidden group-hover:block z-[9999] border border-gray-700">
+                <a href="<?= BASE_URL ?>ordenVer"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-clipboard-list w-5"></i> Servicios
+                </a>
+                <a href="<?= BASE_URL ?>repuestoVer"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-puzzle-piece w-5"></i> Repuestos
+                </a>
+                <a href="<?= BASE_URL ?>inventarioTecnicoVer"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-gears w-5"></i> Adm. Repuestos
+                </a>
+                <a href="<?= BASE_URL ?>controlRemisionVer"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-ticket-alt w-5"></i> Remisiones
+                </a>
+            </div>
+        </div>
+
+        <!-- Dropdown: Reportes -->
+        <div class="relative group">
+            <button type="button"
+                class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+                <i class="fas fa-chart-bar mr-1.5"></i> Reportes <i
+                    class="fas fa-chevron-down ml-1.5 text-xs opacity-75"></i>
+            </button>
+            <div
+                class="absolute left-0 mt-0 w-48 bg-gray-800 rounded-md shadow-lg py-1 hidden group-hover:block z-[9999] border border-gray-700">
+                <a href="<?= BASE_URL ?>reporteTecnico"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-chart-line w-5"></i> R. Técnico
+                </a>
+                <a href="<?= BASE_URL ?>reporteEjecutivo"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-chart-pie w-5"></i> R. Ejecutivo
+                </a>
+                <a href="<?= BASE_URL ?>asistencia"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-clock w-5"></i> Horas Extra
+                </a>
+            </div>
+        </div>
+
+        <!-- Dropdown: Herramientas -->
+        <div class="relative group">
+            <button type="button"
+                class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+                <i class="fas fa-tools mr-1.5"></i> Herramientas <i
+                    class="fas fa-chevron-down ml-1.5 text-xs opacity-75"></i>
+            </button>
+            <div
+                class="absolute left-0 mt-0 w-52 bg-gray-800 rounded-md shadow-lg py-1 hidden group-hover:block z-[9999] border border-gray-700">
+                <a href="<?= BASE_URL ?>ordenDetalleBuscar"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-search w-5"></i> Buscar Servicio
+                </a>
+                <a href="<?= BASE_URL ?>exportarExcel"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-file-excel w-5"></i> Exportar General
+                </a>
+                <a href="<?= BASE_URL ?>ordenReporte"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-file-csv w-5"></i> Excel Servicios
+                </a>
+            </div>
+        </div>
+
+    </div>
 
 <?php else: ?>
     <!-- MENÚ PARA OTROS ROLES (Administrador, etc.) -->
