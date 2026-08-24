@@ -1,6 +1,6 @@
 /vendor/
 .env
 /node_modules/
-
+test_groq.php
 /app/uploads/
 /app/imagenes/
