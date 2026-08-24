@@ -6,7 +6,7 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
 <?php if ($rol == 3): ?>
     <!-- MENÚ TÉCNICO (rol 3) -->
     <div class="flex items-center space-x-1 flex-wrap py-1 relative">
-        
+
         <!-- Inicio -->
         <a href="<?= BASE_URL ?>inicio"
             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
@@ -14,24 +14,39 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         </a>
 
         <!-- Programación Servicios -->
-        <a href="<?= BASE_URL ?>tecnicoProgramacion"
+        <!-- <a href="<?= BASE_URL ?>tecnicoProgramacion"
             class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
             <i class="fa-solid fa-envelope mr-1.5"></i> Programación Servicios
         </a>
+        -->
+
+
+        <!-- Programación Servicios -->
+        <a href="<?= BASE_URL ?>cronometroHistorial"
+            class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+            <i class="fa-solid fa-envelope mr-1.5"></i> Cronómetro Servicios Historial
+        </a>
+        
 
         <!-- Dropdown: Historiales -->
         <div class="relative group">
-            <button type="button" class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
-                <i class="fas fa-history mr-1.5"></i> Historiales <i class="fas fa-chevron-down ml-1.5 text-xs opacity-75"></i>
+            <button type="button"
+                class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+                <i class="fas fa-history mr-1.5"></i> Historiales <i
+                    class="fas fa-chevron-down ml-1.5 text-xs opacity-75"></i>
             </button>
-            <div class="absolute left-0 mt-0 w-56 bg-gray-800 rounded-md shadow-lg py-1 hidden group-hover:block z-[9999] border border-gray-700">
-                <a href="<?= BASE_URL ?>ordenMovil" class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+            <div
+                class="absolute left-0 mt-0 w-56 bg-gray-800 rounded-md shadow-lg py-1 hidden group-hover:block z-[9999] border border-gray-700">
+                <a href="<?= BASE_URL ?>ordenMovil"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fas fa-search w-5"></i> Consultar Historial
                 </a>
-                <a href="<?= BASE_URL ?>parqueaderoHistorial" class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                <a href="<?= BASE_URL ?>parqueaderoHistorial"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fa-solid fa-square-parking w-5"></i> Parqueaderos
                 </a>
-                <a href="<?= BASE_URL ?>horaExtraHistorial" class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                <a href="<?= BASE_URL ?>horaExtraHistorial"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fa-solid fa-clock w-5"></i> Horas Extra
                 </a>
             </div>
@@ -72,6 +87,11 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                     class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fas fa-clipboard-list w-5"></i> Servicios
                 </a>
+                <a href="<?= BASE_URL ?>cronometroAdmin"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-stopwatch w-5"></i> Cronómetro Supervisar
+                </a>
+                
                 <a href="<?= BASE_URL ?>repuestoVer"
                     class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fas fa-puzzle-piece w-5"></i> Repuestos
@@ -104,10 +124,21 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                     class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fas fa-chart-pie w-5"></i> R. Ejecutivo
                 </a>
-                <a href="<?= BASE_URL ?>asistencia"
+
+                <a href="<?= BASE_URL ?>horaExtraAdmin"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-clock w-5"></i>  Administrar Horas Extra
+                </a>
+                <a href="<?= BASE_URL ?>parqueaderoAdmin"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-motorcycle w-5"></i>  Administrar Parqueaderos
+                </a>
+                
+                <!--<a href="<?= BASE_URL ?>asistencia"
                     class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fas fa-clock w-5"></i> Horas Extra
-                </a>
+                </a>-->
+
             </div>
         </div>
 
@@ -218,6 +249,14 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <a href="<?= BASE_URL ?>parqueaderoAdmin"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-receipt w-5 text-center mr-1"></i> Administrar Facturas Parqueadero
+            </a>
+            <a href="<?= BASE_URL ?>horaExtraAdmin"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-clock w-5 text-center mr-1"></i> Administrar Horas Extra
+            </a>
+            <a href="<?= BASE_URL ?>cronometroAdmin"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-stopwatch w-5 text-center mr-1"></i> Cronómetrar Servicios Técnicos
             </a>
         </div>
     </div>

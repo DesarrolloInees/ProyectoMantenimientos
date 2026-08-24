@@ -442,54 +442,98 @@ class ordenDetalleControlador
 
         $textoOriginal = $_POST['texto'] ?? '';
 
-        if (empty($textoOriginal)) {
+        if (empty(trim($textoOriginal))) {
             echo json_encode(['status' => 'error', 'msg' => 'Texto vacío']);
             exit;
         }
 
-        $apiKey = $_ENV['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY') ?? $_SERVER['GROQ_API_KEY'] ?? '';
+        // 1. Obtener API Keys desde .env o entorno
+        $apiKey1 = trim($_ENV['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY') ?? $_SERVER['GROQ_API_KEY'] ?? '');
+        $apiKey2 = trim($_ENV['GROQ_API_KEY_2'] ?? getenv('GROQ_API_KEY_2') ?? $_SERVER['GROQ_API_KEY_2'] ?? '');
 
-        if (empty(trim($apiKey))) {
-            echo json_encode(['status' => 'error', 'msg' => 'API Key no encontrada en el entorno.']);
+        if (empty($apiKey1) || empty($apiKey2)) {
+            $envPath = __DIR__ . '/../../.env';
+            if (file_exists($envPath)) {
+                $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                foreach ($lines as $line) {
+                    if (strpos(trim($line), '#') === 0) continue;
+                    if (strpos($line, '=') !== false) {
+                        list($key, $val) = explode('=', $line, 2);
+                        if (trim($key) === 'GROQ_API_KEY' && empty($apiKey1)) {
+                            $apiKey1 = trim($val);
+                        }
+                        if (trim($key) === 'GROQ_API_KEY_2' && empty($apiKey2)) {
+                            $apiKey2 = trim($val);
+                        }
+                    }
+                }
+            }
+        }
+
+        $apiKeys = array_filter([$apiKey1, $apiKey2]);
+
+        if (empty($apiKeys)) {
+            echo json_encode(['status' => 'error', 'msg' => 'No se encontraron API Keys en el .env']);
             exit;
         }
 
-        $url = 'https://api.groq.com/openai/v1/chat/completions';
-        $prompt = "Eres un ingeniero supervisor de mantenimiento experto. Toma el siguiente reporte redactado por un técnico de campo y reescríbelo para que tenga una ortografía perfecta, gramática correcta y usando un lenguaje técnico, objetivo y muy profesional.\n\nReglas estrictas:\n- NO inventes repuestos, marcas o procedimientos que no estén en el texto original.\n- NO cambies ni omitas medidas (voltajes, amperajes), tiempos o códigos de error.\n- Devuelve ÚNICAMENTE el texto mejorado, sin introducciones, saludos ni comillas.\n\nTexto original: " . $textoOriginal;
+        $prompt = "Reescribe el siguiente reporte técnico de mantenimiento para que tenga ortografía perfecta y un lenguaje profesional y conciso. NO inventes datos ni omitas medidas o códigos de error. Devuelve SOLO el texto corregido:\n\n" . $textoOriginal;
 
-        $data = [
-            "model" => "llama-3.3-70b-versatile",
-            "messages" => [
-                ["role" => "system", "content" => "Eres un editor técnico estricto y conciso."],
-                ["role" => "user", "content" => $prompt]
-            ],
-            "temperature" => 0.2
-        ];
+        // Modelos confirmados ACTIVOS según tu endpoint
+        $modelosDisponibles = ['groq/compound-mini', 'allam-2-7b'];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . trim($apiKey)
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $textoMejorado = null;
+        $detallesErrores = [];
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
+        // 2. Probar con las llaves y modelos válidos
+        foreach ($apiKeys as $indexKey => $apiKey) {
+            foreach ($modelosDisponibles as $modelo) {
+                $data = [
+                    "model" => $modelo,
+                    "messages" => [
+                        ["role" => "system", "content" => "Eres un editor técnico estricto y conciso."],
+                        ["role" => "user", "content" => $prompt]
+                    ],
+                    "temperature" => 0.1,
+                    "max_tokens" => 400
+                ];
 
-        if ($httpCode == 200) {
-            $resultado = json_decode($response, true);
-            $textoMejorado = $resultado['choices'][0]['message']['content'] ?? '';
+                $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $apiKey
+                ]);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $errorCurl = curl_error($ch);
+                curl_close($ch);
+
+                if ($httpCode == 200) {
+                    $resultado = json_decode($response, true);
+                    $textoMejorado = $resultado['choices'][0]['message']['content'] ?? '';
+                    if (!empty(trim($textoMejorado))) {
+                        break 2; // ¡Éxito! Salimos de ambos bucles
+                    }
+                } else {
+                    $msgError = $errorCurl ? "cURL: $errorCurl" : "HTTP $httpCode: $response";
+                    $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> " . $msgError;
+                }
+            }
+        }
+
+        // 3. Respuesta JSON limpia
+        if (!empty(trim($textoMejorado))) {
             echo json_encode(['status' => 'ok', 'texto_mejorado' => trim($textoMejorado)]);
         } else {
-            $detalleError = $error ? "Falla interna (cURL): $error" : "Groq respondió: $response";
-            echo json_encode(['status' => 'error', 'msg' => "Error $httpCode. $detalleError"]);
+            $errorFinal = implode(" | ", $detallesErrores);
+            echo json_encode(['status' => 'error', 'msg' => 'Error API: ' . $errorFinal]);
         }
         exit;
     }

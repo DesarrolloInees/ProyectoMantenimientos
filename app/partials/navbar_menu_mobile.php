@@ -14,9 +14,15 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         </a>
 
         <!-- Programación Servicios (Acceso Directo Principal) -->
-        <a href="<?= BASE_URL ?>tecnicoProgramacion"
+        <!--<a href="<?= BASE_URL ?>tecnicoProgramacion"
             class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
             <i class="fa-regular fa-envelope w-6 text-center text-blue-400 mr-2"></i> Programación Servicios
+        </a> -->
+
+        <!-- Programación Servicios (Acceso Directo Principal) -->
+        <a href="<?= BASE_URL ?>cronometroHistorial"
+            class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
+            <i class="fa-regular fa-envelope w-6 text-center text-blue-400 mr-2"></i> Cronómetro Servicios Historial
         </a>
 
         <!-- Acordeón: Historiales y Consultas -->
@@ -85,6 +91,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                     class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
                     <i class="fas fa-clipboard-list w-5 text-center mr-2 text-gray-400"></i> Revisar Servicios
                 </a>
+                <a href="<?= BASE_URL ?>cronometroAdmin"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-stopwatch w-5 text-center mr-2 text-gray-400"></i> Cronómetrar Servicios Técnicos
+                </a>
                 <a href="<?= BASE_URL ?>repuestoVer"
                     class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
                     <i class="fas fa-puzzle-piece w-5 text-center mr-2 text-gray-400"></i> Ver Repuestos
@@ -119,12 +129,21 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                     class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
                     <i class="fas fa-chart-pie w-5 text-center mr-2 text-gray-400"></i> Reporte Ejecutivo
                 </a>
-                <a href="<?= BASE_URL ?>asistencia"
+                <a href="<?= BASE_URL ?>horaExtraAdmin"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-clock w-5 text-center mr-2 text-gray-400"></i> Administrar Horas Extra
+                </a>
+                <a href="<?= BASE_URL ?>parqueaderoAdmin"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-motorcycle w-5 text-center mr-2 text-gray-400"></i> Administrar Parqueaderos
+                </a>
+                <!--<a href="<?= BASE_URL ?>asistencia"
                     class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
                     <i class="fas fa-clock w-5 text-center mr-2 text-gray-400"></i> Reporte Horas Extra
-                </a>
+                </a>-->
             </div>
         </details>
+        
 
         <!-- Acordeón: Herramientas -->
         <details class="group border-b border-gray-700/50">

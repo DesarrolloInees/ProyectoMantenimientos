@@ -815,16 +815,20 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             const data = await response.json();
 
             if (data.status === 'ok') {
-                // 4. Reemplazamos el texto
-                textarea.value = data.texto_mejorado;
+                // 🔥 NUEVO: Doble validación en el frontend. ¡Solo reemplaza si hay texto!
+                if (data.texto_mejorado && data.texto_mejorado.trim() !== '') {
+                    textarea.value = data.texto_mejorado;
 
-                // Efectito visual bacano para que el usuario note el cambio (un verde suave)
-                textarea.style.backgroundColor = '#ecfdf5';
-                textarea.style.borderColor = '#34d399';
-                setTimeout(() => {
-                    textarea.style.backgroundColor = '';
-                    textarea.style.borderColor = '';
-                }, 1500);
+                    // Efectito visual bacano para que el usuario note el cambio (un verde suave)
+                    textarea.style.backgroundColor = '#ecfdf5';
+                    textarea.style.borderColor = '#34d399';
+                    setTimeout(() => {
+                        textarea.style.backgroundColor = '';
+                        textarea.style.borderColor = '';
+                    }, 1500);
+                } else {
+                    alert("⚠️ La IA devolvió un texto en blanco. Tus datos originales están a salvo.");
+                }
 
             } else {
                 alert("❌ Error procesando con IA: " + data.msg);
