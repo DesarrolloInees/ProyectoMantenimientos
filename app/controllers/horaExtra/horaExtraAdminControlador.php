@@ -28,26 +28,37 @@ class horaExtraAdminControlador
 
         // Capturar filtros (Por defecto se muestra el rango del mes actual)
         $fechaInicio = isset($_GET['fecha_inicio']) ? $_GET['fecha_inicio'] : date('Y-m-01');
-        $fechaFin    = isset($_GET['fecha_fin']) ? $_GET['fecha_fin'] : date('Y-m-t');
-        $idTecnico   = isset($_GET['id_tecnico']) ? $_GET['id_tecnico'] : '';
-        $idEstado    = isset($_GET['id_estado']) ? $_GET['id_estado'] : '';
+        $fechaFin = isset($_GET['fecha_fin']) ? $_GET['fecha_fin'] : date('Y-m-t');
+        $idTecnico = isset($_GET['id_tecnico']) ? $_GET['id_tecnico'] : '';
+        $idEstado = isset($_GET['id_estado']) ? $_GET['id_estado'] : '';
 
         // Obtener datos
         $tecnicos = $this->modelo->obtenerTecnicos();
-        $estados  = $this->modelo->obtenerEstadosAprobacion();
+        $estados = $this->modelo->obtenerEstadosAprobacion();
         $reportes = $this->modelo->obtenerHorasExtraAdmin($fechaInicio, $fechaFin, $idTecnico, $idEstado);
 
-        // Totales para tarjetas de resumen
-        $totalHoras     = 0;
-        $totalAprobadas = 0;
-        $totalPendientes = 0;
-        $totalRechazadas = 0;
+        // Acumuladores
+        $totalHorasAprobadas = 0;
+        $totalHorasPendientes = 0;
+        $totalHorasRechazadas = 0;
+
+        $cantPendientes = 0;
+        $cantAprobadas = 0;
+        $cantRechazadas = 0;
 
         foreach ($reportes as $r) {
-            $totalHoras += (float) $r['total_horas'];
-            if ($r['id_estado_aprobacion'] == 1) $totalPendientes++;
-            if ($r['id_estado_aprobacion'] == 2) $totalAprobadas += (float) $r['total_horas'];
-            if ($r['id_estado_aprobacion'] == 3) $totalRechazadas++;
+            $horas = (float) $r['total_horas'];
+
+            if ($r['id_estado_aprobacion'] == 1) { // Pendiente
+                $cantPendientes++;
+                $totalHorasPendientes += $horas;
+            } elseif ($r['id_estado_aprobacion'] == 2) { // Aprobada
+                $cantAprobadas++;
+                $totalHorasAprobadas += $horas;
+            } elseif ($r['id_estado_aprobacion'] == 3) { // Rechazada
+                $cantRechazadas++;
+                $totalHorasRechazadas += $horas;
+            }
         }
 
         // Cargar vista
@@ -59,12 +70,13 @@ class horaExtraAdminControlador
     // Endpoint AJAX para auditar (aprobar o rechazar)
     public function ajaxCambiarEstado()
     {
-        while (ob_get_level()) ob_end_clean();
+        while (ob_get_level())
+            ob_end_clean();
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $idRegistro  = isset($_POST['id_registro']) ? (int) $_POST['id_registro'] : 0;
-            $idEstado    = isset($_POST['id_estado']) ? (int) $_POST['id_estado'] : 0;
+            $idRegistro = isset($_POST['id_registro']) ? (int) $_POST['id_registro'] : 0;
+            $idEstado = isset($_POST['id_estado']) ? (int) $_POST['id_estado'] : 0;
             $observacion = isset($_POST['observacion']) ? trim($_POST['observacion']) : '';
 
             if ($idRegistro > 0 && $idEstado > 0) {

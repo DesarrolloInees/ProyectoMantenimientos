@@ -142,54 +142,55 @@
         </form>
     </div>
 
-    <!-- Tarjetas de Resumen -->
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <div
-            class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
-            <div class="bg-white/20 p-3 rounded-full">
-                <i class="fas fa-history text-2xl"></i>
-            </div>
-            <div>
-                <p class="text-blue-100 text-xs font-semibold uppercase">Total Reportadas</p>
-                <h3 class="text-2xl font-bold"><?= number_format($totalHoras, 2) ?> <span
-                        class="text-sm font-normal">hrs</span></h3>
-            </div>
+    <!-- Horas Aprobadas (Para Nómina) -->
+    <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
+        <div class="bg-white/20 p-3 rounded-full">
+            <i class="fas fa-check-circle text-2xl"></i>
         </div>
-
-        <div
-            class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
-            <div class="bg-white/20 p-3 rounded-full">
-                <i class="fas fa-check-circle text-2xl"></i>
-            </div>
-            <div>
-                <p class="text-emerald-100 text-xs font-semibold uppercase">Total Aprobadas</p>
-                <h3 class="text-2xl font-bold"><?= number_format($totalAprobadas, 2) ?> <span
-                        class="text-sm font-normal">hrs</span></h3>
-            </div>
-        </div>
-
-        <div
-            class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
-            <div class="bg-white/20 p-3 rounded-full">
-                <i class="fas fa-hourglass-half text-2xl"></i>
-            </div>
-            <div>
-                <p class="text-amber-100 text-xs font-semibold uppercase">Pendientes</p>
-                <h3 class="text-2xl font-bold"><?= $totalPendientes ?></h3>
-            </div>
-        </div>
-
-        <div
-            class="bg-gradient-to-r from-rose-500 to-red-600 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
-            <div class="bg-white/20 p-3 rounded-full">
-                <i class="fas fa-times-circle text-2xl"></i>
-            </div>
-            <div>
-                <p class="text-rose-100 text-xs font-semibold uppercase">Rechazadas</p>
-                <h3 class="text-2xl font-bold"><?= $totalRechazadas ?></h3>
-            </div>
+        <div>
+            <p class="text-emerald-100 text-xs font-semibold uppercase">Horas Aprobadas</p>
+            <h3 class="text-2xl font-bold"><?= number_format($totalHorasAprobadas, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <p class="text-[11px] text-emerald-200 mt-0.5"><?= $cantAprobadas ?> registros listos para nómina</p>
         </div>
     </div>
+
+    <!-- Pendientes / Por Revisar -->
+    <div class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
+        <div class="bg-white/20 p-3 rounded-full">
+            <i class="fas fa-hourglass-half text-2xl"></i>
+        </div>
+        <div>
+            <p class="text-amber-100 text-xs font-semibold uppercase">Por Revisar</p>
+            <h3 class="text-2xl font-bold"><?= number_format($totalHorasPendientes, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <p class="text-[11px] text-amber-200 mt-0.5"><?= $cantPendientes ?> solicitudes pendientes</p>
+        </div>
+    </div>
+
+    <!-- Horas Rechazadas -->
+    <div class="bg-gradient-to-r from-rose-500 to-red-600 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
+        <div class="bg-white/20 p-3 rounded-full">
+            <i class="fas fa-times-circle text-2xl"></i>
+        </div>
+        <div>
+            <p class="text-rose-100 text-xs font-semibold uppercase">Horas Rechazadas</p>
+            <h3 class="text-2xl font-bold"><?= number_format($totalHorasRechazadas, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <p class="text-[11px] text-rose-200 mt-0.5"><?= $cantRechazadas ?> registros denegados</p>
+        </div>
+    </div>
+
+    <!-- Total Bruto Solicitado -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-4 text-white shadow-md flex items-center gap-3">
+        <div class="bg-white/20 p-3 rounded-full">
+            <i class="fas fa-history text-2xl"></i>
+        </div>
+        <div>
+            <p class="text-blue-100 text-xs font-semibold uppercase">Total Solicitado</p>
+            <h3 class="text-2xl font-bold"><?= number_format($totalHorasAprobadas + $totalHorasPendientes + $totalHorasRechazadas, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <p class="text-[11px] text-blue-200 mt-0.5">Volumen total reportado</p>
+        </div>
+    </div>
+</div>
 
     <!-- Tabla DataTables -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
