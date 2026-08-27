@@ -28,7 +28,6 @@
         width: 100% !important;
     }
 
-    /* FORZAR LA TABLA AL 100% DE ANCHO EN CUALQUIER PANTALLA */
     table.dataTable {
         width: 100% !important;
         margin: 0 auto !important;
@@ -43,7 +42,6 @@
         white-space: nowrap !important;
     }
 
-    /* Evitar saltos de línea feos en celdas de PC */
     table.dataTable tbody td {
         white-space: nowrap !important;
         vertical-align: middle;
@@ -64,13 +62,28 @@
 
 <div class="p-4 md:p-6 max-w-full mx-auto space-y-6">
 
-    <!-- Encabezado -->
-    <div class="flex justify-between items-center bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+    <!-- Encabezado con Botones de Exportación -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between bg-white p-5 rounded-xl shadow-sm border border-gray-100 gap-4">
         <div>
-            <h1 class="text-xl md:text-2xl font-bold text-gray-800"><i
-                    class="fas fa-parking text-blue-600 mr-2"></i>Reporte de Parqueaderos</h1>
-            <p class="text-gray-500 text-xs md:text-sm mt-1">Gestión y auditoría de facturas registradas por los
-                técnicos.</p>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">
+                <i class="fas fa-parking text-blue-600 mr-2"></i>Reporte de Parqueaderos
+            </h1>
+            <p class="text-gray-500 text-xs md:text-sm mt-1">Gestión y auditoría de facturas registradas por los técnicos.</p>
+        </div>
+
+        <!-- BOTONES EXPORTAR -->
+        <div class="flex items-center gap-2">
+            <a href="index.php?pagina=parqueaderoAdmin&accion=exportarExcel&fecha_inicio=<?= $fechaInicio ?>&fecha_fin=<?= $fechaFin ?>&id_tecnico=<?= $idTecnico ?>"
+                target="_blank"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2">
+                <i class="fas fa-file-excel text-base"></i> Exportar Excel
+            </a>
+
+            <a href="index.php?pagina=parqueaderoAdmin&accion=exportarPdf&fecha_inicio=<?= $fechaInicio ?>&fecha_fin=<?= $fechaFin ?>&id_tecnico=<?= $idTecnico ?>"
+                target="_blank"
+                class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2">
+                <i class="fas fa-file-pdf text-base"></i> Exportar PDF
+            </a>
         </div>
     </div>
 
@@ -116,8 +129,7 @@
 
     <!-- Tarjetas de Resumen -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
-            class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-5 text-white shadow-md flex items-center gap-4">
+        <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-5 text-white shadow-md flex items-center gap-4">
             <div class="bg-white/20 p-4 rounded-full">
                 <i class="fas fa-receipt text-3xl"></i>
             </div>
@@ -126,8 +138,7 @@
                 <h3 class="text-3xl font-bold"><?= $totalFacturas ?></h3>
             </div>
         </div>
-        <div
-            class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-5 text-white shadow-md flex items-center gap-4">
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-5 text-white shadow-md flex items-center gap-4">
             <div class="bg-white/20 p-4 rounded-full">
                 <i class="fas fa-dollar-sign text-3xl"></i>
             </div>
@@ -166,10 +177,8 @@
                                 <?= htmlspecialchars($fac['nombre_punto']) ?>
                             </td>
                             <td>
-                                <span
-                                    class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono border border-gray-200">
-                                    <?= date('H:i', strtotime($fac['hora_inicio'])) ?> -
-                                    <?= date('H:i', strtotime($fac['hora_fin'])) ?>
+                                <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono border border-gray-200">
+                                    <?= date('H:i', strtotime($fac['hora_inicio'])) ?> - <?= date('H:i', strtotime($fac['hora_fin'])) ?>
                                 </span>
                             </td>
                             <td class="font-mono font-bold">
@@ -180,7 +189,7 @@
                             </td>
                             <td class="text-center">
                                 <button type="button"
-                                    onclick="abrirModalFotoAdmin('<?= BASE_URL . $fac['ruta_foto'] ?>', '<?= htmlspecialchars($fac['numero_factura']) ?>', '<?= htmlspecialchars($fac['nombre_tecnico']) ?>')"
+                                    onclick="abrirModalFotoAdmin('<?= htmlspecialchars($fac['ruta_foto']) ?>', '<?= htmlspecialchars($fac['numero_factura']) ?>', '<?= htmlspecialchars($fac['nombre_tecnico']) ?>')"
                                     class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-2 px-3 rounded-lg font-bold text-xs transition inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
                                     title="Ver Factura">
                                     <i class="fas fa-eye"></i> Ver Factura
@@ -194,26 +203,44 @@
     </div>
 </div>
 
-<!-- Modal para ver la foto -->
+<!-- Modal para ver la foto con botones de rotación y guardado -->
 <div id="modalFotoAdmin"
     class="fixed inset-0 bg-black/90 hidden z-[100] justify-center items-center p-4 opacity-0 transition-opacity duration-300">
-    <div class="relative w-full max-w-3xl transform scale-95 transition-transform duration-300" id="modalContentAdmin">
-        <div class="flex justify-between items-center mb-3 text-white border-b border-gray-700 pb-2">
+    <div class="relative w-full max-w-4xl transform scale-95 transition-transform duration-300" id="modalContentAdmin">
+
+        <div class="flex flex-wrap justify-between items-center mb-3 text-white border-b border-gray-700 pb-2 gap-2">
             <div>
                 <h3 class="font-bold text-lg" id="tituloModalFotoAdmin">Factura</h3>
                 <p class="text-gray-400 text-sm" id="subtituloModalFotoAdmin"></p>
             </div>
-            <button type="button" onclick="cerrarModalFotoAdmin()"
-                class="text-gray-400 hover:text-white text-3xl leading-none transition">&times;</button>
-        </div>
-        <div
-            class="bg-white rounded-xl overflow-hidden flex justify-center items-center min-h-[300px] shadow-2xl relative">
-            <div id="loadingSpinner" class="absolute flex flex-col items-center justify-center text-gray-400">
-                <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
-                <span class="text-sm">Cargando imagen...</span>
+
+            <!-- CONTROLES DE ROTACIÓN Y GUARDADO -->
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="rotarImagenModal(-90)"
+                    class="bg-gray-800 hover:bg-gray-700 text-white p-2 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                    title="Rotar 90° a la izquierda">
+                    <i class="fas fa-undo"></i> 90°
+                </button>
+                <button type="button" onclick="rotarImagenModal(90)"
+                    class="bg-gray-800 hover:bg-gray-700 text-white p-2 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                    title="Rotar 90° a la derecha">
+                    <i class="fas fa-redo"></i> 90°
+                </button>
+
+                <!-- BOTÓN GUARDAR ROTACIÓN -->
+                <button type="button" id="btnGuardarRotacion" onclick="guardarRotacionServidor()"
+                    class="hidden bg-emerald-600 hover:bg-emerald-700 text-white p-2 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                    <i class="fas fa-save"></i> Guardar Rotación
+                </button>
+
+                <button type="button" onclick="cerrarModalFotoAdmin()"
+                    class="text-gray-400 hover:text-white text-3xl leading-none ml-2">&times;</button>
             </div>
+        </div>
+
+        <div class="bg-white rounded-xl overflow-hidden flex justify-center items-center min-h-[300px] shadow-2xl relative p-2">
             <img id="imagenModalAdmin" src="" alt="Foto Factura"
-                class="max-w-full max-h-[75vh] object-contain relative z-10 hidden" onload="imagenCargada()">
+                class="max-w-full max-h-[75vh] object-contain transition-transform duration-300">
         </div>
     </div>
 </div>
@@ -229,7 +256,6 @@
             language: { noResults: function () { return "No se encontraron resultados"; } }
         });
 
-        // DataTables con responsive inteligente
         $('#tablaParqueaderosAdmin').DataTable({
             responsive: true,
             language: {
@@ -241,25 +267,78 @@
         });
     });
 
-    function abrirModalFotoAdmin(rutaCompleta, numeroFactura, nombreTecnico) {
+    let anguloRotacionActual = 0;
+    let rutaFotoActualRelativa = '';
+
+    function abrirModalFotoAdmin(rutaRelativa, numeroFactura, nombreTecnico) {
+        anguloRotacionActual = 0;
+        rutaFotoActualRelativa = rutaRelativa;
+        
+        $('#imagenModalAdmin').css('transform', 'rotate(0deg)');
+        $('#btnGuardarRotacion').addClass('hidden').removeClass('inline-flex');
+
         $('#tituloModalFotoAdmin').html('<i class="fas fa-file-invoice-dollar mr-2 text-blue-400"></i>Factura N° ' + numeroFactura);
         $('#subtituloModalFotoAdmin').html('<i class="fas fa-user-hard-hat mr-1"></i> Subida por: ' + nombreTecnico);
 
-        $('#imagenModalAdmin').addClass('hidden').attr('src', '');
-        $('#loadingSpinner').removeClass('hidden');
+        const urlCompleta = (rutaRelativa.startsWith('http') || rutaRelativa.startsWith('/')) 
+            ? rutaRelativa 
+            : window.BASE_URL + rutaRelativa;
 
-        $('#imagenModalAdmin').attr('src', rutaCompleta);
-
+        $('#imagenModalAdmin').attr('src', urlCompleta);
         $('#modalFotoAdmin').removeClass('hidden').addClass('flex');
+
         setTimeout(() => {
             $('#modalFotoAdmin').removeClass('opacity-0').addClass('opacity-100');
             $('#modalContentAdmin').removeClass('scale-95').addClass('scale-100');
         }, 10);
     }
 
-    function imagenCargada() {
-        $('#loadingSpinner').addClass('hidden');
-        $('#imagenModalAdmin').removeClass('hidden');
+    function rotarImagenModal(grados) {
+        anguloRotacionActual = (anguloRotacionActual + grados) % 360;
+        $('#imagenModalAdmin').css('transform', `rotate(${anguloRotacionActual}deg)`);
+
+        if (anguloRotacionActual !== 0) {
+            $('#btnGuardarRotacion').removeClass('hidden').addClass('inline-flex');
+        } else {
+            $('#btnGuardarRotacion').addClass('hidden').removeClass('inline-flex');
+        }
+    }
+
+    function guardarRotacionServidor() {
+        if (anguloRotacionActual === 0) return;
+
+        const btn = $('#btnGuardarRotacion');
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+        $.ajax({
+            url: 'index.php?pagina=parqueaderoAdmin&accion=guardarRotacion',
+            type: 'POST',
+            data: {
+                ruta_foto: rutaFotoActualRelativa,
+                grados: anguloRotacionActual
+            },
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.exito) {
+                    alert('✅ Rotación guardada correctamente en el servidor.');
+                    const timestamp = new Date().getTime();
+                    const srcLimpio = $('#imagenModalAdmin').attr('src').split('?')[0];
+                    $('#imagenModalAdmin').attr('src', srcLimpio + '?v=' + timestamp);
+                    
+                    anguloRotacionActual = 0;
+                    $('#imagenModalAdmin').css('transform', 'rotate(0deg)');
+                    btn.addClass('hidden').removeClass('inline-flex');
+                } else {
+                    alert('❌ Error: ' + (resp.mensaje || 'No se pudo rotar la imagen.'));
+                }
+            },
+            error: function() {
+                alert('❌ Error de comunicación con el servidor.');
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Rotación');
+            }
+        });
     }
 
     function cerrarModalFotoAdmin() {
@@ -268,7 +347,7 @@
 
         setTimeout(() => {
             $('#modalFotoAdmin').removeClass('flex').addClass('hidden');
-            $('#imagenModalAdmin').attr('src', '').addClass('hidden');
+            $('#imagenModalAdmin').attr('src', '');
         }, 300);
     }
 

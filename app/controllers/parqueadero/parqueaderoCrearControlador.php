@@ -27,7 +27,6 @@ class ParqueaderoCrearControlador
             return;
         }
 
-        // CORRECCIÓN: Se obtiene la información completa como Array
         $datosTecnico = $this->modelo->obtenerDatosTecnicoPorUsuario($idUsuarioLogueado);
 
         if (!$datosTecnico || empty($datosTecnico['id_tecnico'])) {
@@ -35,16 +34,14 @@ class ParqueaderoCrearControlador
             return;
         }
 
-        // Obtener datos para los selects
         $puntos = $this->modelo->obtenerPuntosActivos();
 
-        // Cargar Vista
         $titulo = "Registrar Parqueadero";
         $vistaContenido = "app/views/parqueadero/parqueaderoCrearVista.php";
         include "app/views/plantillaVista.php";
     }
 
-    // Procesa el formulario y guarda la imagen
+    // Procesa el formulario y optimiza la imagen respetando su orientación
     public function guardar()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -59,17 +56,11 @@ class ParqueaderoCrearControlador
 
             $idTecnicoActual = $datosTecnico['id_tecnico'];
 
-            // --- CORRECCIÓN DE NOMBRES Y ESPACIOS ---
             $nombreOriginal = $datosTecnico['nombre_tecnico'];
-
-            // 1. Quitar tildes y caracteres especiales dejando solo letras y espacios
             $nombreLimpio = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nombreOriginal);
             $nombreLimpio = preg_replace('/[^A-Za-z0-9\s_]/', '', $nombreLimpio);
-
-            // 2. Convertir múltiples espacios en un solo guion bajo
             $nombreTecnicoSanitizado = strtoupper(preg_replace('/\s+/', '_', trim($nombreLimpio)));
 
-            // Validar subida de archivo
             if (!isset($_FILES['foto_factura']) || $_FILES['foto_factura']['error'] !== UPLOAD_ERR_OK) {
                 echo "<script>alert('Error al subir la imagen de la factura.'); window.history.back();</script>";
                 return;
@@ -79,33 +70,30 @@ class ParqueaderoCrearControlador
             $numeroFactura = strtoupper(preg_replace('/[^A-Za-z0-9_-]/', '', $_POST['numero_factura']));
             $mesAnio = date('Y-m', strtotime($fechaServicio));
 
-            // 1. Ruta relativa para guardar en la BD (como lo verá la URL web)
             $carpetaSubRuta = 'app/uploads/parqueaderos/' . $nombreTecnicoSanitizado . '/' . $mesAnio . '/';
-
-            // 2. Ruta física real en el disco del servidor (sube 3 niveles desde controllers/parqueadero hasta la raíz del proyecto)
             $carpetaDestinoFisica = __DIR__ . '/../../../' . $carpetaSubRuta;
 
             if (!file_exists($carpetaDestinoFisica)) {
                 mkdir($carpetaDestinoFisica, 0777, true);
             }
 
-            $extension = strtolower(pathinfo($_FILES['foto_factura']['name'], PATHINFO_EXTENSION));
-            $nombreNuevo = 'PARQ_' . $nombreTecnicoSanitizado . '_' . $fechaServicio . '_FACT_' . $numeroFactura . '.' . $extension;
+            $nombreNuevo = 'PARQ_' . $nombreTecnicoSanitizado . '_' . $fechaServicio . '_FACT_' . $numeroFactura . '.jpg';
 
             $rutaFinalServidor = $carpetaDestinoFisica . $nombreNuevo;
             $rutaParaBD = $carpetaSubRuta . $nombreNuevo;
 
-            if (move_uploaded_file($_FILES['foto_factura']['tmp_name'], $rutaFinalServidor)) {
+            // Optimización conservando orientación inteligente
+            if ($this->optimizarImagen($_FILES['foto_factura']['tmp_name'], $rutaFinalServidor, 1200, 80)) {
 
                 $datos = [
-                    'id_tecnico' => $idTecnicoActual,
-                    'id_punto' => $_POST['id_punto'],
+                    'id_tecnico'     => $idTecnicoActual,
+                    'id_punto'       => $_POST['id_punto'],
                     'fecha_servicio' => $fechaServicio,
-                    'hora_inicio' => $_POST['hora_inicio'],
-                    'hora_fin' => $_POST['hora_fin'],
+                    'hora_inicio'    => $_POST['hora_inicio'],
+                    'hora_fin'       => $_POST['hora_fin'],
                     'numero_factura' => $_POST['numero_factura'],
-                    'valor_factura' => $_POST['valor_factura'],
-                    'ruta_foto' => $rutaParaBD
+                    'valor_factura'  => $_POST['valor_factura'],
+                    'ruta_foto'      => $rutaParaBD
                 ];
 
                 if ($this->modelo->guardarFactura($datos)) {
@@ -118,8 +106,94 @@ class ParqueaderoCrearControlador
                     echo "<script>alert('❌ Error al guardar en BD.'); window.history.back();</script>";
                 }
             } else {
-                echo "<script>alert('❌ Error al mover el archivo.'); window.history.back();</script>";
+                echo "<script>alert('❌ Error al procesar la imagen.'); window.history.back();</script>";
             }
         }
+    }
+
+    /**
+     * Procesa y comprime la imagen:
+     * 1. Ajusta la orientación real del sensor usando los metadatos EXIF.
+     * 2. No fuerza la rotación a vertical, permitiendo diagramas/fotos horizontales.
+     * 3. Escala proporcionalmente y guarda en formato JPG optimizado.
+     */
+    private function optimizarImagen($rutaOrigen, $rutaDestino, $anchoMaximo = 1200, $calidad = 80)
+    {
+        ini_set('memory_limit', '256M');
+        if (!extension_loaded('gd')) {
+            return move_uploaded_file($rutaOrigen, $rutaDestino);
+        }
+
+        $info = @getimagesize($rutaOrigen);
+        if (!$info) {
+            return move_uploaded_file($rutaOrigen, $rutaDestino);
+        }
+
+        $mime          = $info['mime'];
+        $anchoOriginal = $info[0];
+        $altoOriginal  = $info[1];
+
+        switch ($mime) {
+            case 'image/jpeg':
+            case 'image/jpg':
+                $imagenOriginal = @imagecreatefromjpeg($rutaOrigen);
+                break;
+            case 'image/png':
+                $imagenOriginal = @imagecreatefrompng($rutaOrigen);
+                break;
+            case 'image/webp':
+                $imagenOriginal = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($rutaOrigen) : null;
+                break;
+            default:
+                return move_uploaded_file($rutaOrigen, $rutaDestino);
+        }
+
+        if (!$imagenOriginal) {
+            return move_uploaded_file($rutaOrigen, $rutaDestino);
+        }
+
+        // Corregir metadatos EXIF reales del sensor del teléfono
+        if (function_exists('exif_read_data') && ($mime === 'image/jpeg' || $mime === 'image/jpg')) {
+            $exif = @exif_read_data($rutaOrigen);
+            if ($exif && isset($exif['Orientation'])) {
+                switch ($exif['Orientation']) {
+                    case 3:
+                        $imagenOriginal = imagerotate($imagenOriginal, 180, 0);
+                        break;
+                    case 6:
+                        $imagenOriginal = imagerotate($imagenOriginal, -90, 0);
+                        $temp = $anchoOriginal;
+                        $anchoOriginal = $altoOriginal;
+                        $altoOriginal = $temp;
+                        break;
+                    case 8:
+                        $imagenOriginal = imagerotate($imagenOriginal, 90, 0);
+                        $temp = $anchoOriginal;
+                        $anchoOriginal = $altoOriginal;
+                        $altoOriginal = $temp;
+                        break;
+                }
+            }
+        }
+
+        // Redimensionar proporcionalmente
+        if ($anchoOriginal > $anchoMaximo) {
+            $ratio      = $anchoMaximo / $anchoOriginal;
+            $nuevoAncho = $anchoMaximo;
+            $nuevoAlto  = round($altoOriginal * $ratio);
+        } else {
+            $nuevoAncho = $anchoOriginal;
+            $nuevoAlto  = $altoOriginal;
+        }
+
+        $imagenRedimensionada = imagecreatetruecolor($nuevoAncho, $nuevoAlto);
+        imagecopyresampled($imagenRedimensionada, $imagenOriginal, 0, 0, 0, 0, $nuevoAncho, $nuevoAlto, $anchoOriginal, $altoOriginal);
+
+        $exito = imagejpeg($imagenRedimensionada, $rutaDestino, $calidad);
+
+        imagedestroy($imagenOriginal);
+        imagedestroy($imagenRedimensionada);
+
+        return $exito;
     }
 }

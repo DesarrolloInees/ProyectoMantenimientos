@@ -108,4 +108,44 @@ class ParqueaderoAdminModelo
             return [];
         }
     }
+
+    // Obtener información detallada para reportes PDF / Excel respetando filtros
+    public function obtenerReporteParqueaderosExportar($fechaInicio = null, $fechaFin = null, $idTecnico = null)
+    {
+        try {
+            $sql = "SELECT fp.id_factura_parqueadero, fp.fecha_servicio, fp.hora_inicio, fp.hora_fin, 
+                        fp.numero_factura, fp.valor_factura, fp.ruta_foto, fp.fecha_registro,
+                        t.nombre_tecnico, p.nombre_punto 
+                FROM facturas_parqueadero fp
+                INNER JOIN tecnico t ON fp.id_tecnico = t.id_tecnico
+                INNER JOIN punto p ON fp.id_punto = p.id_punto
+                WHERE fp.estado = 1";
+
+            $params = [];
+
+            if (!empty($fechaInicio)) {
+                $sql .= " AND fp.fecha_servicio >= :fecha_inicio";
+                $params[':fecha_inicio'] = $fechaInicio;
+            }
+
+            if (!empty($fechaFin)) {
+                $sql .= " AND fp.fecha_servicio <= :fecha_fin";
+                $params[':fecha_fin'] = $fechaFin;
+            }
+
+            if (!empty($idTecnico)) {
+                $sql .= " AND fp.id_tecnico = :id_tecnico";
+                $params[':id_tecnico'] = $idTecnico;
+            }
+
+            $sql .= " ORDER BY fp.fecha_servicio ASC, t.nombre_tecnico ASC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo datos para reporte parqueaderos: " . $e->getMessage());
+            return [];
+        }
+    }
 }
