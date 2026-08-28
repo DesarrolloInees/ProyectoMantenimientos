@@ -92,4 +92,29 @@ class cronometroAdminModelo
             return [];
         }
     }
+
+    public function enviarAlertaTelegram($mensaje)
+    {
+        $token = "8881259577:AAGXe2ut6XuN5ht3fXGqSl26TFT-_Y1MYPo";
+        $chatId = "-5401877028";
+        
+        $data = [
+            'chat_id' => $chatId,
+            'text' => $mensaje,
+            'parse_mode' => 'HTML'
+        ];
+
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $resultado = curl_exec($ch);
+        curl_close($ch);
+
+        return $resultado;
+    }
 }

@@ -45,10 +45,33 @@ class cronometroAdminControlador
         $tecnicos = $this->modelo->obtenerTecnicos();
         $servicios = $this->modelo->obtenerServiciosAdmin($fechaInicio, $fechaFin, $idTecnico, $estado);
 
-        // 3. Mapear 'tiempo_estimado_minutos' en cada registro para corregir el warning
+        // 3. Mapear 'tiempo_estimado_minutos' y verificar retrasos en vivo
         foreach ($servicios as &$s) {
             $idTipo = (int) $s['id_tipo_mantenimiento'];
             $s['tiempo_estimado_minutos'] = isset($catalogoTiempos[$idTipo]) ? (int) $catalogoTiempos[$idTipo] : 60;
+
+            // --- ALERTA EN TIEMPO REAL A TELEGRAM ---
+            if ($s['estado_actual'] === 'En Progreso') {
+                $inicio = strtotime($s['hora_inicio']);
+                $ahora = time();
+                $minutosTranscurridos = floor(($ahora - $inicio) / 60);
+
+                // Si excedió la meta y no se ha notificado en esta sesión
+                $keyAlerta = 'alerta_retraso_' . $s['id_monitoreo'];
+                if ($minutosTranscurridos > $s['tiempo_estimado_minutos'] && !isset($_SESSION[$keyAlerta])) {
+                    
+                    $msg = "⚠️ <b>ALERTA DE RETRASO EN VIVO</b>\n\n";
+                    $msg .= "<b>Técnico:</b> " . htmlspecialchars($s['nombre_tecnico']) . "\n";
+                    $msg .= "<b>Servicio:</b> " . htmlspecialchars($s['tipo_mantenimiento']) . "\n";
+                    $msg .= "<b>Punto:</b> " . htmlspecialchars($s['nombre_punto']) . "\n";
+                    $msg .= "<b>Transcurrido:</b> {$minutosTranscurridos} min (Meta: {$s['tiempo_estimado_minutos']} min)\n";
+
+                    $this->modelo->enviarAlertaTelegram($msg);
+
+                    // Guardar flag en sesión para enviar una sola notificación por servicio
+                    $_SESSION[$keyAlerta] = true;
+                }
+            }
         }
         unset($s); // Romper referencia del foreach
 
