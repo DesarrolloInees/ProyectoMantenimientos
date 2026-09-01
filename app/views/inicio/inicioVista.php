@@ -35,7 +35,7 @@ $horaActual = date('H:i');
                     hacer hoy?</p>
 
                 <!-- Programación Servicios -->
-                <!--<a href="<?= BASE_URL ?>tecnicoProgramacion"
+                <a href="<?= BASE_URL ?>tecnicoProgramacion"
                     class="group flex items-center gap-4 bg-gray-50/80 hover:bg-indigo-50/50 p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all hover:shadow-md">
                     <div class="bg-indigo-100 p-3 rounded-lg group-hover:bg-indigo-600 transition shrink-0">
                         <i class="fa-solid fa-envelope text-indigo-600 group-hover:text-white text-lg"></i>
@@ -47,7 +47,7 @@ $horaActual = date('H:i');
                     </div>
                     <i
                         class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition"></i>
-                </a>-->
+                </a>
 
 
                 <a href="<?= BASE_URL ?>cronometroHistorial"
@@ -153,13 +153,6 @@ $horaActual = date('H:i');
         </div>
     </div>
 
-    Aquí tienes la reorganización del panel para Supervisor de Motorizados.
-
-    Se agrupó la información por secciones temáticas (Gestión Operativa, Repuestos e Inventario, y Reportes & Exportaciones)
-    y se corrigió el grid a 3 columnas adaptativas (lg:grid-cols-3), evitando filas descompensadas. También se incluyó la
-    opción de Buscar Servicio (ordenDetalleBuscar) y se eliminaron todos los caracteres invisibles \u00a0.
-
-    PHP
 <?php elseif ($nivel == 5): ?>
     <!-- Panel Supervisor Motorizados -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">

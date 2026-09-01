@@ -61,5 +61,33 @@ class AsistenciaModelo
             return [];
         }
     }
+
+    // 3. 🔥 NUEVO: OBTENER LOS DÍAS FESTIVOS DENTRO DEL RANGO (para el recargo Dominical/Festivo)
+    // NOTA: Ajusta el nombre de la tabla ('festivos') y la columna de fecha ('fecha')
+    // a como estén realmente definidos en tu base de datos.
+    public function obtenerFestivos($fechaInicio, $fechaFin)
+    {
+        try {
+            // Se actualizó el nombre de la tabla a 'dias_festivos' según tu esquema
+            $sql = "SELECT fecha 
+                    FROM dias_festivos 
+                    WHERE fecha BETWEEN :ini AND :fin";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':ini' => $fechaInicio, ':fin' => $fechaFin]);
+            $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $festivos = [];
+            foreach ($filas as $f) {
+                $ts = strtotime($f['fecha']);
+                if ($ts) {
+                    $festivos[date('Y-m-d', $ts)] = true;
+                }
+            }
+            return $festivos;
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
 }
 ?>

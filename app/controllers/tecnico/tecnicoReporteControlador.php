@@ -69,183 +69,129 @@ class tecnicoReporteControlador
 
     public function guardar()
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
-            $idTecnicoActual = $this->modelo->obtenerIdTecnicoPorUsuario($idUsuarioLogueado);
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
 
-            $idOrdenServicio = (int) $_POST['id_ordenes_servicio'];
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'msj' => 'Método no permitido.']);
+            exit;
+        }
 
-            // 🔥 LOG PARA DEPURAR
-            error_log("=== GUARDAR REPORTE ===");
-            error_log("id_cliente recibido: " . ($_POST['id_cliente'] ?? 'NULL'));
-            error_log("id_punto recibido: " . ($_POST['id_punto'] ?? 'NULL'));
-            error_log("id_orden: " . $idOrdenServicio);
+        $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+        $idTecnicoActual = $this->modelo->obtenerIdTecnicoPorUsuario($idUsuarioLogueado);
+        $idOrdenServicio = (int) ($_POST['id_ordenes_servicio'] ?? 0);
 
-            // 🔥 VALIDACIÓN: Si no llegan, obtenerlos de la orden existente
-            $idCliente = $_POST['id_cliente'] ?? null;
-            $idPunto = $_POST['id_punto'] ?? null;
+        if ($idOrdenServicio === 0 || $idUsuarioLogueado === 0 || $idTecnicoActual === 0) {
+            echo json_encode(['success' => false, 'msj' => 'Sesión expirada o ID de orden no válido.']);
+            exit;
+        }
 
-            if (empty($idCliente) || empty($idPunto)) {
-                // Obtener los datos actuales de la orden
-                $ordenActual = $this->modelo->obtenerDetalleOrden($idOrdenServicio, $idTecnicoActual);
-                if ($ordenActual) {
-                    $idCliente = $idCliente ?: $ordenActual['id_cliente'];
-                    $idPunto = $idPunto ?: $ordenActual['id_punto'];
-                    error_log("Usando valores de la orden existente: cliente=$idCliente, punto=$idPunto");
-                }
+        // Validar pertenencia y estado de la orden
+        $ordenRealBD = $this->modelo->obtenerDetalleOrden($idOrdenServicio, $idTecnicoActual);
+        if (!$ordenRealBD) {
+            echo json_encode(['success' => false, 'msj' => 'La orden no existe, no te pertenece o ya fue gestionada.']);
+            exit;
+        }
+
+        // Forzar lectura de cliente y punto desde BD para evitar manipulaciones/cruces
+        $idCliente = $ordenRealBD['id_cliente'];
+        $idPunto = $ordenRealBD['id_punto'];
+
+        // Validar concurrencia (Modificación en paralelo por coordinadores)
+        $fechaApertura = $_POST['fecha_apertura'] ?? null;
+        $fechaUltimaModificacion = $this->modelo->obtenerUltimaModificacion($idOrdenServicio);
+
+        if ($fechaApertura && $fechaUltimaModificacion) {
+            if (strtotime($fechaUltimaModificacion) > strtotime($fechaApertura)) {
+                echo json_encode(['success' => false, 'msj' => 'El servicio fue modificado por un coordinador mientras estabas en campo.']);
+                exit;
+            }
+        }
+
+        $this->modelo->actualizarFechaModificacion($idOrdenServicio);
+
+        $datos = [
+            'id_ordenes_servicio' => $idOrdenServicio,
+            'id_tecnico' => $idTecnicoActual,
+            'id_cliente' => $idCliente,
+            'id_punto' => $idPunto,
+            'numero_remision' => $_POST['numero_remision'] ?? '',
+            'hora_entrada' => $_POST['hora_entrada'] ?? '',
+            'hora_salida' => $_POST['hora_salida'] ?? '',
+            'tiempo_servicio' => $_POST['tiempo_servicio'] ?? '',
+            'actividades_realizadas' => $_POST['actividades_realizadas'] ?? '',
+            'id_estado_maquina' => $_POST['id_estado_maquina'] ?? null,
+            'id_calificacion' => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
+            'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? null,
+            'soporte_remoto' => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
+            'tiene_novedad' => isset($_POST['tiene_novedad']) ? 1 : 0,
+            'id_tipo_novedad' => !empty($_POST['id_tipo_novedad']) ? $_POST['id_tipo_novedad'] : null,
+            'detalle_novedad' => !empty($_POST['detalle_novedad']) ? $_POST['detalle_novedad'] : null,
+            'repuestos_tecnico' => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
+        ];
+
+        $datosComplementarios = [
+            'id_orden_servicio' => $idOrdenServicio,
+            'numero_maquina' => $_POST['numero_maquina'] ?? null,
+            'serial_maquina' => $_POST['serial_maquina'] ?? null,
+            'serial_router' => $_POST['serial_router'] ?? null,
+            'serial_ups' => $_POST['serial_ups'] ?? null,
+            'pendientes' => $_POST['pendientes'] ?? null,
+            'administrador_punto' => $_POST['administrador_punto'] ?? null,
+            'celular_encargado' => $_POST['celular_encargado'] ?? null,
+            'id_estado_inicial' => $_POST['id_estado_inicial'] ?? null,
+            'latitud_fin' => $_POST['latitud_fin'] ?? null,
+            'longitud_fin' => $_POST['longitud_fin'] ?? null
+        ];
+
+        $this->modelo->guardarDatosComplementarios($datosComplementarios);
+
+        if ($this->modelo->guardarReporteTecnico($datos)) {
+
+            if (!empty($datos['numero_remision'])) {
+                $this->modeloMaestro->marcarRemisionComoUsada($datos['numero_remision'], $idOrdenServicio, $idTecnicoActual);
             }
 
-            // 🔥 VALIDACIÓN FINAL: Si sigue vacío, mostrar error
-            if (empty($idCliente) || empty($idPunto)) {
-                echo "<script>
-                alert('❌ Error: No se puede determinar el cliente o punto del servicio. Contacte a soporte.');
-                window.history.back();
-            </script>";
-                return;
+            $remisionCarpeta = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'SIN_REMISION_' . $idOrdenServicio;
+            $carpetaDestino = __DIR__ . '/../../uploads/imagenes_servicios/' . $remisionCarpeta . '/';
+
+            if (!file_exists($carpetaDestino)) {
+                mkdir($carpetaDestino, 0777, true);
             }
 
-            // Validar que el cliente exista en la BD
-            $sqlCheck = "SELECT id_cliente FROM cliente WHERE id_cliente = :id";
-            $stmtCheck = $this->db->prepare($sqlCheck);
-            $stmtCheck->execute([':id' => $idCliente]);
-            if (!$stmtCheck->fetch()) {
-                echo "<script>
-                alert('❌ Error: El cliente con ID $idCliente no existe en la base de datos.');
-                window.history.back();
-            </script>";
-                return;
-            }
+            // Procesar Firma Canvas
+            if (!empty($_POST['firma_base64'])) {
+                $partesFirma = explode(',', $_POST['firma_base64']);
+                if (count($partesFirma) === 2) {
+                    $firmaDecodificada = base64_decode($partesFirma[1]);
+                    $numeroNombre = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'ORDEN-' . $idOrdenServicio;
+                    $nombreFirma = 'REM-' . $numeroNombre . '_firma_' . uniqid() . '.png';
+                    $rutaFinalFirma = $carpetaDestino . $nombreFirma;
+                    $rutaBDFirma = 'uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreFirma;
 
-            // 🔥 PASO 1: Validar modificación
-            $fechaApertura = $_POST['fecha_apertura'] ?? null;
-            $fechaUltimaModificacion = $this->modelo->obtenerUltimaModificacion($idOrdenServicio);
-
-            if ($fechaApertura && $fechaUltimaModificacion) {
-                if (strtotime($fechaUltimaModificacion) > strtotime($fechaApertura)) {
-                    echo "<script>
-                    alert('⚠️ El servicio fue modificado por otro usuario mientras estabas en campo.');
-                    window.history.back();
-                </script>";
-                    return;
-                }
-            }
-
-            // 🔥 PASO 2: Guardar la fecha de modificación antes de actualizar
-            $this->modelo->actualizarFechaModificacion($idOrdenServicio);
-
-            $datos = [
-                'id_ordenes_servicio' => $idOrdenServicio,
-                'id_tecnico' => $idTecnicoActual,
-                'id_cliente' => $_POST['id_cliente'] ?? null,
-                'id_punto' => $_POST['id_punto'] ?? null,
-                'numero_remision' => $_POST['numero_remision'],
-                'hora_entrada' => $_POST['hora_entrada'],
-                'hora_salida' => $_POST['hora_salida'],
-                'tiempo_servicio' => $_POST['tiempo_servicio'],
-                'actividades_realizadas' => $_POST['actividades_realizadas'],
-                'id_estado_maquina' => $_POST['id_estado_maquina'],
-                'id_calificacion' => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
-                'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'],
-                'soporte_remoto' => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
-                'tiene_novedad' => isset($_POST['tiene_novedad']) ? 1 : 0,
-                'id_tipo_novedad' => !empty($_POST['id_tipo_novedad']) ? $_POST['id_tipo_novedad'] : null,
-                'detalle_novedad' => !empty($_POST['detalle_novedad']) ? $_POST['detalle_novedad'] : null,
-                'repuestos_tecnico' => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
-            ];
-
-            // ==========================================
-            // GUARDAR DATOS COMPLEMENTARIOS (Con GPS)
-            // ==========================================
-            $datosComplementarios = [
-                'id_orden_servicio' => $idOrdenServicio,
-                'numero_maquina' => !empty($_POST['numero_maquina']) ? $_POST['numero_maquina'] : null,
-                'serial_maquina' => !empty($_POST['serial_maquina']) ? $_POST['serial_maquina'] : null,
-                'serial_router' => !empty($_POST['serial_router']) ? $_POST['serial_router'] : null,
-                'serial_ups' => !empty($_POST['serial_ups']) ? $_POST['serial_ups'] : null,
-                'pendientes' => !empty($_POST['pendientes']) ? $_POST['pendientes'] : null,
-                'administrador_punto' => !empty($_POST['administrador_punto']) ? $_POST['administrador_punto'] : null,
-                'celular_encargado' => !empty($_POST['celular_encargado']) ? $_POST['celular_encargado'] : null,
-                'id_estado_inicial' => !empty($_POST['id_estado_inicial']) ? $_POST['id_estado_inicial'] : null,
-                'latitud_fin' => !empty($_POST['latitud_fin']) ? $_POST['latitud_fin'] : null,
-                'longitud_fin' => !empty($_POST['longitud_fin']) ? $_POST['longitud_fin'] : null
-            ];
-
-            $this->modelo->guardarDatosComplementarios($datosComplementarios);
-
-            // ==========================================
-            // 1. GUARDAMOS EL REPORTE EN LA BD
-            // ==========================================
-            if ($this->modelo->guardarReporteTecnico($datos)) {
-
-                // Si hay remisión, la marcamos como usada
-                if (!empty($datos['numero_remision'])) {
-                    $this->modeloMaestro->marcarRemisionComoUsada($datos['numero_remision'], $idOrdenServicio, $idTecnicoActual);
-                }
-
-                $remisionCarpeta = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'SIN_REMISION_' . $idOrdenServicio;
-
-                // CORRECCIÓN: Quitamos el "app/" de la ruta física
-                $carpetaDestino = __DIR__ . '/../../uploads/imagenes_servicios/' . $remisionCarpeta . '/';
-                if (!file_exists($carpetaDestino)) {
-                    mkdir($carpetaDestino, 0777, true);
-                }
-
-                // ==========================================
-                // LÓGICA PARA GUARDAR LA FIRMA (CANVAS)
-                // ==========================================
-                if (!empty($_POST['firma_base64'])) {
-                    $firmaTextoBase64 = $_POST['firma_base64'];
-
-                    $partesFirma = explode(',', $firmaTextoBase64);
-
-                    if (count($partesFirma) == 2) {
-                        $firmaDecodificada = base64_decode($partesFirma[1]);
-
-                        $numeroParaNombreFirma = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'ORDEN-' . $idOrdenServicio;
-                        $nombreFirma = 'REM-' . $numeroParaNombreFirma . '_firma_' . uniqid() . '.png';
-
-                        $rutaFinalFirmaServidor = $carpetaDestino . $nombreFirma;
-
-                        // CORRECCIÓN: Quitamos el "app/" para la base de datos
-                        $rutaParaBDFirma = 'uploads/imagenes_servicios/' . $remisionCarpeta . '/' . $nombreFirma;
-
-                        if (file_put_contents($rutaFinalFirmaServidor, $firmaDecodificada)) {
-                            $this->modelo->guardarEvidenciaFoto($idOrdenServicio, 'firma', $rutaParaBDFirma);
-                        } else {
-                            error_log("No se pudo guardar la imagen física de la firma.");
-                        }
+                    if (file_put_contents($rutaFinalFirma, $firmaDecodificada)) {
+                        $this->modelo->guardarEvidenciaFoto($idOrdenServicio, 'firma', $rutaBDFirma);
                     }
                 }
+            }
 
-                // ==========================================
-                // LÓGICA PARA GUARDAR REPUESTOS
-                // ==========================================
-                if (!empty($_POST['json_repuestos'])) {
-                    $repuestosUsados = json_decode($_POST['json_repuestos'], true);
-
-                    if (is_array($repuestosUsados) && count($repuestosUsados) > 0) {
-                        $this->modelo->limpiarRepuestosOrden($idOrdenServicio);
-
-                        foreach ($repuestosUsados as $rep) {
-                            $idRepuesto = (int) $rep['id'];
-                            $cantidad = (int) $rep['cantidad'];
-                            $origen = $rep['origen'];
-
-                            $this->modelo->guardarRepuestoOrden($idOrdenServicio, $idRepuesto, $cantidad, $origen);
-                        }
+            // Procesar Repuestos
+            if (!empty($_POST['json_repuestos'])) {
+                $repuestosUsados = json_decode($_POST['json_repuestos'], true);
+                if (is_array($repuestosUsados) && count($repuestosUsados) > 0) {
+                    $this->modelo->limpiarRepuestosOrden($idOrdenServicio);
+                    foreach ($repuestosUsados as $rep) {
+                        $this->modelo->guardarRepuestoOrden($idOrdenServicio, (int) $rep['id'], (int) $rep['cantidad'], $rep['origen']);
                     }
                 }
-
-                echo "<script>
-                    alert('✅ Reporte finalizado exitosamente.');
-                    window.location.href = 'index.php?pagina=tecnicoProgramacion';
-                </script>";
-            } else {
-                echo "<script>
-                    alert('❌ Error al guardar el reporte.');
-                    window.history.back();
-                </script>";
             }
+
+            echo json_encode(['success' => true, 'msj' => 'Reporte finalizado exitosamente.']);
+            exit;
+        } else {
+            echo json_encode(['success' => false, 'msj' => 'Error al registrar el reporte en la Base de Datos.']);
+            exit;
         }
     }
 

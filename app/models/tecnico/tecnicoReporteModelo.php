@@ -308,7 +308,7 @@ class tecnicoReporteModelo
                     $valorServicio = floatval($resTarifa['precio']);
                 }
 
-                $delegacionesPrincipales = [1, 2, 3, 4];
+                $delegacionesPrincipales = [1, 2, 3, 4, 5];
                 $idDelegacionPunto = $this->obtenerIdDelegacionPunto($infoOrden['id_punto']);
 
                 if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
@@ -463,5 +463,132 @@ class tecnicoReporteModelo
     }
 
 
+    // ==========================================
+    // FUNCIONES PARA EL MÓDULO DE EDICIÓN
+    // ==========================================
 
+    // ==========================================
+    // FUNCIONES PARA EL MÓDULO DE EDICIÓN
+    // ==========================================
+
+    public function obtenerReporteGuardado($idOrdenServicio)
+    {
+        // Consultamos directamente la orden y su complemento real
+        $sql = "SELECT r.*, 
+                       c.numero_maquina, c.serial_maquina, c.serial_router, c.serial_ups, 
+                       c.pendientes, c.administrador_punto, c.celular_encargado, c.id_estado_inicial
+                FROM ordenes_servicio r
+                LEFT JOIN ordenes_servicio_complemento c ON r.id_ordenes_servicio = c.id_orden_servicio
+                WHERE r.id_ordenes_servicio = :id";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':id' => $idOrdenServicio]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function obtenerRepuestosGuardados($idOrdenServicio)
+    {
+        $sql = "SELECT ro.id_repuesto as id, r.nombre_repuesto as nombre, ro.cantidad, ro.origen 
+                FROM orden_servicio_repuesto ro
+                INNER JOIN repuesto r ON ro.id_repuesto = r.id_repuesto
+                WHERE ro.id_orden_servicio = :id";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':id' => $idOrdenServicio]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function actualizarReporteTecnico($datos)
+    {
+        $sql = "UPDATE ordenes_servicio SET 
+                numero_remision = :numero_remision,
+                hora_entrada = :hora_entrada,
+                hora_salida = :hora_salida,
+                tiempo_servicio = :tiempo_servicio,
+                actividades_realizadas = :actividades_realizadas,
+                id_estado_maquina = :id_estado_maquina,
+                id_calificacion = :id_calificacion,
+                id_tipo_mantenimiento = :id_tipo_mantenimiento,
+                soporte_remoto = :soporte_remoto,
+                tiene_novedad = :tiene_novedad,
+                detalle_novedad = :detalle_novedad,
+                repuestos_tecnico = :repuestos_tecnico
+                WHERE id_ordenes_servicio = :id_ordenes_servicio AND id_tecnico = :id_tecnico";
+
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute($datos);
+    }
+
+    public function actualizarDatosComplementarios($datos)
+    {
+        $sql = "UPDATE ordenes_servicio_complemento SET 
+                numero_maquina = :numero_maquina,
+                serial_maquina = :serial_maquina,
+                serial_router = :serial_router,
+                serial_ups = :serial_ups,
+                pendientes = :pendientes,
+                administrador_punto = :administrador_punto,
+                celular_encargado = :celular_encargado,
+                id_estado_inicial = :id_estado_inicial
+                WHERE id_orden_servicio = :id_orden_servicio";
+
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute($datos);
+    }
+
+    public function obtenerDetalleOrdenParaEdicion($idOrden)
+    {
+        $sql = "SELECT o.*, c.nombre_cliente, p.nombre_punto, p.direccion AS direccion_punto 
+                FROM ordenes_servicio o
+                LEFT JOIN cliente c ON o.id_cliente = c.id_cliente
+                LEFT JOIN punto p ON o.id_punto = p.id_punto
+                WHERE o.id_ordenes_servicio = :id";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':id' => $idOrden]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // --- NUEVA FUNCIÓN: Traer catálogo completo de repuestos ---
+    public function obtenerTodosLosRepuestos()
+    {
+        try {
+            $sql = "SELECT id_repuesto, nombre_repuesto, codigo_referencia 
+                    FROM repuesto 
+                    WHERE estado = 1 
+                    ORDER BY nombre_repuesto ASC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+
+    public function eliminarEvidenciaPorTipo($idOrden, $tipoEvidencia)
+    {
+        try {
+            // 1. Buscar las evidencias de ese tipo para borrar el archivo físico si existe
+            $sqlSelect = "SELECT ruta_archivo FROM evidencia_servicio WHERE id_orden_servicio = :id_orden AND tipo_evidencia = :tipo";
+            $stmtSelect = $this->conn->prepare($sqlSelect);
+            $stmtSelect->execute([':id_orden' => $idOrden, ':tipo' => $tipoEvidencia]);
+            $fotos = $stmtSelect->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($fotos as $foto) {
+                $rutaFisica = __DIR__ . '/../../' . $foto['ruta_archivo'];
+                if (file_exists($rutaFisica)) {
+                    @unlink($rutaFisica);
+                }
+            }
+
+            // 2. Eliminar el registro de la base de datos
+            $sql = "DELETE FROM evidencia_servicio WHERE id_orden_servicio = :id_orden AND tipo_evidencia = :tipo";
+            $stmt = $this->conn->prepare($sql);
+            return $stmt->execute([':id_orden' => $idOrden, ':tipo' => $tipoEvidencia]);
+        } catch (PDOException $e) {
+            error_log("Error eliminarEvidenciaPorTipo: " . $e->getMessage());
+            return false;
+        }
+    }
 }

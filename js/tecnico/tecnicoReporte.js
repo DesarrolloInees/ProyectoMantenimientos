@@ -7,54 +7,25 @@ let dibujando = false;
 let firmaVacia = true;
 let totalFotosSubidasServidor = 0;
 
-// ---> NUEVAS VARIABLES PARA VALIDAR CADA TIPO
 let totalFotosAntes = 0;
 let totalFotosRemision = 0;
 let totalFotosDespues = 0;
 
-
 // ==========================================
-// INICIALIZACIÓN DEL CANVAS
-// ==========================================
-$(document).ready(function () {
-    // Inicializar el Canvas para la Firma
-    canvas = document.getElementById('canvas_firma');
-    if (canvas) {
-        ctx = canvas.getContext('2d');
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#0f172a';
-
-        // Eventos táctiles (Celulares)
-        canvas.addEventListener('touchstart', iniciarDibujo, { passive: false });
-        canvas.addEventListener('touchmove', dibujar, { passive: false });
-        canvas.addEventListener('touchend', detenerDibujo, { passive: false });
-        canvas.addEventListener('touchcancel', detenerDibujo, { passive: false });
-
-        // Eventos de ratón (PC)
-        canvas.addEventListener('mousedown', iniciarDibujo);
-        canvas.addEventListener('mousemove', dibujar);
-        canvas.addEventListener('mouseup', detenerDibujo);
-        canvas.addEventListener('mouseout', detenerDibujo);
-    }
-});
-
-// ==========================================
-// FUNCIONES DE LA FIRMA DIGITAL
+// FUNCIONES DE LA FIRMA DIGITAL (CANVAS)
 // ==========================================
 function obtenerPosicion(evento) {
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
-    let clientX, clientY;
+    let clientX = evento.clientX;
+    let clientY = evento.clientY;
 
     if (evento.touches && evento.touches.length > 0) {
         clientX = evento.touches[0].clientX;
         clientY = evento.touches[0].clientY;
-    } else {
-        clientX = evento.clientX;
-        clientY = evento.clientY;
     }
 
     return {
@@ -64,7 +35,7 @@ function obtenerPosicion(evento) {
 }
 
 function iniciarDibujo(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     dibujando = true;
     const pos = obtenerPosicion(e);
     ctx.beginPath();
@@ -73,7 +44,7 @@ function iniciarDibujo(e) {
 
 function dibujar(e) {
     if (!dibujando) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const pos = obtenerPosicion(e);
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
@@ -81,32 +52,33 @@ function dibujar(e) {
 }
 
 function detenerDibujo(e) {
-    if (e) e.preventDefault();
+    if (e && e.cancelable) e.preventDefault();
     dibujando = false;
 
-    // 🔥 CLAVE: Actualizar el campo base64 CADA VEZ que se detiene el dibujo
-    if (!firmaVacia) {
+    if (!firmaVacia && canvas) {
         const dataURL = canvas.toDataURL('image/png');
-        document.getElementById('firma_base64').value = dataURL;
-        console.log('✅ Firma guardada en base64, longitud:', dataURL.length);
+        const inputFirma = document.getElementById('firma_base64');
+        if (inputFirma) {
+            inputFirma.value = dataURL;
+        }
     }
 }
 
 function limpiarFirma() {
+    if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     firmaVacia = true;
-    document.getElementById('firma_base64').value = "";
-    console.log('🗑️ Firma limpiada');
+    const inputFirma = document.getElementById('firma_base64');
+    if (inputFirma) {
+        inputFirma.value = "";
+    }
 }
 
-// 🔥 NUEVA FUNCIÓN: Verificar si el canvas tiene algo dibujado
 function tieneFirmaEnCanvas() {
     if (!canvas || !ctx) return false;
-
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
 
-    // Buscar cualquier píxel que no sea blanco (255,255,255)
     for (let i = 0; i < data.length; i += 4) {
         if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) {
             return true;
@@ -125,25 +97,20 @@ $(document).ready(function () {
         minimumResultsForSearch: 8
     });
 
-    // 2. Eventos de cálculo de tiempo - MEJORADO
+    // 2. Eventos de cálculo de tiempo
     $('#hora_entrada, #hora_salida').on('change input', function () {
         calcularTiempoServicio();
     });
 
-    // Si ya hay valores al cargar, calcular automáticamente
     setTimeout(function () {
         if ($('#hora_entrada').val() && $('#hora_salida').val()) {
             calcularTiempoServicio();
         }
     }, 500);
-    // =========================================================
-    // 3. NUEVA LÓGICA DE FOTOS: SUBIDA INMEDIATA POR AJAX
-    // =========================================================
 
-    // A. Cargar las fotos que ya estén en la Base de Datos al entrar
+    // 3. Subida de Fotos por AJAX
     cargarEvidenciasExistentes();
 
-    // B. Escuchar cuando el técnico selecciona fotos
     $('#fotos_antes, #foto_remision, #fotos_despues').on('change', function (e) {
         let files = e.target.files;
         if (files.length === 0) return;
@@ -158,18 +125,14 @@ $(document).ready(function () {
         let remision = $('select[name="numero_remision"]').val() || '';
         let idOrden = $('input[name="id_ordenes_servicio"]').val();
 
-
-        // Subir cada foto seleccionada al servidor
         Array.from(files).forEach(file => {
             subirFotoAjax(file, tipoEvidencia, remision, idOrden, containerPreview);
         });
 
-        // Limpiar el input para que pueda volver a seleccionar la misma foto si la borra
         $(this).val('');
     });
 
-
-    // 4. Inicializar Modal de Repuestos
+    // 4. Modal de Repuestos
     $('#btn_abrir_repuestos').on('click', function (e) {
         e.preventDefault();
         $('#modalRepuestos').removeClass('hidden').addClass('flex');
@@ -182,7 +145,7 @@ $(document).ready(function () {
         }
     });
 
-    // 5. Inicializar el Canvas para la Firma
+    // 5. Inicializar Canvas
     canvas = document.getElementById('canvas_firma');
     if (canvas) {
         ctx = canvas.getContext('2d');
@@ -190,12 +153,13 @@ $(document).ready(function () {
         ctx.lineCap = 'round';
         ctx.strokeStyle = '#0f172a';
 
-        // Eventos táctiles (Celulares)
+        // Táctil (Celulares)
         canvas.addEventListener('touchstart', iniciarDibujo, { passive: false });
         canvas.addEventListener('touchmove', dibujar, { passive: false });
-        canvas.addEventListener('touchend', detenerDibujo);
+        canvas.addEventListener('touchend', detenerDibujo, { passive: false });
+        canvas.addEventListener('touchcancel', detenerDibujo, { passive: false });
 
-        // Eventos de ratón (PC)
+        // Mouse (PC)
         canvas.addEventListener('mousedown', iniciarDibujo);
         canvas.addEventListener('mousemove', dibujar);
         canvas.addEventListener('mouseup', detenerDibujo);
@@ -204,16 +168,19 @@ $(document).ready(function () {
 });
 
 // ==========================================
-// NUEVAS FUNCIONES AJAX PARA FOTOS
+// FUNCIONES AJAX PARA FOTOS
 // ==========================================
 function subirFotoAjax(file, tipo, remision, idOrden, containerId) {
+    if (!navigator.onLine) {
+        Swal.fire('Sin conexión', 'No puedes subir fotos sin internet. Busca señal para continuar.', 'warning');
+        return; 
+    }
     let formData = new FormData();
     formData.append('foto', file);
     formData.append('id_orden', idOrden);
     formData.append('tipo_evidencia', tipo);
     formData.append('numero_remision', remision);
 
-    // Crear un cuadrito de "Cargando..."
     let tempId = 'loading_' + Date.now() + Math.floor(Math.random() * 100);
     $('#' + containerId).append(`
         <div id="${tempId}" class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm flex items-center justify-center bg-gray-100">
@@ -221,24 +188,23 @@ function subirFotoAjax(file, tipo, remision, idOrden, containerId) {
         </div>
     `);
 
-    // Enviar al controlador
     fetch('index.php?pagina=tecnicoReporte&accion=ajaxSubirFotoUnica', {
         method: 'POST',
         body: formData
     })
-        .then(res => res.json())
-        .then(data => {
-            $('#' + tempId).remove(); // Quitar el "Cargando"
-            if (data.success) {
-                cargarEvidenciasExistentes(); // Recargar todas las fotos
-            } else {
-                Swal.fire('Error', data.msj, 'error');
-            }
-        })
-        .catch(err => {
-            $('#' + tempId).remove();
-            Swal.fire('Error', 'Fallo al subir la foto por red', 'error');
-        });
+    .then(res => res.json())
+    .then(data => {
+        $('#' + tempId).remove();
+        if (data.success) {
+            cargarEvidenciasExistentes();
+        } else {
+            Swal.fire('Error', data.msj, 'error');
+        }
+    })
+    .catch(err => {
+        $('#' + tempId).remove();
+        Swal.fire('Error', 'Fallo al subir la foto por red', 'error');
+    });
 }
 
 function cargarEvidenciasExistentes() {
@@ -250,35 +216,34 @@ function cargarEvidenciasExistentes() {
         method: 'POST',
         body: formData
     })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                $('#preview_antes, #preview_remision, #preview_despues').empty();
-                totalFotosAntes = 0;
-                totalFotosRemision = 0;
-                totalFotosDespues = 0;
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            $('#preview_antes, #preview_remision, #preview_despues').empty();
+            totalFotosAntes = 0;
+            totalFotosRemision = 0;
+            totalFotosDespues = 0;
 
-                data.data.forEach(foto => {
-                    // 🔥 Usamos directamente la ruta que devuelve el servidor (absoluta)
-                    let rutaImagen = foto.ruta_archivo;
-                    let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
-                    let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
-                                <img src="${rutaImagen}" class="w-full h-full object-cover">
-                                ${btnDelete}
-                            </div>`;
+            data.data.forEach(foto => {
+                let rutaImagen = foto.ruta_archivo;
+                let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
+                let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
+                                    <img src="${rutaImagen}" class="w-full h-full object-cover">
+                                    ${btnDelete}
+                                </div>`;
 
-                    if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
-                    if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
-                    if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
-                });
+                if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
+                if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
+                if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
+            });
 
-                actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
-                actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
-                actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
-                totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
-                $('#total_fotos_count').text(totalFotosSubidasServidor);
-            }
-        });
+            actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
+            actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
+            actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
+            totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
+            $('#total_fotos_count').text(totalFotosSubidasServidor);
+        }
+    });
 }
 
 function actualizarBadgeFotos(selector, cantidad) {
@@ -289,7 +254,6 @@ function actualizarBadgeFotos(selector, cantidad) {
     }
 }
 
-// Para usarla desde el HTML tiene que estar en el window
 window.eliminarFotoAjax = function (idEvidencia) {
     if (!confirm('¿Borrar esta foto permanentemente?')) return;
 
@@ -300,57 +264,45 @@ window.eliminarFotoAjax = function (idEvidencia) {
         method: 'POST',
         body: formData
     })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                cargarEvidenciasExistentes();
-            } else {
-                // AHORA TE MOSTRARÁ EL ERROR EXACTO:
-                Swal.fire('Error al borrar', data.msj, 'error');
-            }
-        });
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            cargarEvidenciasExistentes();
+        } else {
+            Swal.fire('Error al borrar', data.msj, 'error');
+        }
+    });
 };
 
 // ==========================================
-// FUNCIONES DE TIEMPO - CORREGIDAS
+// FUNCIONES DE TIEMPO
 // ==========================================
 function calcularTiempoServicio() {
     let hEntrada = $('#hora_entrada').val();
     let hSalida = $('#hora_salida').val();
 
-    console.log('Calculando tiempo... Entrada:', hEntrada, 'Salida:', hSalida);
-
     if (hEntrada && hSalida) {
-        // Convertir a minutos para mejor precisión
         let partesEntrada = hEntrada.split(':');
         let partesSalida = hSalida.split(':');
 
         let minutosEntrada = parseInt(partesEntrada[0]) * 60 + parseInt(partesEntrada[1]);
         let minutosSalida = parseInt(partesSalida[0]) * 60 + parseInt(partesSalida[1]);
 
-        // Si la salida es menor que la entrada (pasó de medianoche)
         if (minutosSalida < minutosEntrada) {
-            minutosSalida += 1440; // Sumar 24 horas
+            minutosSalida += 1440;
         }
 
         let diferenciaMinutos = minutosSalida - minutosEntrada;
-
-        // Calcular horas y minutos
         let horas = Math.floor(diferenciaMinutos / 60);
         let minutos = diferenciaMinutos % 60;
 
-        // Formatear con ceros a la izquierda
         let total = String(horas).padStart(2, '0') + ':' + String(minutos).padStart(2, '0');
 
-        console.log('Tiempo calculado:', total);
-
-        // Actualizar campos
         $('#tiempo_servicio').val(total);
         $('#tiempo_total_display').text(total + ' hrs');
 
         return total;
     } else {
-        // Si falta alguna hora, resetear
         $('#tiempo_servicio').val('00:00');
         $('#tiempo_total_display').text('00:00 hrs');
         return '00:00';
@@ -433,84 +385,3 @@ function borrarRepuesto(index) {
     repuestosSeleccionados.splice(index, 1);
     renderizarListaRepuestos();
 }
-
-// ==========================================
-// ACTUALIZAR FIRMA EN TIEMPO REAL
-// ==========================================
-function actualizarFirmaBase64() {
-    if (!firmaVacia) {
-        // Convertir el canvas a base64
-        const dataURL = canvas.toDataURL('image/png');
-        document.getElementById('firma_base64').value = dataURL;
-        console.log('✅ Firma capturada en base64');
-    }
-}
-
-// Modificar la función detenerDibujo para que actualice el campo
-const detenerDibujo = (e) => {
-    e.preventDefault();
-    dibujando = false;
-    if (!firmaVacia) {
-        actualizarFirmaBase64();
-    }
-};
-
-// Modificar la función limpiarFirma para limpiar el campo oculto
-function limpiarFirma() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    firmaVacia = true;
-    document.getElementById('firma_base64').value = "";
-    console.log('🗑️ Firma limpiada');
-}
-
-// ==========================================
-// FUNCIONES DE LA FIRMA DIGITAL (CANVAS)
-// ==========================================
-function obtenerPosicion(evento) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    let clientX = evento.clientX;
-    let clientY = evento.clientY;
-
-    if (evento.touches && evento.touches.length > 0) {
-        clientX = evento.touches[0].clientX;
-        clientY = evento.touches[0].clientY;
-    }
-
-    return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
-    };
-}
-
-const iniciarDibujo = (e) => {
-    e.preventDefault();
-    dibujando = true;
-    const pos = obtenerPosicion(e);
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-};
-
-const dibujar = (e) => {
-    if (!dibujando) return;
-    e.preventDefault();
-    const pos = obtenerPosicion(e);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-    firmaVacia = false;
-};
-
-const detenerDibujo = (e) => {
-    e.preventDefault();
-    dibujando = false;
-};
-
-function limpiarFirma() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    firmaVacia = true;
-    document.getElementById('firma_base64').value = "";
-}
-
-

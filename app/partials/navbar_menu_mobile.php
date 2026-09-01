@@ -14,10 +14,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         </a>
 
         <!-- Programación Servicios (Acceso Directo Principal) -->
-        <!--<a href="<?= BASE_URL ?>tecnicoProgramacion"
+        <a href="<?= BASE_URL ?>tecnicoProgramacion"
             class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
             <i class="fa-regular fa-envelope w-6 text-center text-blue-400 mr-2"></i> Programación Servicios
-        </a> -->
+        </a>
 
         <!-- Programación Servicios (Acceso Directo Principal) -->
         <a href="<?= BASE_URL ?>cronometroHistorial"

@@ -750,16 +750,20 @@
                     className: 'text-center',
                     orderable: false,
                     render: function (data, type, row) {
-                        let html = '<div style="display:flex; gap:0.5rem; justify-content:center;">';
+                        let html = '<div style="display:flex; gap:0.5rem; justify-content:center; align-items:center; flex-wrap:wrap;">';
 
                         if (row.estado === 2) {
+                            // ── Botones para Pendientes ──
                             html += '<button class="btn-atender" onclick="abrirReporteMovil(' + row.id_ordenes_servicio + ')">' +
                                 '<i class="fas fa-clipboard-check"></i> Atender</button>' +
                                 '<button onclick="eliminarServicio(' + row.id_ordenes_servicio + ')" style="background:#dc2626; color:white; border:none; padding:0.5rem 0.75rem; border-radius:7px; cursor:pointer;" title="Cancelar servicio">' +
                                 '<i class="fas fa-trash-alt"></i></button>';
                         } else {
-                            html += '<button onclick="verDetalleServicio(' + row.id_ordenes_servicio + ')" style="background:#16a34a; color:white; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer;">' +
-                                '<i class="fas fa-eye"></i> Ver</button>';
+                            // ── Botones para Finalizados (Ver + Editar) ──
+                            html += '<button onclick="verDetalleServicio(' + row.id_ordenes_servicio + ')" style="background:#16a34a; color:white; border:none; padding:0.5rem 0.75rem; border-radius:7px; cursor:pointer;" title="Ver reporte">' +
+                                '<i class="fas fa-eye"></i> Ver</button>' +
+                                '<a href="index.php?pagina=tecnicoReporteEditar&orden=' + row.id_ordenes_servicio + '" style="background:#d97706; color:white; border:none; padding:0.5rem 0.75rem; border-radius:7px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="Editar reporte">' +
+                                '<i class="fas fa-edit"></i> Editar</a>';
                         }
 
                         html += '</div>';

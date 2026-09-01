@@ -131,74 +131,100 @@ function validarYEnviar() {
         return false;
     }
 
-    // 8. Enviar formulario
-    console.log('Enviando formulario...');
-    document.getElementById('formReporteMovil').submit();
+    // 8. BLOQUEAR EL BOTÓN (Previene doble envío por "dedo rápido")
+    const btnGuardar = document.querySelector('button[onclick="validarYEnviar()"]');
+    const textoOriginalBtn = btnGuardar.innerHTML;
+    btnGuardar.disabled = true;
+    btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PROCESANDO...';
+
+    // 9. Iniciar el proceso: GPS -> Fetch (Sin recargar página)
+    capturarGPSyEnviarFuerte(document.getElementById('formReporteMovil'), btnGuardar, textoOriginalBtn);
     return true;
 }
 
 // ==========================================
-// MOTOR DE UBICACIÓN
+// EL MOTOR PERFECTO: GPS + FETCH ANTI-CAÍDAS
 // ==========================================
-function capturarGPSyEnviar(form) {
-    // Mostramos estado de carga
+function capturarGPSyEnviarFuerte(form, btnGuardar, textoOriginalBtn) {
     Swal.fire({
-        title: 'Obteniendo ubicación...',
-        text: 'Por favor encienda el GPS y conceda los permisos si el navegador se lo pide.',
+        title: 'Cerrando Servicio...',
+        text: 'Capturando coordenadas finales y subiendo datos...',
         allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
+        didOpen: () => { Swal.showLoading(); }
     });
 
-    // Verificamos si el celular soporta GPS
+    // 1. Validar conexión a internet ANTES de intentar enviar
+    if (!navigator.onLine) {
+        restaurarBoton(btnGuardar, textoOriginalBtn);
+        Swal.fire('Sin Conexión', 'No tienes internet en este momento. Los datos están a salvo en el borrador. Busca señal e intenta guardar nuevamente.', 'warning');
+        return;
+    }
+
+    // 2. Obtener GPS
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-            // EXITO: Tenemos las coordenadas
             function (position) {
-                // Metemos las coordenadas en los inputs ocultos
                 document.getElementById('latitud_fin').value = position.coords.latitude;
                 document.getElementById('longitud_fin').value = position.coords.longitude;
 
-                // Borramos autoguardado
-                if (typeof limpiarBorradorStorage === 'function') {
-                    limpiarBorradorStorage();
-                }
-
-                // Cambiamos el mensaje para que sepa que está subiendo fotos
-                Swal.fire({
-                    title: 'Guardando Reporte...',
-                    text: 'Subiendo evidencias y cerrando servicio, no cierre la ventana.',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                // AHORA SÍ, ENVIAMOS A PHP
-                form.submit();
+                // 3. Enviar al servidor por FETCH
+                ejecutarEnvioFetch(form, btnGuardar, textoOriginalBtn);
             },
-            // ERROR: No dio permiso, tiene el GPS apagado, etc.
             function (error) {
-                let msjError = "Error desconocido.";
-                if (error.code == 1) msjError = "Denegaste el permiso de ubicación. Debes permitirlo para guardar.";
-                if (error.code == 2) msjError = "No se pudo obtener la señal GPS. Intenta salir a un lugar despejado.";
-                if (error.code == 3) msjError = "Se agotó el tiempo para obtener la ubicación.";
-
-                if (typeof Notificaciones !== 'undefined' && Notificaciones.error) {
-                    Notificaciones.error("GPS Obligatorio", msjError);
-                } else {
-                    Swal.fire("GPS Obligatorio", msjError, "error");
-                }
+                // Si falla el GPS, advertimos pero podemos decidir dejarlo enviar sin GPS si es urgente (depende de tu regla de negocio). 
+                // Por ahora lo bloqueamos:
+                restaurarBoton(btnGuardar, textoOriginalBtn);
+                Swal.fire("GPS Obligatorio", "No se pudo obtener la ubicación. Sal a un lugar despejado y asegúrate de tener el GPS encendido.", "error");
             },
-            // Opciones del GPS (Alta precisión)
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     } else {
-        if (typeof Notificaciones !== 'undefined' && Notificaciones.error) {
-            Notificaciones.error("Incompatible", "Tu navegador o celular no soporta geolocalización.");
-        } else {
-            Swal.fire("Incompatible", "Tu navegador o celular no soporta geolocalización.", "error");
-        }
+        ejecutarEnvioFetch(form, btnGuardar, textoOriginalBtn); // Si el cel es prehistórico y no tiene GPS, intenta enviar igual
     }
+}
+
+function ejecutarEnvioFetch(form, btnGuardar, textoOriginalBtn) {
+    let formData = new FormData(form);
+    
+    fetch(form.action, {
+        method: 'POST',
+        body: formData
+    })
+        .then(async response => {
+            // Validación de Sesión Expirada: Si el servidor devuelve la página de login en vez de JSON
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") === -1) {
+                throw new Error("SESION_EXPIRADA");
+            }
+
+            if (!response.ok) throw new Error("ERROR_SERVIDOR");
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // EXITO TOTAL: Borramos el guardado automático
+                if (typeof limpiarBorradorStorage === 'function') limpiarBorradorStorage();
+
+                Swal.fire('¡Éxito!', data.msj, 'success').then(() => {
+                    window.location.href = 'index.php?pagina=tecnicoProgramacion';
+                });
+            } else {
+                restaurarBoton(btnGuardar, textoOriginalBtn);
+                Swal.fire('Error del Servidor', data.msj, 'error');
+            }
+        })
+        .catch(error => {
+            restaurarBoton(btnGuardar, textoOriginalBtn);
+
+            if (error.message === "SESION_EXPIRADA") {
+                Swal.fire('Sesión Expirada', 'Tu sesión se cerró por inactividad. Abre una nueva pestaña, inicia sesión nuevamente, vuelve a esta pestaña y dale a Guardar. ¡Tus datos están a salvo en el autoguardado!', 'warning');
+            } else {
+                Swal.fire('Fallo de Red', 'La señal de internet falló justo al enviar. Tus datos están guardados en el borrador. Intenta presionar Guardar de nuevo.', 'error');
+            }
+        });
+}
+
+function restaurarBoton(btn, textoOriginal) {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
 }

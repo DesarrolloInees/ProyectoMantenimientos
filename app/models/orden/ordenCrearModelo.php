@@ -162,7 +162,7 @@ class ordenCrearModels
             $diasViaticos = 0;
             $valorViaticos = 0;
 
-            $delegacionesPrincipales = [1, 2, 3, 4];
+            $delegacionesPrincipales = [1, 2, 3, 4, 5];
             $idDelegacionPunto = $this->obtenerIdDelegacionPunto($datos['id_punto']);
 
             if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {

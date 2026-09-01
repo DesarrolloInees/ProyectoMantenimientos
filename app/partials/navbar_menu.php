@@ -14,11 +14,11 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         </a>
 
         <!-- Programación Servicios -->
-        <!-- <a href="<?= BASE_URL ?>tecnicoProgramacion"
+        <a href="<?= BASE_URL ?>tecnicoProgramacion"
             class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
             <i class="fa-solid fa-envelope mr-1.5"></i> Programación Servicios
         </a>
-        -->
+        
 
 
         <!-- Programación Servicios -->

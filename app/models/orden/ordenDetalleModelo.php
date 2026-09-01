@@ -442,7 +442,7 @@ class ordenDetalleModelo
                 }
             }
 
-            $delegacionesPrincipales = [1, 2, 3, 4];
+            $delegacionesPrincipales = [1, 2, 3, 4, 5];
             $idDelegacionPunto = $this->obtenerIdDelegacionPunto($nuevoPunto);
 
             $idModalidad = isset($datos['id_modalidad']) ? intval($datos['id_modalidad']) : ($actual['id_modalidad'] ?? 1);
