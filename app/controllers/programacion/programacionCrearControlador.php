@@ -29,6 +29,7 @@ class programacionCrearControlador
         $listaClientes = [];
         $conteoZonas = [];
         $propuesta = [];
+        $listaMaquinasInactivas = $this->modelo->obtenerMaquinasFueraDeServicio();
 
         // Filtros
         $delegacionSeleccionada = $_REQUEST['delegacion'] ?? '';
@@ -77,6 +78,7 @@ class programacionCrearControlador
         $listaClientes = [];
         $conteoZonas = [];
         $propuesta = [];
+        $listaMaquinasInactivas = $this->modelo->obtenerMaquinasFueraDeServicio();
 
         $delegacionSeleccionada = $_POST['delegacion'] ?? '';
         $clientesSeleccionados = $_POST['clientes'] ?? [];
@@ -140,6 +142,44 @@ class programacionCrearControlador
             // Generar propuesta
             $propuesta = $this->modelo->generarProgramacionSemanal($configuracion);
 
+            // Agregar puntos extra seleccionados (de maquinas fuera de servicio)
+            $puntosExtra = $_POST['puntos_aledanios_extra'] ?? [];
+            if (!empty($puntosExtra)) {
+                $puntosExtra = array_unique(array_map('intval', $puntosExtra));
+                $infoExtra = $this->modelo->obtenerInfoPuntos($puntosExtra);
+
+                // Asignar el primer dia configurado en el calendario
+                $primerDia = array_key_first($calendario);
+                $primerTecnico = $calendario[$primerDia]['id_tecnico'] ?? null;
+                $fechaPrimerDia = !empty($configuracion['fecha_inicio']) ? date('Y-m-d', strtotime($configuracion['fecha_inicio'])) : date('Y-m-d');
+
+                foreach ($puntosExtra as $idPunto) {
+                    // Evitar duplicados en la propuesta
+                    $yaExiste = false;
+                    foreach ($propuesta as $item) {
+                        if ($item['id_punto'] == $idPunto) {
+                            $yaExiste = true;
+                            break;
+                        }
+                    }
+                    if ($yaExiste) continue;
+
+                    $info = $infoExtra[$idPunto] ?? null;
+                    if ($info) {
+                        $propuesta[] = [
+                            'id_punto' => $idPunto,
+                            'id_tecnico' => $primerTecnico,
+                            'fecha_visita' => $fechaPrimerDia,
+                            'zona' => $info['zona'] ?? '',
+                            'nombre_punto' => $info['nombre_punto'] ?? '',
+                            'nombre_cliente' => $info['nombre_cliente'] ?? '',
+                            'es_sabado_fallido' => false,
+                            'es_fuera_servicio' => true
+                        ];
+                    }
+                }
+            }
+
             if (empty($propuesta)) {
                 $errores[] = "No se pudo generar la programación. Verifique que haya puntos pendientes en las zonas y clientes seleccionados.";
             }
@@ -173,6 +213,7 @@ class programacionCrearControlador
         $errores = [];
         $mensajeExito = "";
         $datosParaExcel = null; 
+        $maquinasRestauradas = 0;
 
         // Datos para la vista
         $listaDelegaciones = $this->modelo->obtenerDelegaciones();
@@ -180,13 +221,31 @@ class programacionCrearControlador
         $listaZonas = [];
         $conteoZonas = [];
         $propuesta = [];
+        $listaMaquinasInactivas = $this->modelo->obtenerMaquinasFueraDeServicio();
 
         $delegacionSeleccionada = '';
 
         if (!empty($_POST['final'])) {
             $resultado = $this->modelo->guardarProgramacionDefinitiva($_POST['final']);
             if ($resultado['status']) {
-                $mensajeExito = "¡Programación creada exitosamente! Se generaron " . $resultado['count'] . " órdenes de servicio.";
+                // Recopilar los IDs de puntos que SI se programaron
+                $puntosProgramados = [];
+                foreach ($_POST['final'] as $servicio) {
+                    if (!empty($servicio['id_punto'])) {
+                        $puntosProgramados[] = intval($servicio['id_punto']);
+                    }
+                }
+
+                // Restaurar maquinas fuera de servicio que NO se programaron
+                $restaurar = $this->modelo->restaurarOperativoNoProgramados($puntosProgramados);
+                if ($restaurar['status']) {
+                    $maquinasRestauradas = $restaurar['restauradas'];
+                }
+
+                $mensajeExito = "Programacion creada exitosamente! Se generaron " . $resultado['count'] . " ordenes de servicio.";
+                if ($maquinasRestauradas > 0) {
+                    $mensajeExito .= " {$maquinasRestauradas} maquina(s) fuera de servicio sin programar fueron restauradas a Operativo automaticamente.";
+                }
                 
                 $datosParaExcel = $this->modelo->obtenerDatosProgramacionExcel($_POST['final']);
             } else {
@@ -196,9 +255,8 @@ class programacionCrearControlador
             $errores[] = "No hay datos para guardar.";
         }
 
-        $titulo = "Programación de Rutas Semanales";
+        $titulo = "Programacion de Rutas Semanales";
 
-        // --- CORRECCIÓN ---
         $vistaContenido = "app/views/programacion/programacionCrearVista.php";
         include "app/views/plantillaVista.php";
     }
@@ -220,6 +278,60 @@ class programacionCrearControlador
         
         $puntos = $this->modelo->obtenerPuntosPorZona($delegacion, $zona);
         echo json_encode(['puntos' => $puntos]);
+        exit;
+    }
+
+    /**
+     * AJAX - Obtener puntos aledaños de una zona específica
+     */
+    public function puntos_aledanios()
+    {
+        header('Content-Type: application/json');
+        
+        $id_punto = intval($_GET['id_punto'] ?? 0);
+        $zona = $_GET['zona'] ?? '';
+        $id_delegacion = $_GET['delegacion'] ?? null;
+        
+        if (empty($id_punto) || empty($zona)) {
+            echo json_encode(['error' => 'Parámetros incompletos']);
+            exit;
+        }
+        
+        $puntos = $this->modelo->obtenerPuntosAledanios($id_punto, $zona, $id_delegacion);
+        echo json_encode(['puntos' => $puntos]);
+        exit;
+    }
+
+    /**
+     * AJAX - Restaurar maquinas a operativo para puntos no programados
+     */
+    public function restaurarOperativo()
+    {
+        header('Content-Type: application/json');
+        
+        $puntosSeleccionados = isset($_POST['puntos_seleccionados']) ? json_decode($_POST['puntos_seleccionados'], true) : [];
+        
+        $resultado = $this->modelo->restaurarOperativoNoProgramados($puntosSeleccionados);
+        echo json_encode($resultado);
+        exit;
+    }
+
+    /**
+     * AJAX - Restaurar una maquina individual a operativo por device_id
+     */
+    public function restaurarMaquinaIndividual()
+    {
+        header('Content-Type: application/json');
+        
+        $deviceId = $_POST['device_id'] ?? '';
+        
+        if (empty($deviceId)) {
+            echo json_encode(['status' => false, 'msg' => 'Device ID vacio']);
+            exit;
+        }
+        
+        $ok = $this->modelo->restaurarMaquinaOperativo($deviceId);
+        echo json_encode(['status' => $ok, 'msg' => $ok ? 'Maquina restaurada a Operativo' : 'No se pudo restaurar']);
         exit;
     }
 }

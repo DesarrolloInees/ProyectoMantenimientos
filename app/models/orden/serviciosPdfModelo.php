@@ -1,5 +1,6 @@
 <?php
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 class serviciosPdfModelo
 {
@@ -12,13 +13,12 @@ class serviciosPdfModelo
 
     public function listarServiciosParaPdf($idRol = null, $mesesRestriccion = 0)
     {
-        // Condición dinámica para el rol 4
-        $condicionWhere = "";
+        $condicionWhere = " WHERE o.estado = 1 ";
         $params = [];
 
         if ($idRol == 4 && $mesesRestriccion > 0) {
             // Ocultar registros cuya fecha_visita sea mayor a la fecha de hace X meses
-            $condicionWhere = " WHERE o.fecha_visita <= DATE_SUB(CURDATE(), INTERVAL ? MONTH) ";
+            $condicionWhere .= " AND o.fecha_visita <= DATE_SUB(CURDATE(), INTERVAL ? MONTH) ";
             $params[] = $mesesRestriccion;
         }
 
@@ -139,7 +139,7 @@ class serviciosPdfModelo
                 ORDER BY 
                     FIELD(tipo_evidencia, 'antes', 'componentes', 'despues'), 
                     fecha_subida ASC";
-                    
+
         try {
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$idOrden]);
@@ -157,7 +157,7 @@ class serviciosPdfModelo
                 FROM orden_servicio_novedad osn
                 INNER JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
                 WHERE osn.id_orden_servicio = ?";
-                
+
         try {
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$idOrden]);
@@ -219,7 +219,7 @@ class serviciosPdfModelo
                 FROM orden_servicio_repuesto osr
                 INNER JOIN repuesto r ON osr.id_repuesto = r.id_repuesto
                 WHERE osr.id_orden_servicio = ?";
-                
+
         try {
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$idOrden]);

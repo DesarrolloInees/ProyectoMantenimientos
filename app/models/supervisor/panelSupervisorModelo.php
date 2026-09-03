@@ -27,6 +27,7 @@ class panelSupervisorModelo
                     LEFT JOIN cliente c ON o.id_cliente = c.id_cliente
                     LEFT JOIN punto p ON o.id_punto = p.id_punto
                     WHERE DATE(o.fecha_visita) = CURDATE()
+                    AND o.estado = 1
                     ORDER BY o.id_ordenes_servicio DESC";
             
             $stmt = $this->conn->prepare($sql);

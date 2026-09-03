@@ -21,6 +21,7 @@ class ordenVerModelo
                 FROM ordenes_servicio o
                 LEFT JOIN punto p ON o.id_punto = p.id_punto
                 LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                WHERE o.estado = 1
                 GROUP BY o.fecha_visita, d.nombre_delegacion
                 ORDER BY o.fecha_visita DESC, d.nombre_delegacion ASC";
 

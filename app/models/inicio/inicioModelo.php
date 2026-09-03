@@ -24,7 +24,7 @@ class inicioModelo
             $sql = "SELECT COUNT(*) as total 
                     FROM ordenes_servicio 
                     WHERE fecha_visita BETWEEN :inicio AND :fin
-                    AND estado IN (1, 2)";
+                    AND estado = 1";
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([

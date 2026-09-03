@@ -71,6 +71,7 @@
                             <th class="py-3 px-4">Tipo</th>
                             <th class="py-3 px-4">Ubicación (Punto)</th>
                             <th class="py-3 px-4">Última Visita</th>
+                            <th class="py-3 px-4 text-center">Estado Operativo</th>
                             <th class="py-3 px-4 text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -84,6 +85,17 @@
                                 <td class="py-3 px-4"><?= htmlspecialchars($m['nombre_punto']) ?></td>
                                 <td class="py-3 px-4 text-gray-500">
                                     <?= !empty($m['ultima_visita']) ? date('d/m/Y', strtotime($m['ultima_visita'])) : 'Sin registro' ?>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <?php if (isset($m['activo_operativo']) && $m['activo_operativo'] == 0): ?>
+                                        <span class="bg-red-100 text-red-700 px-2 py-1 rounded-md text-xs font-bold" title="Fuera de Servicio">
+                                            <i class="fas fa-power-off mr-1"></i>Fuera de Servicio
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold" title="Operativo">
+                                            <i class="fas fa-check-circle mr-1"></i>Operativo
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="py-3 px-4 text-center flex justify-center space-x-2">
                                     <a href="<?= BASE_URL ?>maquinaEditar/<?= $m['id_maquina'] ?>" class="p-2 bg-yellow-100 text-yellow-600 rounded-full hover:bg-yellow-200"><i class="fas fa-edit"></i></a>

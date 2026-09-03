@@ -316,7 +316,7 @@ function cambioServicio(id) {
 
 // 🔥 CORRECCIÓN: Usar click en lugar de focus + setTimeout para evitar 
 // que interrumpa el evento de pegado (paste) de la máscara de tiempo.
-$(document).on('click', '#contenedorFilas input', function() {
+$(document).on('click', '#contenedorFilas input', function () {
     $(this).select();
 });
 

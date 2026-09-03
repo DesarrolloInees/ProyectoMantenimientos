@@ -213,6 +213,11 @@
                                     <td class="px-6 py-4">
                                         <div class="font-bold text-gray-900">
                                             <?= htmlspecialchars($item['nombre_punto']) ?>
+                                            <?php if (!empty($item['es_fuera_servicio'])): ?>
+                                                <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded ml-1" title="Maquina fuera de servicio">
+                                                    <i class="fas fa-power-off mr-1"></i>Fuera de Servicio
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
                                         <div class="text-xs text-gray-600">
                                             <?= htmlspecialchars($item['nombre_cliente']) ?>
@@ -247,6 +252,100 @@
         </div>
 
     <?php else: ?>
+
+        <!-- ========================================= -->
+        <!-- SECCION: MAQUINAS FUERA DE SERVICIO -->
+        <!-- ========================================= -->
+        <?php if (!empty($listaMaquinasInactivas)): ?>
+        <div class="bg-white p-6 rounded-xl shadow-md border border-red-200 mb-6" id="seccionMaquinasInactivas">
+            <h2 class="text-xl font-bold text-red-800 mb-2 border-b-2 border-red-500 pb-2">
+                <i class="fas fa-exclamation-triangle mr-2 text-red-600"></i> Maquinas Fuera de Servicio
+                <span class="ml-2 text-sm font-normal text-red-600">(<?= count($listaMaquinasInactivas) ?> encontradas)</span>
+            </h2>
+            <p class="text-sm text-gray-600 mb-4 bg-red-50 p-3 rounded border-l-4 border-red-400">
+                <i class="fas fa-info-circle mr-1"></i>
+                Selecciona una maquina para buscar <strong>puntos aledanos en la misma zona</strong> y generar programacion prioritaria.
+                <br><span class="text-xs text-gray-500">Los puntos que no se programen tendran su maquina restaurada automaticamente a "Operativo".</span>
+            </p>
+
+            <!-- AGRUPAR POR ZONA -->
+            <?php
+            $maquinasPorZona = [];
+            foreach ($listaMaquinasInactivas as $maq) {
+                $zona = $maq['zona'] ?: 'Sin Zona';
+                $maquinasPorZona[$zona][] = $maq;
+            }
+            ?>
+
+            <div class="space-y-4">
+                <?php foreach ($maquinasPorZona as $zona => $maquinas): ?>
+                <div class="border border-red-200 rounded-lg overflow-hidden">
+                    <div class="bg-red-100 px-4 py-2 flex justify-between items-center">
+                        <span class="font-bold text-red-800">
+                            <i class="fas fa-map-marker-alt mr-1"></i> <?= htmlspecialchars($zona) ?>
+                            <span class="text-xs font-normal text-red-600">(<?= count($maquinas) ?> maquina<?= count($maquinas) > 1 ? 's' : '' ?>)</span>
+                        </span>
+                        <button type="button" onclick="buscarAledaniosZona('<?= htmlspecialchars($zona) ?>')" 
+                            class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded font-semibold shadow-sm transition">
+                            <i class="fas fa-search mr-1"></i> Ver Aledaños
+                        </button>
+                    </div>
+                    
+                    <div class="p-3 bg-white">
+                        <?php foreach ($maquinas as $maq): ?>
+                        <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg mb-2 border border-red-100 hover:shadow-md transition" 
+                             id="maquina_<?= $maq['id_punto'] ?>">
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" 
+                                    class="w-5 h-5 text-red-600 rounded border-red-300 focus:ring-red-500 check-maquina-inactiva"
+                                    value="<?= $maq['id_punto'] ?>"
+                                    data-zona="<?= htmlspecialchars($maq['zona']) ?>"
+                                    data-device="<?= htmlspecialchars($maq['device_id']) ?>"
+                                    data-nombre="<?= htmlspecialchars($maq['nombre_punto']) ?>"
+                                    onchange="toggleMaquinaSeleccion(<?= $maq['id_punto'] ?>)">
+                                <div>
+                                    <div class="font-bold text-gray-900 text-sm">
+                                        <?= htmlspecialchars($maq['nombre_punto']) ?>
+                                        <span class="badge badge-danger ml-1 text-xs">FUERA DE SERVICIO</span>
+                                    </div>
+                                    <div class="text-xs text-gray-600">
+                                        <?= htmlspecialchars($maq['nombre_cliente']) ?> | 
+                                        <?= htmlspecialchars($maq['device_id']) ?> | 
+                                        <?= htmlspecialchars($maq['tipo_maquina']) ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right flex items-center space-x-2">
+                                <button type="button" onclick="buscarAledaniosPunto(<?= $maq['id_punto'] ?>, '<?= htmlspecialchars($maq['zona']) ?>')"
+                                    class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-semibold shadow-sm transition">
+                                    <i class="fas fa-search-location mr-1"></i> Ver Aledaños
+                                </button>
+                                <button type="button" onclick="restaurarMaquinaIndividual('<?= htmlspecialchars($maq['device_id']) ?>')"
+                                    class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded font-semibold shadow-sm transition"
+                                    title="Volver a Operativo (no se va a programar)">
+                                    <i class="fas fa-check-circle mr-1"></i> Restaurar a Operativo
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- SECCION: RESULTADOS ALEDANOS -->
+            <div id="resultadosAledanios" class="mt-4" style="display:none;"></div>
+        </div>
+        <?php else: ?>
+        <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-lg mb-6">
+            <p class="font-bold text-green-800">
+                <i class="fas fa-check-circle mr-1"></i> No hay maquinas fuera de servicio actualmente.
+            </p>
+            <p class="text-sm text-green-700">
+                Puedes importar un Excel en <a href="<?= BASE_URL ?>importarEstadoMaquina" class="underline font-bold">Importar Estado Maquinas</a> para marcarlas.
+            </p>
+        </div>
+        <?php endif; ?>
 
         <!-- ========================================= -->
         <!-- CONFIGURACIÓN DE RUTAS SEMANALES -->
@@ -643,4 +742,224 @@
             return false;
         }
     });
+
+    // ===================================
+    // FUNCIONES: MAQUINAS FUERA DE SERVICIO
+    // ===================================
+    
+    let puntosSeleccionadosInactivos = [];
+
+    function toggleMaquinaSeleccion(idPunto) {
+        const checkbox = document.querySelector(`#maquina_${idPunto} .check-maquina-inactiva`);
+        if (checkbox.checked) {
+            if (!puntosSeleccionadosInactivos.includes(idPunto)) {
+                puntosSeleccionadosInactivos.push(idPunto);
+            }
+        } else {
+            puntosSeleccionadosInactivos = puntosSeleccionadosInactivos.filter(id => id !== idPunto);
+        }
+        actualizarContadorSeleccion();
+    }
+
+    function restaurarMaquinaIndividual(deviceId) {
+        if (!confirm(`Vas a restaurar la maquina ${deviceId} a estado Operativo.\n\nEsto significa que NO se programará en esta ocasion. ¿Continuar?`)) {
+            return;
+        }
+        
+        $.ajax({
+            url: 'index.php?pagina=programacionCrear&accion=restaurarMaquinaIndividual',
+            type: 'POST',
+            data: { device_id: deviceId },
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.status) {
+                    alert('Maquina restaurada a Operativo.');
+                    location.reload();
+                } else {
+                    alert(resp.msg || 'No se pudo restaurar la maquina.');
+                }
+            },
+            error: function() {
+                alert('Error de conexion al restaurar la maquina.');
+            }
+        });
+    }
+
+    function actualizarContadorSeleccion() {
+        const total = document.querySelectorAll('.check-maquina-inactiva:checked').length;
+        let badge = document.getElementById('badgeSeleccionInactivas');
+        if (!badge) {
+            const titulo = document.querySelector('#seccionMaquinasInactivas h2');
+            if (titulo) {
+                badge = document.createElement('span');
+                badge.id = 'badgeSeleccionInactivas';
+                badge.className = 'ml-2 text-sm font-normal';
+                titulo.appendChild(badge);
+            }
+        }
+        if (badge) {
+            badge.innerHTML = total > 0 ? `<span class="bg-red-600 text-white px-2 py-1 rounded-full text-xs">${total} seleccionada${total > 1 ? 's' : ''}</span>` : '';
+        }
+    }
+
+    function buscarAledaniosPunto(idPunto, zona) {
+        const contenedor = document.getElementById('resultadosAledanios');
+        contenedor.style.display = 'block';
+        contenedor.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-blue-600"></i><br><p class="text-gray-600 mt-2">Buscando puntos aledaños en zona: ' + zona + '...</p></div>';
+
+        fetch(`index.php?pagina=programacionCrear&accion=puntos_aledanios&id_punto=${idPunto}&zona=${encodeURIComponent(zona)}`)
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.error) {
+                    contenedor.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle mr-1"></i> ${data.error}</div>`;
+                    return;
+                }
+                dibujarAledanios(data.puntos, zona, contenedor);
+            })
+            .catch(err => {
+                contenedor.innerHTML = `<div class="alert alert-danger">Error de conexion: ${err.message}</div>`;
+            });
+    }
+
+    function buscarAledaniosZona(zona) {
+        // Encontrar el checkbox de esta zona sin usar CSS.escape (compatibilidad)
+        const todos = document.querySelectorAll('.check-maquina-inactiva');
+        const checkboxes = Array.from(todos).filter(cb => cb.dataset.zona === zona);
+        if (checkboxes.length > 0) {
+            const primerId = checkboxes[0].value;
+            buscarAledaniosPunto(primerId, zona);
+        }
+    }
+
+    function dibujarAledanios(puntos, zona, contenedor) {
+        if (puntos.length === 0) {
+            contenedor.innerHTML = `
+                <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                    <p class="font-bold text-yellow-800"><i class="fas fa-info-circle mr-1"></i> No hay puntos aledaños pendientes en la zona "${zona}"</p>
+                    <p class="text-sm text-yellow-700">Todos los puntos de esta zona ya tienen programacion o estan al dia.</p>
+                </div>`;
+            return;
+        }
+
+        let html = `
+            <div class="bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+                <div class="bg-blue-100 px-4 py-3 flex justify-between items-center">
+                    <h4 class="font-bold text-blue-800">
+                        <i class="fas fa-map-marked-alt mr-1"></i> Puntos Aledaños en "${zona}" (${puntos.length} encontrados)
+                    </h4>
+                    <div class="space-x-2">
+                        <button type="button" onclick="marcarTodosAledanios(true)" class="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-semibold">
+                            <i class="fas fa-check-double mr-1"></i> Todos
+                        </button>
+                        <button type="button" onclick="marcarTodosAledanios(false)" class="text-xs bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded font-semibold">
+                            <i class="fas fa-times mr-1"></i> Ninguno
+                        </button>
+                    </div>
+                </div>
+                <div class="p-3 space-y-2" style="max-height: 400px; overflow-y: auto;">`;
+
+        puntos.forEach(punto => {
+            const badgeFueraServicio = punto.fuera_de_servicio == 1 
+                ? '<span class="badge badge-danger ml-1 text-xs">FUERA DE SERVICIO</span>' 
+                : '';
+            const badgeDias = punto.dias_sin_visita 
+                ? `<span class="badge badge-${punto.dias_sin_visita >= 60 ? 'danger' : 'warning'} ml-1 text-xs">${punto.dias_sin_visita}d</span>` 
+                : '';
+
+            html += `
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100 hover:shadow-sm transition">
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" 
+                            class="w-4 h-4 text-blue-600 rounded border-blue-300 focus:ring-blue-500 check-aledanio"
+                            value="<?= ${punto.id_punto} ?>"
+                            data-punto-id="${punto.id_punto}"
+                            checked>
+                        <div>
+                            <div class="font-bold text-gray-900 text-sm">
+                                ${punto.nombre_punto} ${badgeFueraServicio}
+                            </div>
+                            <div class="text-xs text-gray-600">
+                                ${punto.nombre_cliente} | ${punto.device_id || 'S/N'} | ${punto.tipo_maquina || 'N/A'} ${badgeDias}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        ${punto.nombre_municipio || ''}
+                    </div>
+                </div>`;
+        });
+
+        html += `</div>
+                <div class="bg-blue-50 px-4 py-3 text-center border-t border-blue-200">
+                    <button type="button" onclick="agregarAledaniosAProgramacion()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow transition">
+                        <i class="fas fa-plus-circle mr-2"></i> Agregar Seleccionados a Programacion
+                    </button>
+                </div>
+            </div>`;
+
+        contenedor.innerHTML = html;
+    }
+
+    function marcarTodosAledanios(marcar) {
+        document.querySelectorAll('.check-aledanio').forEach(cb => cb.checked = marcar);
+    }
+
+    function agregarAledaniosAProgramacion() {
+        const seleccionados = document.querySelectorAll('.check-aledanio:checked');
+        if (seleccionados.length === 0) {
+            alert('No hay puntos seleccionados para agregar.');
+            return;
+        }
+
+        let agregados = 0;
+
+        // 1. Agregar los aledanos seleccionados
+        seleccionados.forEach(cb => {
+            const idPunto = cb.dataset.puntoId;
+            // Verificar que no este ya en la programacion actual
+            const yaExiste = document.querySelector(`input[name*="[id_punto]"][value="${idPunto}"]`);
+            const yaEnExtra = document.querySelector(`input[name="puntos_aledanios_extra[]"][value="${idPunto}"]`);
+            if (!yaExiste && !yaEnExtra) {
+                // Agregar al formulario de programacion como input hidden
+                const form = document.getElementById('formCalendario') || document.getElementById('formGuardar');
+                if (form) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'puntos_aledanios_extra[]';
+                    input.value = idPunto;
+                    form.appendChild(input);
+                    agregados++;
+                }
+            }
+        });
+
+        // 2. Agregar tambien las maquinas fuera de servicio marcadas (no solo aledanos)
+        const inactivasMarcadas = document.querySelectorAll('.check-maquina-inactiva:checked');
+        inactivasMarcadas.forEach(cb => {
+            const idPunto = cb.value;
+            const yaExiste = document.querySelector(`input[name*="[id_punto]"][value="${idPunto}"]`);
+            const yaEnExtra = document.querySelector(`input[name="puntos_aledanios_extra[]"][value="${idPunto}"]`);
+            if (!yaExiste && !yaEnExtra) {
+                const form = document.getElementById('formCalendario') || document.getElementById('formGuardar');
+                if (form) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'puntos_aledanios_extra[]';
+                    input.value = idPunto;
+                    form.appendChild(input);
+                    agregados++;
+                }
+            }
+        });
+
+        if (agregados > 0) {
+            alert(`${agregados} punto(s) agregado(s) a la programacion. Ahora configura las rutas en el calendario semanal.`);
+            // Scroll al formulario
+            const formSection = document.getElementById('formCalendario');
+            if (formSection) formSection.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert('Los puntos seleccionados ya estan en la programacion.');
+        }
+    }
 </script>

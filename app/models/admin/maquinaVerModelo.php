@@ -14,7 +14,7 @@ class MaquinaVerModelo
     {
         // JOIN para obtener el nombre del punto y el tipo
         $sql = "SELECT 
-                    m.id_maquina, m.device_id, m.ultima_visita, m.estado,
+                    m.id_maquina, m.device_id, m.ultima_visita, m.estado, m.activo_operativo,
                     p.nombre_punto,
                     tm.nombre_tipo_maquina
                 FROM maquina m

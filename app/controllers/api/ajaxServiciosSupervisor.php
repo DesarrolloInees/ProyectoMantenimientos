@@ -21,6 +21,7 @@ try {
             LEFT JOIN tecnico t ON o.id_tecnico = t.id_tecnico
             LEFT JOIN cliente c ON o.id_cliente = c.id_cliente
             WHERE DATE(o.fecha_visita) = CURDATE() 
+            AND o.estado = 1
             ORDER BY o.id_ordenes_servicio DESC";
 
     $stmt = $db->prepare($sql);

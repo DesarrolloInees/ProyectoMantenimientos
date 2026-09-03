@@ -550,37 +550,9 @@ class ordenCrearModels
     // --- 19. OBTENER PROGRAMACIÓN DIARIA (Órdenes programadas para una fecha específica, con detalles completos) ---
     public function obtenerProgramacionDiaria($fecha)
     {
-        try {
-            $sql = "SELECT 
-                        os.id_ordenes_servicio, 
-                        os.id_cliente, 
-                        os.id_punto, 
-                        os.id_tecnico, 
-                        os.id_maquina, 
-                        os.id_tipo_mantenimiento, 
-                        os.id_modalidad,
-                        os.fecha_visita,
-                        c.nombre_cliente,
-                        p.nombre_punto,
-                        t.nombre_tecnico,
-                        m.device_id,
-                        tm.nombre_tipo_maquina
-                    FROM ordenes_servicio os
-                    INNER JOIN cliente c ON os.id_cliente = c.id_cliente
-                    INNER JOIN punto p ON os.id_punto = p.id_punto
-                    INNER JOIN tecnico t ON os.id_tecnico = t.id_tecnico
-                    LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
-                    LEFT JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
-                    WHERE os.fecha_visita = :fecha 
-                    AND os.estado = 2 
-                    ORDER BY t.nombre_tecnico ASC";
-
-            $stmt = $this->conn->prepare($sql);
-            $stmt->execute([':fecha' => $fecha]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            return [];
-        }
+        // El Administrador / SuperAdmin NO ve órdenes en estado = 2 (Pendientes).
+        // Únicamente el Técnico de Campo (Rol 3) las ve en su panel móvil.
+        return [];
     }
 
     public function actualizarFechaModificacion($idOrden)

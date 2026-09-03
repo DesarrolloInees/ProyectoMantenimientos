@@ -451,4 +451,123 @@ class programacionCrearModelo
 
         return $datosExcel;
     }
+
+    // ===================================
+    // MAQUINAS FUERA DE SERVICIO
+    // ===================================
+
+    /**
+     * Obtener todas las maquinas fuera de servicio con info del punto
+     */
+    public function obtenerMaquinasFueraDeServicio()
+    {
+        $sql = "SELECT m.id_maquina, m.device_id,
+                       p.id_punto, p.nombre_punto, p.zona, p.direccion,
+                       c.nombre_cliente, c.codigo_cliente,
+                       tm.nombre_tipo_maquina
+                FROM maquina m
+                INNER JOIN punto p ON m.id_punto = p.id_punto
+                INNER JOIN cliente c ON p.id_cliente = c.id_cliente
+                INNER JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
+                WHERE m.activo_operativo = 0 AND m.estado = 1 AND p.estado = 1
+                ORDER BY p.zona ASC, c.nombre_cliente ASC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Obtener puntos aledanios en la misma zona que no tengan orden programada
+     * y que no sean el punto seleccionado
+     */
+    public function obtenerPuntosAledanios($id_punto, $zona, $id_delegacion = null)
+    {
+        $sql = "SELECT p.id_punto, p.nombre_punto, p.zona, p.fecha_ultima_visita,
+                       c.nombre_cliente, c.codigo_cliente,
+                       m.nombre_municipio,
+                       (SELECT mq.device_id FROM maquina mq WHERE mq.id_punto = p.id_punto AND mq.estado = 1 ORDER BY mq.id_maquina ASC LIMIT 1) as device_id,
+                       (SELECT tm.nombre_tipo_maquina FROM maquina mq2 
+                        INNER JOIN tipo_maquina tm ON mq2.id_tipo_maquina = tm.id_tipo_maquina 
+                        WHERE mq2.id_punto = p.id_punto AND mq2.estado = 1 ORDER BY mq2.id_maquina ASC LIMIT 1) as tipo_maquina,
+                       CASE WHEN m2.activo_operativo = 0 THEN 1 ELSE 0 END as fuera_de_servicio,
+                       DATEDIFF(NOW(), p.fecha_ultima_visita) as dias_sin_visita
+                FROM punto p
+                INNER JOIN cliente c ON p.id_cliente = c.id_cliente
+                LEFT JOIN municipio m ON p.id_municipio = m.id_municipio
+                LEFT JOIN maquina m2 ON m2.id_punto = p.id_punto AND m2.estado = 1
+                WHERE p.estado = 1
+                AND p.zona = :zona
+                AND p.id_punto != :id_punto
+                AND (p.fecha_ultima_visita IS NULL OR DATEDIFF(NOW(), p.fecha_ultima_visita) >= 30)
+                AND NOT EXISTS (
+                    SELECT 1 
+                    FROM ordenes_servicio os 
+                    WHERE os.id_punto = p.id_punto 
+                    AND os.estado = 2
+                )
+                ORDER BY p.fecha_ultima_visita ASC, c.nombre_cliente ASC";
+
+        $params = [':zona' => $zona, ':id_punto' => $id_punto];
+
+        if (!empty($id_delegacion)) {
+            $sql .= " AND p.id_delegacion = :delegacion";
+            $params[':delegacion'] = $id_delegacion;
+        }
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Restaurar una maquina puntual a operativo por device_id
+     */
+    public function restaurarMaquinaOperativo($deviceId)
+    {
+        try {
+            $sql = "UPDATE maquina SET activo_operativo = 1, fecha_actualizacion = NOW() WHERE device_id = :dev AND estado = 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':dev' => $deviceId]);
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Restaurar maquinas a operativo para puntos que no fueron programados
+     * (puntos de la zona que tienen maquina fuera de servicio pero no se seleccionaron)
+     */
+    public function restaurarOperativoNoProgramados($puntosSeleccionados)
+    {
+        try {
+            $this->conn->beginTransaction();
+
+            // Obtener todos los puntos con maquina fuera de servicio
+            $sqlObtener = "SELECT m.id_maquina, m.device_id, m.id_punto
+                           FROM maquina m
+                           WHERE m.activo_operativo = 0 AND m.estado = 1";
+            $stmtObtener = $this->conn->prepare($sqlObtener);
+            $stmtObtener->execute();
+            $todasInactivas = $stmtObtener->fetchAll(PDO::FETCH_ASSOC);
+
+            $restauradas = 0;
+            $sqlRestaurar = "UPDATE maquina SET activo_operativo = 1, fecha_actualizacion = NOW() WHERE id_maquina = :id";
+
+            foreach ($todasInactivas as $maq) {
+                if (!in_array($maq['id_punto'], $puntosSeleccionados)) {
+                    $stmtRestaurar = $this->conn->prepare($sqlRestaurar);
+                    $stmtRestaurar->execute([':id' => $maq['id_maquina']]);
+                    $restauradas++;
+                }
+            }
+
+            $this->conn->commit();
+            return ['status' => true, 'restauradas' => $restauradas];
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return ['status' => false, 'msg' => $e->getMessage()];
+        }
+    }
 }

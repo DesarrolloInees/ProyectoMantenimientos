@@ -12,20 +12,29 @@ function guardarProgresoLocal() {
 
     const filas = [];
     const filasHTML = document.querySelectorAll("#contenedorFilas tr");
+    let hayDatosReales = false;
 
     filasHTML.forEach((tr) => {
         const idFila = tr.id.replace("fila_", "");
 
+        const remision = tr.querySelector(`select[name="filas[${idFila}][remision]"]`)?.value || "";
+        const id_cliente = $(`#select_cliente_${idFila}`).val();
+        const id_punto = $(`#select_punto_${idFila}`).val();
+        const id_maquina = $(`#select_maquina_${idFila}`).val();
+        const id_tecnico = $(`#select_tecnico_${idFila}`).val();
+
+        if (remision || id_cliente || id_punto || id_maquina || id_tecnico) {
+            hayDatosReales = true;
+        }
+
         const filaData = {
             id: idFila,
-            remision:
-                tr.querySelector(`select[name="filas[${idFila}][remision]"]`)?.value ||
-                "",
-            id_cliente: $(`#select_cliente_${idFila}`).val(),
-            id_punto: $(`#select_punto_${idFila}`).val(),
-            id_maquina: $(`#select_maquina_${idFila}`).val(),
+            remision: remision,
+            id_cliente: id_cliente,
+            id_punto: id_punto,
+            id_maquina: id_maquina,
             modalidad: document.getElementById(`select_modalidad_${idFila}`)?.value,
-            id_tecnico: $(`#select_tecnico_${idFila}`).val(),
+            id_tecnico: id_tecnico,
             tipo_servicio: $(`#select_servicio_${idFila}`).val(),
             hora_in: document.getElementById(`in_${idFila}`)?.value,
             hora_out: document.getElementById(`out_${idFila}`)?.value,
@@ -37,6 +46,11 @@ function guardarProgresoLocal() {
         filas.push(filaData);
     });
 
+    if (!hayDatosReales) {
+        localStorage.removeItem(window.AppConfig.CLAVE_GUARDADO);
+        return;
+    }
+
     const datosGlobales = {
         fecha: new Date().getTime(),
         filas: filas,
@@ -47,15 +61,6 @@ function guardarProgresoLocal() {
         window.AppConfig.CLAVE_GUARDADO,
         JSON.stringify(datosGlobales)
     );
-    // console.log('💾 Auto-guardado completado'); // Comentado para no saturar consola
-
-    // 🔔 NOTIFICACIÓN de auto-guardado (solo cada 5 veces para no saturar)
-    if (!window._contadorAutoGuardado) window._contadorAutoGuardado = 0;
-    window._contadorAutoGuardado++;
-
-    if (window._contadorAutoGuardado % 15 === 0) {
-        window.CrearNotificaciones.notificarAutoGuardado();
-    }
 }
 
 /**
@@ -80,6 +85,13 @@ async function verificarYRestaurar() {
     }
 
     if (!datos.filas || datos.filas.length === 0) {
+        iniciarLimpio();
+        return;
+    }
+
+    const tieneDatosUtiles = datos.filas.some(f => f.remision || f.id_cliente || f.id_punto || f.id_maquina || f.id_tecnico);
+    if (!tieneDatosUtiles) {
+        localStorage.removeItem(window.AppConfig.CLAVE_GUARDADO);
         iniciarLimpio();
         return;
     }
@@ -186,8 +198,11 @@ async function verificarYRestaurar() {
             }
 
             // Estados
-            if (fila.estado)
-                $(`#select_estado_${idActual}`).val(fila.estado).trigger("change");
+            if (fila.estado !== undefined && fila.estado !== null && fila.estado !== "") {
+                $(`#select_estado_${idActual}`)
+                    .val(fila.estado)
+                    .trigger("change");
+            }
             if (fila.calif)
                 $(`#select_calif_${idActual}`).val(fila.calif).trigger("change");
 

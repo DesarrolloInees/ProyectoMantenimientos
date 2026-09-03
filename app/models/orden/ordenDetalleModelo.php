@@ -121,6 +121,7 @@ class ordenDetalleModelo
             LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
             
             WHERE o.fecha_visita = ?
+            AND o.estado = 1
             ORDER BY o.id_tecnico ASC, o.hora_entrada ASC";
 
         $stmt = $this->conn->prepare($sql);
@@ -717,7 +718,7 @@ class ordenDetalleModelo
                 LEFT JOIN punto p_directo ON o.id_punto = p_directo.id_punto
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
-                WHERE 1=1 ";
+                WHERE 1=1 AND o.estado = 1 ";
 
         $params = [];
 

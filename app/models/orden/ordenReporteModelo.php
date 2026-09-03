@@ -88,6 +88,7 @@ class ordenReporteModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE o.fecha_visita BETWEEN ? AND ?
+                AND o.estado = 1
                 $filtroSql
                 ORDER BY t.nombre_tecnico ASC, o.fecha_visita ASC, o.hora_entrada ASC";
 
@@ -130,6 +131,7 @@ class ordenReporteModelo
                 LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 WHERE o.fecha_visita BETWEEN ? AND ?
+                AND o.estado = 1
                 
                 -- ESTO ES LO QUE AGRUPA LAS FILAS REPETIDAS EN UNA SOLA
                 GROUP BY o.id_ordenes_servicio

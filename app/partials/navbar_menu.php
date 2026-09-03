@@ -397,6 +397,9 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <a href="<?= BASE_URL ?>importarExcel"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 text-green-600 font-bold">Importar
                 Excel Prosegur</a>
+            <a href="<?= BASE_URL ?>importarEstadoMaquina"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 text-red-600 font-bold">Importar
+                Estado Maquinas</a>
             <a href="<?= BASE_URL ?>importarMunicipios"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 text-green-600 font-bold">Importar
                 Zonas Geográficas</a>
