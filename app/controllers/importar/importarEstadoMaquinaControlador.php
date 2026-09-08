@@ -56,6 +56,9 @@ class importarEstadoMaquinaControlador
                     if ($numFila == 1) continue;
                     $deviceId = trim($fila['A'] ?? '');
                     if ($deviceId !== '') {
+                        // Rellenar con '0' a la izquierda hasta que tenga 12 caracteres
+                        $deviceId = str_pad($deviceId, 12, "0", STR_PAD_LEFT);
+                        
                         $deviceIds[] = $deviceId;
                     }
                 }
@@ -190,9 +193,15 @@ class importarEstadoMaquinaControlador
         while (ob_get_level()) ob_end_clean();
         header('Content-Type: application/json');
 
-        unset($_SESSION['lista_device_ids_estado'], $_SESSION['total_device_ids_estado']);
+        $modo = $_POST['modo'] ?? 'simular';
 
-        echo json_encode(['exito' => true, 'mensaje' => 'Importacion finalizada.']);
+        // Solo limpiamos la sesión si el proceso real de importación terminó,
+        // de lo contrario conservamos los datos para la segunda pasada.
+        if ($modo === 'importar') {
+            unset($_SESSION['lista_device_ids_estado'], $_SESSION['total_device_ids_estado']);
+        }
+
+        echo json_encode(['exito' => true, 'mensaje' => 'Fase finalizada.']);
         exit;
     }
 }

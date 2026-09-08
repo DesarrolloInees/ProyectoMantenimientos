@@ -97,13 +97,21 @@ $(document).ready(function () {
         minimumResultsForSearch: 8
     });
 
-    // 2. Eventos de cálculo de tiempo
-    $('#hora_entrada, #hora_salida').on('change input', function () {
+    // 2. NUEVA LÓGICA: Formato militar (24h) para hora de entrada y salida
+    $('#hora_entrada, #hora_salida').on('input', function () {
+        // Permitir solo dígitos mientras escribe
+        this.value = this.value.replace(/[^0-9:]/g, '');
+    });
+
+    $('#hora_entrada, #hora_salida').on('blur', function () {
+        formatearHoraMilitar(this);
         calcularTiempoServicio();
     });
 
     setTimeout(function () {
         if ($('#hora_entrada').val() && $('#hora_salida').val()) {
+            formatearHoraMilitar(document.getElementById('hora_entrada'));
+            formatearHoraMilitar(document.getElementById('hora_salida'));
             calcularTiempoServicio();
         }
     }, 500);
@@ -136,12 +144,47 @@ $(document).ready(function () {
     $('#btn_abrir_repuestos').on('click', function (e) {
         e.preventDefault();
         $('#modalRepuestos').removeClass('hidden').addClass('flex');
+        $('#aviso_stock_info').addClass('hidden');
 
         if (!$('#select_repuesto_modal').hasClass("select2-hidden-accessible")) {
             $('#select_repuesto_modal').select2({
                 dropdownParent: $('#modalRepuestos'),
-                width: '100%'
+                width: '100%',
+                placeholder: "Buscar por nombre o código...",
+                language: {
+                    noResults: function () { return "No se encontró ese repuesto"; },
+                    searching: function () { return "Buscando..."; }
+                }
             });
+        } else {
+            $('#select_repuesto_modal').val(null).trigger('change');
+        }
+    });
+
+    // 4b. Mostrar info de stock al seleccionar un repuesto en el modal
+    $('#select_repuesto_modal').on('change', function () {
+        let optionSeleccionado = $(this).find(':selected');
+        let idRep = $(this).val();
+        let avisoDiv = $('#aviso_stock_info');
+        let textoAviso = $('#texto_aviso_stock');
+
+        if (!idRep) {
+            avisoDiv.addClass('hidden');
+            return;
+        }
+
+        let tieneInventario = optionSeleccionado.data('en-inventario');
+        let stockDisponible = parseInt(optionSeleccionado.data('stock')) || 0;
+        let nombreRep = optionSeleccionado.data('nombre');
+
+        if (tieneInventario == 1) {
+            avisoDiv.removeClass('hidden bg-yellow-50 border-yellow-200 text-yellow-700')
+                .addClass('bg-green-50 border border-green-200 rounded-lg p-2 text-xs text-green-700');
+            textoAviso.html('<i class="fas fa-check-circle mr-1"></i><strong>' + nombreRep + '</strong> — Disponible en inventario: <strong>' + stockDisponible + '</strong> unidades');
+        } else {
+            avisoDiv.removeClass('hidden bg-green-50 border-green-200 text-green-700')
+                .addClass('bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-700');
+            textoAviso.html('<i class="fas fa-exclamation-triangle mr-1"></i><strong>' + nombreRep + '</strong> — No está en tu inventario. Se registrará como solicitud para gestión.');
         }
     });
 
@@ -153,13 +196,11 @@ $(document).ready(function () {
         ctx.lineCap = 'round';
         ctx.strokeStyle = '#0f172a';
 
-        // Táctil (Celulares)
         canvas.addEventListener('touchstart', iniciarDibujo, { passive: false });
         canvas.addEventListener('touchmove', dibujar, { passive: false });
         canvas.addEventListener('touchend', detenerDibujo, { passive: false });
         canvas.addEventListener('touchcancel', detenerDibujo, { passive: false });
 
-        // Mouse (PC)
         canvas.addEventListener('mousedown', iniciarDibujo);
         canvas.addEventListener('mousemove', dibujar);
         canvas.addEventListener('mouseup', detenerDibujo);
@@ -173,7 +214,7 @@ $(document).ready(function () {
 function subirFotoAjax(file, tipo, remision, idOrden, containerId) {
     if (!navigator.onLine) {
         Swal.fire('Sin conexión', 'No puedes subir fotos sin internet. Busca señal para continuar.', 'warning');
-        return; 
+        return;
     }
     let formData = new FormData();
     formData.append('foto', file);
@@ -192,19 +233,19 @@ function subirFotoAjax(file, tipo, remision, idOrden, containerId) {
         method: 'POST',
         body: formData
     })
-    .then(res => res.json())
-    .then(data => {
-        $('#' + tempId).remove();
-        if (data.success) {
-            cargarEvidenciasExistentes();
-        } else {
-            Swal.fire('Error', data.msj, 'error');
-        }
-    })
-    .catch(err => {
-        $('#' + tempId).remove();
-        Swal.fire('Error', 'Fallo al subir la foto por red', 'error');
-    });
+        .then(res => res.json())
+        .then(data => {
+            $('#' + tempId).remove();
+            if (data.success) {
+                cargarEvidenciasExistentes();
+            } else {
+                Swal.fire('Error', data.msj, 'error');
+            }
+        })
+        .catch(err => {
+            $('#' + tempId).remove();
+            Swal.fire('Error', 'Fallo al subir la foto por red', 'error');
+        });
 }
 
 function cargarEvidenciasExistentes() {
@@ -216,34 +257,34 @@ function cargarEvidenciasExistentes() {
         method: 'POST',
         body: formData
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            $('#preview_antes, #preview_remision, #preview_despues').empty();
-            totalFotosAntes = 0;
-            totalFotosRemision = 0;
-            totalFotosDespues = 0;
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                $('#preview_antes, #preview_remision, #preview_despues').empty();
+                totalFotosAntes = 0;
+                totalFotosRemision = 0;
+                totalFotosDespues = 0;
 
-            data.data.forEach(foto => {
-                let rutaImagen = foto.ruta_archivo;
-                let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
-                let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
+                data.data.forEach(foto => {
+                    let rutaImagen = foto.ruta_archivo;
+                    let btnDelete = `<button type="button" onclick="eliminarFotoAjax(${foto.id_evidencia})" class="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 rounded-bl-md flex items-center justify-center text-xs hover:bg-red-700 opacity-90 transition"><i class="fas fa-trash"></i></button>`;
+                    let imgHtml = `<div class="relative w-16 h-16 rounded-md overflow-hidden border border-gray-300 shadow-sm group">
                                     <img src="${rutaImagen}" class="w-full h-full object-cover">
                                     ${btnDelete}
                                 </div>`;
 
-                if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
-                if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
-                if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
-            });
+                    if (foto.tipo_evidencia === 'antes') { $('#preview_antes').append(imgHtml); totalFotosAntes++; }
+                    if (foto.tipo_evidencia === 'remision') { $('#preview_remision').append(imgHtml); totalFotosRemision++; }
+                    if (foto.tipo_evidencia === 'despues') { $('#preview_despues').append(imgHtml); totalFotosDespues++; }
+                });
 
-            actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
-            actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
-            actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
-            totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
-            $('#total_fotos_count').text(totalFotosSubidasServidor);
-        }
-    });
+                actualizarBadgeFotos('#badge_fotos_antes', totalFotosAntes);
+                actualizarBadgeFotos('#badge_foto_remision', totalFotosRemision);
+                actualizarBadgeFotos('#badge_fotos_despues', totalFotosDespues);
+                totalFotosSubidasServidor = totalFotosAntes + totalFotosRemision + totalFotosDespues;
+                $('#total_fotos_count').text(totalFotosSubidasServidor);
+            }
+        });
 }
 
 function actualizarBadgeFotos(selector, cantidad) {
@@ -264,32 +305,61 @@ window.eliminarFotoAjax = function (idEvidencia) {
         method: 'POST',
         body: formData
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            cargarEvidenciasExistentes();
-        } else {
-            Swal.fire('Error al borrar', data.msj, 'error');
-        }
-    });
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                cargarEvidenciasExistentes();
+            } else {
+                Swal.fire('Error al borrar', data.msj, 'error');
+            }
+        });
 };
 
 // ==========================================
-// FUNCIONES DE TIEMPO
+// FUNCIONES DE FORMATO Y CÁLCULO DE TIEMPO
 // ==========================================
+function formatearHoraMilitar(input) {
+    if (!input) return;
+
+    let valor = input.value.replace(/\D/g, ''); // Quitar cualquier caracter no numérico
+
+    if (valor.length > 4) {
+        valor = valor.substring(0, 4);
+    }
+
+    if (valor.length === 4) {
+        let horas = parseInt(valor.substring(0, 2), 10);
+        let minutos = parseInt(valor.substring(2, 4), 10);
+
+        if (horas > 23) horas = 23;
+        if (minutos > 59) minutos = 59;
+
+        let hStr = horas.toString().padStart(2, '0');
+        let mStr = minutos.toString().padStart(2, '0');
+
+        input.value = `${hStr}:${mStr}`;
+    } else if (valor.length === 3) {
+        let horas = "0" + valor.substring(0, 1);
+        let minutos = valor.substring(1, 3);
+        if (parseInt(minutos, 10) > 59) minutos = "59";
+        input.value = `${horas}:${minutos}`;
+    }
+}
+
 function calcularTiempoServicio() {
     let hEntrada = $('#hora_entrada').val();
     let hSalida = $('#hora_salida').val();
+    let regexHora = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-    if (hEntrada && hSalida) {
+    if (regexHora.test(hEntrada) && regexHora.test(hSalida)) {
         let partesEntrada = hEntrada.split(':');
         let partesSalida = hSalida.split(':');
 
-        let minutosEntrada = parseInt(partesEntrada[0]) * 60 + parseInt(partesEntrada[1]);
-        let minutosSalida = parseInt(partesSalida[0]) * 60 + parseInt(partesSalida[1]);
+        let minutosEntrada = parseInt(partesEntrada[0], 10) * 60 + parseInt(partesEntrada[1], 10);
+        let minutosSalida = parseInt(partesSalida[0], 10) * 60 + parseInt(partesSalida[1], 10);
 
         if (minutosSalida < minutosEntrada) {
-            minutosSalida += 1440;
+            minutosSalida += 1440; // Manejo de cambio de día (medianoche)
         }
 
         let diferenciaMinutos = minutosSalida - minutosEntrada;
@@ -316,6 +386,7 @@ function cerrarModalRepuestos() {
     $('#modalRepuestos').addClass('hidden').removeClass('flex');
     $('#select_repuesto_modal').val(null).trigger('change');
     $('#cantidad_repuesto_modal').val(1);
+    $('#aviso_stock_info').addClass('hidden');
 }
 
 function agregarRepuesto() {
@@ -324,17 +395,38 @@ function agregarRepuesto() {
     let optionSeleccionado = selectElement.find('option:selected');
 
     if (!idRep) {
-        alert("⚠️ Seleccione un repuesto de la lista.");
+        alert("Seleccione un repuesto de la lista.");
         return;
     }
 
     let nombreLimpio = optionSeleccionado.data('nombre');
     let origen = $('#select_origen_modal').val();
     let cant = parseInt($('#cantidad_repuesto_modal').val()) || 1;
+    let tieneInventario = optionSeleccionado.data('en-inventario');
+    let stockDisponible = parseInt(optionSeleccionado.data('stock')) || 0;
 
     if (cant <= 0) {
-        alert("⚠️ La cantidad debe ser mayor a 0.");
+        alert("La cantidad debe ser mayor a 0.");
         return;
+    }
+
+    // Validar stock solo si tiene inventario
+    if (tieneInventario == 1 && stockDisponible > 0) {
+        let yaAgregadas = repuestosSeleccionados
+            .filter(r => r.id == idRep)
+            .reduce((sum, r) => sum + parseInt(r.cantidad), 0);
+
+        let totalNecesario = yaAgregadas + cant;
+
+        if (totalNecesario > stockDisponible) {
+            Swal.fire({
+                title: 'Stock insuficiente',
+                html: 'Solo tienes <strong>' + stockDisponible + '</strong> unidades en inventario.<br>Ya agregaste <strong>' + yaAgregadas + '</strong> y estás intentando agregar <strong>' + cant + ' más</strong>.',
+                icon: 'warning',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
     }
 
     let indexExiste = repuestosSeleccionados.findIndex(r => r.id === idRep && r.origen === origen);
@@ -346,7 +438,8 @@ function agregarRepuesto() {
             id: idRep,
             nombre: nombreLimpio,
             origen: origen,
-            cantidad: cant
+            cantidad: cant,
+            enInventario: (tieneInventario == 1)
         });
     }
 
@@ -363,11 +456,16 @@ function renderizarListaRepuestos() {
         totalItems += item.cantidad;
         let bgBadge = item.origen === 'INEES' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800';
 
+        let badgeInventario = item.enInventario
+            ? '<span class="bg-green-100 text-green-700 text-[10px] font-bold px-1 py-0.5 rounded ml-1 flex-shrink-0"><i class="fas fa-check"></i> Stock</span>'
+            : '<span class="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-1 py-0.5 rounded ml-1 flex-shrink-0"><i class="fas fa-exclamation"></i> Sin stock</span>';
+
         ul.append(`
             <li class="flex justify-between items-center bg-white p-2 border border-gray-200 rounded shadow-sm">
-                <div class="flex items-center gap-2 overflow-hidden w-full">
+                <div class="flex items-center gap-1 overflow-hidden w-full">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bgBadge} border border-opacity-20 flex-shrink-0" style="min-width:60px; text-align:center">${item.origen}</span>
                     <span class="text-xs text-gray-700 font-medium truncate flex-grow">${item.nombre}</span>
+                    ${badgeInventario}
                     <span class="bg-gray-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0">x${item.cantidad}</span>
                 </div>
                 <button type="button" onclick="borrarRepuesto(${index})" class="text-red-400 hover:text-red-600 px-3 ml-2 text-lg transition">

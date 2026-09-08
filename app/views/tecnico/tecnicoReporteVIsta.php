@@ -23,7 +23,6 @@
         background-color: #f1f5f9;
     }
 
-    /* Estilos para los inputs de archivos tipo botón */
     .file-upload-btn {
         position: relative;
         overflow: hidden;
@@ -95,7 +94,6 @@
 
         <input type="hidden" name="id_ordenes_servicio" value="<?= htmlspecialchars($orden['id_ordenes_servicio']) ?>">
 
-        <!-- 🔥 CAMPOS OCULTOS CON VALORES -->
         <input type="hidden" name="id_cliente" value="<?= htmlspecialchars($orden['id_cliente'] ?? '') ?>">
         <input type="hidden" name="id_punto" value="<?= htmlspecialchars($orden['id_punto'] ?? '') ?>">
         <input type="hidden" name="fecha_apertura"
@@ -123,17 +121,18 @@
                 </select>
             </div>
 
+            <!-- REEMPLAZAR EL BLOQUE DE HORAS POR ESTE: -->
             <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora (Entrada)</label>
-                    <input type="time" name="hora_entrada" id="hora_entrada" required
-                        onchange="calcularTiempoServicio()" oninput="calcularTiempoServicio()"
+                    <input type="text" inputmode="numeric" name="hora_entrada" id="hora_entrada"
+                        placeholder="HH:MM (ej: 1330)" maxlength="5" required
                         class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora (Salida)</label>
-                    <input type="time" name="hora_salida" id="hora_salida" required onchange="calcularTiempoServicio()"
-                        oninput="calcularTiempoServicio()"
+                    <input type="text" inputmode="numeric" name="hora_salida" id="hora_salida"
+                        placeholder="HH:MM (ej: 1745)" maxlength="5" required
                         class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div class="col-span-2 pt-2 border-t border-gray-200 flex justify-between items-center">
@@ -373,26 +372,33 @@
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-95"
         id="modal_content_rep">
         <div class="bg-blue-800 text-white p-3 flex justify-between items-center">
-            <h3 class="font-bold text-sm uppercase"><i class="fas fa-box-open mr-1"></i> Añadir Repuesto</h3>
+            <h3 class="font-bold text-sm uppercase"><i class="fas fa-box-open mr-1"></i> Añadir Componente</h3>
             <button type="button" onclick="cerrarModalRepuestos()"
                 class="text-white hover:text-red-300 text-2xl leading-none">&times;</button>
         </div>
         <div class="p-4 space-y-4">
             <div>
-                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Repuesto (Desde su
-                    inventario)</label>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Buscar Repuesto</label>
                 <select id="select_repuesto_modal" class="w-full select2-modal">
-                    <option value="">- Buscar Repuesto -</option>
-                    <?php if (!empty($inventario)): ?>
-                        <?php foreach ($inventario as $inv): ?>
-                            <option value="<?= $inv['id_repuesto'] ?>"
-                                data-nombre="<?= htmlspecialchars($inv['nombre_repuesto']) ?>">
-                                <?= htmlspecialchars($inv['nombre_repuesto']) ?> (Disp: <?= $inv['cantidad_actual'] ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <option value="" disabled>Su inventario está vacío</option>
-                    <?php endif; ?>
+                    <option value="">- Buscar por nombre o código -</option>
+                    <?php
+                    $inventarioMap = [];
+                    foreach ($inventario as $inv) {
+                        $inventarioMap[$inv['id_repuesto']] = $inv['cantidad_actual'];
+                    }
+                    foreach ($todosLosRepuestos as $rep):
+                        $tieneEnInventario = isset($inventarioMap[$rep['id_repuesto']]);
+                        $cantidadDisponible = $tieneEnInventario ? $inventarioMap[$rep['id_repuesto']] : 0;
+                        $textoCantidad = $tieneEnInventario ? " (Stock: {$cantidadDisponible})" : " (Sin stock)";
+                        $codigoRef = !empty($rep['codigo_referencia']) ? " [" . htmlspecialchars($rep['codigo_referencia']) . "]" : "";
+                        ?>
+                        <option value="<?= $rep['id_repuesto'] ?>"
+                            data-nombre="<?= htmlspecialchars($rep['nombre_repuesto']) ?>"
+                            data-stock="<?= $cantidadDisponible ?>"
+                            data-en-inventario="<?= $tieneEnInventario ? '1' : '0' ?>">
+                            <?= htmlspecialchars($rep['nombre_repuesto']) ?>    <?= $codigoRef ?>    <?= $textoCantidad ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -410,6 +416,11 @@
                         class="w-full border border-gray-300 rounded-lg p-3 text-sm text-center font-bold outline-none focus:border-blue-500">
                 </div>
             </div>
+            <div id="aviso_stock_info"
+                class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-700">
+                <i class="fas fa-info-circle mr-1"></i>
+                <span id="texto_aviso_stock"></span>
+            </div>
             <button type="button" onclick="agregarRepuesto()"
                 class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow transition mt-2 flex justify-center items-center gap-2">
                 <i class="fas fa-plus-circle"></i> Agregar a la Lista
@@ -419,10 +430,9 @@
 </div>
 
 <script>
-    // Obtiene la URL base del proyecto (ej. http://localhost/ProyectoMantenimientos/)
     window.BASE_URL = (function () {
         var path = window.location.pathname;
-        var projectName = path.split('/')[1]; // asumiendo que el proyecto está en /ProyectoMantenimientos/
+        var projectName = path.split('/')[1];
         return window.location.origin + '/' + projectName + '/';
     })();
     console.log("BASE_URL calculada:", window.BASE_URL);
@@ -430,11 +440,9 @@
 
 <script>
 
-    // Cuando el técnico abre el servicio
     let idOrden = <?= $orden['id_ordenes_servicio'] ?>;
     let fechaApertura = document.querySelector('input[name="fecha_apertura"]').value;
 
-    // Cada 30 segundos, verificar si alguien más modificó la orden
     setInterval(function () {
         $.ajax({
             url: 'index.php?pagina=tecnicoReporte&accion=ajaxVerificarModificacion',
@@ -446,7 +454,6 @@
             dataType: 'json',
             success: function (res) {
                 if (res.fue_modificado) {
-                    // Mostrar alerta visual sin interrumpir
                     let alerta = document.getElementById('alerta_modificacion');
                     if (!alerta) {
                         alerta = document.createElement('div');
@@ -463,7 +470,7 @@
                 }
             }
         });
-    }, 30000); // Cada 30 segundos
+    }, 30000);
 </script>
 
 

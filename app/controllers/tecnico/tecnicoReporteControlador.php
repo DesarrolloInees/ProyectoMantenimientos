@@ -54,6 +54,7 @@ class tecnicoReporteControlador
         $tiposManto = $this->modelo->obtenerTiposMantenimientoTecnico();
         // --- NUEVO: Traemos el inventario físico del técnico ---
         $inventario = $this->modelo->obtenerInventarioTecnico($idTecnicoActual);
+        $todosLosRepuestos = $this->modelo->obtenerTodosLosRepuestos();
 
         // 🔥 GUARDAMOS LA FECHA DE APERTURA EN SESIÓN
         $_SESSION['fecha_apertura_orden_' . $idOrden] = date('Y-m-d H:i:s');

@@ -16,9 +16,9 @@ class importarEstadoMaquinaModelo
         try {
             $deviceId = trim($deviceId);
             $sql = "SELECT m.id_maquina, m.device_id, m.activo_operativo,
-                           p.id_punto, p.nombre_punto, p.zona,
-                           c.nombre_cliente,
-                           tm.nombre_tipo_maquina
+                        p.id_punto, p.nombre_punto, p.zona,
+                        c.nombre_cliente,
+                        tm.nombre_tipo_maquina
                     FROM maquina m
                     INNER JOIN punto p ON m.id_punto = p.id_punto
                     INNER JOIN cliente c ON p.id_cliente = c.id_cliente

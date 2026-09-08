@@ -1,7 +1,8 @@
 <?php
 // app/models/programacion/programacionCrearModelo.php
 
-if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
 
 class programacionCrearModelo
 {
@@ -164,9 +165,9 @@ class programacionCrearModelo
     public function generarProgramacionSemanal($configuracion)
     {
         $propuesta = [];
-        
+
         // 1. ARRAY DE CONTROL: Lista negra de puntos ya usados
-        $idsAsignados = []; 
+        $idsAsignados = [];
 
         $fechaInicio = new DateTime($configuracion['fecha_inicio']);
         $calendario = $configuracion['calendario'];
@@ -175,14 +176,19 @@ class programacionCrearModelo
         $clientesIds = $configuracion['clientes_ids'] ?? [];
 
         $diasSemana = [
-            1 => 'lunes', 2 => 'martes', 3 => 'miercoles',
-            4 => 'jueves', 5 => 'viernes', 6 => 'sabado'
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miercoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sabado'
         ];
 
         // Obtener todos los puntos (Caché inicial)
         $puntosPorZona = [];
         foreach ($calendario as $dia => $config) {
-            if (empty($config['zonas'])) continue;
+            if (empty($config['zonas']))
+                continue;
             foreach ($config['zonas'] as $zona) {
                 if (!isset($puntosPorZona[$zona])) {
                     // AQUÍ SÍ FUNCIONA $this-> PORQUE ESTAMOS EN EL MODELO
@@ -199,7 +205,8 @@ class programacionCrearModelo
         // --- INICIO DE LOS CICLOS ---
         for ($semana = 0; $semana < $semanas; $semana++) {
             foreach ($diasSemana as $numeroDia => $nombreDia) {
-                if (empty($calendario[$nombreDia])) continue;
+                if (empty($calendario[$nombreDia]))
+                    continue;
 
                 $configDia = $calendario[$nombreDia];
                 $idTecnico = $configDia['id_tecnico'];
@@ -217,15 +224,16 @@ class programacionCrearModelo
                 }
 
                 $asignadosCount = 0;
-                
+
                 foreach ($puntosCandidatos as $punto) {
-                    if ($asignadosCount >= $maxServicios) break;
+                    if ($asignadosCount >= $maxServicios)
+                        break;
 
                     $idPunto = $punto['id_punto'];
 
                     // 2. VERIFICACIÓN: Si ya se usó, saltar
                     if (in_array($idPunto, $idsAsignados)) {
-                        continue; 
+                        continue;
                     }
 
                     $propuesta[] = [
@@ -240,7 +248,7 @@ class programacionCrearModelo
 
                     // 3. BLOQUEO: Agregar a lista negra
                     $idsAsignados[] = $idPunto;
-                    
+
                     $asignadosCount++;
                 }
             }
@@ -249,7 +257,7 @@ class programacionCrearModelo
         return $propuesta;
     }
 
-    
+
 
     // ===================================
     // GUARDADO
@@ -265,40 +273,37 @@ class programacionCrearModelo
         try {
             $this->conn->beginTransaction();
 
-            // Preparar INSERT con los campos mínimos necesarios
             $sql = "INSERT INTO ordenes_servicio (
-                        id_punto, 
-                        id_tecnico, 
-                        id_cliente, 
-                        id_maquina, 
-                        id_modalidad,
-                        fecha_visita, 
-                        estado, 
-                        created_at
-                    ) VALUES (
-                        :id_punto, 
-                        :id_tecnico, 
-                        :id_cliente, 
-                        :id_maquina, 
-                        :id_modalidad,
-                        :fecha_visita, 
-                        2, 
-                        NOW()
-                    )";
+                    id_punto, 
+                    id_tecnico, 
+                    id_cliente, 
+                    id_maquina, 
+                    id_modalidad,
+                    fecha_visita, 
+                    estado, 
+                    created_at
+                ) VALUES (
+                    :id_punto, 
+                    :id_tecnico, 
+                    :id_cliente, 
+                    :id_maquina, 
+                    :id_modalidad,
+                    :fecha_visita, 
+                    2, 
+                    NOW()
+                )";
 
             $stmt = $this->conn->prepare($sql);
-
             $count = 0;
             $errores = [];
 
             foreach ($listaServicios as $servicio) {
                 if (!empty($servicio['id_punto']) && !empty($servicio['id_tecnico']) && !empty($servicio['fecha_visita'])) {
 
-                    // Obtener datos adicionales del punto (cliente, máquina, modalidad)
-                    $datosAdicionales = $this->obtenerDatosComplementariosOrden($servicio['id_punto']);
+                    $datos = $this->obtenerDatosComplementariosOrden($servicio['id_punto']);
 
-                    if (!$datosAdicionales) {
-                        $errores[] = "Punto {$servicio['id_punto']}: No se encontraron datos complementarios";
+                    if (!$datos) {
+                        $errores[] = "Error con el punto ID {$servicio['id_punto']}: no existe en la base de datos.";
                         continue;
                     }
 
@@ -306,35 +311,41 @@ class programacionCrearModelo
                         $stmt->execute([
                             ':id_punto' => $servicio['id_punto'],
                             ':id_tecnico' => $servicio['id_tecnico'],
-                            ':id_cliente' => $datosAdicionales['id_cliente'],
-                            ':id_maquina' => $datosAdicionales['id_maquina'],
-                            ':id_modalidad' => $datosAdicionales['id_modalidad'],
+                            ':id_cliente' => $datos['id_cliente'],
+                            ':id_maquina' => !empty($datos['id_maquina']) ? $datos['id_maquina'] : null,
+                            ':id_modalidad' => !empty($datos['id_modalidad']) ? $datos['id_modalidad'] : null,
                             ':fecha_visita' => $servicio['fecha_visita']
                         ]);
                         $count++;
                     } catch (PDOException $e) {
-                        // Si hay error (ej: duplicado), registrar pero continuar
-                        $errores[] = "Error en punto {$servicio['id_punto']}: " . $e->getMessage();
+                        // Guarda el error técnico directo de MySQL para diagnosticar
+                        $errores[] = "Error guardando Punto {$servicio['id_punto']}: " . $e->getMessage();
                     }
                 }
             }
 
-            $this->conn->commit();
-
-            $msg = "Se crearon $count órdenes programadas.";
-            if (!empty($errores)) {
-                $msg .= " Errores: " . count($errores);
+            // Si se lograron insertar filas, confirmamos la transacción
+            if ($count > 0) {
+                $this->conn->commit();
+                return [
+                    "status" => true,
+                    "count" => $count,
+                    "msg" => "Se crearon $count órdenes programadas.",
+                    "errores" => $errores
+                ];
+            } else {
+                $this->conn->rollBack();
+                return [
+                    "status" => false,
+                    "msg" => "No se pudo insertar ninguna orden. " . implode(" | ", $errores)
+                ];
             }
 
-            return [
-                "status" => true,
-                "count" => $count,
-                "msg" => $msg,
-                "errores" => $errores
-            ];
         } catch (Exception $e) {
-            $this->conn->rollBack();
-            return ["status" => false, "msg" => $e->getMessage()];
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            return ["status" => false, "msg" => "Error de BD: " . $e->getMessage()];
         }
     }
 
@@ -345,15 +356,19 @@ class programacionCrearModelo
     private function obtenerDatosComplementariosOrden($id_punto)
     {
         $sql = "SELECT 
-                    p.id_cliente,
-                    p.id_modalidad,
+                p.id_cliente,
+                p.id_modalidad,
+                COALESCE(
                     (SELECT m.id_maquina 
                         FROM maquina m 
                         WHERE m.id_punto = p.id_punto 
                         AND m.estado = 1 
-                        LIMIT 1) as id_maquina
-                FROM punto p
-                WHERE p.id_punto = :id_punto";
+                        ORDER BY m.id_maquina ASC 
+                    LIMIT 1), 
+                    0
+                ) as id_maquina
+            FROM punto p
+            WHERE p.id_punto = :id_punto";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([':id_punto' => $id_punto]);
@@ -364,7 +379,8 @@ class programacionCrearModelo
     // Auxiliar para obtener información de puntos
     public function obtenerInfoPuntos($ids)
     {
-        if (empty($ids)) return [];
+        if (empty($ids))
+            return [];
 
         $in = str_repeat('?,', count($ids) - 1) . '?';
         $sql = "SELECT p.id_punto, p.nombre_punto, p.zona, c.nombre_cliente 
@@ -390,7 +406,8 @@ class programacionCrearModelo
 
     public function obtenerDatosProgramacionExcel($listaServicios)
     {
-        if (empty($listaServicios)) return [];
+        if (empty($listaServicios))
+            return [];
 
         // 1. Obtener IDs únicos de puntos para consultar
         $idsPuntos = array_unique(array_column($listaServicios, 'id_punto'));
@@ -414,7 +431,7 @@ class programacionCrearModelo
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute(array_values($idsPuntos));
-        
+
         $resultados = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $resultados[$row['id_punto']] = $row;
@@ -445,7 +462,7 @@ class programacionCrearModelo
         }
 
         // 4. Ordenar por fecha programada ascendente
-        usort($datosExcel, function($a, $b) {
+        usort($datosExcel, function ($a, $b) {
             return strtotime($a['fecha_visita_programada']) - strtotime($b['fecha_visita_programada']);
         });
 
@@ -462,14 +479,21 @@ class programacionCrearModelo
     public function obtenerMaquinasFueraDeServicio()
     {
         $sql = "SELECT m.id_maquina, m.device_id,
-                       p.id_punto, p.nombre_punto, p.zona, p.direccion,
-                       c.nombre_cliente, c.codigo_cliente,
-                       tm.nombre_tipo_maquina
+                        p.id_punto, p.nombre_punto, p.zona, p.direccion,
+                        c.nombre_cliente, c.codigo_cliente,
+                        tm.nombre_tipo_maquina
                 FROM maquina m
                 INNER JOIN punto p ON m.id_punto = p.id_punto
                 INNER JOIN cliente c ON p.id_cliente = c.id_cliente
                 INNER JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina
                 WHERE m.activo_operativo = 0 AND m.estado = 1 AND p.estado = 1
+                /* NUEVA VALIDACIÓN: Ocultar si ya está programado */
+                AND NOT EXISTS (
+                    SELECT 1 
+                    FROM ordenes_servicio os 
+                    WHERE os.id_punto = p.id_punto 
+                    AND os.estado = 2
+                )
                 ORDER BY p.zona ASC, c.nombre_cliente ASC";
 
         $stmt = $this->conn->prepare($sql);
@@ -478,42 +502,64 @@ class programacionCrearModelo
     }
 
     /**
-     * Obtener puntos aledanios en la misma zona que no tengan orden programada
-     * y que no sean el punto seleccionado
+     * Obtener puntos aledaños permitiendo una o múltiples zonas (separadas por comas)
+     * Forzado: Muestra SIEMPRE los puntos inoperativos sin importar los 30 días
      */
-    public function obtenerPuntosAledanios($id_punto, $zona, $id_delegacion = null)
+    public function obtenerPuntosAledanios($id_punto, $zonas, $id_delegacion = null)
     {
-        $sql = "SELECT p.id_punto, p.nombre_punto, p.zona, p.fecha_ultima_visita,
-                       c.nombre_cliente, c.codigo_cliente,
-                       m.nombre_municipio,
-                       (SELECT mq.device_id FROM maquina mq WHERE mq.id_punto = p.id_punto AND mq.estado = 1 ORDER BY mq.id_maquina ASC LIMIT 1) as device_id,
-                       (SELECT tm.nombre_tipo_maquina FROM maquina mq2 
+        if (!is_array($zonas)) {
+            $zonas = array_map('trim', explode(',', $zonas));
+        }
+        $zonas = array_filter($zonas);
+
+        if (empty($zonas))
+            return [];
+
+        $placeholdersZona = [];
+        $params = [];
+        foreach ($zonas as $k => $z) {
+            $key = ':zona_' . $k;
+            $placeholdersZona[] = $key;
+            $params[$key] = $z;
+        }
+
+        $sql = "SELECT p.id_punto, p.nombre_punto, p.direccion, p.zona, p.fecha_ultima_visita,
+                        c.nombre_cliente, c.codigo_cliente,
+                        m.nombre_municipio,
+                        (SELECT mq.device_id FROM maquina mq WHERE mq.id_punto = p.id_punto AND mq.estado = 1 ORDER BY mq.id_maquina ASC LIMIT 1) as device_id,
+                        (SELECT tm.nombre_tipo_maquina FROM maquina mq2 
                         INNER JOIN tipo_maquina tm ON mq2.id_tipo_maquina = tm.id_tipo_maquina 
                         WHERE mq2.id_punto = p.id_punto AND mq2.estado = 1 ORDER BY mq2.id_maquina ASC LIMIT 1) as tipo_maquina,
-                       CASE WHEN m2.activo_operativo = 0 THEN 1 ELSE 0 END as fuera_de_servicio,
-                       DATEDIFF(NOW(), p.fecha_ultima_visita) as dias_sin_visita
+                        CASE WHEN EXISTS (SELECT 1 FROM maquina mq3 WHERE mq3.id_punto = p.id_punto AND mq3.activo_operativo = 0 AND mq3.estado = 1) THEN 1 ELSE 0 END as fuera_de_servicio,
+                        DATEDIFF(NOW(), p.fecha_ultima_visita) as dias_sin_visita
                 FROM punto p
                 INNER JOIN cliente c ON p.id_cliente = c.id_cliente
                 LEFT JOIN municipio m ON p.id_municipio = m.id_municipio
-                LEFT JOIN maquina m2 ON m2.id_punto = p.id_punto AND m2.estado = 1
                 WHERE p.estado = 1
-                AND p.zona = :zona
-                AND p.id_punto != :id_punto
-                AND (p.fecha_ultima_visita IS NULL OR DATEDIFF(NOW(), p.fecha_ultima_visita) >= 30)
+                AND p.zona IN (" . implode(',', $placeholdersZona) . ")
+                
+                /* EXCEPCIÓN: Si está fuera de servicio entra directo, si no, valida los 30 días */
+                AND (
+                    EXISTS (SELECT 1 FROM maquina mq4 WHERE mq4.id_punto = p.id_punto AND mq4.activo_operativo = 0 AND mq4.estado = 1)
+                    OR p.fecha_ultima_visita IS NULL 
+                    OR DATEDIFF(NOW(), p.fecha_ultima_visita) >= 30
+                )
+                
+                /* No mostrar si ya está programado en estado 2 */
                 AND NOT EXISTS (
                     SELECT 1 
                     FROM ordenes_servicio os 
                     WHERE os.id_punto = p.id_punto 
                     AND os.estado = 2
-                )
-                ORDER BY p.fecha_ultima_visita ASC, c.nombre_cliente ASC";
+                )";
 
-        $params = [':zona' => $zona, ':id_punto' => $id_punto];
-
-        if (!empty($id_delegacion)) {
-            $sql .= " AND p.id_delegacion = :delegacion";
-            $params[':delegacion'] = $id_delegacion;
+        if (!empty($id_punto) && $id_punto > 0) {
+            $sql .= " AND p.id_punto != :id_punto";
+            $params[':id_punto'] = $id_punto;
         }
+
+        // Ordenar PRIMERO los que están fuera de servicio para que salgan arriba en el modal
+        $sql .= " ORDER BY fuera_de_servicio DESC, p.fecha_ultima_visita ASC, c.nombre_cliente ASC";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute($params);

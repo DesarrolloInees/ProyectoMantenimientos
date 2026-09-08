@@ -26,8 +26,10 @@
         </div>
 
         <div class="mt-6">
-            <label class="block text-sm font-bold text-gray-700 mb-2">Filtro de Mantenimiento (Aplica para Reporte de Servicios):</label>
-            <select id="filtro_mantenimiento" class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Filtro de Mantenimiento (Aplica para Reporte de
+                Servicios):</label>
+            <select id="filtro_mantenimiento"
+                class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
                 <option value="todos">Todos los servicios</option>
                 <option value="basico">Solo Preventivos Básicos</option>
                 <option value="profundo">Solo Preventivos Profundos</option>
@@ -39,13 +41,15 @@
         <hr class="border-gray-200">
 
         <div class="flex flex-col md:flex-row justify-center gap-6 mt-6">
-            <button type="button" id="btnServicios" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transform hover:scale-105 transition flex flex-col items-center justify-center gap-2">
+            <button type="button" id="btnServicios"
+                class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transform hover:scale-105 transition flex flex-col items-center justify-center gap-2">
                 <i class="fas fa-tools text-2xl"></i>
                 <span>Reporte de Servicios</span>
                 <span class="text-xs font-normal opacity-80">(Por Delegaciones)</span>
             </button>
 
-            <button type="button" id="btnNovedades" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transform hover:scale-105 transition flex flex-col items-center justify-center gap-2">
+            <button type="button" id="btnNovedades"
+                class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transform hover:scale-105 transition flex flex-col items-center justify-center gap-2">
                 <i class="fas fa-exclamation-triangle text-2xl"></i>
                 <span>Reporte de Novedades</span>
                 <span class="text-xs font-normal opacity-80">(Solo incidencias)</span>
@@ -63,7 +67,7 @@
 </div>
 
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
 
         // --- FUNCIÓN AUXILIAR PARA CALCULAR HORAS (Faltaba esta) ---
         function calcularDuracion(entrada, salida) {
@@ -78,12 +82,12 @@
         }
 
         // --- BOTÓN 1: SERVICIOS ---
-        $('#btnServicios').on('click', function() {
+        $('#btnServicios').on('click', function () {
             descargarData('ajaxDescargarServicios', 'servicios');
         });
 
         // --- BOTÓN 2: NOVEDADES ---
-        $('#btnNovedades').on('click', function() {
+        $('#btnNovedades').on('click', function () {
             descargarData('ajaxDescargarNovedades', 'novedades');
         });
 
@@ -112,7 +116,7 @@
                     tipo_mantenimiento: filtroMant // NUEVO: Se envía al controlador
                 },
                 dataType: 'json',
-                success: function(response) {
+                success: function (response) {
                     if (response.status === 'ok') {
                         if (response.datos.length === 0) {
                             msg.addClass('bg-red-100 text-red-700').removeClass('hidden').text('No se encontraron registros en este rango.');
@@ -129,11 +133,11 @@
                         msg.addClass('bg-red-100 text-red-700').removeClass('hidden').text(response.msg);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     console.error(error);
                     msg.addClass('bg-red-100 text-red-700').removeClass('hidden').text('Error de conexión.');
                 },
-                complete: function() {
+                complete: function () {
                     // Restaurar botones a su estado original
                     $('#btnServicios').prop('disabled', false).removeClass('opacity-50 opacity-75').html('<i class="fas fa-tools text-2xl"></i><span>Reporte de Servicios</span><span class="text-xs font-normal opacity-80">(Por Delegaciones)</span>');
                     $('#btnNovedades').prop('disabled', false).removeClass('opacity-50 opacity-75').html('<i class="fas fa-exclamation-triangle text-2xl"></i><span>Reporte de Novedades</span><span class="text-xs font-normal opacity-80">(Solo incidencias)</span>');
@@ -328,75 +332,87 @@
 
                 let ws = XLSX.utils.aoa_to_sheet(matriz);
 
-                // Formato Moneda
+                // ==========================================
+                // APLICAR FORMATO A HOJAS POR DELEGACIÓN
+                // ==========================================
                 const formatoContabilidad = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
+                const formatoDeviceId12Digitos = '000000000000'; // Fuerza visualmente 12 dígitos conservando el valor numérico
+
                 if (ws['!ref']) {
                     const range = XLSX.utils.decode_range(ws['!ref']);
-                    const colTarifa = 7;
+                    const colDeviceId = 0; // Columna A
+                    const colTarifa = 7;   // Columna H (Tarifa)
+
                     for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                        let cellRef = XLSX.utils.encode_cell({
-                            c: colTarifa,
-                            r: R
-                        });
-                        if (!ws[cellRef]) ws[cellRef] = {
-                            t: 'n',
-                            v: 0
-                        };
-                        ws[cellRef].t = 'n';
-                        ws[cellRef].z = formatoContabilidad;
+                        // --- DEVICE_ID: NÚMERO REAL CON MÁSCARA DE 12 CEROS ---
+                        let cellDeviceId = XLSX.utils.encode_cell({ c: colDeviceId, r: R });
+                        if (ws[cellDeviceId]) {
+                            // Extraer solo dígitos por si viene con espacios o caracteres extra
+                            let valLimpio = String(ws[cellDeviceId].v || '').replace(/\D/g, '');
+
+                            ws[cellDeviceId].t = 'n'; // Tipo NÚMERO (para que sirva en fórmulas numéricas)
+                            ws[cellDeviceId].v = valLimpio !== '' ? Number(valLimpio) : 0; // Convertir a entero/número
+                            ws[cellDeviceId].z = formatoDeviceId12Digitos; // Rellena con ceros a la izquierda automáticamente
+                        }
+
+                        // --- TARIFA ---
+                        let cellTarifa = XLSX.utils.encode_cell({ c: colTarifa, r: R });
+                        if (!ws[cellTarifa]) ws[cellTarifa] = { t: 'n', v: 0 };
+                        ws[cellTarifa].t = 'n';
+                        ws[cellTarifa].z = formatoContabilidad;
                     }
                 }
 
                 // Ancho columnas
                 ws["!cols"] = [{
-                        wch: 15
-                    }, {
-                        wch: 12
-                    }, {
-                        wch: 25
-                    }, {
-                        wch: 25
-                    },
-                    {
-                        wch: 8
-                    }, {
-                        wch: 8
-                    }, {
-                        wch: 8
-                    }, {
-                        wch: 15
-                    },
-                    {
-                        wch: 50
-                    }, {
-                        wch: 15
-                    }, {
-                        wch: 12
-                    }, {
-                        wch: 20
-                    },
-                    {
-                        wch: 15
-                    }, {
-                        wch: 20
-                    }, {
-                        wch: 10
-                    }, {
-                        wch: 10
-                    },
-                    {
-                        wch: 10
-                    }, {
-                        wch: 12
-                    }, {
-                        wch: 30
-                    }, {
-                        wch: 15
-                    }, {
-                        wch: 15
-                    }, {
-                        wch: 15
-                    }
+                    wch: 15
+                }, {
+                    wch: 12
+                }, {
+                    wch: 25
+                }, {
+                    wch: 25
+                },
+                {
+                    wch: 8
+                }, {
+                    wch: 8
+                }, {
+                    wch: 8
+                }, {
+                    wch: 15
+                },
+                {
+                    wch: 50
+                }, {
+                    wch: 15
+                }, {
+                    wch: 12
+                }, {
+                    wch: 20
+                },
+                {
+                    wch: 15
+                }, {
+                    wch: 20
+                }, {
+                    wch: 10
+                }, {
+                    wch: 10
+                },
+                {
+                    wch: 10
+                }, {
+                    wch: 12
+                }, {
+                    wch: 30
+                }, {
+                    wch: 15
+                }, {
+                    wch: 15
+                }, {
+                    wch: 15
+                }
                 ];
 
                 let nombreHoja = del.replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Data";
@@ -405,7 +421,7 @@
             // =========================================================================
             // 7. NUEVO: GENERAR HOJA "RESUMEN TOTAL" CON TODOS LOS SERVICIOS Y AUTOSUMA
             // =========================================================================
-            
+
             let matrizResumen = [
                 [
                     "Device_id", "Número de Remisión", "Cliente", "Nombre Punto",
@@ -436,13 +452,13 @@
             // --- LA MAGIA DE LA AUTOSUMA ---
             // Creamos una fila vacía, ponemos un texto de TOTAL y agregamos la fórmula
             let filaTotal = ["", "", "", "", "", "", "TOTAL GENERAL:"];
-            
+
             // Inyectamos la fórmula de suma nativa de Excel en la columna H (índice 7 = Tarifa)
             filaTotal.push({ t: 'n', f: 'SUM(H2:H' + (filaActual - 1) + ')' });
-            
+
             // Rellenamos el resto del array para que no descuadre la tabla
-            for(let i = 8; i < 22; i++) filaTotal.push("");
-            
+            for (let i = 8; i < 22; i++) filaTotal.push("");
+
             matrizResumen.push(filaTotal);
 
             // Convertimos la matriz en una hoja de SheetJS
@@ -450,13 +466,28 @@
 
             // Le damos formato de contabilidad a la columna de Tarifas (Columna H)
             const formatoMoneda = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
+            // ==========================================
+            // APLICAR FORMATO A HOJA "RESUMEN TOTAL"
+            // ==========================================
             if (wsResumen['!ref']) {
                 const rangeResumen = XLSX.utils.decode_range(wsResumen['!ref']);
+                const colDeviceId = 0; // Columna A
+                const colTarifa = 7;   // Columna H
+
                 for (let R = rangeResumen.s.r + 1; R <= rangeResumen.e.r; ++R) {
-                    let cellRef = XLSX.utils.encode_cell({ c: 7, r: R });
-                    // Solo aplicar a celdas que tengan valor o la fórmula
-                    if (wsResumen[cellRef]) {
-                        wsResumen[cellRef].z = formatoMoneda;
+                    let cellDeviceId = XLSX.utils.encode_cell({ c: colDeviceId, r: R });
+                    if (wsResumen[cellDeviceId]) {
+                        let valLimpio = String(wsResumen[cellDeviceId].v || '').replace(/\D/g, '');
+
+                        wsResumen[cellDeviceId].t = 'n';
+                        wsResumen[cellDeviceId].v = valLimpio !== '' ? Number(valLimpio) : 0;
+                        wsResumen[cellDeviceId].z = '000000000000';
+                    }
+
+                    // --- TARIFA ---
+                    let cellTarifa = XLSX.utils.encode_cell({ c: colTarifa, r: R });
+                    if (wsResumen[cellTarifa]) {
+                        wsResumen[cellTarifa].z = formatoMoneda;
                     }
                 }
             }
@@ -481,24 +512,28 @@
         }
 
 
-        // ==========================================
-        // 2. EXCEL NOVEDADES (Con Auto-Ajuste de Columnas)
-        // ==========================================
         function generarExcelNovedades(datos, inicio, fin) {
 
-            // 1. Mapear datos (Orden 1-10)
-            let lista = datos.map(d => ({
-                "Tipo de Novedad": d.nombre_novedad,
-                "Descripción del Servicio": d.observacion,
-                "Cliente": d.nombre_cliente,
-                "Punto": d.nombre_punto,
-                "Delegación": d.delegacion,
-                "Tipo de Máquina": d.nombre_tipo_maquina,
-                "Device_id": d.device_id,
-                "Número de Remisión": d.numero_remision,
-                "Fecha del Servicio": d.fecha_visita,
-                "Nombre del Técnico": d.nombre_tecnico
-            }));
+            let lista = datos.map(d => {
+                // Extraer solo números del device_id
+                let numDeviceId = d.device_id !== null && d.device_id !== undefined
+                    ? String(d.device_id).replace(/\D/g, '')
+                    : "";
+
+                return {
+                    "Tipo de Novedad": d.nombre_novedad,
+                    "Descripción del Servicio": d.observacion,
+                    "Cliente": d.nombre_cliente,
+                    "Punto": d.nombre_punto,
+                    "Delegación": d.delegacion,
+                    "Tipo de Máquina": d.nombre_tipo_maquina,
+                    // Guardar como número entero en el JSON inicial
+                    "Device_id": numDeviceId !== "" ? Number(numDeviceId) : 0,
+                    "Número de Remisión": d.numero_remision,
+                    "Fecha del Servicio": d.fecha_visita,
+                    "Nombre del Técnico": d.nombre_tecnico
+                };
+            });
 
             if (lista.length === 0) {
                 alert("No hay datos para exportar.");
@@ -508,52 +543,30 @@
             let wb = XLSX.utils.book_new();
             let ws = XLSX.utils.json_to_sheet(lista);
 
-            // 2. ALGORITMO DE AUTO-AJUSTE DE ANCHO
-            // Recorremos cada columna para encontrar el texto más largo
-            let propiedades = Object.keys(lista[0]);
-            let wscols = propiedades.map(key => {
-                // Empezamos asumiendo que el ancho es el largo del título
-                let maxLen = key.length;
-
-                // Revisamos todas las filas de esa columna
-                lista.forEach(row => {
-                    let valor = row[key] ? String(row[key]) : "";
-                    // Si encontramos un texto más largo, actualizamos el máximo
-                    if (valor.length > maxLen) {
-                        maxLen = valor.length;
-                    }
-                });
-
-                // REGLAS DE LÍMITES:
-                // - Mínimo 10 caracteres (para que no quede muy flaca)
-                // - Máximo 70 caracteres (para que la descripción no ocupe 3 pantallas)
-                if (maxLen > 70) maxLen = 70;
-
-                return {
-                    wch: maxLen + 2
-                }; // Le sumamos 2 espacios de "aire"
-            });
-
-            // Aplicamos los anchos calculados
-            ws['!cols'] = wscols;
-
-            // 3. (Opcional) Intentar activar Wrap Text para lo que pase de 70 caracteres
-            // Nota: Esto depende de la versión de SheetJS, pero no hace daño dejarlo.
+            // --- APLICAR MÁSCARA NUMÉRICA DE 12 DIGITOS A DEVICE_ID (COLUMNA 6 / G) ---
             const range = XLSX.utils.decode_range(ws['!ref']);
-            for (let R = range.s.r; R <= range.e.r; ++R) {
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                    let cell_ref = XLSX.utils.encode_cell({
-                        r: R,
-                        c: C
-                    });
-                    if (!ws[cell_ref]) continue;
-                    if (!ws[cell_ref].s) ws[cell_ref].s = {};
-                    ws[cell_ref].s.alignment = {
-                        wrapText: true,
-                        vertical: "center"
-                    };
+            const colDeviceId = 6;
+
+            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                let cellRef = XLSX.utils.encode_cell({ r: R, c: colDeviceId });
+                if (ws[cellRef]) {
+                    ws[cellRef].t = 'n'; // Tipo Número
+                    ws[cellRef].z = '000000000000'; // Formato de 12 ceros
                 }
             }
+
+            // Auto-Ajuste de Columnas
+            let propiedades = Object.keys(lista[0]);
+            let wscols = propiedades.map(key => {
+                let maxLen = key.length;
+                lista.forEach(row => {
+                    let valor = row[key] ? String(row[key]) : "";
+                    if (valor.length > maxLen) maxLen = valor.length;
+                });
+                if (maxLen > 70) maxLen = 70;
+                return { wch: maxLen + 2 };
+            });
+            ws['!cols'] = wscols;
 
             XLSX.utils.book_append_sheet(wb, ws, "Novedades");
             XLSX.writeFile(wb, `Novedades_${inicio}_a_${fin}.xlsx`);
