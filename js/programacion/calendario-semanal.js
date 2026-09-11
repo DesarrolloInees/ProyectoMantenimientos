@@ -264,7 +264,7 @@
                                 onchange="onToggleCheckPuntoModal(this)">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center justify-between flex-wrap gap-1 mb-1">
-                                    <div class="font-bold text-gray-900 text-sm truncate">
+                                    <div class="font-bold text-gray-900 text-sm break-words">
                                         ${Prog.util.escapeHtml(p.nombre_punto)} ${badgeFuera} ${badgeOtroDia}
                                     </div>
                                     ${badgeZona}

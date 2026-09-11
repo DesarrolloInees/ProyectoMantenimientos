@@ -225,11 +225,6 @@
                                         </div>
                                         <div class="text-right flex items-center space-x-2">
                                             <button type="button"
-                                                onclick="buscarAledaniosPunto(<?= $maq['id_punto'] ?>, '<?= htmlspecialchars($maq['zona'], ENT_QUOTES) ?>')"
-                                                class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded font-semibold shadow-sm transition">
-                                                <i class="fas fa-search-location mr-1"></i> Ver Aledaños
-                                            </button>
-                                            <button type="button"
                                                 onclick="restaurarMaquinaIndividual('<?= htmlspecialchars($maq['device_id'], ENT_QUOTES) ?>')"
                                                 class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded font-semibold shadow-sm transition"
                                                 title="Volver a Operativo (no se va a programar)">

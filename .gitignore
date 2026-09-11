@@ -1,5 +1,6 @@
 /vendor/
 .env
+.clineignore
 /node_modules/
 test_groq.php
 /app/uploads/

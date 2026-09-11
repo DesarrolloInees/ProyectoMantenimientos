@@ -79,8 +79,8 @@
                             <input type="checkbox"
                                 class="mt-1 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 check-aledanio-modal shadow-sm"
                                 value="${punto.id_punto}" data-punto-id="${punto.id_punto}" ${estaMarcadoPrevio}>
-                            <div class="flex-1">
-                                <div class="font-bold text-gray-900 text-sm mb-1">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-gray-900 text-sm mb-1 break-words">
                                     ${Prog.util.escapeHtml(punto.nombre_punto)} ${badgeFueraServicio}
                                 </div>
                                 <div class="text-xs text-gray-600 space-y-1">
