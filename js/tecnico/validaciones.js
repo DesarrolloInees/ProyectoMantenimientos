@@ -120,6 +120,15 @@ function validarYEnviar() {
     }
 
     // 7. Mostrar resumen antes de guardar
+    // 7. Advertencia: Correctivo sin repuestos
+    let textoTipoSeleccionado = $('select[name="id_tipo_mantenimiento"] option:selected').text().toUpperCase().trim();
+    if (textoTipoSeleccionado.includes('CORRECTIVO') && repuestosSeleccionados.length === 0) {
+        if (!confirm('⚠️ ¡ADVERTENCIA!\n\nEste servicio es Mantenimiento CORRECTIVO pero NO has agregado repuestos.\nEsto es inusual.\n\n¿Estás seguro de guardar sin repuestos?')) {
+            return false;
+        }
+    }
+
+    // 8. Mostrar resumen antes de guardar
     let resumen = '📋 Resumen del Servicio:\n\n';
     resumen += '🕐 Tiempo: ' + $('#tiempo_total_display').text() + '\n';
     resumen += '📸 Fotos: ' + totalFotos + '\n';

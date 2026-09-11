@@ -89,6 +89,21 @@
         </div>
     </div>
 
+    <!-- ── CRONÓMETRO EN VIVO ── -->
+    <!-- ── CRONÓMETRO EN VIVO (oculto temporalmente, aún no implementado) ── -->
+    <div class="hidden bg-gray-900 rounded-xl shadow-md border border-gray-700 p-4 text-center">
+        <p class="text-gray-400 text-[10px] font-bold uppercase mb-2 tracking-widest">
+            <i class="fas fa-stopwatch mr-1 text-green-400"></i> Tiempo Transcurrido
+        </p>
+        <span id="reloj_digital" class="text-4xl font-bold text-green-400 tracking-widest"
+            style="font-family:'Courier New',Courier,monospace; font-variant-numeric: tabular-nums;"
+            data-inicio="<?= htmlspecialchars(str_replace('-', '/', $timestampInicio)) ?>">
+            00:00:00
+        </span>
+        <p class="text-gray-500 text-[10px] mt-2">Inicio:
+            <?= htmlspecialchars(date('H:i', strtotime($timestampInicio))) ?></p>
+    </div>
+
     <form action="index.php?pagina=tecnicoReporte&accion=guardar" method="POST" id="formReporteMovil"
         enctype="multipart/form-data">
 
@@ -122,11 +137,19 @@
             </div>
 
             <!-- REEMPLAZAR EL BLOQUE DE HORAS POR ESTE: -->
+            <!-- BLOQUE DE HORAS CON PRE-LLENADO Y ACCESO RÁPIDO -->
             <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Hora (Entrada)</label>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">
+                        Hora (Entrada)
+                        <?php if (!empty($horaEntradaInicial)): ?>
+                            <span class="text-green-600 text-[9px] font-bold ml-1">✅ Auto</span>
+                        <?php endif; ?>
+                    </label>
                     <input type="text" inputmode="numeric" name="hora_entrada" id="hora_entrada"
                         placeholder="HH:MM (ej: 1330)" maxlength="5" required
+                        value="<?= htmlspecialchars($horaEntradaInicial ?? '') ?>"
                         class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
                 <div>
@@ -135,6 +158,15 @@
                         placeholder="HH:MM (ej: 1745)" maxlength="5" required
                         class="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-800 font-bold shadow-sm outline-none focus:border-blue-500">
                 </div>
+                <!-- Botón rápido: registrar salida con la hora actual -->
+                <!--
+                <div class="col-span-2">
+                    <button type="button" onclick="fijarHoraSalidaAhora()"
+                        class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-2">
+                        <i class="fas fa-clock"></i> Registrar Salida Ahora
+                    </button>
+                </div>
+                -->
                 <div class="col-span-2 pt-2 border-t border-gray-200 flex justify-between items-center">
                     <span class="text-xs font-bold text-gray-500 uppercase">Tiempo Total:</span>
                     <strong id="tiempo_total_display"
@@ -143,6 +175,7 @@
                 </div>
             </div>
         </div>
+
 
         <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 space-y-3">
             <div class="flex items-center gap-2 border-b border-blue-200 pb-1">
@@ -396,7 +429,7 @@
                             data-nombre="<?= htmlspecialchars($rep['nombre_repuesto']) ?>"
                             data-stock="<?= $cantidadDisponible ?>"
                             data-en-inventario="<?= $tieneEnInventario ? '1' : '0' ?>">
-                            <?= htmlspecialchars($rep['nombre_repuesto']) ?>    <?= $codigoRef ?>    <?= $textoCantidad ?>
+                            <?= htmlspecialchars($rep['nombre_repuesto']) ?>     <?= $codigoRef ?>     <?= $textoCantidad ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

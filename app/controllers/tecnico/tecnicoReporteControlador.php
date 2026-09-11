@@ -56,10 +56,19 @@ class tecnicoReporteControlador
         $inventario = $this->modelo->obtenerInventarioTecnico($idTecnicoActual);
         $todosLosRepuestos = $this->modelo->obtenerTodosLosRepuestos();
 
-        // 🔥 GUARDAMOS LA FECHA DE APERTURA EN SESIÓN
-        $_SESSION['fecha_apertura_orden_' . $idOrden] = date('Y-m-d H:i:s');
+        // Determinar fecha/hora de inicio para cronómetro y pre-llenado de hora_entrada
+        $horaEntradaInicial = '';
+        if (!empty($orden['hora_entrada'])) {
+            $horaEntradaInicial = date('H:i', strtotime($orden['hora_entrada']));
+            $horaConSegundos = (strlen($orden['hora_entrada']) === 5) ? $orden['hora_entrada'] . ':00' : $orden['hora_entrada'];
+            $timestampInicio = ($orden['fecha_visita'] ?: date('Y-m-d')) . ' ' . $horaConSegundos;
+        } else {
+            $timestampInicio = date('Y-m-d H:i:s');
+        }
 
-        // También la pasamos al frontend como hidden
+        if (empty($_SESSION['fecha_apertura_orden_' . $idOrden])) {
+            $_SESSION['fecha_apertura_orden_' . $idOrden] = $timestampInicio;
+        }
         $fechaApertura = $_SESSION['fecha_apertura_orden_' . $idOrden];
 
         // 3. Cargar Vista

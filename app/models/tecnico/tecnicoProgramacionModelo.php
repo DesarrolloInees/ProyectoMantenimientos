@@ -177,10 +177,11 @@ class tecnicoProgramacionModelo
         }
     }
 
-    // ── GUARDAR GPS DE INICIO ──
+    // ── GUARDAR GPS DE INICIO, HORA ENTRADA Y MONITOREO LIVE ──
     public function iniciarServicioGPS(int $idOrden, $lat, $lon): bool
     {
         try {
+            // 1. Guardar GPS en ordenes_servicio_complemento
             $sql = "INSERT INTO ordenes_servicio_complemento 
                     (id_orden_servicio, latitud_inicio, longitud_inicio, estado) 
                     VALUES (:id_orden, :lat, :lon, 1)
@@ -189,11 +190,64 @@ class tecnicoProgramacionModelo
                     longitud_inicio = IFNULL(longitud_inicio, VALUES(longitud_inicio))";
 
             $stmt = $this->conn->prepare($sql);
-            return $stmt->execute([
+            $stmt->execute([
                 ':id_orden' => $idOrden,
                 ':lat' => $lat,
                 ':lon' => $lon
             ]);
+
+            // 2. Auto-registrar hora_entrada en ordenes_servicio si no tiene una
+            $sqlHora = "UPDATE ordenes_servicio 
+                        SET hora_entrada = IFNULL(hora_entrada, CURTIME()) 
+                        WHERE id_ordenes_servicio = :id_orden";
+            $stmtHora = $this->conn->prepare($sqlHora);
+            $stmtHora->execute([':id_orden' => $idOrden]);
+
+            // 3. PENDIENTE DE IMPLEMENTACIÓN — Monitoreo live desactivado temporalmente
+        // Se comentó porque la tabla monitoreo_motorizados_live aún no está lista
+        // para recibir registros en este flujo. Revisar cuando se retome el módulo.
+        /*
+        $sqlOrdenInfo = "SELECT id_tecnico, id_cliente, id_punto, id_tipo_mantenimiento, fecha_visita, hora_entrada 
+                            FROM ordenes_servicio 
+                            WHERE id_ordenes_servicio = :id_orden";
+        $stmtInfo = $this->conn->prepare($sqlOrdenInfo);
+        $stmtInfo->execute([':id_orden' => $idOrden]);
+        $info = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+
+        if ($info && !empty($info['id_tecnico'])) {
+            $sqlCheckLive = "SELECT id_monitoreo FROM monitoreo_motorizados_live 
+                                WHERE id_tecnico = :id_tecnico 
+                                    AND id_punto = :id_punto 
+                                    AND fecha_servicio = :fecha
+                                    AND estado_actual = 'En Progreso' 
+                                LIMIT 1";
+            $stmtCheck = $this->conn->prepare($sqlCheckLive);
+            $stmtCheck->execute([
+                ':id_tecnico' => $info['id_tecnico'],
+                ':id_punto' => $info['id_punto'],
+                ':fecha' => $info['fecha_visita'] ?: date('Y-m-d')
+            ]);
+            $existeLive = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+            if (!$existeLive) {
+                $horaInicio = ($info['fecha_visita'] ?: date('Y-m-d')) . ' ' . ($info['hora_entrada'] ?: date('H:i:s'));
+                $sqlLive = "INSERT INTO monitoreo_motorizados_live 
+                            (id_tecnico, id_cliente, id_punto, id_tipo_mantenimiento, fecha_servicio, hora_inicio, estado_actual) 
+                            VALUES (:id_tecnico, :id_cliente, :id_punto, :id_tipo, :fecha, :hora_inicio, 'En Progreso')";
+                $stmtLive = $this->conn->prepare($sqlLive);
+                $stmtLive->execute([
+                    ':id_tecnico' => $info['id_tecnico'],
+                    ':id_cliente' => $info['id_cliente'],
+                    ':id_punto' => $info['id_punto'],
+                    ':id_tipo' => $info['id_tipo_mantenimiento'] ?: 1,
+                    ':fecha' => $info['fecha_visita'] ?: date('Y-m-d'),
+                    ':hora_inicio' => $horaInicio
+                ]);
+            }
+        }
+        */
+
+            return true;
         } catch (PDOException $e) {
             error_log("Error iniciarServicioGPS: " . $e->getMessage());
             return false;

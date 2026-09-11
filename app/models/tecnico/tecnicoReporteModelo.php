@@ -34,6 +34,9 @@ class tecnicoReporteModelo
                     os.id_cliente,                    
                     os.id_punto,                     
                     os.fecha_visita,
+                    os.hora_entrada,
+                    os.hora_salida,
+                    os.id_tipo_mantenimiento,
                     c.nombre_cliente,
                     p.nombre_punto,
                     p.direccion,
@@ -374,6 +377,37 @@ class tecnicoReporteModelo
                 ':id_orden' => $datos['id_ordenes_servicio'],
                 ':id_tecnico' => $datos['id_tecnico']
             ]);
+
+            // PENDIENTE DE IMPLEMENTACIÓN — Monitoreo live desactivado temporalmente
+            // Se comentó porque la tabla monitoreo_motorizados_live aún no está lista
+            // para recibir registros en este flujo. Revisar cuando se retome el módulo.
+            /*
+            if ($resultado) {
+                try {
+                    $sqlLive = "UPDATE monitoreo_motorizados_live 
+                        SET estado_actual = 'Finalizado', 
+                            hora_fin = NOW(), 
+                            duracion_real_minutos = TIMESTAMPDIFF(MINUTE, hora_inicio, NOW()),
+                            id_tipo_mantenimiento = :tipo_final
+                        WHERE id_tecnico = :id_tecnico 
+                        AND (id_punto = :id_punto OR :id_punto_null IS NULL)
+                        AND estado_actual = 'En Progreso'
+                        ORDER BY id_monitoreo DESC LIMIT 1";
+        $stmtLive = $this->conn->prepare($sqlLive);
+        $puntoId = !empty($datos['id_punto']) ? $datos['id_punto'] : null;
+        $stmtLive->execute([
+            ':tipo_final' => $datos['id_tipo_mantenimiento'],
+            ':id_tecnico' => $datos['id_tecnico'],
+            ':id_punto' => $puntoId,
+            ':id_punto_null' => $puntoId
+        ]);
+    } catch (Exception $eLive) {
+        error_log("Error finalizando monitoreo live en reporte: " . $eLive->getMessage());
+    }
+}
+*/
+
+            return $resultado;
         } catch (PDOException $e) {
             error_log("Error guardarReporteTecnico: " . $e->getMessage());
             return false;
@@ -492,7 +526,7 @@ class tecnicoReporteModelo
                 FROM orden_servicio_repuesto ro
                 INNER JOIN repuesto r ON ro.id_repuesto = r.id_repuesto
                 WHERE ro.id_orden_servicio = :id";
-        
+
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([':id' => $idOrdenServicio]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -543,7 +577,7 @@ class tecnicoReporteModelo
                 LEFT JOIN cliente c ON o.id_cliente = c.id_cliente
                 LEFT JOIN punto p ON o.id_punto = p.id_punto
                 WHERE o.id_ordenes_servicio = :id";
-        
+
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([':id' => $idOrden]);
         return $stmt->fetch(PDO::FETCH_ASSOC);

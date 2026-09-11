@@ -22,6 +22,14 @@ function validarYActualizar() {
     if (!$('select[name="id_estado_maquina"]').val()) { alert('⚠️ Selecciona el Estado Final.'); return false; }
     if (!$('textarea[name="actividades_realizadas"]').val().trim()) { alert('⚠️ Describe las actividades.'); return false; }
 
+    // Advertencia: Correctivo sin repuestos
+    let textoTipoEdit = $('select[name="id_tipo_mantenimiento"] option:selected').text().toUpperCase().trim();
+    if (textoTipoEdit.includes('CORRECTIVO') && repuestosSeleccionados.length === 0) {
+        if (!confirm('⚠️ ¡ADVERTENCIA!\n\nEste servicio es Mantenimiento CORRECTIVO pero NO has agregado repuestos.\nEsto es inusual.\n\n¿Estás seguro de guardar sin repuestos?')) {
+            return false;
+        }
+    }
+
     if (!confirm('¿Estás seguro de guardar estos cambios?')) return false;
 
     const btnGuardar = document.querySelector('button[onclick="validarYActualizar()"]');

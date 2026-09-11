@@ -115,6 +115,81 @@ class programacionCrearModelo
     }
 
     /**
+     * Obtener puntos pendientes para una o múltiples zonas (usado en el modal del calendario semanal)
+     */
+    public function obtenerPuntosPorMultiplesZonas($id_delegacion, $zonas, $clientes_ids = [])
+    {
+        if (!is_array($zonas)) {
+            $zonas = array_map('trim', explode(',', $zonas));
+        }
+        $zonas = array_values(array_filter($zonas));
+
+        if (empty($zonas)) {
+            return [];
+        }
+
+        $placeholdersZona = [];
+        $params = [];
+
+        if (!empty($id_delegacion)) {
+            $params[':delegacion'] = $id_delegacion;
+        }
+
+        foreach ($zonas as $k => $z) {
+            $key = ':zona_' . $k;
+            $placeholdersZona[] = $key;
+            $params[$key] = $z;
+        }
+
+        $sql = "SELECT p.id_punto, p.nombre_punto, p.direccion, p.zona, p.fecha_ultima_visita, 
+                        c.nombre_cliente, c.codigo_cliente,
+                        m.nombre_municipio,
+                        (SELECT mq.device_id FROM maquina mq WHERE mq.id_punto = p.id_punto AND mq.estado = 1 ORDER BY mq.id_maquina ASC LIMIT 1) as device_id,
+                        (SELECT tm.nombre_tipo_maquina FROM maquina mq2 
+                            INNER JOIN tipo_maquina tm ON mq2.id_tipo_maquina = tm.id_tipo_maquina 
+                            WHERE mq2.id_punto = p.id_punto AND mq2.estado = 1 ORDER BY mq2.id_maquina ASC LIMIT 1) as tipo_maquina,
+                        CASE WHEN EXISTS (SELECT 1 FROM maquina mq3 WHERE mq3.id_punto = p.id_punto AND mq3.activo_operativo = 0 AND mq3.estado = 1) THEN 1 ELSE 0 END as fuera_de_servicio,
+                        DATEDIFF(NOW(), p.fecha_ultima_visita) as dias_sin_visita
+                FROM punto p
+                INNER JOIN cliente c ON p.id_cliente = c.id_cliente
+                LEFT JOIN municipio m ON p.id_municipio = m.id_municipio
+                WHERE p.estado = 1 
+                    AND p.zona IN (" . implode(',', $placeholdersZona) . ")
+                    AND (
+                        EXISTS (SELECT 1 FROM maquina mq4 WHERE mq4.id_punto = p.id_punto AND mq4.activo_operativo = 0 AND mq4.estado = 1)
+                        OR p.fecha_ultima_visita IS NULL 
+                        OR DATEDIFF(NOW(), p.fecha_ultima_visita) >= 30
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 
+                        FROM ordenes_servicio os 
+                        WHERE os.id_punto = p.id_punto 
+                        AND os.estado = 2
+                    )";
+
+        if (!empty($id_delegacion)) {
+            $sql .= " AND p.id_delegacion = :delegacion";
+        }
+
+        // Filtro de clientes
+        if (!empty($clientes_ids) && is_array($clientes_ids)) {
+            $placeholders = [];
+            foreach ($clientes_ids as $k => $cliente_id) {
+                $key = ':cliente' . $k;
+                $placeholders[] = $key;
+                $params[$key] = $cliente_id;
+            }
+            $sql .= " AND p.id_cliente IN (" . implode(',', $placeholders) . ")";
+        }
+
+        $sql .= " ORDER BY fuera_de_servicio DESC, p.zona ASC, p.fecha_ultima_visita ASC, p.nombre_punto ASC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Contar puntos pendientes por zona
      * Filtrado por clientes seleccionados
      */
@@ -383,7 +458,8 @@ class programacionCrearModelo
             return [];
 
         $in = str_repeat('?,', count($ids) - 1) . '?';
-        $sql = "SELECT p.id_punto, p.nombre_punto, p.zona, c.nombre_cliente 
+        $sql = "SELECT p.id_punto, p.nombre_punto, p.zona, c.nombre_cliente,
+                       CASE WHEN EXISTS (SELECT 1 FROM maquina mq3 WHERE mq3.id_punto = p.id_punto AND mq3.activo_operativo = 0 AND mq3.estado = 1) THEN 1 ELSE 0 END as es_fuera_servicio
                 FROM punto p
                 INNER JOIN cliente c ON p.id_cliente = c.id_cliente 
                 WHERE p.id_punto IN ($in)";

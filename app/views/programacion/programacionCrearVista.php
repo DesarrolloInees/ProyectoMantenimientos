@@ -413,7 +413,7 @@
                                 foreach ($diasConfig as $dia => $config):
                                     ?>
                                     <div
-                                        class="border-2 <?= $config['border'] ?> rounded-lg p-4 <?= $config['bg'] ?> transition hover:shadow-md">
+                                        class="border-2 <?= $config['border'] ?> rounded-lg p-4 <?= $config['bg'] ?> transition hover:shadow-md" id="card_dia_<?= $dia ?>">
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                                             <div class="md:col-span-1">
                                                 <div class="flex items-center mb-2">
@@ -455,20 +455,26 @@
                                                         </label>
                                                     <?php endforeach; ?>
                                                 </div>
-                                                <p class="text-xs text-gray-600 mt-1 flex items-center">
-                                                    <i class="fas fa-check-square mr-1"></i> Marca las zonas que deseas incluir en
-                                                    este día
-                                                </p>
+                                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-2">
+                                                    <p class="text-xs text-gray-600 flex items-center">
+                                                        <i class="fas fa-check-square mr-1"></i> Marca una o varias zonas para el día
+                                                    </p>
+                                                    <button type="button" id="btn_modal_puntos_<?= $dia ?>"
+                                                        onclick="abrirModalPuntosDia('<?= $dia ?>')"
+                                                        disabled
+                                                        class="opacity-50 cursor-not-allowed text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg font-bold shadow-sm transition flex items-center justify-center">
+                                                        <i class="fas fa-tasks mr-1.5"></i> Elegir Puntos (<span id="count_puntos_<?= $dia ?>">0</span>)
+                                                    </button>
+                                                </div>
+                                                <!-- Contenedor dinámico de inputs ocultos con los puntos elegidos -->
+                                                <div id="hidden_puntos_dia_<?= $dia ?>"></div>
                                             </div>
                                         </div>
 
                                         <div id="preview_<?= $dia ?>" class="mt-3 hidden">
-                                            <div class="bg-white p-3 rounded border border-<?= $config['color'] ?>-200">
-                                                <p class="text-xs font-bold text-gray-700 mb-1">
-                                                    <i class="fas fa-route mr-1 text-<?= $config['color'] ?>-600"></i>
-                                                    Ruta configurada para <span class="capitalize"><?= $dia ?></span>:
-                                                </p>
-                                                <div id="preview_text_<?= $dia ?>" class="text-xs text-gray-600"></div>
+                                            <div class="bg-white p-3 rounded-lg border border-<?= $config['color'] ?>-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                                <div id="preview_text_<?= $dia ?>" class="text-xs text-gray-700"></div>
+                                                <div id="resumen_puntos_badge_<?= $dia ?>" class="hidden"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -495,7 +501,7 @@
     <?php endif; ?>
 </div>
 
-<!-- MODAL DE PUNTOS ALEDAÑOS -->
+<!-- MODAL DE PUNTOS ALEDAÑOS (PARA MÁQUINAS FUERA DE SERVICIO) -->
 <div id="modalAledanios" class="fixed inset-0 z-50 hidden bg-black bg-opacity-60 flex items-center justify-center p-4">
     <div
         class="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-300">
@@ -523,11 +529,78 @@
     </div>
 </div>
 
+<!-- ======================================================== -->
+<!-- MODAL: SELECCIÓN MANUAL DE PUNTOS POR DÍA / MULTI-ZONAS -->
+<!-- ======================================================== -->
+<div id="modalSeleccionPuntosDia" class="fixed inset-0 z-50 hidden bg-black bg-opacity-60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-200">
+        <!-- Encabezado -->
+        <div class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md">
+            <div>
+                <h3 class="font-bold text-lg flex items-center" id="modalDiaTitulo">
+                    <i class="fas fa-calendar-check mr-2 text-indigo-200"></i> Seleccionar Puntos
+                </h3>
+                <p class="text-xs text-indigo-100 mt-0.5" id="modalDiaSubtitulo">
+                    Zonas seleccionadas para este día
+                </p>
+            </div>
+            <button type="button" onclick="cerrarModalPuntosDia()" class="text-white hover:text-red-300 transition text-2xl font-bold focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Barra de herramientas: Buscador y Filtros -->
+        <div class="p-4 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="relative w-full sm:w-80">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i>
+                <input type="text" id="buscadorPuntosModal" onkeyup="filtrarPuntosModal()"
+                    placeholder="Buscar por punto, cliente, zona o dirección..."
+                    class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                <button type="button" onclick="marcarTodosPuntosModal(true)"
+                    class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg font-semibold transition flex items-center">
+                    <i class="fas fa-check-double mr-1.5"></i> Todos
+                </button>
+                <button type="button" onclick="marcarTodosPuntosModal(false)"
+                    class="text-xs bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg font-semibold transition flex items-center">
+                    <i class="fas fa-times mr-1.5"></i> Ninguno
+                </button>
+            </div>
+        </div>
+
+        <!-- Contenedor del listado de puntos -->
+        <div class="p-6 overflow-y-auto flex-1 bg-gray-50/50" id="modalDiaContenido">
+            <!-- Inyectado dinámicamente por JS -->
+        </div>
+
+        <!-- Pie de página del Modal -->
+        <div class="bg-white px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="text-sm font-semibold text-gray-700 flex items-center">
+                <i class="fas fa-map-pin mr-2 text-indigo-600"></i>
+                <span><strong id="modalDiaContador">0</strong> punto(s) seleccionado(s)</span>
+            </div>
+            <div class="flex space-x-2">
+                <button type="button" onclick="cerrarModalPuntosDia()"
+                    class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold text-sm transition">
+                    Cancelar
+                </button>
+                <button type="button" onclick="guardarPuntosDiaModal()"
+                    class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition flex items-center">
+                    <i class="fas fa-check mr-2"></i> Confirmar Puntos para este Día
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ============ CONFIG + LIBRERÍAS + MÓDULOS JS (orden importa) ============ -->
 <script>
     window.ProgConfig = {
         baseUrl: <?= json_encode(BASE_URL) ?>,
-        tecnicos: <?= json_encode($listaTecnicos) ?>
+        tecnicos: <?= json_encode($listaTecnicos) ?>,
+        delegacion: <?= json_encode($delegacionSeleccionada) ?>,
+        clientes: <?= json_encode($clientesSeleccionados) ?>
     };
 </script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>

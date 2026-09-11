@@ -88,9 +88,64 @@ function tieneFirmaEnCanvas() {
 }
 
 // ==========================================
+// CRONÓMETRO EN VIVO
+// ==========================================
+function iniciarCronometroVivo() {
+    const spanReloj = document.getElementById('reloj_digital');
+    if (!spanReloj) return;
+
+    const rawInicio = spanReloj.getAttribute('data-inicio');
+    if (!rawInicio) return;
+
+    const fechaInicio = new Date(rawInicio).getTime();
+    if (isNaN(fechaInicio)) return;
+
+    function tick() {
+        const ahora = new Date().getTime();
+        const diferencia = ahora - fechaInicio;
+
+        if (diferencia < 0) {
+            spanReloj.innerText = '00:00:00';
+            return;
+        }
+
+        let horas    = Math.floor(diferencia / (1000 * 60 * 60));
+        let minutos  = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+        let segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
+
+        horas    = String(horas).padStart(2, '0');
+        minutos  = String(minutos).padStart(2, '0');
+        segundos = String(segundos).padStart(2, '0');
+
+        spanReloj.innerText = horas + ':' + minutos + ':' + segundos;
+    }
+
+    tick(); // Mostrar de inmediato sin esperar 1s
+    setInterval(tick, 1000);
+}
+
+// Rellena la hora de salida con la hora actual (botón "Registrar Salida Ahora")
+function fijarHoraSalidaAhora() {
+    const ahora = new Date();
+    const hh = String(ahora.getHours()).padStart(2, '0');
+    const mm = String(ahora.getMinutes()).padStart(2, '0');
+    const horaActual = hh + ':' + mm;
+
+    const inputSalida = document.getElementById('hora_salida');
+    if (inputSalida) {
+        inputSalida.value = horaActual;
+        // Disparar blur para que calcularTiempoServicio() se ejecute
+        inputSalida.dispatchEvent(new Event('blur'));
+    }
+}
+
+// ==========================================
 // INICIALIZACIÓN CUANDO CARGA LA PÁGINA
 // ==========================================
 $(document).ready(function () {
+    // 0. Arrancar cronómetro en vivo si existe en la página
+    //iniciarCronometroVivo();
+
     // 1. Inicializar Select2
     $('.select2-movil').select2({
         width: '100%',

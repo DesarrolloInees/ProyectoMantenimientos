@@ -870,8 +870,36 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             return;
         }
 
+        // Verificar filas con CORRECTIVO sin repuestos
+        let hayCorrectivoSinRepuestos = false;
+        document.querySelectorAll('#tablaEdicion tbody tr[id^="fila_"]').forEach(function(fila) {
+            const idOrden = fila.id.split('_')[1];
+            const selServicio = fila.querySelector('[id^="sel_servicio_"]') || fila.querySelector('select[name*="id_tipo_mantenimiento"]');
+            const inputRepuestos = fila.querySelector('[id^="json_rep_"]') || fila.querySelector('input[id*="json_rep"]');
+
+            if (selServicio) {
+                const textoServicio = (selServicio.options[selServicio.selectedIndex] ? selServicio.options[selServicio.selectedIndex].text : '').toUpperCase();
+                let cantRepuestos = 0;
+                if (inputRepuestos && inputRepuestos.value) {
+                    try {
+                        const arr = JSON.parse(inputRepuestos.value || '[]');
+                        cantRepuestos = Array.isArray(arr) ? arr.length : 0;
+                    } catch(e) { cantRepuestos = 0; }
+                }
+                if (textoServicio.includes('CORRECTIVO') && cantRepuestos === 0) {
+                    hayCorrectivoSinRepuestos = true;
+                }
+            }
+        });
+
+        let mensajeModal = "¿Estás seguro de que deseas guardar todos los cambios de esta página?";
+        if (hayCorrectivoSinRepuestos) {
+            mensajeModal = "⚠️ <b>¡ADVERTENCIA!</b><br><br>Hay servicios <b>CORRECTIVOS que NO tienen repuestos</b>.<br>Esto es inusual.<br><br>¿Deseas guardar de todas formas?";
+        }
+
         window.DetalleNotificaciones.mostrarModalConfirmacion(
             "¿Estás seguro de que deseas guardar todos los cambios de esta página?",
+            mensajeModal,
             function () {
                 ejecutarGuardadoJSON();
             }

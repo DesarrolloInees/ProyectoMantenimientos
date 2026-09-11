@@ -157,17 +157,81 @@ class programacionCrearControlador
                 }
             }
 
-            $configuracion = [
-                'id_delegacion' => $delegacionSeleccionada,
-                'clientes_ids' => $clientesSeleccionados,
-                'calendario' => $calendario,
-                'fecha_inicio' => $_POST['fecha_inicio'],
-                'semanas' => intval($_POST['semanas']),
-                'max_servicios_dia' => intval($_POST['max_servicios'] ?? 5),
-                'incluir_sabado_fallidos' => isset($_POST['sabado_fallidos'])
-            ];
+            $puntosDia = $_POST['puntos_dia'] ?? [];
+            $hayPuntosManuales = false;
+            foreach ($diasSemana as $dia) {
+                if (!empty($puntosDia[$dia]) && is_array($puntosDia[$dia])) {
+                    $hayPuntosManuales = true;
+                    break;
+                }
+            }
 
-            $propuesta = $this->modelo->generarProgramacionSemanal($configuracion);
+            if ($hayPuntosManuales) {
+                $fechaInicioObj = new DateTime($_POST['fecha_inicio']);
+                $diasIndices = [
+                    'lunes' => 0,
+                    'martes' => 1,
+                    'miercoles' => 2,
+                    'jueves' => 3,
+                    'viernes' => 4,
+                    'sabado' => 5
+                ];
+
+                $todosIdsPuntos = [];
+                foreach ($diasSemana as $dia) {
+                    if (!empty($puntosDia[$dia]) && is_array($puntosDia[$dia])) {
+                        foreach ($puntosDia[$dia] as $pid) {
+                            $pidInt = intval($pid);
+                            if ($pidInt > 0 && !in_array($pidInt, $todosIdsPuntos)) {
+                                $todosIdsPuntos[] = $pidInt;
+                            }
+                        }
+                    }
+                }
+
+                $infoPuntos = $this->modelo->obtenerInfoPuntos($todosIdsPuntos);
+
+                foreach ($diasSemana as $dia) {
+                    $tecnicoDia = $_POST['tecnico_' . $dia] ?? null;
+                    if (empty($tecnicoDia) || empty($puntosDia[$dia]) || !is_array($puntosDia[$dia])) {
+                        continue;
+                    }
+
+                    $offset = $diasIndices[$dia];
+                    $fechaVisita = clone $fechaInicioObj;
+                    $fechaVisita->modify("+{$offset} days");
+                    $fechaVisitaStr = $fechaVisita->format('Y-m-d');
+
+                    foreach ($puntosDia[$dia] as $idPunto) {
+                        $idPunto = intval($idPunto);
+                        $info = $infoPuntos[$idPunto] ?? null;
+                        if ($info) {
+                            $propuesta[] = [
+                                'id_punto' => $idPunto,
+                                'id_tecnico' => $tecnicoDia,
+                                'fecha_visita' => $fechaVisitaStr,
+                                'zona' => $info['zona'] ?? '',
+                                'nombre_punto' => $info['nombre_punto'] ?? '',
+                                'nombre_cliente' => $info['nombre_cliente'] ?? '',
+                                'es_sabado_fallido' => false,
+                                'es_fuera_servicio' => !empty($info['es_fuera_servicio'])
+                            ];
+                        }
+                    }
+                }
+            } else {
+                $configuracion = [
+                    'id_delegacion' => $delegacionSeleccionada,
+                    'clientes_ids' => $clientesSeleccionados,
+                    'calendario' => $calendario,
+                    'fecha_inicio' => $_POST['fecha_inicio'],
+                    'semanas' => intval($_POST['semanas']),
+                    'max_servicios_dia' => intval($_POST['max_servicios'] ?? 5),
+                    'incluir_sabado_fallidos' => isset($_POST['sabado_fallidos'])
+                ];
+
+                $propuesta = $this->modelo->generarProgramacionSemanal($configuracion);
+            }
 
             $puntosExtra = $_POST['puntos_aledanios_extra'] ?? [];
             if (!empty($puntosExtra)) {
@@ -252,6 +316,42 @@ class programacionCrearControlador
             header("Location: index.php?pagina=programacionCrear");
             exit;
         }
+    }
+
+    /**
+     * AJAX - Obtener puntos de una o varias zonas con filtrado por delegación y clientes
+     */
+    public function obtener_puntos_zonas()
+    {
+        header('Content-Type: application/json');
+
+        $delegacion = $_GET['delegacion'] ?? ($_POST['delegacion'] ?? '');
+        $zonasRaw = $_GET['zonas'] ?? ($_POST['zonas'] ?? ($_GET['zona'] ?? ''));
+        $clientesRaw = $_GET['clientes'] ?? ($_POST['clientes'] ?? []);
+
+        if (empty($zonasRaw)) {
+            echo json_encode(['error' => 'No se especificaron zonas']);
+            exit;
+        }
+
+        if (!is_array($zonasRaw)) {
+            $zonas = array_map('trim', explode(',', $zonasRaw));
+        } else {
+            $zonas = $zonasRaw;
+        }
+
+        $clientesIds = [];
+        if (!empty($clientesRaw)) {
+            if (is_string($clientesRaw)) {
+                $clientesIds = array_map('intval', explode(',', $clientesRaw));
+            } elseif (is_array($clientesRaw)) {
+                $clientesIds = array_map('intval', $clientesRaw);
+            }
+        }
+
+        $puntos = $this->modelo->obtenerPuntosPorMultiplesZonas($delegacion, $zonas, $clientesIds);
+        echo json_encode(['puntos' => $puntos]);
+        exit;
     }
 
     /**
