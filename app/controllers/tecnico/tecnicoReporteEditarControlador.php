@@ -110,6 +110,15 @@ class tecnicoReporteEditarControlador
 
         if ($this->modelo->actualizarReporteTecnico($datos)) {
 
+            // Actualizar SOLO el tipo de mantenimiento del punto (sin tocar la fecha de última visita)
+            $ordenEdit = $this->modelo->obtenerDetalleOrdenParaEdicion($idOrdenServicio);
+            if ($ordenEdit && !empty($ordenEdit['id_punto'])) {
+                $this->modelo->actualizarTipoMantenimientoPunto(
+                    $ordenEdit['id_punto'],
+                    $datos['id_tipo_mantenimiento']
+                );
+            }
+
             // Procesar nueva Firma Canvas (Solo si el técnico dibujó una nueva)
             if (!empty($_POST['firma_base64'])) {
                 $remisionCarpeta = !empty($datos['numero_remision']) ? $datos['numero_remision'] : 'SIN_REMISION_' . $idOrdenServicio;

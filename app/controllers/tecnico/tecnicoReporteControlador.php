@@ -159,6 +159,13 @@ class tecnicoReporteControlador
 
         if ($this->modelo->guardarReporteTecnico($datos)) {
 
+            // Actualizar la última visita del punto (fecha + tipo de mantenimiento)
+            $this->modelo->actualizarUltimaVisitaPunto(
+                $idPunto,
+                $ordenRealBD['fecha_visita'] ?: date('Y-m-d'),
+                $datos['id_tipo_mantenimiento']
+            );
+
             if (!empty($datos['numero_remision'])) {
                 $this->modeloMaestro->marcarRemisionComoUsada($datos['numero_remision'], $idOrdenServicio, $idTecnicoActual);
             }

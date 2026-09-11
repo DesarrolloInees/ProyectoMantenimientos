@@ -625,4 +625,61 @@ class tecnicoReporteModelo
             return false;
         }
     }
+
+    // ==========================================
+    // ACTUALIZACIÓN DE ÚLTIMA VISITA EN TABLA PUNTO
+    // ==========================================
+
+    /**
+     * Actualiza la fecha de la última visita y el tipo de mantenimiento del punto.
+     * Se usa cuando se GUARDA/Cierra un servicio (creación del reporte).
+     *
+     * @param int    $idPunto             ID del punto a actualizar
+     * @param string $fechaVisita         Fecha de la visita (Y-m-d)
+     * @param int    $idTipoMantenimiento ID del tipo de mantenimiento realizado
+     * @return bool
+     */
+    public function actualizarUltimaVisitaPunto($idPunto, $fechaVisita, $idTipoMantenimiento)
+    {
+        try {
+            $sql = "UPDATE punto SET 
+                        fecha_ultima_visita = :fecha,
+                        id_ultimo_tipo_mantenimiento = :tipo
+                    WHERE id_punto = :id_punto";
+            $stmt = $this->conn->prepare($sql);
+            return $stmt->execute([
+                ':fecha' => $fechaVisita,
+                ':tipo' => $idTipoMantenimiento,
+                ':id_punto' => $idPunto
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error actualizarUltimaVisitaPunto: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza SOLO el tipo de mantenimiento del punto, sin tocar la fecha de última visita.
+     * Se usa cuando se EDITA un reporte ya finalizado.
+     *
+     * @param int $idPunto             ID del punto a actualizar
+     * @param int $idTipoMantenimiento ID del tipo de mantenimiento realizado
+     * @return bool
+     */
+    public function actualizarTipoMantenimientoPunto($idPunto, $idTipoMantenimiento)
+    {
+        try {
+            $sql = "UPDATE punto SET 
+                        id_ultimo_tipo_mantenimiento = :tipo
+                    WHERE id_punto = :id_punto";
+            $stmt = $this->conn->prepare($sql);
+            return $stmt->execute([
+                ':tipo' => $idTipoMantenimiento,
+                ':id_punto' => $idPunto
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error actualizarTipoMantenimientoPunto: " . $e->getMessage());
+            return false;
+        }
+    }
 }
