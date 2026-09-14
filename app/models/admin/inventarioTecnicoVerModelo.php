@@ -51,6 +51,47 @@ class InventarioTecnicoVerModelo
         }
     }
 
+    // Obtener inventario filtrado por técnico (para que cada técnico vea solo su inventario)
+    public function obtenerInventarioPorTecnico($idTecnico)
+    {
+        try {
+            $sql = "SELECT 
+                        i.id_inventario,
+                        i.cantidad_actual,
+                        i.ultima_actualizacion,
+                        t.nombre_tecnico,
+                        r.nombre_repuesto,
+                        r.codigo_referencia
+                    FROM inventario_tecnico i
+                    INNER JOIN tecnico t ON i.id_tecnico = t.id_tecnico
+                    INNER JOIN repuesto r ON i.id_repuesto = r.id_repuesto
+                    WHERE i.estado = 1 AND i.id_tecnico = :id_tecnico
+                    ORDER BY r.nombre_repuesto ASC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_tecnico', $idTecnico, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error listar inventario por técnico: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    // Obtener el id_tecnico a partir del usuario_id (para técnicos logueados)
+    public function obtenerTecnicoPorUsuarioId($usuarioId)
+    {
+        try {
+            $sql = "SELECT id_tecnico, nombre_tecnico FROM tecnico WHERE usuario_id = :uid LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':uid', $usuarioId, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
     // Borrado Lógico
     public function eliminarLogico($id)
     {

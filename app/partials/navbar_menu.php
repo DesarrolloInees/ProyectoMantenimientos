@@ -26,6 +26,19 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
             <i class="fa-solid fa-envelope mr-1.5"></i> Cronómetro Servicios Historial
         </a>
+
+
+        <!-- Inventario Técnico -->
+        <a href="<?= BASE_URL ?>inventarioTecnicoVer"
+            class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+            <i class="fa-solid fa-boxes-stacked mr-1.5"></i> Inventario Técnico
+        </a>
+
+        <!-- Solicitar Inventario -->
+        <a href="<?= BASE_URL ?>solicitarinventario"
+            class="text-gray-300 hover:bg-purple-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
+            <i class="fa-solid fa-clipboard-list mr-1.5"></i> Solicitar Inventario
+        </a>
         
 
         <!-- Dropdown: Historiales -->
@@ -257,6 +270,27 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <a href="<?= BASE_URL ?>cronometroAdmin"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-stopwatch w-5 text-center mr-1"></i> Cronómetrar Servicios Técnicos
+            </a>
+        </div>
+    </div>
+
+
+    <!-- Programación -->
+    <div class="relative group h-full flex items-center ml-2">
+        <button
+            class="text-gray-300 group-hover:bg-gray-700 group-hover:text-white px-3 py-2 rounded-md text-sm font-medium inline-flex items-center transition">
+            <span>Programación</span>
+            <i class="fas fa-chevron-down ml-2 text-xs opacity-75"></i>
+        </button>
+        <div
+            class="absolute left-0 top-12 w-60 bg-white rounded-md shadow-lg py-1 hidden group-hover:block border border-gray-200 z-[9999]">
+            <a href="<?= BASE_URL ?>programacionCrear"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-person-biking w-5 text-center mr-1 text-yellow-600"></i> Crear Programación
+            </a>
+            <a href="<?= BASE_URL ?>programacionConsolidado"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-motorcycle w-5 text-center mr-1"></i> Programación Consolidado
             </a>
         </div>
     </div>

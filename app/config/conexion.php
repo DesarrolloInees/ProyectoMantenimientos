@@ -1,11 +1,29 @@
 <?php
 // app/config/conexion.php
 
+// Configuración SMTP centralizada.
+// Los secretos SIEMPRE vienen de variables de entorno / .env (cargado con vlucas/phpdotenv).
+// No poner contraseñas reales en este archivo ni en ningún controlador.
+function smtpEnv(string $key, $default = null)
+{
+    $val = getenv($key);
+    if ($val !== false && $val !== '') {
+        return $val;
+    }
+    if (isset($_ENV[$key]) && $_ENV[$key] !== '') {
+        return $_ENV[$key];
+    }
+    if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') {
+        return $_SERVER[$key];
+    }
+    return $default;
+}
+
 class Conexion
 {
-    // Configuración
+    // Configuración de base de datos
     private $host = 'localhost';
-    private $db_name = 'inees_mantenimientos'; // Asegúrate que este sea el nombre real de tu BD nueva
+    private $db_name = 'inees_mantenimientos';
     private $username = 'root';
     private $password = '';
     private $port = '3306';
@@ -39,4 +57,37 @@ class Conexion
 
         return $this->conn;
     }
+}
+
+/**
+ * Configuración SMTP para notificaciones
+ * Centralizada para evitar credenciales dispersas en los controladores.
+ *
+ * Lee únicamente de variables de entorno / .env:
+ *   SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_PORT, SMTP_SECURE
+ */
+function getConfiguracionSmtp(): array
+{
+    $host   = smtpEnv('SMTP_HOST', 'smtp.gmail.com');
+    $user   = smtpEnv('SMTP_USER', 'ineesmensajesautomaticos@gmail.com');
+    $pass   = smtpEnv('SMTP_PASS', '');
+    $port   = (int) smtpEnv('SMTP_PORT', 465);
+    $secure = strtolower((string) smtpEnv('SMTP_SECURE', 'ssl'));
+
+    if ($pass === '') {
+        throw new RuntimeException(
+            'Falta SMTP_PASS en variables de entorno/.env. ' .
+            'Configúralo en el archivo .env (ver .env.example) sin commitear secretos.'
+        );
+    }
+
+    return [
+        'host'      => $host,
+        'user'      => $user,
+        'pass'      => $pass,
+        'port'      => $port,
+        'secure'    => $secure,
+        'from'      => $user,
+        'from_name' => 'Sistema I-Nexis',
+    ];
 }

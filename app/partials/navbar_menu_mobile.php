@@ -25,6 +25,21 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <i class="fa-regular fa-envelope w-6 text-center text-blue-400 mr-2"></i> Cronómetro Servicios Historial
         </a>
 
+
+        <!-- Inventario Técnico -->
+        <a href="<?= BASE_URL ?>inventarioTecnicoVer"
+            class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
+            <i class="fa-solid fa-boxes-stacked w-6 text-center text-blue-400 mr-2"></i> Inventario Técnico
+        </a>
+
+
+
+        <!-- Solicitar Inventario -->
+        <a href="<?= BASE_URL ?>solicitarinventario"
+            class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
+            <i class="fa-solid fa-clipboard-list w-6 text-center text-purple-400 mr-2"></i> Solicitar Inventario
+        </a>
+
         <!-- Acordeón: Historiales y Consultas -->
         <details class="group border-b border-gray-700/50">
             <summary class="flex items-center justify-between text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold cursor-pointer transition select-none">
@@ -249,6 +264,26 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <a href="<?= BASE_URL ?>parqueaderoAdmin"
                 class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
                 <i class="fa-solid fa-receipt mr-2"></i> Administrar Facturas Parqueadero
+            </a>
+        </div>
+    </details>
+
+
+    <!-- Programación -->
+    <details class="group border-b border-gray-700">
+        <summary
+            class="flex justify-between items-center cursor-pointer list-none text-gray-300 py-3 px-3 hover:bg-gray-700 rounded select-none">
+            <span class="font-bold"><i class="fa-solid fa-person-biking mr-3 w-5 text-center"></i> Programación</span>
+            <span class="transition group-open:rotate-180"><i class="fas fa-chevron-down"></i></span>
+        </summary>
+        <div class="text-gray-400 mt-2 mb-2 pl-4 bg-gray-800 rounded-lg py-2">
+            <a href="<?= BASE_URL ?>programacionCrear"
+                class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-file-pdf text-yellow-600 mr-2"></i> Crear Programación
+            </a>
+            <a href="<?= BASE_URL ?>programacionConsolidado"
+                class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-motorcycle mr-2"></i> Programación Consolidado
             </a>
         </div>
     </details>

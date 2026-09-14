@@ -82,10 +82,17 @@
                 </button>
             <?php endif; ?>
 
-            <a href="<?= BASE_URL ?>inventarioTecnicoCrear"
-                class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md flex items-center gap-2 text-sm">
-                <i class="fas fa-plus"></i> Asignar Stock
-            </a>
+            <?php if (!isset($_SESSION['nivel_acceso']) || (int)$_SESSION['nivel_acceso'] !== 3): ?>
+                <a href="<?= BASE_URL ?>inventarioTecnicoCrear"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md flex items-center gap-2 text-sm">
+                    <i class="fas fa-plus"></i> Asignar Stock
+                </a>
+            <?php else: ?>
+                <a href="<?= BASE_URL ?>solicitarinventario"
+                    class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700 transition shadow-md flex items-center gap-2 text-sm">
+                    <i class="fas fa-clipboard-list"></i> Solicitar Repuestos
+                </a>
+            <?php endif; ?>
         </div>
 
 
@@ -127,13 +134,20 @@
                                 </span>
                             </td>
                             <td class="p-4 text-right space-x-2">
-                                <a href="<?= BASE_URL ?>inventarioTecnicoEditar?id=<?= $item['id_inventario'] ?>"
-                                    class="text-blue-500 hover:text-blue-700 bg-blue-50 p-2 rounded-full hover:bg-blue-100 transition inline-block"><i
-                                        class="fas fa-edit"></i></a>
-                                <a href="<?= BASE_URL ?>inventarioTecnicoEliminar?id=<?= $item['id_inventario'] ?>"
-                                    onclick="return confirm('¿Seguro?');"
-                                    class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-full hover:bg-red-100 transition inline-block"><i
-                                        class="fas fa-trash-alt"></i></a>
+                                <?php if (!isset($_SESSION['nivel_acceso']) || (int)$_SESSION['nivel_acceso'] !== 3): ?>
+                                    <a href="<?= BASE_URL ?>inventarioTecnicoEditar?id=<?= $item['id_inventario'] ?>"
+                                        class="text-blue-500 hover:text-blue-700 bg-blue-50 p-2 rounded-full hover:bg-blue-100 transition inline-block"><i
+                                            class="fas fa-edit"></i></a>
+                                    <a href="<?= BASE_URL ?>inventarioTecnicoEliminar?id=<?= $item['id_inventario'] ?>"
+                                        onclick="return confirm('¿Seguro?');"
+                                        class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-full hover:bg-red-100 transition inline-block"><i
+                                            class="fas fa-trash-alt"></i></a>
+                                <?php else: ?>
+                                    <a href="<?= BASE_URL ?>solicitarinventario"
+                                        class="text-purple-600 hover:text-purple-800 bg-purple-50 p-2 rounded-full hover:bg-purple-100 transition inline-block">
+                                        <i class="fas fa-clipboard-list"></i>
+                                    </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

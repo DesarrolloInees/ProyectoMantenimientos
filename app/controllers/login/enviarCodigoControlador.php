@@ -73,17 +73,19 @@ class enviarCodigoControlador
 
         $mail = new PHPMailer(true);
         try {
+            $smtp = getConfiguracionSmtp();
             $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
+            $mail->Host       = $smtp['host'];
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'ineesmensajesautomaticos@gmail.com';
-            // Recuerda poner tu contraseña de aplicación real aquí
-            $mail->Password   = 'bhoh svdq qvfl rxwy';
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port       = 465;
+            $mail->Username   = $smtp['user'];
+            $mail->Password   = $smtp['pass'];
+            $mail->SMTPSecure = ($smtp['secure'] === 'tls')
+                ? PHPMailer::ENCRYPTION_STARTTLS
+                : PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port       = $smtp['port'];
             $mail->CharSet    = 'UTF-8';
 
-            $mail->setFrom('ineesmensajesautomaticos@gmail.com', 'Sistema I-Nexis');
+            $mail->setFrom($smtp['from'], 'Sistema I-Nexis');
             $mail->addAddress($email);
             $mail->isHTML(true);
             $mail->Subject = 'Tu código de recuperación I-Nexis';

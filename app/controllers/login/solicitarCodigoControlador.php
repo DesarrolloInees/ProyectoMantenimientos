@@ -65,28 +65,34 @@ class solicitarCodigoControlador
 
     private function ejecutarEnvioEmail($email, $codigo)
     {
+        // Cargar autoload desde la raíz del proyecto
         require_once __DIR__ . '/../../../vendor/autoload.php';
-        // ... (Tu código de PHPMailer sigue igual) ...
+
+        // Obtener configuración SMTP centralizada
+        $smtp = getConfiguracionSmtp();
+
         $mail = new PHPMailer(true);
         try {
             $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
+            $mail->Host       = $smtp['host'];
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'ineesmensajesautomaticos@gmail.com';
-            $mail->Password   = 'bhoh svdq qvfl rxwy'; // OJO: Usa variables de entorno
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port       = 465;
+            $mail->Username   = $smtp['user'];
+            $mail->Password   = $smtp['pass'];
+            $mail->SMTPSecure = ($smtp['secure'] === 'tls')
+                ? PHPMailer::ENCRYPTION_STARTTLS
+                : PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port       = $smtp['port'];
             $mail->CharSet    = 'UTF-8';
 
-            $mail->setFrom('ineesmensajesautomaticos@gmail.com', 'Sistema I-Nexis');
+            $mail->setFrom($smtp['from'], $smtp['from_name']);
             $mail->addAddress($email);
             $mail->isHTML(true);
-            $mail->Subject = 'Tu codigo de recuperacion I-Nexis';
-            $mail->Body    = "Hola,<br><br>Tu código es: <b>$codigo</b>";
+            $mail->Subject = 'Tu código de recuperación I-Nexis';
+            $mail->Body    = "Hola,<br><br>Tu código para recuperar tu contraseña es: <b>$codigo</b><br>Expira en 15 min.";
 
             $mail->send();
         } catch (Exception $e) {
-            error_log("Error Mailer: " . $mail->ErrorInfo);
+            error_log("Error PHPMailer enviar código: " . $mail->ErrorInfo);
         }
     }
 }

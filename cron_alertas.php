@@ -4,6 +4,16 @@
 define('ENTRADA_PRINCIPAL', true);
 $_SERVER['REQUEST_METHOD'] = 'POST';
 
+// Cargar variables de entorno (.env) — necesario porque este cron
+// no pasa por index.php, donde normalmente se carga Dotenv.
+// Así getConfiguracionSmtp() puede leer SMTP_PASS.
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+    if (class_exists(Dotenv\Dotenv::class) && file_exists(__DIR__ . '/.env')) {
+        Dotenv\Dotenv::createImmutable(__DIR__)->safeLoad();
+    }
+}
+
 require_once __DIR__ . '/app/controllers/notificaciones/notificacionesLogisticaControlador.php';
 
 // 1. Instanciamos el controlador primero
