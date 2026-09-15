@@ -4,7 +4,7 @@
 <style>
     .rastreo-wrapper {
         background: #f8fafc;
-        padding: 1.5rem;
+        padding: 1.5rem;R
         border-radius: 12px;
     }
 
@@ -56,6 +56,27 @@
 
     .btn-buscar:hover {
         background: #1d4ed8;
+    }
+
+    .btn-excel {
+        background: #16a34a;
+        color: white;
+        border: none;
+        padding: 0.65rem 1.5rem;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+        height: 42px;
+    }
+
+    .btn-excel:hover {
+        background: #15803d;
+    }
+
+    .btn-excel:disabled {
+        background: #86efac;
+        cursor: not-allowed;
     }
 
     #mapaRastreo {
@@ -151,6 +172,7 @@
             </select>
         </div>
         <button class="btn-buscar" onclick="cargarRuta()"><i class="fas fa-search"></i> Trazar Ruta</button>
+        <button class="btn-excel" id="btnExcelPrimer" onclick="exportarExcelPrimerServicio()"><i class="fas fa-file-excel"></i> <span id="txtBtnExcelPrimer">Excel Primer Servicio</span></button>
     </div>
 
     <div id="panelInfoRuta" style="display: none; background: #fff; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 4px solid #16a34a;">
@@ -170,6 +192,10 @@
     let miMapa;
     let marcadoresLayer;
     let lineasLayer;
+
+    // Últimos datos trazados: se reutilizan para el Excel (mismo lineamiento que exportarExcelVista / excel-export.js)
+    let ultimaRuta = [];
+    let ultimaFecha = '';
 
     // Paleta de colores para cuando eligen "Todos los técnicos"
     const coloresLineas = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#ea580c'];
@@ -211,6 +237,8 @@
             dataType: 'json',
             success: function(res) {
                 if (res.success) {
+                    ultimaRuta = res.data || [];
+                    ultimaFecha = fecha;
                     dibujarRuta(res.data);
                 } else {
                     alert(res.msj);
@@ -381,6 +409,121 @@
             });
         } else {
             $('#panelInfoRuta').hide();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // REPORTE EXCEL: Primer servicio por técnico + detalle de inicios
+    // Lineamiento: SheetJS global (plantillaVista.php) igual que
+    // exportarExcelVista.php / js/programacion/excel-export.js
+    // Hoja 1 "Primer Servicio": 1 fila por técnico (el de la hora mínima)
+    // Hoja 2 "Detalle": todos los inicios del día
+    // Columnas: Fecha | Técnico | Punto | Hora Llegada | Observaciones (vacía para diligenciar)
+    // ─────────────────────────────────────────────────────────────
+    function exportarExcelPrimerServicio() {
+        if (typeof XLSX === "undefined") {
+            alert("Error: Librería SheetJS no cargada.");
+            return;
+        }
+
+        if (!ultimaRuta || ultimaRuta.length === 0) {
+            alert("Primero trace una ruta con el botón 'Trazar Ruta'.");
+            return;
+        }
+
+        const btn = document.getElementById('btnExcelPrimer');
+        const txt = document.getElementById('txtBtnExcelPrimer');
+        const txtOriginal = txt ? txt.innerHTML : '';
+
+        if (btn) btn.disabled = true;
+        if (txt) txt.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Generando...";
+
+        try {
+            // Los datos ya vienen ORDER BY id_tecnico, hora_entrada, así que
+            // el primer registro con hora_entrada de cada técnico es su primer servicio.
+            // Agrupamos defensivamente por si el orden cambia.
+            const porTecnico = {};
+            ultimaRuta.forEach(function(s) {
+                const key = s.id_tecnico || s.nombre_tecnico || 'SIN_TECNICO';
+                if (!porTecnico[key]) porTecnico[key] = [];
+                porTecnico[key].push(s);
+            });
+
+            const horaAMinutos = function(h) {
+                if (!h) return 99999;
+                const partes = String(h).substring(0, 5).split(':');
+                if (partes.length < 2) return 99999;
+                const hh = parseInt(partes[0], 10);
+                const mm = parseInt(partes[1], 10);
+                if (isNaN(hh) || isNaN(mm)) return 99999;
+                return hh * 60 + mm;
+            };
+
+            const normalizarHora = function(h) {
+                if (!h) return '';
+                return String(h).substring(0, 5); // "08:00:00" -> "08:00"
+            };
+
+            const filaExcel = function(s, fecha) {
+                return {
+                    "Fecha": fecha || s.fecha_visita || '',
+                    "Técnico": s.nombre_tecnico || '',
+                    "Cliente": s.nombre_cliente || '',
+                    "Punto": s.nombre_punto || '',
+                    "Hora Llegada": normalizarHora(s.hora_entrada),
+                    "Observaciones": ''
+                };
+            };
+
+            const resumen = [];
+            const detalle = [];
+
+            Object.keys(porTecnico).sort().forEach(function(key) {
+                const servicios = porTecnico[key].slice().sort(function(a, b) {
+                    return horaAMinutos(a.hora_entrada) - horaAMinutos(b.hora_entrada);
+                });
+
+                // Detalle: todos los inicios ordenados por hora
+                servicios.forEach(function(s) {
+                    detalle.push(filaExcel(s, ultimaFecha));
+                });
+
+                // Resumen: solo el primero con hora de entrada registrada
+                const primero = servicios.find(function(s) { return s.hora_entrada; }) || servicios[0];
+                if (primero) resumen.push(filaExcel(primero, ultimaFecha));
+            });
+
+            if (resumen.length === 0) {
+                alert("No hay horas de entrada registradas para exportar.");
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+            const wsResumen = XLSX.utils.json_to_sheet(resumen);
+            const wsDetalle = XLSX.utils.json_to_sheet(detalle);
+
+            const anchos = [
+                { wch: 12 }, // Fecha
+                { wch: 30 }, // Técnico
+                { wch: 30 }, // Cliente
+                { wch: 30 }, // Punto
+                { wch: 14 }, // Hora Llegada
+                { wch: 40 }  // Observaciones
+            ];
+            wsResumen['!cols'] = anchos;
+            wsDetalle['!cols'] = anchos;
+
+            XLSX.utils.book_append_sheet(wb, wsResumen, "Primer Servicio");
+            XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle");
+
+            const nombreArchivo = "Primer_Servicio_" + (ultimaFecha || new Date().toISOString().slice(0, 10)) + ".xlsx";
+            XLSX.writeFile(wb, nombreArchivo);
+        } catch (error) {
+            console.error("Error al generar Excel:", error);
+            alert("Hubo un error al generar el Excel.");
+        } finally {
+            if (btn) btn.disabled = false;
+            if (txt) txt.innerHTML = txtOriginal || "Excel Primer Servicio";
         }
     }
 </script>

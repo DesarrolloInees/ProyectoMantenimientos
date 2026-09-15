@@ -29,6 +29,8 @@ class rastreoTecnicoModelo
             $sql = "SELECT 
                         os.id_ordenes_servicio,
                         os.id_tecnico,
+                        os.fecha_visita,
+                        os.actividades_realizadas AS observacion_servicio,
                         c.nombre_cliente,
                         p.nombre_punto,
                         os.hora_entrada,
