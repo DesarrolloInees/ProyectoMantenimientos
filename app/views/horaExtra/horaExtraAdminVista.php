@@ -251,11 +251,20 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <button type="button"
-                                    onclick='abrirModalAuditoria(<?= json_encode($r) ?>, <?= json_encode($fotos) ?>)'
-                                    class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-2 px-3 rounded-lg font-bold text-xs transition inline-flex items-center gap-1.5">
-                                    <i class="fas fa-search"></i> Auditar / Ver
-                                </button>
+                                <div class="inline-flex items-center gap-1.5">
+                                    <button type="button"
+                                        onclick='abrirModalAuditoria(<?= json_encode($r) ?>, <?= json_encode($fotos) ?>)'
+                                        class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-2 px-3 rounded-lg font-bold text-xs transition inline-flex items-center gap-1.5">
+                                        <i class="fas fa-search"></i> Auditar / Ver
+                                    </button>
+                                    <?php if ((int) $r['id_estado_aprobacion'] !== 2): ?>
+                                        <button type="button" title="Borrar registro y fotos"
+                                            onclick="eliminarHoraExtra(<?= (int) $r['id_registro_he'] ?>, '<?= htmlspecialchars(addslashes($r['nombre_tecnico']), ENT_QUOTES) ?>', <?= count($fotos) ?>)"
+                                            class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-2 px-3 rounded-lg font-bold text-xs transition inline-flex items-center gap-1.5">
+                                            <i class="fas fa-trash"></i> Borrar
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -451,6 +460,31 @@
             cerrarModalAuditoria();
         }
     });
+
+    // Borrado MANUAL fila por fila (pendientes/rechazadas). Las aprobadas ni muestran botón.
+    function eliminarHoraExtra(idRegistro, nombreTecnico, numFotos) {
+        if (!idRegistro) return;
+        const msg = `¿Eliminar el registro de "${nombreTecnico}" y sus ${numFotos} foto(s)?\n\nEsta acción no se puede deshacer.`;
+        if (!confirm(msg)) return;
+
+        $.ajax({
+            url: 'index.php?pagina=horaExtraAdmin&accion=ajaxEliminarRegistro',
+            type: 'POST',
+            data: { id_registro: idRegistro },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    alert('✅ ' + res.msj);
+                    location.reload();
+                } else {
+                    alert('❌ ' + res.msj);
+                }
+            },
+            error: function () {
+                alert('❌ Error al procesar la solicitud.');
+            }
+        });
+    }
 </script>
 
 <script>

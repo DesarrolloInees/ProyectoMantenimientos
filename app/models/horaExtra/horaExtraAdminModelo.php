@@ -121,4 +121,62 @@ class horaExtraAdminModelo
             return false;
         }
     }
+
+    // Obtener las rutas de fotos de un registro (para borrado físico)
+    public function obtenerRutasEvidencias($idRegistro)
+    {
+        try {
+            $sql = "SELECT ruta_archivo FROM evidencia_horas_extra WHERE id_registro_he = :id_registro";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id_registro' => $idRegistro]);
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo rutas evidencias HE: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    // Obtener un registro puntual (para validar estado antes de borrar)
+    public function obtenerRegistroPorId($idRegistro)
+    {
+        try {
+            $sql = "SELECT id_registro_he, id_estado_aprobacion FROM registro_horas_extra WHERE id_registro_he = :id_registro LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id_registro' => $idRegistro]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo registro HE por id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Borrado manual completo: evidencias + registro (transaccional)
+    public function eliminarRegistroCompleto($idRegistro)
+    {
+        try {
+            $this->conn->beginTransaction();
+
+            $sql1 = "DELETE FROM evidencia_horas_extra WHERE id_registro_he = :id_registro";
+            $stmt1 = $this->conn->prepare($sql1);
+            $stmt1->execute([':id_registro' => $idRegistro]);
+
+            $sql2 = "DELETE FROM registro_horas_extra WHERE id_registro_he = :id_registro";
+            $stmt2 = $this->conn->prepare($sql2);
+            $stmt2->execute([':id_registro' => $idRegistro]);
+
+            if ($stmt2->rowCount() === 0) {
+                $this->conn->rollBack();
+                return false;
+            }
+
+            $this->conn->commit();
+            return true;
+        } catch (PDOException $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            error_log("Error eliminando registro HE: " . $e->getMessage());
+            return false;
+        }
+    }
 }

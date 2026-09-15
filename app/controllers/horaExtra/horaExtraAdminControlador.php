@@ -90,4 +90,53 @@ class horaExtraAdminControlador
         echo json_encode(['success' => false, 'msj' => 'No se pudo actualizar el registro.']);
         exit;
     }
+
+    // Borrado MANUAL desde el admin: fila + fotos. Las APROBADAS (2) no se tocan.
+    public function ajaxEliminarRegistro()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'msj' => 'Método no permitido.']);
+            exit;
+        }
+
+        $idRegistro = isset($_POST['id_registro']) ? (int) $_POST['id_registro'] : 0;
+        if ($idRegistro <= 0) {
+            echo json_encode(['success' => false, 'msj' => 'Registro inválido.']);
+            exit;
+        }
+
+        $registro = $this->modelo->obtenerRegistroPorId($idRegistro);
+        if (!$registro) {
+            echo json_encode(['success' => false, 'msj' => 'El registro no existe.']);
+            exit;
+        }
+
+        // Candado en servidor: las aprobadas no se borran (protege nómina)
+        if ((int) $registro['id_estado_aprobacion'] === 2) {
+            echo json_encode(['success' => false, 'msj' => 'No se puede borrar: el registro ya está APROBADO.']);
+            exit;
+        }
+
+        // 1. Borrar archivos físicos del disco
+        $rutas = $this->modelo->obtenerRutasEvidencias($idRegistro);
+        foreach ($rutas as $rutaRelativa) {
+            $rutaFisica = __DIR__ . '/../../../' . ltrim($rutaRelativa, '/');
+            if (is_file($rutaFisica)) {
+                @unlink($rutaFisica);
+            }
+        }
+
+        // 2. Borrar filas en BD (evidencias + registro, transaccional)
+        if ($this->modelo->eliminarRegistroCompleto($idRegistro)) {
+            echo json_encode(['success' => true, 'msj' => 'Registro y fotos eliminados correctamente.']);
+            exit;
+        }
+
+        echo json_encode(['success' => false, 'msj' => 'No se pudo eliminar el registro.']);
+        exit;
+    }
 }
