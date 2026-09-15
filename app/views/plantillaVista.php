@@ -58,6 +58,9 @@
     </style>
 
     <script>
+        // 🌍 URL base global para todos los módulos JS (evita 404 con URLs amigables /ordenDetalle/fecha)
+        window.BASE_URL = '<?= BASE_URL ?>';
+        var BASE_URL = window.BASE_URL;
         tailwind.config = {
             theme: {
                 extend: {

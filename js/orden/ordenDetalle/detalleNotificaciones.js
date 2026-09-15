@@ -397,8 +397,22 @@ function validarCamposEstrictos() {
 
 /**
  * Muestra un modal que exige respuesta del usuario
+ * Soporta 2 firmas:
+ *  - mostrarModalConfirmacion(mensaje, callback)
+ *  - mostrarModalConfirmacion(tituloDuplicado, mensaje, callback) (usada en ordenDetalleVista)
  */
-function mostrarModalConfirmacion(mensaje, callbackConfirmar) {
+function mostrarModalConfirmacion(mensaje, callbackConfirmar, tercerParam) {
+    // Compatibilidad con llamada de 3 argumentos: (textoGenerico, mensajeReal, callback)
+    let cuerpo = mensaje;
+    let cb = callbackConfirmar;
+    if (typeof callbackConfirmar === 'string' && typeof tercerParam === 'function') {
+        cuerpo = callbackConfirmar;
+        cb = tercerParam;
+    }
+    if (typeof cb !== 'function') {
+        console.error('mostrarModalConfirmacion: callback no es función. Args recibidos:', { mensaje, callbackConfirmar, tercerParam });
+        return;
+    }
     if (!validarCamposEstrictos()) {
         return; 
     }
@@ -416,7 +430,7 @@ function mostrarModalConfirmacion(mensaje, callbackConfirmar) {
                 </div>
                 <h3 class="text-lg leading-6 font-medium text-gray-900">¿Estás seguro?</h3>
                 <div class="mt-2">
-                    <p class="text-sm text-gray-500">${mensaje}</p>
+                    <p class="text-sm text-gray-500">${cuerpo}</p>
                 </div>
             </div>
             <div class="flex justify-center gap-3">
@@ -441,7 +455,7 @@ function mostrarModalConfirmacion(mensaje, callbackConfirmar) {
         modal.style.opacity = '0';
         setTimeout(() => {
             modal.remove();
-            callbackConfirmar();
+            cb();
         }, 300);
     };
 

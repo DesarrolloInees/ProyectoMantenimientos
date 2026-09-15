@@ -897,8 +897,8 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             mensajeModal = "⚠️ <b>¡ADVERTENCIA!</b><br><br>Hay servicios <b>CORRECTIVOS que NO tienen repuestos</b>.<br>Esto es inusual.<br><br>¿Deseas guardar de todas formas?";
         }
 
+        // ✅ Firma correcta: (mensaje, callback)
         window.DetalleNotificaciones.mostrarModalConfirmacion(
-            "¿Estás seguro de que deseas guardar todos los cambios de esta página?",
             mensajeModal,
             function () {
                 ejecutarGuardadoJSON();
