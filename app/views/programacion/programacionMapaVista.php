@@ -31,7 +31,21 @@
                 
                 <?php if (!empty($delegacionSeleccionada)): ?>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Selecciona Zonas a Cargar</label>
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                        <label class="block text-sm font-bold text-gray-700">Selecciona Zonas a Cargar</label>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="seleccionarTodasZonasMapa(true)"
+                                class="text-[11px] bg-green-100 hover:bg-green-200 text-green-800 px-2.5 py-1 rounded font-bold transition"
+                                title="Marcar todas las zonas">
+                                <i class="fas fa-check-double mr-1"></i> Todas
+                            </button>
+                            <button type="button" onclick="seleccionarTodasZonasMapa(false)"
+                                class="text-[11px] bg-red-100 hover:bg-red-200 text-red-800 px-2.5 py-1 rounded font-bold transition"
+                                title="Desmarcar todas las zonas">
+                                <i class="fas fa-times mr-1"></i> Ninguna
+                            </button>
+                        </div>
+                    </div>
                     <div class="border border-gray-300 rounded-lg p-2 bg-gray-50 h-32 overflow-y-auto">
                         <?php foreach ($listaZonas as $zona): ?>
                             <label class="flex items-center space-x-2 p-1 hover:bg-white cursor-pointer">
@@ -95,6 +109,11 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miMapa);
         marcadoresLayer = L.featureGroup().addTo(miMapa);
     });
+
+    /** Botones "Todas" / "Ninguna" del listado de zonas a cargar en el mapa. */
+    function seleccionarTodasZonasMapa(marcar) {
+        $('.chk-zona').prop('checked', marcar);
+    }
 
     function cargarPuntosAlMapa() {
         let zonasSeleccionadas = [];

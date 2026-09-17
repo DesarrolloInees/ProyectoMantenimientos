@@ -6,17 +6,38 @@
 (function () {
     let puntosSeleccionadosInactivos = [];
 
-    function toggleMaquinaSeleccion(idPunto) {
-        const checkbox = Prog.util.qs(`#maquina_${idPunto} .check-maquina-inactiva`);
-        if (checkbox.checked) {
-            if (!puntosSeleccionadosInactivos.includes(idPunto)) {
-                puntosSeleccionadosInactivos.push(idPunto);
-            }
-        } else {
-            puntosSeleccionadosInactivos = puntosSeleccionadosInactivos.filter(id => id !== idPunto);
-        }
+    /**
+     * Relee el DOM y deja el estado en memoria igual a lo que quedó marcado.
+     * Lo usan la selección individual y las selecciones masivas (zonas / todas).
+     */
+    function sincronizarSeleccionInactivas() {
+        puntosSeleccionadosInactivos = Prog.util.qsa('.check-maquina-inactiva:checked')
+            .map(cb => parseInt(cb.value, 10))
+            .filter(id => Number.isInteger(id));
         actualizarContadorSeleccion();
         actualizarBarraAccionMultiZona();
+    }
+
+    function toggleMaquinaSeleccion(idPunto) {
+        // El checkbox ya cambió en el DOM; sincronizamos el estado en memoria.
+        sincronizarSeleccionInactivas();
+    }
+
+    /** Botones "Marcar Todas" / "Desmarcar Todas" de la sección de máquinas inactivas. */
+    function seleccionarTodasMaquinasInactivas(marcar) {
+        const checks = Prog.util.qsa('.check-maquina-inactiva');
+        if (checks.length === 0) return;
+        checks.forEach(cb => { cb.checked = marcar; });
+        sincronizarSeleccionInactivas();
+    }
+
+    /** Botones "Marcar Zona" / "Desmarcar Zona" de cada bloque de zona. */
+    function seleccionarMaquinasDeGrupo(boton, marcar) {
+        const grupo = boton.closest('.maquina-grupo-zona');
+        const checks = Prog.util.qsa('.check-maquina-inactiva', grupo || document);
+        if (checks.length === 0) return;
+        checks.forEach(cb => { cb.checked = marcar; });
+        sincronizarSeleccionInactivas();
     }
 
     function restaurarMaquinaIndividual(deviceId) {
@@ -110,6 +131,8 @@
     }
 
     window.toggleMaquinaSeleccion = toggleMaquinaSeleccion;
+    window.seleccionarTodasMaquinasInactivas = seleccionarTodasMaquinasInactivas;
+    window.seleccionarMaquinasDeGrupo = seleccionarMaquinasDeGrupo;
     window.restaurarMaquinaIndividual = restaurarMaquinaIndividual;
     window.buscarAledaniosZona = buscarAledaniosZona;
     window.buscarAledaniosZonasSeleccionadas = buscarAledaniosZonasSeleccionadas;

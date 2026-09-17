@@ -57,6 +57,26 @@
     }
 
     /**
+     * Marca o desmarca TODAS las zonas del día indicado.
+     * Se usa desde los botones "Todas" / "Ninguna" de la tarjeta de cada día.
+     * (Los checkboxes se cambian programáticamente, por eso se llama a updatePreview.)
+     */
+    function seleccionarTodasZonasDia(dia, marcar) {
+        const selectTecnico = Prog.util.qs(`select[name="tecnico_${dia}"]`);
+        const checkboxes = Prog.util.qsa(`.checkbox-zona-${dia}`);
+
+        if (checkboxes.length === 0) return;
+
+        if (!selectTecnico || !selectTecnico.value) {
+            alert('⚠️ Primero selecciona un técnico para este día; después podrás marcar las zonas.');
+            return;
+        }
+
+        checkboxes.forEach(cb => { cb.checked = marcar; });
+        updatePreview(dia);
+    }
+
+    /**
      * Actualiza el resumen de ruta configurada y el botón para elegir puntos
      */
     function updatePreview(dia) {
@@ -486,6 +506,7 @@
     // Exponer funciones globales para eventos en HTML
     window.toggleZonas = toggleZonas;
     window.updatePreview = updatePreview;
+    window.seleccionarTodasZonasDia = seleccionarTodasZonasDia;
     window.abrirModalPuntosDia = abrirModalPuntosDia;
     window.cerrarModalPuntosDia = cerrarModalPuntosDia;
     window.guardarPuntosDiaModal = guardarPuntosDiaModal;

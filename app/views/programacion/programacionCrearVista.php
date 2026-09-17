@@ -177,6 +177,24 @@
                         automáticamente a "Operativo" al aprobar la programación.</span>
                 </p>
 
+                <!-- Herramientas de selección masiva de máquinas -->
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                    <p class="text-xs font-semibold text-gray-600 flex items-center">
+                        <i class="fas fa-hand-pointer mr-1 text-red-500"></i>
+                        Usa los botones para marcar todas las máquinas, una zona completa o solo las que necesites.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="seleccionarTodasMaquinasInactivas(true)"
+                            class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded font-bold shadow-sm transition">
+                            <i class="fas fa-check-double mr-1"></i> Marcar Todas
+                        </button>
+                        <button type="button" onclick="seleccionarTodasMaquinasInactivas(false)"
+                            class="text-xs bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded font-bold transition">
+                            <i class="fas fa-times mr-1"></i> Desmarcar Todas
+                        </button>
+                    </div>
+                </div>
+
                 <?php
                 $maquinasPorZona = [];
                 foreach ($listaMaquinasInactivas as $maq) {
@@ -187,17 +205,29 @@
 
                 <div class="space-y-4">
                     <?php foreach ($maquinasPorZona as $zona => $maquinas): ?>
-                        <div class="border border-red-200 rounded-lg overflow-hidden">
-                            <div class="bg-red-100 px-4 py-2 flex justify-between items-center">
+                        <div class="border border-red-200 rounded-lg overflow-hidden maquina-grupo-zona">
+                            <div class="bg-red-100 px-4 py-2 flex flex-wrap justify-between items-center gap-2">
                                 <span class="font-bold text-red-800">
                                     <i class="fas fa-map-marker-alt mr-1"></i> <?= htmlspecialchars($zona) ?>
                                     <span class="text-xs font-normal text-red-600">(<?= count($maquinas) ?>
                                         maquina<?= count($maquinas) > 1 ? 's' : '' ?>)</span>
                                 </span>
-                                <button type="button" onclick="buscarAledaniosZona('<?= htmlspecialchars($zona, ENT_QUOTES) ?>')"
-                                    class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded font-semibold shadow-sm transition">
-                                    <i class="fas fa-search mr-1"></i> Ver Aledaños
-                                </button>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" onclick="seleccionarMaquinasDeGrupo(this, true)"
+                                        class="text-xs bg-white hover:bg-red-50 text-red-700 border border-red-300 px-3 py-1 rounded font-semibold shadow-sm transition"
+                                        title="Marcar todas las máquinas de esta zona">
+                                        <i class="fas fa-check-square mr-1"></i> Marcar Zona
+                                    </button>
+                                    <button type="button" onclick="seleccionarMaquinasDeGrupo(this, false)"
+                                        class="text-xs bg-white hover:bg-gray-100 text-gray-600 border border-gray-300 px-3 py-1 rounded font-semibold shadow-sm transition"
+                                        title="Desmarcar todas las máquinas de esta zona">
+                                        <i class="fas fa-square mr-1"></i> Desmarcar Zona
+                                    </button>
+                                    <button type="button" onclick="buscarAledaniosZona('<?= htmlspecialchars($zona, ENT_QUOTES) ?>')"
+                                        class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded font-semibold shadow-sm transition">
+                                        <i class="fas fa-search mr-1"></i> Ver Aledaños
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="p-3 bg-white">
@@ -430,9 +460,23 @@
                                             </div>
 
                                             <div class="md:col-span-2">
-                                                <label class="block text-sm font-bold text-gray-700 mb-2">
-                                                    <i class="fas fa-map-marked-alt mr-1"></i> Zonas a Recorrer este Día
-                                                </label>
+                                                <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                                                    <label class="block text-sm font-bold text-gray-700">
+                                                        <i class="fas fa-map-marked-alt mr-1"></i> Zonas a Recorrer este Día
+                                                    </label>
+                                                    <div class="flex items-center gap-1.5">
+                                                        <button type="button" onclick="seleccionarTodasZonasDia('<?= $dia ?>', true)"
+                                                            class="text-[11px] bg-green-100 hover:bg-green-200 text-green-800 px-2.5 py-1 rounded font-bold transition"
+                                                            title="Marcar todas las zonas de este día">
+                                                            <i class="fas fa-check-double mr-1"></i> Todas
+                                                        </button>
+                                                        <button type="button" onclick="seleccionarTodasZonasDia('<?= $dia ?>', false)"
+                                                            class="text-[11px] bg-red-100 hover:bg-red-200 text-red-800 px-2.5 py-1 rounded font-bold transition"
+                                                            title="Desmarcar todas las zonas de este día">
+                                                            <i class="fas fa-times mr-1"></i> Ninguna
+                                                        </button>
+                                                    </div>
+                                                </div>
                                                 <div id="zonas_container_<?= $dia ?>"
                                                     class="border border-gray-300 rounded-lg p-3 bg-gray-50 max-h-40 overflow-y-auto opacity-50 pointer-events-none">
                                                     <?php foreach ($listaZonas as $zona): ?>
@@ -554,10 +598,12 @@
             </div>
             <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
                 <button type="button" onclick="marcarTodosPuntosModal(true)"
+                    title="Marca todos los puntos que se ven en la lista (respeta el buscador)"
                     class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg font-semibold transition flex items-center">
                     <i class="fas fa-check-double mr-1.5"></i> Todos
                 </button>
                 <button type="button" onclick="marcarTodosPuntosModal(false)"
+                    title="Desmarca todos los puntos que se ven en la lista"
                     class="text-xs bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg font-semibold transition flex items-center">
                     <i class="fas fa-times mr-1.5"></i> Ninguno
                 </button>
