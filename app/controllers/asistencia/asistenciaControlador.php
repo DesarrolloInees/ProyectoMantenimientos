@@ -18,15 +18,32 @@ class AsistenciaControlador
     private $modelo;
     private $db;
 
-    // Tasas de recargo/hora extra según legislación colombiana (igual a tu plantilla de Excel)
-    const TASA_HED = 0.25;    // Hora extra diurna
-    const TASA_HEN = 0.75;    // Hora extra nocturna
+    // ==================================================================
+    // TASAS DE RECARGO / HORA EXTRA (Ley 2466 — valores vigentes 2026)
+    // Son SOLO los valores POR DEFECTO: la vista permite editarlos por
+    // empleado y el Excel los escribe en el bloque de tarifas (Y/Z/AA),
+    // de modo que la plantilla queda 100% editable y "viva".
+    // ==================================================================
+    const TASA_HED = 0.25;    // Recargo H.E. diurna          (base 100% + 25%  = 125%)
+    const TASA_HEN = 0.75;    // Recargo H.E. nocturna        (base 100% + 75%  = 175%)
     const TASA_RN = 0.35;     // Recargo nocturno ordinario
-    const TASA_RDF = 0.75;    // Recargo dominical/festivo ordinario
-    const TASA_HEDDF = 1.00;  // Hora extra diurna dominical/festivo
-    const TASA_HENDF = 1.50;  // Hora extra nocturna dominical/festivo
-    const TASA_RNDF = 1.10;   // Recargo nocturno dominical/festivo
-    const DIVISOR_HORAS_MES = 210; // Ajusta si tu jornada legal cambia (Ley 2101, etc.)
+    const TASA_RDF = 0.90;    // Recargo dom/fest ordinario (Ley 2466: 90% en 2026)
+    const TASA_HEDDF = 1.15;  // Recargo H.E. diurna dom/fest  (base 100% + 115% = 215%)
+    const TASA_HENDF = 1.65;  // Recargo H.E. nocturna dom/fest(base 100% + 165% = 265%)
+    const TASA_RNDF = 1.25;   // Recargo nocturno dom/fest     (90% + 35% = 125%)
+    const DIVISOR_HORAS_MES = 210; // Divisor de horas del mes (editable en la vista)
+
+    // Horarios / parámetros por defecto (editables por empleado en la vista)
+    const HORARIO_DEFECTO = [
+        'lv' => '09:00',       // jornada L-V
+        'sab' => '04:00',      // jornada sábado
+        'tope' => '02:00',     // tope de extras por día
+        'nocturna' => '19:00', // inicio de la franja nocturna
+        'turno' => 'REAL',     // REAL = arranca con la primera marcación
+    ];
+
+    // Columnas manuales (se digitan/auto-calculan y viajan al Excel)
+    const CAMPOS_RECARGOS = ['rec_nocturno', 'rec_domfest', 'hed_df', 'hen_df', 'rec_noct_df'];
 
     public function __construct()
     {
@@ -38,6 +55,13 @@ class AsistenciaControlador
     public function index()
     {
         $titulo = "Procesador de Asistencias (Huellero + Servicios)";
+
+        // Valores por defecto que la vista usa para pintar los controles de tasas.
+        // Si el usuario los cambia, viajan al backend en guardarEdicion() y se
+        // escriben dentro del Excel (bloque Y/Z/AA de cada hoja).
+        $tasasDefecto = $this->tasasPorDefecto();
+        $horarioDefecto = self::HORARIO_DEFECTO;
+
         $vistaContenido = "app/views/asistencia/asistenciaVista.php";
         include "app/views/plantillaVista.php";
     }
@@ -328,7 +352,8 @@ class AsistenciaControlador
                     session_start();
                 }
                 $_SESSION['datos_asistencia_procesados'] = $resultadoFinal;
-                $_SESSION['salarios_empleados'] = []; // se llena en guardarEdicion()
+                $_SESSION['salarios_empleados'] = [];   // se llena en guardarEdicion()
+                $_SESSION['config_empleados'] = [];     // se llena en guardarEdicion()
 
                 // 🔥 AQUÍ ESTÁ LA MAGIA: Mandamos las fechas detectadas en el JSON 🔥
                 $respuestaArray = [
@@ -397,15 +422,41 @@ class AsistenciaControlador
                 $_SESSION['datos_asistencia_procesados'][$i]['salida'] = $salidaValor !== '' ? $salidaValor : 'Falta Salida';
                 $_SESSION['datos_asistencia_procesados'][$i]['servicios'] = (int) ($edit['servicios'] ?? 0);
                 $_SESSION['datos_asistencia_procesados'][$i]['novedades'] = trim((string) ($edit['novedades'] ?? ''));
+
+                // 🔥 NUEVO: columnas manuales de recargos (llegan como "HH:MM")
+                foreach (self::CAMPOS_RECARGOS as $campo) {
+                    $_SESSION['datos_asistencia_procesados'][$i][$campo] = $this->normalizarHoraManual($edit[$campo] ?? '');
+                }
             }
 
+            // 🔥 NUEVO: configuración por empleado (salario, horarios, tasas
+            // editables, divisor y datos del acta para la hoja "Resumen Extras")
+            $configEmpleados = [];
+            if (isset($payload['empleados']) && is_array($payload['empleados'])) {
+                foreach ($payload['empleados'] as $nombre => $info) {
+                    if (!is_array($info))
+                        continue;
+                    $configEmpleados[(string) $nombre] = $info;
+                }
+            }
+
+            // Compatibilidad con el formato anterior (que enviaba solo "salarios")
             $salarios = [];
             if (isset($payload['salarios']) && is_array($payload['salarios'])) {
                 foreach ($payload['salarios'] as $nombre => $valor) {
                     $salarios[$nombre] = (float) $valor;
+                    if (!isset($configEmpleados[$nombre])) {
+                        $configEmpleados[$nombre] = ['salario' => (float) $valor];
+                    }
+                }
+            }
+            foreach ($configEmpleados as $nombre => $info) {
+                if (isset($info['salario']) && is_numeric($info['salario'])) {
+                    $salarios[$nombre] = (float) $info['salario'];
                 }
             }
             $_SESSION['salarios_empleados'] = $salarios;
+            $_SESSION['config_empleados'] = $configEmpleados;
 
             $respuestaArray = ['exito' => true, 'mensaje' => 'Cambios guardados. Ya puedes descargar el reporte.'];
 
@@ -419,6 +470,16 @@ class AsistenciaControlador
         exit;
     }
 
+    // ==================================================================
+    //  DESCARGA DEL EXCEL — réplica de la plantilla "Consolidado Nómina
+    //  Mensual (con recargos)":
+    //    * 23 columnas de datos por día (A..W)
+    //    * Bloque de tarifas 100% editable (Y/Z/AA) con las 8 tarifas
+    //    * 5 filas de totales por semana (incluye $ recargos)
+    //    * 7 filas de consolidado del mes (incluye $ recargos y total
+    //      general a pagar)
+    //    * Hoja final "Resumen Extras" de 8 columnas
+    // ==================================================================
     public function descargarExcel()
     {
         ob_start();
@@ -432,14 +493,16 @@ class AsistenciaControlador
         }
 
         $datos = $_SESSION['datos_asistencia_procesados'];
-        $salariosEmpleados = $_SESSION['salarios_empleados'] ?? [];
+        $configEmpleados = $_SESSION['config_empleados'] ?? [];
+        $salariosViejos = $_SESSION['salarios_empleados'] ?? [];
 
-        // Festivos del rango real de los datos (por si el usuario editó fechas o volvió a entrar a la sesión)
+        // Festivos del rango real de los datos
         $fechasRaw = array_column($datos, 'fecha_raw');
         $fechaInicioStr = !empty($fechasRaw) ? min($fechasRaw) : date('Y-m-d');
         $fechaFinStr = !empty($fechasRaw) ? max($fechasRaw) : date('Y-m-d');
         $festivos = $this->modelo->obtenerFestivos($fechaInicioStr, $fechaFinStr);
 
+        // Agrupar registros por empleado
         $empleados = [];
         foreach ($datos as $reg) {
             $empleados[$reg['nombre']][] = $reg;
@@ -447,388 +510,50 @@ class AsistenciaControlador
 
         $spreadsheet = new Spreadsheet();
         $spreadsheet->removeSheetByIndex(0);
+
         $sheetIndex = 0;
-
-        $resumenParaHojaFinal = [];
-
-        $timeToFraction = function ($timeStr) {
-            if (!$timeStr || stripos($timeStr, 'Falta') !== false)
-                return null;
-            $p = explode(':', $timeStr);
-            $h = isset($p[0]) ? (int) $p[0] : 0;
-            $m = isset($p[1]) ? (int) $p[1] : 0;
-            return ($h + ($m / 60)) / 24;
-        };
+        $resumenHojaFinal = [];
 
         foreach ($empleados as $nombre => $registros) {
+            $cargoEmpleado = (string) ($registros[0]['cargo'] ?? '');
+            $config = $this->configEmpleado($nombre, $configEmpleados, $salariosViejos, $cargoEmpleado);
+
             $sheet = $spreadsheet->createSheet($sheetIndex);
 
             $tituloHoja = mb_substr(preg_replace('/[^a-zA-Z0-9\sñÑáéíóúÁÉÍÓÚ]/u', '', $nombre), 0, 30, 'UTF-8');
             $sheet->setTitle($tituloHoja);
 
-            $sheet->setCellValue('A1', 'NOMBRE DEL TRABAJADOR');
-            $sheet->setCellValue('C1', $nombre);
-            $sheet->setCellValue('A2', 'CARGO');
-            $sheet->setCellValue('C2', $registros[0]['cargo']);
+            // 1. Encabezado del trabajador + bloque de tarifas (Y/Z/AA)
+            $this->escribirEncabezadoHoja($sheet, $nombre, $cargoEmpleado, $config);
 
-            $sheet->setCellValue('E1', 'L-V');
-            $sheet->setCellValue('F1', 'S');
-            $sheet->setCellValue('G1', 'LÍMITE EXTRAS');
-            $sheet->setCellValue('H1', 'INICIO TURNO');
-            $sheet->setCellValue('I1', 'INICIO NOCTURNA');
+            // 2. Bloques semanales (días + 5 filas de totales por semana)
+            $semana = $this->escribirSemanasHoja($sheet, $registros, $config, $festivos);
 
-            // El turno dura 9 horas de corrido (8 horas de trabajo + 1 de almuerzo)
-            $sheet->setCellValue('E2', $timeToFraction('09:00'));
-            $sheet->setCellValue('F2', $timeToFraction('04:00'));
-            $sheet->setCellValue('G2', $timeToFraction('02:00'));
+            // 3. Consolidado final del mes (7 filas)
+            $celdasMes = $this->escribirConsolidadoMes($sheet, $semana['bloques'], $semana['fila'] + 1);
 
-            // Lógica dinámica para el Excel
-            $cargoEvaluar = mb_strtoupper($registros[0]['cargo'], 'UTF-8');
-            if (strpos($cargoEvaluar, 'TÉCNICO') !== false || strpos($cargoEvaluar, 'TECNICO') !== false) {
-                // Motorizados: Arrancan desde su primer servicio ("REAL")
-                $sheet->setCellValue('H2', 'REAL');
-            } else {
-                // Administrativos: Su turno SIEMPRE arranca a las 07:00
-                $sheet->setCellValue('H2', $timeToFraction('07:00'));
-            }
+            // 4. Formatos generales y anchos de columna
+            $sheet->getStyle("A1:W{$celdasMes['fila_final']}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("A1:W{$celdasMes['fila_final']}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $this->escribirAnchosColumna($sheet);
 
-            $sheet->setCellValue('I2', $timeToFraction('19:00'));
-
-            // Dar formato
-            $sheet->getStyle('E2:G2')->getNumberFormat()->setFormatCode('hh:mm');
-            $sheet->getStyle('I2')->getNumberFormat()->setFormatCode('hh:mm');
-            if (!is_string($sheet->getCell('H2')->getValue())) {
-                $sheet->getStyle('H2')->getNumberFormat()->setFormatCode('hh:mm');
-            }
-
-            $sheet->getStyle('A1:A2')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-            $sheet->getStyle('A1:A2')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF548235');
-
-            // 🔥 BLOQUE DE SALARIO / TASAS (columnas N-O) — esto es lo que hace "vivas" las fórmulas de pesos.
-            // Cambiar el valor de O1 (Salario Básico) recalcula automáticamente TODA la hoja, igual que tu plantilla.
-            $salarioBase = $salariosEmpleados[$nombre] ?? 0;
-
-            $sheet->setCellValue('N1', 'SALARIO BÁSICO');
-            $sheet->setCellValue('O1', $salarioBase);
-            $sheet->setCellValue('N2', 'VALOR HORA BÁSICA');
-            $sheet->setCellValue('O2', "=O1/" . self::DIVISOR_HORAS_MES);
-            $sheet->setCellValue('N3', 'REC. H.E. DIURNA (25%)');
-            $sheet->setCellValue('O3', "=\$O\$2*" . self::TASA_HED);
-            $sheet->setCellValue('N4', 'REC. H.E. NOCTURNA (75%)');
-            $sheet->setCellValue('O4', "=\$O\$2*" . self::TASA_HEN);
-            $sheet->setCellValue('N5', 'REC. NOCTURNO ORDINARIO (35%)');
-            $sheet->setCellValue('O5', "=\$O\$2*" . self::TASA_RN);
-            $sheet->setCellValue('N6', 'REC. DOM/FEST ORDINARIO (75%)');
-            $sheet->setCellValue('O6', "=\$O\$2*" . self::TASA_RDF);
-            $sheet->setCellValue('N7', 'REC. H.E. DIURNA DOM/FEST (100%)');
-            $sheet->setCellValue('O7', "=\$O\$2*" . self::TASA_HEDDF);
-            $sheet->setCellValue('N8', 'REC. H.E. NOCTURNA DOM/FEST (150%)');
-            $sheet->setCellValue('O8', "=\$O\$2*" . self::TASA_HENDF);
-            $sheet->setCellValue('N9', 'REC. NOCTURNO DOM/FEST (110%)');
-            $sheet->setCellValue('O9', "=\$O\$2*" . self::TASA_RNDF);
-
-            $sheet->getStyle('N1:N9')->getFont()->setBold(true);
-            $sheet->getStyle('O1:O9')->getNumberFormat()->setFormatCode('#,##0');
-            $sheet->getStyle('O1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-            $sheet->getStyle('O1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
-            $sheet->getColumnDimension('N')->setWidth(28);
-            $sheet->getColumnDimension('O')->setWidth(14);
-
-            $semanas = [];
-            foreach ($registros as $reg) {
-                // USAR LA FECHA RAW (Y-m-d) PARA LOS CÁLCULOS MATEMÁTICOS DEL EXCEL
-                $timestamp = strtotime($reg['fecha_raw']);
-
-                if ($timestamp) {
-                    $numeroSemana = date('W', $timestamp);
-                    $semanas[$numeroSemana][] = $reg;
-                } else {
-                    $semanas['Extra'][] = $reg;
-                }
-            }
-
-            ksort($semanas);
-            $fila = 4;
-
-            $celdasTotalesTrabajado = [];
-            $celdasTotalesHorasExtras = [];
-            $celdasTotalesValorExtras = [];
-            $celdasTotalesDominicales = [];
-            $celdasTotalesServicios = [];
-
-            foreach ($semanas as $numSemana => $registrosSemana) {
-                $sheet->setCellValue('A' . $fila, "REPORTE SEMANA " . $numSemana);
-                $sheet->mergeCells("A{$fila}:K{$fila}");
-                $sheet->getStyle("A{$fila}:K{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $sheet->getStyle("A{$fila}:K{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
-
-                $fila++;
-
-                $sheet->setCellValue('A' . $fila, 'FECHA');
-                $sheet->setCellValue('B' . $fila, 'H. ENTRADA');
-                $sheet->setCellValue('C' . $fila, 'H. SALIDA');
-                $sheet->setCellValue('D' . $fila, 'TOTAL TRABAJADO');
-                $sheet->setCellValue('E' . $fila, 'H. EXTRA DIURNA');
-                $sheet->setCellValue('F' . $fila, 'H. EXTRA NOCTURNA');
-                $sheet->setCellValue('G' . $fila, 'DOM/FEST');
-                $sheet->setCellValue('H' . $fila, 'VALOR H.E. DIURNA');
-                $sheet->setCellValue('I' . $fila, 'VALOR H.E. NOCTURNA');
-                $sheet->setCellValue('J' . $fila, 'SERVICIOS');
-                $sheet->setCellValue('K' . $fila, 'NOVEDADES');
-
-                $sheet->getStyle("A{$fila}:K{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $sheet->getStyle("A{$fila}:K{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF385D22');
-
-                $fila++;
-                $startRow = $fila;
-
-                usort($registrosSemana, function ($a, $b) {
-                    return strtotime($a['fecha_raw']) - strtotime($b['fecha_raw']);
-                });
-
-                foreach ($registrosSemana as $reg) {
-                    $timestamp = strtotime($reg['fecha_raw']);
-
-                    if ($timestamp) {
-                        $sheet->setCellValue('A' . $fila, \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($timestamp));
-                        // Obliga a Excel a mostrar "lunes 15-05-2026" pero conservando la fórmula de fechas
-                        $sheet->getStyle('A' . $fila)->getNumberFormat()->setFormatCode('[$-es-ES]dddd dd-mm-yyyy;@');
-                    } else {
-                        $sheet->setCellValue('A' . $fila, $reg['fecha_formateada']);
-                    }
-
-                    // Días festivos: domingo automático + tabla de festivos de la BD
-                    $esDomFest = ($timestamp && (date('N', $timestamp) == 7 || isset($festivos[$reg['fecha_raw']]))) ? 1 : 0;
-                    $sheet->setCellValue('G' . $fila, $esDomFest);
-
-                    $entradaTxt = $reg['entrada_valor'] ?? $reg['entrada'];
-                    $salidaTxt = $reg['salida_valor'] ?? $reg['salida'];
-                    $valEntrada = $timeToFraction($entradaTxt);
-                    $valSalida = $timeToFraction($salidaTxt);
-
-                    if ($valEntrada !== null) {
-                        $sheet->setCellValue('B' . $fila, $valEntrada);
-                        $sheet->getStyle('B' . $fila)->getNumberFormat()->setFormatCode('hh:mm');
-                    } else {
-                        $sheet->setCellValue('B' . $fila, 'FALTA ENT');
-                    }
-
-                    if ($valSalida !== null) {
-                        $sheet->setCellValue('C' . $fila, $valSalida);
-                        $sheet->getStyle('C' . $fila)->getNumberFormat()->setFormatCode('hh:mm');
-
-                        // 1. FÓRMULA DE TOTAL TRABAJADO
-                        $formulaTrabajado = "=IF(AND(ISNUMBER(B{$fila}), ISNUMBER(C{$fila})), MAX(0, C{$fila} - IF(ISTEXT(\$H\$2), B{$fila}, MAX(B{$fila}, \$H\$2))), \"\")";
-                        $sheet->setCellValue('D' . $fila, $formulaTrabajado);
-                        $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-
-                        // 2. LÍMITE DEL DÍA (9h L-V, 4h Sábados) y extras totales con tope
-                        $limiteHoras = "IF(WEEKDAY(A{$fila},2)<6, \$E\$2, \$F\$2)";
-                        $totalExtrasBruto = "MAX(0, D{$fila} - $limiteHoras)";
-                        $totalExtrasConTope = "IF($totalExtrasBruto > \$G\$2, \$G\$2, $totalExtrasBruto)";
-
-                        // 3. HORAS EXTRA NOCTURNA (después de $I$2, sin pasarse del tope de extras)
-                        $formulaNocturnas = "=IF(ISNUMBER(C{$fila}), MAX(0, MIN($totalExtrasConTope, MAX(0, C{$fila}-\$I\$2))), \"\")";
-                        $sheet->setCellValue('F' . $fila, $formulaNocturnas);
-                        $sheet->getStyle('F' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-
-                        // 4. HORAS EXTRA DIURNA (extras totales menos las que ya se pagan como nocturnas)
-                        $formulaExtrasDiurnas = "=IF(ISNUMBER(D{$fila}), MAX(0, $totalExtrasConTope - F{$fila}), \"\")";
-                        $sheet->setCellValue('E' . $fila, $formulaExtrasDiurnas);
-                        $sheet->getStyle('E' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-
-                        // 5. 🔥 VALOR EN PESOS: si el día es Dom/Fest usa la tasa DF, si no, la tasa normal.
-                        //    Referencian el bloque de salario (O3/O4/O7/O8) -> "vivo" ante cualquier cambio de salario.
-                        $formulaValorDiurna = "=IF(ISNUMBER(E{$fila}), E{$fila}*24*IF(G{$fila}=1, \$O\$7, \$O\$3), \"\")";
-                        $sheet->setCellValue('H' . $fila, $formulaValorDiurna);
-                        $sheet->getStyle('H' . $fila)->getNumberFormat()->setFormatCode('#,##0');
-
-                        $formulaValorNocturna = "=IF(ISNUMBER(F{$fila}), F{$fila}*24*IF(G{$fila}=1, \$O\$8, \$O\$4), \"\")";
-                        $sheet->setCellValue('I' . $fila, $formulaValorNocturna);
-                        $sheet->getStyle('I' . $fila)->getNumberFormat()->setFormatCode('#,##0');
-                    } else {
-                        $sheet->setCellValue('C' . $fila, 'FALTA SALIDA');
-                    }
-
-                    $sheet->setCellValue('J' . $fila, $reg['servicios'] > 0 ? $reg['servicios'] : '');
-                    $sheet->setCellValue('K' . $fila, $reg['novedades'] ?? '');
-
-                    if ($esDomFest) {
-                        $sheet->getStyle('A' . $fila . ':K' . $fila)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFF2CC');
-                    }
-
-                    $fila++;
-                }
-
-                $endRow = $fila - 1;
-
-                $sheet->setCellValue('C' . $fila, 'REPORTE SEMANAL');
-                $sheet->setCellValue('D' . $fila, "=SUM(D{$startRow}:D{$endRow})");
-                $sheet->setCellValue('E' . $fila, "=SUM(E{$startRow}:E{$endRow})");
-                $sheet->setCellValue('F' . $fila, "=SUM(F{$startRow}:F{$endRow})");
-                $sheet->setCellValue('H' . $fila, "=SUM(H{$startRow}:H{$endRow})");
-                $sheet->setCellValue('I' . $fila, "=SUM(I{$startRow}:I{$endRow})");
-                $sheet->setCellValue('J' . $fila, "=SUM(J{$startRow}:J{$endRow})");
-
-                $sheet->getStyle("A{$fila}:K{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF996600');
-                $sheet->getStyle("A{$fila}:K{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $sheet->getStyle("D{$fila}:F{$fila}")->getNumberFormat()->setFormatCode('[h]:mm');
-                $sheet->getStyle("H{$fila}:I{$fila}")->getNumberFormat()->setFormatCode('#,##0');
-
-                $filaResumenSemana = $fila;
-                $celdasTotalesTrabajado[] = "D" . $filaResumenSemana;
-                $celdasTotalesServicios[] = "J" . $filaResumenSemana;
-
-                $fila++;
-                $sheet->setCellValue('C' . $fila, 'TOTAL HORAS EXTRAS A PAGAR (horas)');
-                $sheet->setCellValue('D' . $fila, "=E{$filaResumenSemana}+F{$filaResumenSemana}");
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F5597');
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-                $celdasTotalesHorasExtras[] = "D" . $fila;
-
-                $fila++;
-                $sheet->setCellValue('C' . $fila, 'TOTAL $ HORAS EXTRAS A PAGAR');
-                $sheet->setCellValue('D' . $fila, "=H{$filaResumenSemana}+I{$filaResumenSemana}");
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF107C41');
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('#,##0');
-                $celdasTotalesValorExtras[] = "D" . $fila;
-
-                $fila++;
-                $sheet->setCellValue('C' . $fila, 'TOTAL HORAS DOMINICALES/RECARGOS ORD. (manual)');
-                $sheet->setCellValue('D' . $fila, 0);
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFC55A11');
-                $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-                $celdasTotalesDominicales[] = "D" . $fila;
-
-                $fila += 3;
-            }
-
-            $sheet->setCellValue('B' . $fila, 'CONSOLIDADO FINAL DEL MES');
-            $sheet->mergeCells("B{$fila}:D{$fila}");
-
-            $sheet->getStyle("B{$fila}:D{$fila}")->getFont()->setBold(true)->setSize(12);
-            $sheet->getStyle("B{$fila}:D{$fila}")->getFont()->getColor()->setARGB('FFFFFFFF');
-            $sheet->getStyle("B{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF000000');
-
-            $fila++;
-            $sheet->setCellValue('C' . $fila, 'GRAN TOTAL HORAS TRABAJADAS');
-            $sheet->setCellValue('D' . $fila, empty($celdasTotalesTrabajado) ? 0 : "=SUM(" . implode(',', $celdasTotalesTrabajado) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF996600');
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-            $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-
-            $fila++;
-            $sheet->setCellValue('C' . $fila, 'GRAN TOTAL HORAS EXTRAS (horas)');
-            $sheet->setCellValue('D' . $fila, empty($celdasTotalesHorasExtras) ? 0 : "=SUM(" . implode(',', $celdasTotalesHorasExtras) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F5597');
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-            $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('[h]:mm');
-            $filaTotalHorasExtras = $fila;
-
-            $fila++;
-            $sheet->setCellValue('C' . $fila, 'GRAN TOTAL $ HORAS EXTRAS A PAGAR');
-            $sheet->setCellValue('D' . $fila, empty($celdasTotalesValorExtras) ? 0 : "=SUM(" . implode(',', $celdasTotalesValorExtras) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF107C41');
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->setSize(12)->getColor()->setARGB('FFFFFFFF');
-            $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('#,##0');
-            $filaTotalValorExtras = $fila;
-
-            $fila++;
-            $sheet->setCellValue('C' . $fila, 'GRAN TOTAL DOMINICALES/RECARGOS ORD. (manual)');
-            $sheet->setCellValue('D' . $fila, empty($celdasTotalesDominicales) ? 0 : "=SUM(" . implode(',', $celdasTotalesDominicales) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFC55A11');
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-
-            $fila++;
-            $sheet->setCellValue('C' . $fila, 'GRAN TOTAL SERVICIOS (TICKETS)');
-            $sheet->setCellValue('D' . $fila, empty($celdasTotalesServicios) ? 0 : "=SUM(" . implode(',', $celdasTotalesServicios) . ")");
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
-            $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-
-            $sheet->getStyle("A1:K{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("A1:K{$fila}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-
-            $sheet->getColumnDimension('A')->setWidth(25);
-            $sheet->getColumnDimension('B')->setWidth(13);
-            $sheet->getColumnDimension('C')->setWidth(22);
-            $sheet->getColumnDimension('D')->setWidth(18);
-            $sheet->getColumnDimension('E')->setWidth(14);
-            $sheet->getColumnDimension('F')->setWidth(14);
-            $sheet->getColumnDimension('G')->setWidth(10);
-            $sheet->getColumnDimension('H')->setWidth(15);
-            $sheet->getColumnDimension('I')->setWidth(15);
-            $sheet->getColumnDimension('J')->setWidth(12);
-            $sheet->getColumnDimension('K')->setWidth(22);
-
-            $resumenParaHojaFinal[] = [
+            $resumenHojaFinal[] = [
                 'nombre' => $nombre,
                 'hoja' => $tituloHoja,
-                'celda_horas_extras' => 'D' . $filaTotalHorasExtras,
-                'celda_valor_extras' => 'D' . $filaTotalValorExtras,
-                'celda_salario' => 'O1'
+                'actividad' => $config['actividad'],
+                'autoriza' => $config['autoriza'],
+                'celda_horas_extras' => $celdasMes['horas_extras'],
+                'celda_valor_extras' => $celdasMes['valor_extras'],
+                'celda_valor_recargos' => $celdasMes['valor_recargos'],
+                'celda_total_general' => $celdasMes['total_general'],
             ];
 
             $sheetIndex++;
         }
 
-        // CREAR LA HOJA DE RESUMEN FINAL
-        if (!empty($resumenParaHojaFinal)) {
-            $sheetResumen = $spreadsheet->createSheet($sheetIndex);
-            $sheetResumen->setTitle('Resumen Extras');
-
-            $sheetResumen->setCellValue('A1', 'NOMBRE DE LA PERSONA');
-            $sheetResumen->setCellValue('B1', 'SALARIO BÁSICO');
-            $sheetResumen->setCellValue('C1', 'HORAS EXTRA (TOTAL)');
-            $sheetResumen->setCellValue('D1', 'VALOR TOTAL A PAGAR ($)');
-            $sheetResumen->setCellValue('E1', 'ACTIVIDAD REALIZADA');
-            $sheetResumen->setCellValue('F1', 'QUIEN AUTORIZA');
-
-            $sheetResumen->getStyle('A1:F1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-            $sheetResumen->getStyle('A1:F1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
-            $sheetResumen->getStyle('A1:F1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheetResumen->getStyle('A1:F1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-
-            $filaResumen = 2;
-            foreach ($resumenParaHojaFinal as $res) {
-                $sheetResumen->setCellValue('A' . $filaResumen, $res['nombre']);
-
-                $hoja = "'" . $res['hoja'] . "'";
-                $celdaHoras = $res['celda_horas_extras'];
-                $celdaValor = $res['celda_valor_extras'];
-                $celdaSalario = $res['celda_salario'];
-
-                $sheetResumen->setCellValue('B' . $filaResumen, "={$hoja}!{$celdaSalario}");
-                // Condicional para que quede en blanco si es 0
-                $sheetResumen->setCellValue('C' . $filaResumen, "=IF({$hoja}!{$celdaHoras}=0, \"\", {$hoja}!{$celdaHoras})");
-                $sheetResumen->setCellValue('D' . $filaResumen, "=IF({$hoja}!{$celdaValor}=0, \"\", {$hoja}!{$celdaValor})");
-
-                $sheetResumen->getStyle('B' . $filaResumen)->getNumberFormat()->setFormatCode('#,##0');
-                $sheetResumen->getStyle('C' . $filaResumen)->getNumberFormat()->setFormatCode('[h]:mm;;');
-                $sheetResumen->getStyle('D' . $filaResumen)->getNumberFormat()->setFormatCode('#,##0;;');
-                $sheetResumen->getStyle("A{$filaResumen}:F{$filaResumen}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-                $sheetResumen->getStyle("B{$filaResumen}:D{$filaResumen}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-
-                $filaResumen++;
-            }
-
-            $sheetResumen->getColumnDimension('A')->setWidth(35);
-            $sheetResumen->getColumnDimension('B')->setWidth(18);
-            $sheetResumen->getColumnDimension('C')->setWidth(20);
-            $sheetResumen->getColumnDimension('D')->setWidth(22);
-            $sheetResumen->getColumnDimension('E')->setWidth(35);
-            $sheetResumen->getColumnDimension('F')->setWidth(25);
-
-            $styleArrayBordes = [
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['argb' => 'FF000000'],
-                    ],
-                ],
-            ];
-            $sheetResumen->getStyle('A1:F' . ($filaResumen - 1))->applyFromArray($styleArrayBordes);
+        // Hoja resumen general
+        if (!empty($resumenHojaFinal)) {
+            $this->escribirHojaResumen($spreadsheet, $sheetIndex, $resumenHojaFinal);
         }
 
         if ($sheetIndex > 0) {
@@ -842,9 +567,638 @@ class AsistenciaControlador
         header('Cache-Control: max-age=0');
 
         $writer = new Xlsx($spreadsheet);
-        $writer->setPreCalculateFormulas(false);
+        // Deja los valores calculados dentro del archivo (además de las fórmulas,
+        // que siguen funcionando si cambias un salario o una tarifa en Excel).
+        $writer->setPreCalculateFormulas(true);
         $writer->save('php://output');
         exit;
     }
+
+    /**
+     * Tasas por defecto (las mismas que pinta la vista en los controles).
+     */
+    private function tasasPorDefecto()
+    {
+        return [
+            'hed' => self::TASA_HED,
+            'hen' => self::TASA_HEN,
+            'rn' => self::TASA_RN,
+            'rdf' => self::TASA_RDF,
+            'heddf' => self::TASA_HEDDF,
+            'hendf' => self::TASA_HENDF,
+            'rndf' => self::TASA_RNDF,
+        ];
+    }
+
+    /**
+     * Combina lo que llegó desde la vista con los valores por defecto.
+     */
+    private function configEmpleado($nombre, array $configEmpleados, array $salariosViejos, $cargo = '')
+    {
+        $base = [
+            'salario' => (float) ($salariosViejos[$nombre] ?? 0),
+            'lv' => self::HORARIO_DEFECTO['lv'],
+            'sab' => self::HORARIO_DEFECTO['sab'],
+            'tope' => self::HORARIO_DEFECTO['tope'],
+            'nocturna' => self::HORARIO_DEFECTO['nocturna'],
+            // 🔥 Regla del negocio: los TÉCNICOS (motorizados) arrancan con su
+            // primera marcación (REAL) y los administrativos a las 07:00 en
+            // punto. Si llegan antes de las 07:00, esos minutos NO cuentan
+            // (no empiezan a trabajar hasta las 7:00).
+            'turno' => $this->esCargoTecnico($cargo) ? 'REAL' : '07:00',
+            'actividad' => '',
+            'autoriza' => '',
+            'divisor' => self::DIVISOR_HORAS_MES,
+            'tasas' => $this->tasasPorDefecto(),
+        ];
+
+        if (!isset($configEmpleados[$nombre]) || !is_array($configEmpleados[$nombre])) {
+            return $base;
+        }
+
+        $c = $configEmpleados[$nombre];
+
+        if (isset($c['salario']) && is_numeric($c['salario'])) {
+            $base['salario'] = (float) $c['salario'];
+        }
+
+        foreach (['lv', 'sab', 'tope', 'nocturna'] as $campo) {
+            $hora = $this->normalizarHoraManual($c[$campo] ?? '');
+            if ($hora !== '') {
+                $base[$campo] = $hora;
+            }
+        }
+
+        if (!empty($c['turno'])) {
+            $turno = trim((string) $c['turno']);
+            $base['turno'] = (mb_strtoupper($turno, 'UTF-8') === 'REAL')
+                ? 'REAL'
+                : ($this->normalizarHoraManual($turno) ?: $base['turno']);
+        }
+
+        if (isset($c['actividad'])) {
+            $base['actividad'] = trim((string) $c['actividad']);
+        }
+        if (isset($c['autoriza'])) {
+            $base['autoriza'] = trim((string) $c['autoriza']);
+        }
+        if (isset($c['divisor']) && (float) $c['divisor'] > 0) {
+            $base['divisor'] = (float) $c['divisor'];
+        }
+
+        if (isset($c['tasas']) && is_array($c['tasas'])) {
+            foreach ($base['tasas'] as $clave => $valorDefecto) {
+                if (isset($c['tasas'][$clave]) && is_numeric($c['tasas'][$clave])) {
+                    $base['tasas'][$clave] = (float) $c['tasas'][$clave];
+                }
+            }
+        }
+
+        return $base;
+    }
+
+/**
+     * Devuelve "HH:MM" o "" (acepta 7:00, 07:00, 07:00:00 y descarta "FALTA ...").
+     */
+    private function normalizarHoraManual($valor)
+    {
+        $valor = trim((string) $valor);
+        if ($valor === '' || stripos($valor, 'falta') !== false) {
+            return '';
+        }
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $valor, $m)) {
+            $h = ((int) $m[1]) % 24;
+            return str_pad((string) $h, 2, '0', STR_PAD_LEFT) . ':' . $m[2];
+        }
+        return '';
+    }
+
+    /**
+     * Convierte "HH:MM" en la fracción de día que entiende Excel (null si falta).
+     */
+    private function fraccionHora($timeStr)
+    {
+        if (!$timeStr || stripos((string) $timeStr, 'falta') !== false) {
+            return null;
+        }
+        $p = explode(':', (string) $timeStr);
+        $h = isset($p[0]) ? (int) $p[0] : 0;
+        $m = isset($p[1]) ? (int) $p[1] : 0;
+
+        return ($h + ($m / 60)) / 24;
+    }
+
+    /**
+     * ¿El cargo corresponde a un técnico (motorizado)? Espejo de esTecnico()
+     * en calculo.js: los técnicos arrancan con su primera marcación (REAL) y
+     * los demás con turno fijo a las 07:00.
+     */
+    private function esCargoTecnico($cargo)
+    {
+        $c = mb_strtoupper(trim((string) $cargo), 'UTF-8');
+        return mb_strpos($c, 'TÉCNICO') !== false || mb_strpos($c, 'TECNICO') !== false;
+    }
+
+    /**
+     * Definición de las 23 columnas de la tabla semanal (mismo orden del Excel).
+     */
+    private function mapaColumnas()
+    {
+        return [
+            'A' => ['titulo' => 'FECHA', 'tipo' => 'fecha'],
+            'B' => ['titulo' => 'H. ENTRADA', 'tipo' => 'hora'],
+            'C' => ['titulo' => 'H. SALIDA', 'tipo' => 'hora'],
+            'D' => ['titulo' => 'TOTAL TRABAJADO', 'tipo' => 'hora'],
+            'E' => ['titulo' => 'H. EXTRA DIURNA', 'tipo' => 'hora'],
+            'F' => ['titulo' => 'H. EXTRA NOCTURNA', 'tipo' => 'hora'],
+            'G' => ['titulo' => 'DOM/FEST', 'tipo' => 'dia'],
+            'H' => ['titulo' => 'VALOR BASE H.E. DIURNA (100%)', 'tipo' => 'dinero'],
+            'I' => ['titulo' => 'RECARGO H.E. DIURNA', 'tipo' => 'dinero'],
+            'J' => ['titulo' => 'VALOR BASE H.E. NOCTURNA (100%)', 'tipo' => 'dinero'],
+            'K' => ['titulo' => 'RECARGO H.E. NOCTURNA', 'tipo' => 'dinero'],
+            'L' => ['titulo' => '# RECARGO NOCTURNO', 'tipo' => 'hora'],
+            'M' => ['titulo' => 'VALOR RECARGO NOCTURNO', 'tipo' => 'dinero'],
+            'N' => ['titulo' => '# RECARGO DOM/FEST', 'tipo' => 'hora'],
+            'O' => ['titulo' => 'VALOR RECARGO DOM/FEST', 'tipo' => 'dinero'],
+            'P' => ['titulo' => '# H.E. DIURNA DOM/FEST', 'tipo' => 'hora'],
+            'Q' => ['titulo' => 'VALOR H.E. DIURNA DOM/FEST', 'tipo' => 'dinero'],
+            'R' => ['titulo' => '# H.E. NOCTURNA DOM/FEST', 'tipo' => 'hora'],
+            'S' => ['titulo' => 'VALOR H.E. NOCTURNA DOM/FEST', 'tipo' => 'dinero'],
+            'T' => ['titulo' => '# RECARGO NOCTURNO DOM/FEST', 'tipo' => 'hora'],
+            'U' => ['titulo' => 'VALOR RECARGO NOCTURNO DOM/FEST', 'tipo' => 'dinero'],
+            'V' => ['titulo' => 'SERVICIOS', 'tipo' => 'numero'],
+            'W' => ['titulo' => 'NOVEDADES', 'tipo' => 'texto'],
+        ];
+    }
+
+    /**
+     * Encabezado: datos del trabajador (A1:I2) + bloque de tarifas (Y/Z/AA).
+     */
+    private function escribirEncabezadoHoja($sheet, $nombre, $cargo, array $config)
+    {
+        $sheet->setCellValue('A1', 'NOMBRE DEL TRABAJADOR');
+        $sheet->setCellValue('C1', $nombre);
+        $sheet->setCellValue('A2', 'CARGO');
+        $sheet->setCellValue('C2', $cargo);
+
+        $sheet->setCellValue('E1', 'L-V');
+        $sheet->setCellValue('F1', 'S');
+        $sheet->setCellValue('G1', 'LÍMITE EXTRAS');
+        $sheet->setCellValue('H1', 'INICIO TURNO');
+        $sheet->setCellValue('I1', 'INICIO NOCTURNA');
+
+        $sheet->setCellValue('E2', $this->fraccionHora($config['lv']));
+        $sheet->setCellValue('F2', $this->fraccionHora($config['sab']));
+        $sheet->setCellValue('G2', $this->fraccionHora($config['tope']));
+        $sheet->setCellValue('I2', $this->fraccionHora($config['nocturna']));
+
+        $sheet->getStyle('E2:G2')->getNumberFormat()->setFormatCode('hh:mm');
+        $sheet->getStyle('I2')->getNumberFormat()->setFormatCode('hh:mm');
+
+        // 🔥 CRÍTICO: el INICIO TURNO (H2) debe ir como FRACCIÓN DE DÍA
+        // (número), nunca como texto "07:00". La fórmula de TOTAL TRABAJADO
+        // es: MAX(0, C - IF(ISTEXT($H$2), B, MAX(B, $H$2))). Si H2 queda como
+        // texto, ISTEXT() es verdadero y la hoja entiende que el turno es
+        // "REAL", contando los minutos desde la hora de llegada aunque el
+        // administrativo haya llegado antes de las 7:00 (que no trabajan
+        // hasta las 7:00 en punto).
+        if ($config['turno'] !== 'REAL') {
+            $fraccionTurno = $this->fraccionHora($config['turno']);
+            $sheet->setCellValue('H2', $fraccionTurno !== null ? $fraccionTurno : $config['turno']);
+            $sheet->getStyle('H2')->getNumberFormat()->setFormatCode('hh:mm');
+        } else {
+            $sheet->setCellValue('H2', 'REAL');
+        }
+
+        $sheet->getStyle('A1:A2')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('A1:A2')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF548235');
+
+        $this->escribirBloqueTarifas($sheet, $config);
+    }
+
+    /**
+     * Bloque de tarifas editable (columnas Y/Z/AA).
+     *   Z2      = salario básico (lo único que se digita)
+     *   Z3      = Z2 / AA3 (AA3 = divisor de horas, 210 por defecto)
+     *   Z4..Z10 = $Z$3 * AA(fila)  → recargos y horas extra
+     * Cambiar cualquier celda recalcula TODA la hoja (plantilla "viva").
+     */
+    private function escribirBloqueTarifas($sheet, array $config)
+    {
+        $t = $config['tasas'];
+
+        $sheet->setCellValue('Y1', 'CONCEPTO');
+        $sheet->setCellValue('Z1', 'VALOR $');
+        $sheet->setCellValue('AA1', 'TASA / BASE');
+
+        $sheet->setCellValue('Y2', 'SALARIO BÁSICO');
+        $sheet->setCellValue('Z2', (float) $config['salario']);
+
+        $sheet->setCellValue('Y3', 'VALOR HORA BÁSICA');
+        $sheet->setCellValue('Z3', '=Z2/AA3');
+        $sheet->setCellValue('AA3', (float) $config['divisor']);
+
+        $filas = [
+            4 => ['REC. H.E. DIURNA', $t['hed']],
+            5 => ['REC. H.E. NOCTURNA', $t['hen']],
+            6 => ['REC. NOCTURNO ORDINARIO', $t['rn']],
+            7 => ['REC. DOM/FEST ORDINARIO', $t['rdf']],
+            8 => ['REC. H.E. DIURNA DOM/FEST', $t['heddf']],
+            9 => ['REC. H.E. NOCTURNA DOM/FEST', $t['hendf']],
+            10 => ['REC. NOCTURNO DOM/FEST', $t['rndf']],
+        ];
+
+        foreach ($filas as $fila => $info) {
+            $sheet->setCellValue("Y{$fila}", $info[0]);
+            $sheet->setCellValue("Z{$fila}", "=\$Z\$3*AA{$fila}");
+            $sheet->setCellValue("AA{$fila}", (float) $info[1]);
+        }
+
+        $sheet->getStyle('Y1:AA1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('Y1:AA1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+        $sheet->getStyle('Y2:Y10')->getFont()->setBold(true);
+        $sheet->getStyle('Z2:Z10')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle('AA3')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle('AA4:AA10')->getNumberFormat()->setFormatCode('0%');
+        $sheet->getStyle('Z2')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('Z2')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+
+        $sheet->getColumnDimension('Y')->setWidth(28);
+        $sheet->getColumnDimension('Z')->setWidth(14);
+        $sheet->getColumnDimension('AA')->setWidth(12);
+    }
+
+    /**
+     * Anchos de columna calcados de la plantilla original.
+     */
+    private function escribirAnchosColumna($sheet)
+    {
+        $anchos = [
+            'A' => 25, 'B' => 13, 'C' => 22, 'D' => 18, 'E' => 14, 'F' => 14,
+            'G' => 10, 'H' => 18, 'I' => 16, 'J' => 20, 'K' => 16, 'L' => 16,
+            'M' => 18, 'N' => 16, 'O' => 18, 'P' => 16, 'Q' => 18, 'R' => 16,
+            'S' => 18, 'T' => 18, 'U' => 20, 'V' => 12, 'W' => 24,
+        ];
+
+        foreach ($anchos as $letra => $ancho) {
+            $sheet->getColumnDimension($letra)->setWidth($ancho);
+        }
+    }
+
+/**
+     * Bloques semanales: banner + encabezados + días + REPORTE SEMANAL +
+     * 4 filas de totales (incluida la de recargos). Devuelve las celdas
+     * clave de cada semana para armar el consolidado del mes.
+     */
+    private function escribirSemanasHoja($sheet, array $registros, array $config, array $festivos)
+    {
+        $horas = ['D', 'E', 'F', 'L', 'N', 'P', 'R', 'T'];
+        $dinero = ['H', 'I', 'J', 'K', 'M', 'O', 'Q', 'S', 'U'];
+
+        // Agrupar por semana ISO (igual que la plantilla: date('W'))
+        $semanas = [];
+        foreach ($registros as $reg) {
+            $ts = strtotime((string) ($reg['fecha_raw'] ?? ''));
+            if ($ts) {
+                $semanas[date('W', $ts)][] = $reg;
+            } else {
+                $semanas['Extra'][] = $reg;
+            }
+        }
+        ksort($semanas);
+
+        $bloques = [];
+        $fila = 4; // La fila 4 es el primer "REPORTE SEMANA nn"
+
+        foreach ($semanas as $numSemana => $registrosSemana) {
+            // --- Banner de la semana ---
+            $sheet->setCellValue("A{$fila}", "REPORTE SEMANA {$numSemana}");
+            $sheet->mergeCells("A{$fila}:W{$fila}");
+            $sheet->getStyle("A{$fila}:W{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle("A{$fila}:W{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+            $fila++;
+
+            // --- Encabezados de las 23 columnas ---
+            foreach ($this->mapaColumnas() as $letra => $info) {
+                $sheet->setCellValue("{$letra}{$fila}", $info['titulo']);
+            }
+            $sheet->getStyle("A{$fila}:W{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle("A{$fila}:W{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF385D22');
+            $sheet->getStyle("A{$fila}:W{$fila}")->getAlignment()->setWrapText(true);
+            $fila++;
+
+            // --- Días de la semana ---
+            $filaInicioDatos = $fila;
+            usort($registrosSemana, function ($a, $b) {
+                return strtotime($a['fecha_raw']) <=> strtotime($b['fecha_raw']);
+            });
+            foreach ($registrosSemana as $reg) {
+                $this->escribirFilaDia($sheet, $fila, $reg, $festivos);
+                $fila++;
+            }
+            $filaFinDatos = $fila - 1;
+
+            // --- REPORTE SEMANAL (sumas de todas las columnas) ---
+            $filaResumen = $fila;
+            $sheet->setCellValue("C{$filaResumen}", 'REPORTE SEMANAL');
+            foreach (array_merge($horas, $dinero) as $letra) {
+                $sheet->setCellValue("{$letra}{$filaResumen}", "=SUM({$letra}{$filaInicioDatos}:{$letra}{$filaFinDatos})");
+            }
+            $sheet->setCellValue("V{$filaResumen}", "=SUM(V{$filaInicioDatos}:V{$filaFinDatos})");
+            $sheet->getStyle("A{$filaResumen}:W{$filaResumen}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF996600');
+            $sheet->getStyle("A{$filaResumen}:W{$filaResumen}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+            foreach ($horas as $letra) {
+                $sheet->getStyle("{$letra}{$filaResumen}")->getNumberFormat()->setFormatCode('[h]:mm');
+            }
+            foreach ($dinero as $letra) {
+                $sheet->getStyle("{$letra}{$filaResumen}")->getNumberFormat()->setFormatCode('#,##0');
+            }
+            $fila++;
+
+            // --- TOTAL HORAS EXTRAS A PAGAR (horas) ---
+            $filaHorasExtras = $fila;
+            $this->escribirFilaTotal($sheet, $fila, 'TOTAL HORAS EXTRAS A PAGAR (horas)', "=E{$filaResumen}+F{$filaResumen}", 'FF2F5597', '[h]:mm');
+            $fila++;
+
+            // --- TOTAL $ HORAS EXTRAS (base + recargo, diurna y nocturna) ---
+            $filaValorExtras = $fila;
+            $this->escribirFilaTotal($sheet, $fila, 'TOTAL $ HORAS EXTRAS A PAGAR', "=H{$filaResumen}+I{$filaResumen}+J{$filaResumen}+K{$filaResumen}", 'FF107C41', '#,##0');
+            $fila++;
+
+            // --- TOTAL HORAS DOMINICALES / RECARGOS ORDINARIOS (horas) ---
+            $filaHorasRecargos = $fila;
+            $this->escribirFilaTotal($sheet, $fila, 'TOTAL HORAS DOMINICALES/RECARGOS ORD. (horas)', "=N{$filaResumen}+T{$filaResumen}", 'FFC55A11', '[h]:mm');
+            $fila++;
+
+            // --- TOTAL $ RECARGOS Y DOM/FEST (semana) ---
+            $filaValorRecargos = $fila;
+            $this->escribirFilaTotal($sheet, $fila, 'TOTAL $ RECARGOS Y DOM/FEST (semana)', "=M{$filaResumen}+O{$filaResumen}+Q{$filaResumen}+S{$filaResumen}+U{$filaResumen}", 'FF7030A0', '#,##0');
+            $fila += 3; // deja dos filas de aire antes del siguiente bloque
+
+            $bloques[] = [
+                'horas_trabajadas' => "D{$filaResumen}",
+                'servicios' => "V{$filaResumen}",
+                'horas_extras' => "D{$filaHorasExtras}",
+                'valor_extras' => "D{$filaValorExtras}",
+                'horas_recargos' => "D{$filaHorasRecargos}",
+                'valor_recargos' => "D{$filaValorRecargos}",
+            ];
+        }
+
+        return ['bloques' => $bloques, 'fila' => $fila];
+    }
+
+    /**
+     * Escribe una fila de totales: etiqueta en C, valor en D, con su color.
+     */
+    private function escribirFilaTotal($sheet, $fila, $etiqueta, $formula, $color, $formato)
+    {
+        $sheet->setCellValue("C{$fila}", $etiqueta);
+        $sheet->setCellValue("D{$fila}", $formula);
+        $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($color);
+        $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle("D{$fila}")->getNumberFormat()->setFormatCode($formato);
+    }
+
+/**
+     * Escribe una fila de día con TODAS las fórmulas de la plantilla:
+     * horas trabajadas, extras con tope, base 100% + recargo (diurna y
+     * nocturna) y los recargos ordinarios manuales/automáticos.
+     */
+    private function escribirFilaDia($sheet, $fila, array $reg, array $festivos)
+    {
+        // Referencias absolutas del encabezado
+        $refLv = '$E$2';
+        $refSab = '$F$2';
+        $refTope = '$G$2';
+        $refTurno = '$H$2';
+        $refNocturna = '$I$2';
+
+        // Referencias absolutas del bloque de tarifas (Y/Z/AA)
+        $refHora = '$Z$3';
+        $refHed = '$Z$4';
+        $refHen = '$Z$5';
+        $refRn = '$Z$6';
+        $refRdf = '$Z$7';
+        $refHedDf = '$Z$8';
+        $refHenDf = '$Z$9';
+        $refRndf = '$Z$10';
+
+        $timestamp = strtotime((string) ($reg['fecha_raw'] ?? ''));
+        if ($timestamp) {
+            $sheet->setCellValue("A{$fila}", \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($timestamp));
+            $sheet->getStyle("A{$fila}")->getNumberFormat()->setFormatCode('[$-es-ES]dddd dd-mm-yyyy;@');
+        } else {
+            $sheet->setCellValue("A{$fila}", $reg['fecha_formateada'] ?? '');
+        }
+
+        // Domingo automático + tabla dias_festivos
+        $esDomFest = ($timestamp && (date('N', $timestamp) == 7 || isset($festivos[$reg['fecha_raw']]))) ? 1 : 0;
+        $sheet->setCellValue("G{$fila}", $esDomFest);
+
+        $valEntrada = $this->fraccionHora($reg['entrada_valor'] ?? ($reg['entrada'] ?? ''));
+        $valSalida = $this->fraccionHora($reg['salida_valor'] ?? ($reg['salida'] ?? ''));
+
+        if ($valEntrada !== null) {
+            $sheet->setCellValue("B{$fila}", $valEntrada);
+            $sheet->getStyle("B{$fila}")->getNumberFormat()->setFormatCode('hh:mm');
+        } else {
+            $sheet->setCellValue("B{$fila}", 'FALTA ENT');
+        }
+
+        if ($valSalida !== null) {
+            $sheet->setCellValue("C{$fila}", $valSalida);
+            $sheet->getStyle("C{$fila}")->getNumberFormat()->setFormatCode('hh:mm');
+
+            // 1. Total trabajado
+            $sheet->setCellValue("D{$fila}", "=IF(AND(ISNUMBER(B{$fila}), ISNUMBER(C{$fila})), MAX(0, C{$fila} - IF(ISTEXT({$refTurno}), B{$fila}, MAX(B{$fila}, {$refTurno}))), \"\")");
+
+            // 2. Límite del día + extras con tope
+            $limite = "IF(WEEKDAY(A{$fila},2)<6, {$refLv}, {$refSab})";
+            $extrasBruto = "MAX(0, D{$fila}-{$limite})";
+            $extrasTope = "IF({$extrasBruto} > {$refTope}, {$refTope}, {$extrasBruto})";
+
+            $sheet->setCellValue("F{$fila}", "=IF(ISNUMBER(C{$fila}), MAX(0, MIN({$extrasTope}, MAX(0, C{$fila}-{$refNocturna}))), \"\")");
+            $sheet->setCellValue("E{$fila}", "=IF(ISNUMBER(D{$fila}), MAX(0, {$extrasTope} - F{$fila}), \"\")");
+
+            // 3. 🔥 VALOR BASE (100%) + RECARGO, diurna y nocturna
+            //    Diurna  = 100% + 25%  (dom/fest 100% + 115% = 215%)
+            //    Nocturna= 100% + 75%  (dom/fest 100% + 165% = 265%)
+            $sheet->setCellValue("H{$fila}", "=IF(ISNUMBER(E{$fila}), E{$fila}*24*{$refHora}, \"\")");
+            $sheet->setCellValue("I{$fila}", "=IF(ISNUMBER(E{$fila}), E{$fila}*24*IF(G{$fila}=1, {$refHedDf}, {$refHed}), \"\")");
+            $sheet->setCellValue("J{$fila}", "=IF(ISNUMBER(F{$fila}), F{$fila}*24*{$refHora}, \"\")");
+            $sheet->setCellValue("K{$fila}", "=IF(ISNUMBER(F{$fila}), F{$fila}*24*IF(G{$fila}=1, {$refHenDf}, {$refHen}), \"\")");
+        } else {
+            $sheet->setCellValue("C{$fila}", 'FALTA SALIDA');
+        }
+
+        // 4. Columnas de recargos: # de horas (se escriben como hora) + su valor $
+        $manuales = [
+            'L' => ['campo' => 'rec_nocturno', 'ref' => $refRn, 'destino' => 'M'],
+            'N' => ['campo' => 'rec_domfest', 'ref' => $refRdf, 'destino' => 'O'],
+            'P' => ['campo' => 'hed_df', 'ref' => $refHedDf, 'destino' => 'Q'],
+            'R' => ['campo' => 'hen_df', 'ref' => $refHenDf, 'destino' => 'S'],
+            'T' => ['campo' => 'rec_noct_df', 'ref' => $refRndf, 'destino' => 'U'],
+        ];
+
+        foreach ($manuales as $letra => $info) {
+            $fraccion = $this->fraccionHora($reg[$info['campo']] ?? '');
+            if ($fraccion !== null) {
+                $sheet->setCellValue("{$letra}{$fila}", $fraccion);
+                $sheet->getStyle("{$letra}{$fila}")->getNumberFormat()->setFormatCode('[h]:mm');
+            }
+            $refTasa = $info['ref'];
+            $destino = $info['destino'];
+            $sheet->setCellValue("{$destino}{$fila}", "=IF(ISNUMBER({$letra}{$fila}), {$letra}{$fila}*24*{$refTasa}, 0)");
+            $sheet->getStyle("{$destino}{$fila}")->getNumberFormat()->setFormatCode('#,##0');
+        }
+
+        $sheet->setCellValue("V{$fila}", !empty($reg['servicios']) ? (int) $reg['servicios'] : '');
+        $sheet->setCellValue("W{$fila}", $reg['novedades'] ?? '');
+
+        // 5. Formatos de la fila
+        foreach (['D', 'E', 'F'] as $letra) {
+            $sheet->getStyle("{$letra}{$fila}")->getNumberFormat()->setFormatCode('[h]:mm');
+        }
+        foreach (['H', 'I', 'J', 'K'] as $letra) {
+            $sheet->getStyle("{$letra}{$fila}")->getNumberFormat()->setFormatCode('#,##0');
+        }
+
+        if ($esDomFest) {
+            $sheet->getStyle("A{$fila}:W{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFF2CC');
+        }
+    }
+
+/**
+     * Consolidado final del mes: 7 filas con las sumas de cada semana
+     * (incluye $ recargos y el gran total general a pagar).
+     */
+    private function escribirConsolidadoMes($sheet, array $bloques, $fila)
+    {
+        $sheet->setCellValue("B{$fila}", 'CONSOLIDADO FINAL DEL MES');
+        $sheet->mergeCells("B{$fila}:D{$fila}");
+        $sheet->getStyle("B{$fila}:D{$fila}")->getFont()->setBold(true)->setSize(12);
+        $sheet->getStyle("B{$fila}:D{$fila}")->getFont()->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle("B{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF000000');
+        $fila++;
+
+        $filas = [
+            'horas_trabajadas' => ['GRAN TOTAL HORAS TRABAJADAS', 'FF996600', '[h]:mm'],
+            'horas_extras' => ['GRAN TOTAL HORAS EXTRAS (horas)', 'FF2F5597', '[h]:mm'],
+            'valor_extras' => ['GRAN TOTAL $ HORAS EXTRAS A PAGAR', 'FF107C41', '#,##0'],
+            'horas_recargos' => ['GRAN TOTAL DOMINICALES/RECARGOS ORD. (horas)', 'FFC55A11', '[h]:mm'],
+            'servicios' => ['GRAN TOTAL SERVICIOS (TICKETS)', 'FF1F4E78', '#,##0'],
+            'valor_recargos' => ['GRAN TOTAL $ RECARGOS Y DOM/FEST (mes)', 'FF7030A0', '#,##0'],
+        ];
+
+        $celdas = [];
+        foreach ($filas as $clave => $info) {
+            $refs = [];
+            foreach ($bloques as $bloque) {
+                if (!empty($bloque[$clave])) {
+                    $refs[] = $bloque[$clave];
+                }
+            }
+
+            $sheet->setCellValue("C{$fila}", $info[0]);
+            $sheet->setCellValue("D{$fila}", empty($refs) ? 0 : '=SUM(' . implode(',', $refs) . ')');
+            $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($info[1]);
+            $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+            $sheet->getStyle("D{$fila}")->getNumberFormat()->setFormatCode($info[2]);
+
+            $celdas[$clave] = "D{$fila}";
+            $fila++;
+        }
+
+        // GRAN TOTAL GENERAL A PAGAR = $ extras + $ recargos
+        $celdaValorExtras = $celdas['valor_extras'];
+        $celdaValorRecargos = $celdas['valor_recargos'];
+
+        $sheet->setCellValue("C{$fila}", 'GRAN TOTAL GENERAL A PAGAR (EXTRAS + RECARGOS)');
+        $sheet->setCellValue("D{$fila}", "={$celdaValorExtras}+{$celdaValorRecargos}");
+        $sheet->getStyle("C{$fila}:D{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF000000');
+        $sheet->getStyle("C{$fila}:D{$fila}")->getFont()->setBold(true)->setSize(12)->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle("D{$fila}")->getNumberFormat()->setFormatCode('#,##0');
+
+        $celdas['total_general'] = "D{$fila}";
+        $celdas['fila_final'] = (int) $fila;
+
+        return $celdas;
+    }
+
+/**
+     * Hoja final "Resumen Extras" (8 columnas, con recargos y total general).
+     */
+    private function escribirHojaResumen(Spreadsheet $spreadsheet, $sheetIndex, array $resumen)
+    {
+        $sheet = $spreadsheet->createSheet($sheetIndex);
+        $sheet->setTitle('Resumen Extras');
+
+        $encabezados = [
+            'A1' => 'NOMBRE DE LA PERSONA',
+            'B1' => 'SALARIO BÁSICO',
+            'C1' => 'HORAS EXTRA (TOTAL)',
+            'D1' => 'VALOR TOTAL A PAGAR ($)',
+            'E1' => 'ACTIVIDAD REALIZADA',
+            'F1' => 'QUIEN AUTORIZA',
+            'G1' => 'RECARGOS Y DOM/FEST ($)',
+            'H1' => 'TOTAL GENERAL A PAGAR ($)',
+        ];
+
+        foreach ($encabezados as $celda => $texto) {
+            $sheet->setCellValue($celda, $texto);
+        }
+
+        $sheet->getStyle('A1:H1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('A1:H1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF1F4E78');
+        $sheet->getStyle('A1:H1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A1:H1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle('A1:H1')->getAlignment()->setWrapText(true);
+
+        $fila = 2;
+        foreach ($resumen as $res) {
+            $hoja = "'" . $res['hoja'] . "'";
+            $cHorasExtras = $res['celda_horas_extras'];
+            $cValorExtras = $res['celda_valor_extras'];
+            $cValorRecargos = $res['celda_valor_recargos'];
+            $cTotalGeneral = $res['celda_total_general'];
+
+            $sheet->setCellValue("A{$fila}", $res['nombre']);
+            $sheet->setCellValue("B{$fila}", "={$hoja}!Z2");
+            $sheet->setCellValue("C{$fila}", "=IF({$hoja}!{$cHorasExtras}=0, \"\", {$hoja}!{$cHorasExtras})");
+            $sheet->setCellValue("D{$fila}", "=IF({$hoja}!{$cValorExtras}=0, \"\", {$hoja}!{$cValorExtras})");
+            $sheet->setCellValue("E{$fila}", $res['actividad']);
+            $sheet->setCellValue("F{$fila}", $res['autoriza']);
+            $sheet->setCellValue("G{$fila}", "=IF({$hoja}!{$cValorRecargos}=0, \"\", {$hoja}!{$cValorRecargos})");
+            $sheet->setCellValue("H{$fila}", "=IF({$hoja}!{$cTotalGeneral}=0, \"\", {$hoja}!{$cTotalGeneral})");
+
+            $sheet->getStyle("B{$fila}")->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle("C{$fila}")->getNumberFormat()->setFormatCode('[h]:mm;;;');
+            $sheet->getStyle("D{$fila}")->getNumberFormat()->setFormatCode('#,##0;;;');
+            $sheet->getStyle("G{$fila}")->getNumberFormat()->setFormatCode('#,##0;;;');
+            $sheet->getStyle("H{$fila}")->getNumberFormat()->setFormatCode('#,##0;;;');
+            $fila++;
+        }
+
+        $anchos = ['A' => 35, 'B' => 18, 'C' => 20, 'D' => 24, 'E' => 35, 'F' => 25, 'G' => 20, 'H' => 22];
+        foreach ($anchos as $letra => $ancho) {
+            $sheet->getColumnDimension($letra)->setWidth($ancho);
+        }
+
+        $styleArrayBordes = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => 'FF000000'],
+                ],
+            ],
+        ];
+
+        $ultima = $fila - 1;
+        if ($ultima >= 1) {
+            $sheet->getStyle("A1:H{$ultima}")->applyFromArray($styleArrayBordes);
+            $sheet->getStyle("B2:H{$ultima}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("A2:H{$ultima}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        }
+    }
 }
-?>
