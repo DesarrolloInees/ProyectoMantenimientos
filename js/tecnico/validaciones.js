@@ -112,8 +112,14 @@ function validarYEnviar() {
         return false;
     }
 
-    // 6. Validar actividades realizadas
-    let actividades = $('textarea[name="actividades_realizadas"]').val().trim();
+    // 6. Dual-write novedad estado inicial: limpia prefijo viejo y antepone el nuevo (sin duplicar)
+    let novedadIni = ($('textarea[name="novedad_estado_inicial"]').val() || '').trim().substring(0, 500);
+    let actEl = $('textarea[name="actividades_realizadas"]');
+    let actBase = (actEl.val() || '').replace(/^\[ESTADO INICIAL:.*?\]\s*/i, '').trim();
+    actEl.val(novedadIni !== '' ? '[ESTADO INICIAL: ' + novedadIni + '] ' + actBase : actBase);
+
+    // 6b. Validar actividades realizadas
+    let actividades = actEl.val().trim();
     if (!actividades) {
         alert('⚠️ Por favor, describe las actividades realizadas.');
         return false;
@@ -135,8 +141,9 @@ function validarYEnviar() {
     resumen += '🔧 Tipo: ' + $('select[name="id_tipo_mantenimiento"] option:selected').text() + '\n';
     resumen += '📦 Remisión: ' + remision + '\n';
     resumen += '✅ Estado Final: ' + $('select[name="id_estado_maquina"] option:selected').text() + '\n';
+    let novedadResumen = ($('textarea[name="novedad_estado_inicial"]').val() || '').trim();
 
-    if (!confirm(resumen + '\n¿Guardar este servicio?')) {
+    if (!confirm(resumen + (novedadResumen ? '🔔 Novedad inicial: ' + novedadResumen + '\n' : '') + '\n¿Guardar este servicio?')) {
         return false;
     }
 

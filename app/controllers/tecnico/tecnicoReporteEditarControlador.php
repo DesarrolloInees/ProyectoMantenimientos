@@ -74,6 +74,12 @@ class tecnicoReporteEditarControlador
         $idTecnicoActual = $this->modelo->obtenerIdTecnicoPorUsuario($idUsuarioLogueado);
         $idOrdenServicio = (int) ($_POST['id_ordenes_servicio'] ?? 0);
 
+        // Dual-write novedad estado inicial: columna dedicada (limpia) + prefijo en actividades (visible en reportes)
+        $novedadIni = trim($_POST['novedad_estado_inicial'] ?? '');
+        if (mb_strlen($novedadIni) > 500) $novedadIni = mb_substr($novedadIni, 0, 500);
+        $baseAct = preg_replace('/^\[ESTADO INICIAL:.*?\]\s*/is', '', trim($_POST['actividades_realizadas'] ?? ''));
+        $actividadesFinal = $novedadIni !== '' ? '[ESTADO INICIAL: ' . $novedadIni . '] ' . $baseAct : $baseAct;
+
         // Armamos el array de datos principales (Idéntico a Crear, pero referenciando a Editar)
         $datos = [
             'id_ordenes_servicio'   => $idOrdenServicio,
@@ -82,12 +88,13 @@ class tecnicoReporteEditarControlador
             'hora_entrada'          => $_POST['hora_entrada'] ?? '',
             'hora_salida'           => $_POST['hora_salida'] ?? '',
             'tiempo_servicio'       => $_POST['tiempo_servicio'] ?? '',
-            'actividades_realizadas'=> $_POST['actividades_realizadas'] ?? '',
+            'actividades_realizadas'=> $actividadesFinal,
             'id_estado_maquina'     => $_POST['id_estado_maquina'] ?? null,
             'id_calificacion'       => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
             'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? null,
             'soporte_remoto'        => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
-            'tiene_novedad'         => isset($_POST['tiene_novedad']) ? 1 : 0,
+            // La vista ya no muestra el checkbox; se conserva el valor previo via hidden (1/0)
+            'tiene_novedad'         => (!empty($_POST['tiene_novedad']) && $_POST['tiene_novedad'] !== '0') ? 1 : 0,
             'detalle_novedad'       => !empty($_POST['detalle_novedad']) ? $_POST['detalle_novedad'] : null,
             'repuestos_tecnico'     => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
         ];
@@ -101,7 +108,8 @@ class tecnicoReporteEditarControlador
             'pendientes'           => $_POST['pendientes'] ?? null,
             'administrador_punto'  => $_POST['administrador_punto'] ?? null,
             'celular_encargado'    => $_POST['celular_encargado'] ?? null,
-            'id_estado_inicial'    => $_POST['id_estado_inicial'] ?? null
+            'id_estado_inicial'    => $_POST['id_estado_inicial'] ?? null,
+            'novedad_estado_inicial' => $novedadIni !== '' ? $novedadIni : null
         ]; // NOTA: No pasamos GPS aquí.
 
         // Realizar los UPDATES

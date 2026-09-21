@@ -267,6 +267,20 @@
         </div>
 
         <div>
+            <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Novedad estado inicial <span class="text-gray-400 normal-case font-medium">(opcional)</span></label>
+            <textarea name="novedad_estado_inicial" rows="2" maxlength="500" placeholder="Ej: máquina apagada, sin energía, no enciende..."
+                class="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-800 shadow-sm outline-none focus:border-blue-500"></textarea>
+            <div class="flex flex-wrap gap-2 mt-2">
+                <button type="button" onclick="document.querySelector('textarea[name=novedad_estado_inicial]').value='máquina apagada'"
+                    class="text-[11px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full px-3 py-1 transition">Máquina apagada</button>
+                <button type="button" onclick="document.querySelector('textarea[name=novedad_estado_inicial]').value='sin energía en el punto'"
+                    class="text-[11px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full px-3 py-1 transition">Sin energía</button>
+                <button type="button" onclick="document.querySelector('textarea[name=novedad_estado_inicial]').value='no enciende'"
+                    class="text-[11px] font-bold bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full px-3 py-1 transition">No enciende</button>
+            </div>
+        </div>
+
+        <div>
             <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Estado final</label>
             <select name="id_estado_maquina" class="w-full border-gray-300 rounded-lg select2-movil" required>
                 <option value="">- Seleccione Estado -</option>

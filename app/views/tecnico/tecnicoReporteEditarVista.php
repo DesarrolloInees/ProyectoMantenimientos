@@ -98,6 +98,19 @@
                            value="<?= htmlspecialchars($reporteGuardado['serial_ups'] ?? '') ?>">
                 </div>
                 <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Novedad estado inicial <span class="text-gray-400 font-normal">(opcional)</span></label>
+                    <?php
+                    // Fallback: si la columna nueva viene NULL pero actividades trae prefijo viejo, lo mostramos separado
+                    $novPre = $reporteGuardado['novedad_estado_inicial'] ?? null;
+                    $actPre = $reporteGuardado['actividades_realizadas'] ?? '';
+                    if (($novPre === null || $novPre === '') && preg_match('/^\[ESTADO INICIAL:\s*(.*?)\]\s*/is', $actPre, $m)) {
+                        $novPre = trim($m[1]);
+                    }
+                    ?>
+                    <textarea name="novedad_estado_inicial" rows="2" maxlength="500" placeholder="Ej: máquina apagada, sin energía..."
+                        class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500"><?= htmlspecialchars($novPre ?? '') ?></textarea>
+                </div>
+                <div class="col-span-2">
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Estado Inicial</label>
                     <select name="id_estado_inicial" class="w-full border-gray-300 rounded-md shadow-sm">
                         <option value="">Seleccione...</option>
@@ -137,17 +150,9 @@
                 <textarea name="pendientes" rows="2" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500"><?= htmlspecialchars($reporteGuardado['pendientes'] ?? '') ?></textarea>
             </div>
 
-            <div class="mb-4">
-                <label class="flex items-center space-x-2 text-sm font-semibold text-gray-700">
-                    <input type="checkbox" name="tiene_novedad" id="tiene_novedad" class="rounded text-blue-600 focus:ring-blue-500" <?= !empty($reporteGuardado['tiene_novedad']) ? 'checked' : '' ?>>
-                    <span>¿Hubo alguna novedad en el servicio?</span>
-                </label>
-            </div>
-            
-            <div id="contenedor_novedad" class="<?= empty($reporteGuardado['tiene_novedad']) ? 'hidden' : '' ?>">
-                <label class="block text-xs font-semibold text-gray-600 mb-1">Detalle de la Novedad</label>
-                <textarea name="detalle_novedad" rows="2" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-red-500 border-red-200"><?= htmlspecialchars($reporteGuardado['detalle_novedad'] ?? '') ?></textarea>
-            </div>
+            <!-- Novedad del servicio anterior: se conserva el dato pero ya no se muestra ni se edita aquí -->
+            <input type="hidden" name="tiene_novedad" value="<?= !empty($reporteGuardado['tiene_novedad']) ? '1' : '0' ?>">
+            <input type="hidden" name="detalle_novedad" value="<?= htmlspecialchars($reporteGuardado['detalle_novedad'] ?? '') ?>">
         </div>
 
         <!-- SECCIÓN 4: Repuestos -->
@@ -326,14 +331,3 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="js/tecnico/tecnicoReporte.js"></script>
 <script src="js/tecnico/validacionesEditar.js"></script>
-<script>
-    // Mostrar/Ocultar Novedad Dinámicamente
-    $('#tiene_novedad').on('change', function() {
-        if($(this).is(':checked')) {
-            $('#contenedor_novedad').slideDown();
-        } else {
-            $('#contenedor_novedad').slideUp();
-            $('textarea[name="detalle_novedad"]').val('');
-        }
-    });
-</script>

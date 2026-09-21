@@ -20,7 +20,12 @@ function validarYActualizar() {
     if (!$('select[name="id_tipo_mantenimiento"]').val()) { alert('⚠️ Selecciona el Tipo de Servicio.'); return false; }
     if (!$('select[name="numero_remision"]').val()) { alert('⚠️ Selecciona un número de remisión.'); return false; }
     if (!$('select[name="id_estado_maquina"]').val()) { alert('⚠️ Selecciona el Estado Final.'); return false; }
-    if (!$('textarea[name="actividades_realizadas"]').val().trim()) { alert('⚠️ Describe las actividades.'); return false; }
+    // Dual-write novedad estado inicial: limpia prefijo viejo y antepone el nuevo (sin duplicar)
+    let novedadIniEdit = ($('textarea[name="novedad_estado_inicial"]').val() || '').trim().substring(0, 500);
+    let actElEdit = $('textarea[name="actividades_realizadas"]');
+    let actBaseEdit = (actElEdit.val() || '').replace(/^\[ESTADO INICIAL:.*?\]\s*/i, '').trim();
+    actElEdit.val(novedadIniEdit !== '' ? '[ESTADO INICIAL: ' + novedadIniEdit + '] ' + actBaseEdit : actBaseEdit);
+    if (!actElEdit.val().trim()) { alert('⚠️ Describe las actividades.'); return false; }
 
     // Advertencia: Correctivo sin repuestos
     let textoTipoEdit = $('select[name="id_tipo_mantenimiento"] option:selected').text().toUpperCase().trim();

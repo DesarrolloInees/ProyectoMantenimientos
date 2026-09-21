@@ -416,8 +416,84 @@ class tecnicoReporteModelo
 
     public function guardarDatosComplementarios($datosComp)
     {
+        // Normalizar: si la columna nueva no existe en algún ambiente, caemos al SQL viejo
+        if (!array_key_exists('novedad_estado_inicial', $datosComp)) {
+            $datosComp['novedad_estado_inicial'] = null;
+        }
         try {
+            if (!$this->columnaExiste('ordenes_servicio_complemento', 'novedad_estado_inicial')) {
+                return $this->guardarDatosComplementariosLegacy($datosComp);
+            }
             $sql = "INSERT INTO ordenes_servicio_complemento (
+                        id_orden_servicio, numero_maquina, serial_maquina, serial_router, 
+                        serial_ups, pendientes, administrador_punto, celular_encargado, id_estado_inicial, novedad_estado_inicial,
+                        latitud_fin, longitud_fin, estado
+                    ) VALUES (
+                        :id_orden, :num_maq, :ser_maq, :ser_rout, 
+                        :ser_ups, :pendientes, :admin, :celular, :est_ini, :nov_ini,
+                        :lat_fin, :lon_fin, 1
+                    ) ON DUPLICATE KEY UPDATE 
+                        numero_maquina = VALUES(numero_maquina),
+                        serial_maquina = VALUES(serial_maquina),
+                        serial_router = VALUES(serial_router),
+                        serial_ups = VALUES(serial_ups),
+                        pendientes = VALUES(pendientes),
+                        administrador_punto = VALUES(administrador_punto),
+                        celular_encargado = VALUES(celular_encargado),
+                        id_estado_inicial = VALUES(id_estado_inicial),
+                        novedad_estado_inicial = VALUES(novedad_estado_inicial),
+                        latitud_fin = VALUES(latitud_fin),
+                        longitud_fin = VALUES(longitud_fin)";
+
+            $stmt = $this->conn->prepare($sql);
+
+            $resultado = $stmt->execute([
+                ':id_orden' => $datosComp['id_orden_servicio'],
+                ':num_maq' => $datosComp['numero_maquina'],
+                ':ser_maq' => $datosComp['serial_maquina'],
+                ':ser_rout' => $datosComp['serial_router'],
+                ':ser_ups' => $datosComp['serial_ups'],
+                ':pendientes' => $datosComp['pendientes'],
+                ':admin' => $datosComp['administrador_punto'],
+                ':celular' => $datosComp['celular_encargado'],
+                ':est_ini' => $datosComp['id_estado_inicial'],
+                ':nov_ini' => $datosComp['novedad_estado_inicial'],
+                ':lat_fin' => $datosComp['latitud_fin'],
+                ':lon_fin' => $datosComp['longitud_fin']
+            ]);
+
+            if (!$resultado) {
+                error_log("Fallo SQL Complemento: " . print_r($stmt->errorInfo(), true));
+            }
+
+            return $resultado;
+
+        } catch (PDOException $e) {
+            // Fallback: si la columna no existe en este ambiente, guardar con SQL viejo
+            if (strpos($e->getMessage(), 'novedad_estado_inicial') !== false) {
+                return $this->guardarDatosComplementariosLegacy($datosComp);
+            }
+            error_log("Error guardarDatosComplementarios Excepcion: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function columnaExiste($tabla, $columna)
+    {
+        try {
+            $sql = "SELECT COUNT(*) n FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = :c";
+            $st = $this->conn->prepare($sql);
+            $st->execute([':t' => $tabla, ':c' => $columna]);
+            $r = $st->fetch(PDO::FETCH_ASSOC);
+            return $r && (int)($r['n'] ?? 0) > 0;
+        } catch (PDOException $e) {
+            return true; // si no podemos verificar, intentar SQL nuevo y dejar que el catch haga fallback
+        }
+    }
+
+    private function guardarDatosComplementariosLegacy($datosComp)
+    {
+        $sql = "INSERT INTO ordenes_servicio_complemento (
                         id_orden_servicio, numero_maquina, serial_maquina, serial_router, 
                         serial_ups, pendientes, administrador_punto, celular_encargado, id_estado_inicial, 
                         latitud_fin, longitud_fin, estado
@@ -436,33 +512,37 @@ class tecnicoReporteModelo
                         id_estado_inicial = VALUES(id_estado_inicial),
                         latitud_fin = VALUES(latitud_fin),
                         longitud_fin = VALUES(longitud_fin)";
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([
+            ':id_orden' => $datosComp['id_orden_servicio'],
+            ':num_maq' => $datosComp['numero_maquina'],
+            ':ser_maq' => $datosComp['serial_maquina'],
+            ':ser_rout' => $datosComp['serial_router'],
+            ':ser_ups' => $datosComp['serial_ups'],
+            ':pendientes' => $datosComp['pendientes'],
+            ':admin' => $datosComp['administrador_punto'],
+            ':celular' => $datosComp['celular_encargado'],
+            ':est_ini' => $datosComp['id_estado_inicial'],
+            ':lat_fin' => $datosComp['latitud_fin'],
+            ':lon_fin' => $datosComp['longitud_fin']
+        ]);
+    }
 
-            $stmt = $this->conn->prepare($sql);
-
-            $resultado = $stmt->execute([
-                ':id_orden' => $datosComp['id_orden_servicio'],
-                ':num_maq' => $datosComp['numero_maquina'],
-                ':ser_maq' => $datosComp['serial_maquina'],
-                ':ser_rout' => $datosComp['serial_router'],
-                ':ser_ups' => $datosComp['serial_ups'],
-                ':pendientes' => $datosComp['pendientes'],
-                ':admin' => $datosComp['administrador_punto'],
-                ':celular' => $datosComp['celular_encargado'],
-                ':est_ini' => $datosComp['id_estado_inicial'],
-                ':lat_fin' => $datosComp['latitud_fin'],
-                ':lon_fin' => $datosComp['longitud_fin']
-            ]);
-
-            if (!$resultado) {
-                error_log("Fallo SQL Complemento: " . print_r($stmt->errorInfo(), true));
-            }
-
-            return $resultado;
-
-        } catch (PDOException $e) {
-            error_log("Error guardarDatosComplementarios Excepcion: " . $e->getMessage());
-            return false;
-        }
+    private function actualizarDatosComplementariosLegacy($datos)
+    {
+        $sql = "UPDATE ordenes_servicio_complemento SET 
+                numero_maquina = :numero_maquina,
+                serial_maquina = :serial_maquina,
+                serial_router = :serial_router,
+                serial_ups = :serial_ups,
+                pendientes = :pendientes,
+                administrador_punto = :administrador_punto,
+                celular_encargado = :celular_encargado,
+                id_estado_inicial = :id_estado_inicial
+                WHERE id_orden_servicio = :id_orden_servicio";
+        $stmt = $this->conn->prepare($sql);
+        unset($datos['novedad_estado_inicial']);
+        return $stmt->execute($datos);
     }
 
     private function getModificacionesFile()
@@ -508,9 +588,11 @@ class tecnicoReporteModelo
     public function obtenerReporteGuardado($idOrdenServicio)
     {
         // Consultamos directamente la orden y su complemento real
+        // novedad_estado_inicial se agrega solo si la columna existe (ambientes sin migrar no se rompen)
+        $extra = $this->columnaExiste('ordenes_servicio_complemento', 'novedad_estado_inicial') ? ', c.novedad_estado_inicial' : '';
         $sql = "SELECT r.*, 
                        c.numero_maquina, c.serial_maquina, c.serial_router, c.serial_ups, 
-                       c.pendientes, c.administrador_punto, c.celular_encargado, c.id_estado_inicial
+                       c.pendientes, c.administrador_punto, c.celular_encargado, c.id_estado_inicial{$extra}
                 FROM ordenes_servicio r
                 LEFT JOIN ordenes_servicio_complemento c ON r.id_ordenes_servicio = c.id_orden_servicio
                 WHERE r.id_ordenes_servicio = :id";
@@ -555,7 +637,14 @@ class tecnicoReporteModelo
 
     public function actualizarDatosComplementarios($datos)
     {
-        $sql = "UPDATE ordenes_servicio_complemento SET 
+        if (!array_key_exists('novedad_estado_inicial', $datos)) {
+            $datos['novedad_estado_inicial'] = null;
+        }
+        try {
+            if (!$this->columnaExiste('ordenes_servicio_complemento', 'novedad_estado_inicial')) {
+                return $this->actualizarDatosComplementariosLegacy($datos);
+            }
+            $sql = "UPDATE ordenes_servicio_complemento SET 
                 numero_maquina = :numero_maquina,
                 serial_maquina = :serial_maquina,
                 serial_router = :serial_router,
@@ -563,11 +652,18 @@ class tecnicoReporteModelo
                 pendientes = :pendientes,
                 administrador_punto = :administrador_punto,
                 celular_encargado = :celular_encargado,
-                id_estado_inicial = :id_estado_inicial
+                id_estado_inicial = :id_estado_inicial,
+                novedad_estado_inicial = :novedad_estado_inicial
                 WHERE id_orden_servicio = :id_orden_servicio";
 
-        $stmt = $this->conn->prepare($sql);
-        return $stmt->execute($datos);
+            $stmt = $this->conn->prepare($sql);
+            return $stmt->execute($datos);
+        } catch (PDOException $e) {
+            if (strpos($e->getMessage(), 'novedad_estado_inicial') !== false) {
+                return $this->actualizarDatosComplementariosLegacy($datos);
+            }
+            throw $e;
+        }
     }
 
     public function obtenerDetalleOrdenParaEdicion($idOrden)

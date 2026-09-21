@@ -121,6 +121,12 @@ class tecnicoReporteControlador
 
         $this->modelo->actualizarFechaModificacion($idOrdenServicio);
 
+        // Dual-write novedad estado inicial: columna dedicada (limpia) + prefijo en actividades (visible en reportes)
+        $novedadIni = trim($_POST['novedad_estado_inicial'] ?? '');
+        if (mb_strlen($novedadIni) > 500) $novedadIni = mb_substr($novedadIni, 0, 500);
+        $baseAct = preg_replace('/^\[ESTADO INICIAL:.*?\]\s*/is', '', trim($_POST['actividades_realizadas'] ?? ''));
+        $actividadesFinal = $novedadIni !== '' ? '[ESTADO INICIAL: ' . $novedadIni . '] ' . $baseAct : $baseAct;
+
         $datos = [
             'id_ordenes_servicio' => $idOrdenServicio,
             'id_tecnico' => $idTecnicoActual,
@@ -130,7 +136,7 @@ class tecnicoReporteControlador
             'hora_entrada' => $_POST['hora_entrada'] ?? '',
             'hora_salida' => $_POST['hora_salida'] ?? '',
             'tiempo_servicio' => $_POST['tiempo_servicio'] ?? '',
-            'actividades_realizadas' => $_POST['actividades_realizadas'] ?? '',
+            'actividades_realizadas' => $actividadesFinal,
             'id_estado_maquina' => $_POST['id_estado_maquina'] ?? null,
             'id_calificacion' => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
             'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? null,
@@ -151,6 +157,7 @@ class tecnicoReporteControlador
             'administrador_punto' => $_POST['administrador_punto'] ?? null,
             'celular_encargado' => $_POST['celular_encargado'] ?? null,
             'id_estado_inicial' => $_POST['id_estado_inicial'] ?? null,
+            'novedad_estado_inicial' => $novedadIni !== '' ? $novedadIni : null,
             'latitud_fin' => $_POST['latitud_fin'] ?? null,
             'longitud_fin' => $_POST['longitud_fin'] ?? null
         ];
