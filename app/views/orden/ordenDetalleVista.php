@@ -871,19 +871,28 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
         }
 
         // Verificar filas con CORRECTIVO sin repuestos
+        // FIX: el hidden real es input_json_<id> (detalleFila.php), no json_rep_<id> (ese es del módulo Crear).
         let hayCorrectivoSinRepuestos = false;
         document.querySelectorAll('#tablaEdicion tbody tr[id^="fila_"]').forEach(function(fila) {
             const idOrden = fila.id.split('_')[1];
             const selServicio = fila.querySelector('[id^="sel_servicio_"]') || fila.querySelector('select[name*="id_tipo_mantenimiento"]');
-            const inputRepuestos = fila.querySelector('[id^="json_rep_"]') || fila.querySelector('input[id*="json_rep"]');
+            // Selector correcto para Detalle + fallbacks robustos
+            const inputRepuestos = document.getElementById('input_json_' + idOrden)
+                || fila.querySelector('input[name*="[json_repuestos]"]')
+                || fila.querySelector('[id^="input_json_"]');
 
-            if (selServicio) {
-                const textoServicio = (selServicio.options[selServicio.selectedIndex] ? selServicio.options[selServicio.selectedIndex].text : '').toUpperCase();
+            if (selServicio && selServicio.options && selServicio.selectedIndex >= 0) {
+                const textoServicio = ((selServicio.options[selServicio.selectedIndex] ? selServicio.options[selServicio.selectedIndex].text : '') || '').toUpperCase().trim();
                 let cantRepuestos = 0;
-                if (inputRepuestos && inputRepuestos.value) {
+                if (inputRepuestos && inputRepuestos.value && inputRepuestos.value.trim() !== '' && inputRepuestos.value.trim() !== '[]') {
                     try {
                         const arr = JSON.parse(inputRepuestos.value || '[]');
-                        cantRepuestos = Array.isArray(arr) ? arr.length : 0;
+                        if (Array.isArray(arr)) {
+                            // Sumar cantidades (igual que detalleFila.php y actualizarBotonFila), no solo arr.length
+                            cantRepuestos = arr.reduce(function(acc, it) {
+                                return acc + (parseInt(it.cantidad, 10) || 1);
+                            }, 0);
+                        }
                     } catch(e) { cantRepuestos = 0; }
                 }
                 if (textoServicio.includes('CORRECTIVO') && cantRepuestos === 0) {

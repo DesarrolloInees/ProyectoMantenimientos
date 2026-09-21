@@ -808,8 +808,41 @@
             return;
         }
 
+        // Misma detección corregida que ordenDetalleVista: input_json_<id>, no json_rep_<id>
+        let hayCorrectivoSinRepuestos = false;
+        document.querySelectorAll('#tablaEdicion tbody tr[id^="fila_"]').forEach(function(fila) {
+            const idOrden = fila.id.split('_')[1];
+            const selServicio = fila.querySelector('[id^="sel_servicio_"]') || fila.querySelector('select[name*="id_tipo_mantenimiento"]');
+            const inputRepuestos = document.getElementById('input_json_' + idOrden)
+                || fila.querySelector('input[name*="[json_repuestos]"]')
+                || fila.querySelector('[id^="input_json_"]');
+
+            if (selServicio && selServicio.options && selServicio.selectedIndex >= 0) {
+                const textoServicio = ((selServicio.options[selServicio.selectedIndex] ? selServicio.options[selServicio.selectedIndex].text : '') || '').toUpperCase().trim();
+                let cantRepuestos = 0;
+                if (inputRepuestos && inputRepuestos.value && inputRepuestos.value.trim() !== '' && inputRepuestos.value.trim() !== '[]') {
+                    try {
+                        const arr = JSON.parse(inputRepuestos.value || '[]');
+                        if (Array.isArray(arr)) {
+                            cantRepuestos = arr.reduce(function(acc, it) {
+                                return acc + (parseInt(it.cantidad, 10) || 1);
+                            }, 0);
+                        }
+                    } catch(e) { cantRepuestos = 0; }
+                }
+                if (textoServicio.includes('CORRECTIVO') && cantRepuestos === 0) {
+                    hayCorrectivoSinRepuestos = true;
+                }
+            }
+        });
+
+        let mensajeModal = "¿Estás seguro de que deseas guardar todos los cambios de tu búsqueda actual?";
+        if (hayCorrectivoSinRepuestos) {
+            mensajeModal = "⚠️ <b>¡ADVERTENCIA!</b><br><br>Hay servicios <b>CORRECTIVOS que NO tienen repuestos</b>.<br>Esto es inusual.<br><br>¿Deseas guardar de todas formas?";
+        }
+
         window.DetalleNotificaciones.mostrarModalConfirmacion(
-            "¿Estás seguro de que deseas guardar todos los cambios de tu búsqueda actual?",
+            mensajeModal,
             function() {
                 ejecutarGuardadoJSON();
             }
