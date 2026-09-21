@@ -3,6 +3,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/inicio/inicioModelo.php';
+require_once __DIR__ . '/../../helpers/resumenTiposServicio.php';
 
 class inicioControlador
 {
@@ -31,6 +32,30 @@ class inicioControlador
                 'clientes'     => $this->modelo->totalClientes(),
                 'tecnicos'     => $this->modelo->totalTecnicos()
             ];
+        }
+
+        // Resumen del mes actual para el técnico logueado (nivel 3).
+        // Usa la misma clasificación que el reporte técnico.
+        $resumenTecnicoMes = ResumenTiposServicio::vacio();
+        $rangoTecnicoMes = ['inicio' => date('Y-m-01'), 'fin' => date('Y-m-d')];
+        if (isset($_SESSION['nivel_acceso']) && (int)$_SESSION['nivel_acceso'] === 3) {
+            $idTecnicoSesion = $this->modelo->obtenerIdTecnicoPorUsuario($_SESSION['usuario_id'] ?? 0);
+            if ($idTecnicoSesion > 0) {
+                $filas = $this->modelo->resumenServiciosPorTipo(
+                    $idTecnicoSesion,
+                    $rangoTecnicoMes['inicio'],
+                    $rangoTecnicoMes['fin']
+                );
+                // Expandimos el GROUP BY a filas individuales para reutilizar el helper.
+                $expandidas = [];
+                foreach ($filas as $f) {
+                    $n = isset($f['total']) ? (int)$f['total'] : 0;
+                    for ($i = 0; $i < $n; $i++) {
+                        $expandidas[] = ['tipo_mantenimiento' => $f['tipo_mantenimiento'] ?? ''];
+                    }
+                }
+                $resumenTecnicoMes = ResumenTiposServicio::resumir($expandidas);
+            }
         }
 
         $usuario = [

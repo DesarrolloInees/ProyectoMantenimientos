@@ -123,6 +123,7 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
     </div>
 
     <?php if (!empty($datosReporte)): ?>
+        <?php $resumenTipos = isset($resumenTipos) ? $resumenTipos : ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'otros' => 0, 'total' => count($datosReporte)]; ?>
         <div class="grid grid-cols-1 md:grid-cols-<?= ($rolActual === 5) ? '2' : '3' ?> gap-4 mb-6">
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <p class="text-sm text-blue-600 font-bold uppercase">Total Servicios</p>
@@ -140,6 +141,38 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
                 <p class="text-sm text-gray-500 font-bold uppercase">Rango Consultado</p>
                 <p class="text-sm font-medium text-gray-800 mt-1"><?= date('d/m/Y', strtotime($filtros['fecha_inicio'])) ?>
                     - <?= date('d/m/Y', strtotime($filtros['fecha_fin'])) ?></p>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                <i class="fas fa-wrench text-indigo-500 mr-1"></i> Servicios por tipo de mantenimiento
+            </p>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <div class="bg-sky-50 p-3 rounded-lg border border-sky-100 text-center">
+                    <p class="text-[11px] text-sky-600 font-bold uppercase">Preventivo Básico</p>
+                    <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['basico'] ?? 0) ?></p>
+                </div>
+                <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 text-center">
+                    <p class="text-[11px] text-indigo-600 font-bold uppercase">Preventivo Profundo</p>
+                    <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['profundo'] ?? 0) ?></p>
+                </div>
+                <div class="bg-amber-50 p-3 rounded-lg border border-amber-100 text-center">
+                    <p class="text-[11px] text-amber-600 font-bold uppercase">Correctivo</p>
+                    <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['correctivo'] ?? 0) ?></p>
+                </div>
+                <div class="bg-red-50 p-3 rounded-lg border border-red-100 text-center">
+                    <p class="text-[11px] text-red-600 font-bold uppercase">Fallido</p>
+                    <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['fallido'] ?? 0) ?></p>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-center">
+                    <p class="text-[11px] text-gray-500 font-bold uppercase" title="Garantía, Kisan, instalaciones y otros estados">Otros</p>
+                    <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['otros'] ?? 0) ?></p>
+                </div>
+                <div class="bg-blue-600 p-3 rounded-lg border border-blue-600 text-center">
+                    <p class="text-[11px] text-blue-100 font-bold uppercase">Total</p>
+                    <p class="text-xl font-extrabold text-white"><?= (int)($resumenTipos['total'] ?? count($datosReporte)) ?></p>
+                </div>
             </div>
         </div>
 

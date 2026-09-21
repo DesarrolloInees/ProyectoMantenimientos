@@ -3,6 +3,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/reportes/reporteTecnicoModelo.php';
+require_once __DIR__ . '/../../helpers/resumenTiposServicio.php';
 
 class reporteTecnicoControlador
 {
@@ -79,6 +80,10 @@ class reporteTecnicoControlador
                     $totalValor += floatval($row['valor_servicio']);
                 }
 
+                // Resumen por tipo de mantenimiento (respeta filtros de técnico + fechas).
+                // Se clasifica sobre $datosReporte para que cuadre 1:1 con la tabla visible.
+                $resumenTipos = ResumenTiposServicio::resumir($datosReporte);
+
                 if (empty($datosReporte)) {
                     $mensaje = "No se encontraron servicios para la vista en ese rango.";
                 }
@@ -89,6 +94,11 @@ class reporteTecnicoControlador
         
         $listaTecnicos = $this->modelo->obtenerTecnicos();
         $listaFestivos = $this->modelo->obtenerFestivos($filtros['fecha_inicio'], $filtros['fecha_fin']);
+
+        // Si es GET inicial (sin POST), garantizamos que la vista tenga la variable definida.
+        if (!isset($resumenTipos)) {
+            $resumenTipos = ResumenTiposServicio::vacio();
+        }
         $titulo = "Reporte de Servicios por Técnico";
 
         $vistaContenido = "app/views/reportes/reporteTecnicoVista.php";

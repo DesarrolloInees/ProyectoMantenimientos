@@ -34,6 +34,45 @@ $horaActual = date('H:i');
                 <p class="text-center text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">¿Qué necesitas
                     hacer hoy?</p>
 
+                <?php $resumenTecnicoMes = isset($resumenTecnicoMes) ? $resumenTecnicoMes : ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'otros' => 0, 'total' => 0]; ?>
+                <!-- Mis servicios este mes -->
+                <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="text-xs font-bold text-indigo-700 uppercase tracking-wider">
+                            <i class="fas fa-wrench mr-1"></i> Mis servicios este mes
+                        </p>
+                        <span class="text-[10px] text-indigo-400 font-medium">
+                            <?= date('01/m/Y') ?> – <?= date('d/m/Y') ?>
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-white rounded-lg border border-sky-100 py-2">
+                            <p class="text-[10px] font-bold text-sky-600 uppercase leading-tight">Preventivo<br>Básico</p>
+                            <p class="text-lg font-extrabold text-gray-800"><?= (int)($resumenTecnicoMes['basico'] ?? 0) ?></p>
+                        </div>
+                        <div class="bg-white rounded-lg border border-indigo-100 py-2">
+                            <p class="text-[10px] font-bold text-indigo-600 uppercase leading-tight">Preventivo<br>Profundo</p>
+                            <p class="text-lg font-extrabold text-gray-800"><?= (int)($resumenTecnicoMes['profundo'] ?? 0) ?></p>
+                        </div>
+                        <div class="bg-white rounded-lg border border-amber-100 py-2">
+                            <p class="text-[10px] font-bold text-amber-600 uppercase leading-tight">Correctivo</p>
+                            <p class="text-lg font-extrabold text-gray-800 mt-3"><?= (int)($resumenTecnicoMes['correctivo'] ?? 0) ?></p>
+                        </div>
+                        <div class="bg-white rounded-lg border border-red-100 py-2">
+                            <p class="text-[10px] font-bold text-red-600 uppercase leading-tight">Fallido</p>
+                            <p class="text-lg font-extrabold text-gray-800"><?= (int)($resumenTecnicoMes['fallido'] ?? 0) ?></p>
+                        </div>
+                        <div class="bg-white rounded-lg border border-gray-200 py-2">
+                            <p class="text-[10px] font-bold text-gray-500 uppercase leading-tight" title="Garantía, Kisan, instalaciones y otros estados">Otros</p>
+                            <p class="text-lg font-extrabold text-gray-800"><?= (int)($resumenTecnicoMes['otros'] ?? 0) ?></p>
+                        </div>
+                        <div class="bg-indigo-600 rounded-lg border border-indigo-600 py-2">
+                            <p class="text-[10px] font-bold text-indigo-100 uppercase leading-tight">Total</p>
+                            <p class="text-lg font-extrabold text-white"><?= (int)($resumenTecnicoMes['total'] ?? 0) ?></p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Programación Servicios -->
                 <a href="<?= BASE_URL ?>tecnicoProgramacion"
                     class="group flex items-center gap-4 bg-gray-50/80 hover:bg-indigo-50/50 p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all hover:shadow-md">
