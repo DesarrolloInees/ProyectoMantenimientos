@@ -357,6 +357,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-angles-left w-5 text-center mr-1"></i> R. Devoluciones
             </a>
+            <a href="<?= BASE_URL ?>reporteTrazabilidad"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fa-solid fa-route w-5 text-center mr-1 text-teal-600"></i> R. Trazabilidad Repuestos
+            </a>
             <a href="<?= BASE_URL ?>reporteTarifas"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-brands fa-bitcoin w-5 text-center mr-1"></i> R. Tarifas
