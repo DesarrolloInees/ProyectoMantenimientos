@@ -478,7 +478,29 @@ class ordenDetalleControlador
             exit;
         }
 
-        $prompt = "Reescribe el siguiente reporte técnico de mantenimiento para que tenga ortografía perfecta y un lenguaje profesional y conciso. NO inventes datos ni omitas medidas o códigos de error. Devuelve SOLO el texto corregido:\n\n" . $textoOriginal;
+        // ======================================================
+        // PROMPT: REORDENAR Y AMPLIAR — NUNCA RECORTAR NI RESUMIR
+        // ======================================================
+        $totalCaracteres = mb_strlen($textoOriginal, 'UTF-8');
+        // El resultado NO puede salir más corto. Solo se toleran unos pocos caracteres
+        // (máx. 15, o 5% en textos largos) para que una simple corrección no falle.
+        $tolerancia = (int) max(0, min(15, floor($totalCaracteres * 0.05)));
+        $minimoCaracteres = $totalCaracteres - $tolerancia;
+        $maximoCaracteres = (int) ceil($totalCaracteres * 1.4); // expansión controlada, no un ensayo
+
+        $prompt = "TAREA: Reorganiza y mejora la redacción del siguiente reporte técnico de mantenimiento (español).
+
+REGLAS OBLIGATORIAS:
+1. CONSERVA EL 100% DE LA INFORMACIÓN: NO resumas, NO omitas y NO elimines datos, medidas, marcas, modelos, seriales, códigos de error, repuestos, cantidades, tiempos, nombres, puntos, remisiones ni observaciones.
+2. EXTENSIÓN OBLIGATORIA: la respuesta debe tener entre {$minimoCaracteres} y {$maximoCaracteres} caracteres; NUNCA menos de {$minimoCaracteres}. Si una idea está abreviada, telegráfica o incompleta, AMPLÍALA con detalle técnico; si ya está completa, reordénala y redáctala mejor sin encogerla ni alargarla de más.
+3. CONSERVA CIFRAS Y CÓDIGOS TAL CUAL: números, cantidades, seriales, modelos, versiones, medidas y códigos de error se escriben en dígitos exactamente como aparecen (ej: 20, 045, 3.2.1), nunca con palabras ni aproximaciones.
+4. Corrige ortografía, tildes, puntuación y gramática, y usa lenguaje técnico profesional.
+5. Reordena la información de forma lógica y coherente (por actividad, por equipo/sistema o cronológicamente). Puedes unir o separar ideas y mejorar la redacción, pero NUNCA descartar ninguna.
+6. NO INVENTES INFORMACIÓN: amplía solo lo que ya estaba escrito; NO agregues equipos, fallas, procedimientos, pruebas, repuestos ni datos que no aparezcan en el texto original.
+7. Devuelve SOLO el texto final del reporte: sin títulos, sin listas de reglas, sin comillas y sin explicaciones.
+
+Texto original ({$totalCaracteres} caracteres):
+";
 
         // Modelos 100% GRATIS (plan Free Groq): gpt-oss-20b = más rápido (~1000 t/s) + 131K contexto.
         // No usar llama-3.3-70b-versatile: pasó a Enterprise (requiere facturación).
@@ -487,54 +509,90 @@ class ordenDetalleControlador
         $textoMejorado = null;
         $detallesErrores = [];
 
+        // Presupuesto de salida proporcional al texto recibido: evita que nos corten el comentario por max_tokens.
+        // Como el resultado debe ser igual o más largo que la entrada, pedimos ~1.8x + margen.
+        $tokensEntrada = (int) ceil($totalCaracteres / 3);
+        $maxTokensBase = max(700, (int) ceil($tokensEntrada * 1.8) + 250);
+        $maxTokensBase = min($maxTokensBase, 2048); // techo seguro para el límite gratis por minuto (TPM)
+
         // 2. Probar con las llaves y modelos válidos
         foreach ($apiKeys as $indexKey => $apiKey) {
             foreach ($modelosDisponibles as $modelo) {
-                $data = [
-                    "model" => $modelo,
-                    "messages" => [
-                        ["role" => "system", "content" => "Eres un editor técnico estricto y conciso."],
-                        ["role" => "user", "content" => $prompt]
-                    ],
-                    "temperature" => 0.1,
-                    "max_tokens" => 400
-                ];
+                $maxTokens = $maxTokensBase;
+                $recordatorio = '';
 
-                $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'Content-Type: application/json',
-                    'Authorization: Bearer ' . $apiKey
-                ]);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                // Hasta 2 intentos por modelo: si la IA se corta o resume, se reintenta con más espacio
+                for ($intento = 1; $intento <= 2; $intento++) {
+                    $data = [
+                        "model" => $modelo,
+                        "messages" => [
+                            ["role" => "system", "content" => "Eres un editor técnico experto en mantenimiento industrial. Conservas el 100% de la información del reporte, nunca resumes ni recortas, amplías solo lo que ya está escrito y respetas cifras, seriales y códigos tal cual aparecen."],
+                            ["role" => "user", "content" => $prompt . $textoOriginal . $recordatorio]
+                        ],
+                        "temperature" => 0.1,
+                        "max_tokens" => $maxTokens
+                    ];
 
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $errorCurl = curl_error($ch);
-                curl_close($ch);
+                    $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_POST, true);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                        'Content-Type: application/json',
+                        'Authorization: Bearer ' . $apiKey
+                    ]);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
-                if ($httpCode == 200) {
-                    $resultado = json_decode($response, true);
-                    $textoMejorado = $resultado['choices'][0]['message']['content'] ?? '';
-                    if (!empty(trim($textoMejorado))) {
-                        break 2; // ¡Éxito! Salimos de ambos bucles
+                    $response = curl_exec($ch);
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    $errorCurl = curl_error($ch);
+                    curl_close($ch);
+
+                    if ($httpCode == 200) {
+                        $resultado = json_decode($response, true);
+                        $candidato = trim($resultado['choices'][0]['message']['content'] ?? '');
+                        $finishReason = $resultado['choices'][0]['finish_reason'] ?? '';
+
+                        if ($candidato === '') {
+                            $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Respuesta 200 sin contenido";
+                            break; // pasa al siguiente modelo
+                        }
+
+                        // 🚫 Se cortó por falta de tokens: reintenta el mismo modelo con más espacio
+                        if ($finishReason === 'length') {
+                            $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Respuesta cortada por max_tokens ({$maxTokens}), reintentando con más espacio";
+                            $maxTokens = min($maxTokens * 2, 4096);
+                            continue;
+                        }
+
+                        $largoCandidato = mb_strlen($candidato, 'UTF-8');
+
+                        // 🚫 El modelo resumió / recortó información: reintenta exigiéndole conservar todo
+                        if ($largoCandidato < $minimoCaracteres) {
+                            $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Respuesta más corta que el original ({$largoCandidato} < {$minimoCaracteres} caracteres), reintentando";
+                            $recordatorio = "\n\nIMPORTANTE: Tu respuesta anterior fue demasiado corta y omitió información. Vuelve a redactar el reporte conservando TODOS los datos del texto original, sin resumir nada, y con una extensión igual o mayor (mínimo {$minimoCaracteres} caracteres).";
+                            continue;
+                        }
+
+                        // ✅ Válido: conservó o amplió la información
+                        $textoMejorado = $candidato;
+                        break 3; // ¡Éxito! Salimos de intentos, modelos y llaves
+                    } elseif ($httpCode == 429) {
+                        // Límite gratis alcanzado en esta key/modelo: probar siguiente sin ensuciar el log
+                        $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Límite gratis del día (429), se probó siguiente opción";
+                        break;
+                    } else {
+                        $msgApi = $response;
+                        $dec = json_decode($response, true);
+                        if (isset($dec['error']['message'])) {
+                            $msgApi = $dec['error']['message'];
+                        }
+                        $msgError = $errorCurl ? "cURL: $errorCurl" : "HTTP $httpCode: $msgApi";
+                        $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> " . $msgError;
+                        break;
                     }
-                    $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Respuesta 200 sin contenido";
-                } elseif ($httpCode == 429) {
-                    // Límite gratis alcanzado en esta key/modelo: probar siguiente sin ensuciar el log
-                    $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Límite gratis del día (429), se probó siguiente opción";
-                } else {
-                    $msgApi = $response;
-                    $dec = json_decode($response, true);
-                    if (isset($dec['error']['message'])) {
-                        $msgApi = $dec['error']['message'];
-                    }
-                    $msgError = $errorCurl ? "cURL: $errorCurl" : "HTTP $httpCode: $msgApi";
-                    $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> " . $msgError;
                 }
             }
         }
@@ -543,8 +601,17 @@ class ordenDetalleControlador
         if (!empty(trim($textoMejorado))) {
             echo json_encode(['status' => 'ok', 'texto_mejorado' => trim($textoMejorado)]);
         } else {
-            $errorFinal = implode(" | ", $detallesErrores);
-            echo json_encode(['status' => 'error', 'msg' => 'Error API: ' . $errorFinal]);
+            // Si lo único que falló fue el recorte, damos un mensaje claro al usuario (sin traza técnica)
+            $soloRecortes = !empty($detallesErrores) && count(array_filter($detallesErrores, function ($d) {
+                return strpos($d, 'más corta que el original') === false
+                    && strpos($d, 'cortada por max_tokens') === false;
+            })) === 0;
+
+            $msgFinal = $soloRecortes
+                ? 'La IA intentó recortar el comentario, así que se descartó para no perder información. Tu texto original quedó intacto, intenta de nuevo.'
+                : 'Error API: ' . implode(" | ", $detallesErrores);
+
+            echo json_encode(['status' => 'error', 'msg' => $msgFinal]);
         }
         exit;
     }

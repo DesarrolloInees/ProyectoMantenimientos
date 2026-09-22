@@ -782,7 +782,22 @@
             const data = await response.json();
 
             if (data.status === 'ok') {
-                textarea.value = data.texto_mejorado;
+                const textoFinal = (data.texto_mejorado || '').trim();
+
+                if (textoFinal === '') {
+                    alert("⚠️ La IA devolvió un texto en blanco. Tus datos originales están a salvo.");
+                    return;
+                }
+
+                // 🔒 ANTIRRECORTE: misma regla que el servidor. Si la IA devolvió menos
+                // información de la que había, se descarta y se conserva el original.
+                const tolerancia = Math.max(0, Math.min(15, Math.floor(textoOriginal.length * 0.05)));
+                if (textoFinal.length < (textoOriginal.length - tolerancia)) {
+                    alert("⚠️ La IA intentó recortar el comentario, así que se descartó para no perder información.\n\nTu texto original quedó intacto. Intenta de nuevo.");
+                    return;
+                }
+
+                textarea.value = textoFinal;
                 textarea.style.backgroundColor = 'var(--c-green-lt)';
                 setTimeout(() => {
                     textarea.style.backgroundColor = '';

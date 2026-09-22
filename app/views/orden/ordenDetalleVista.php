@@ -908,6 +908,7 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
 
         // ✅ Firma correcta: (mensaje, callback)
         window.DetalleNotificaciones.mostrarModalConfirmacion(
+            "¿Estás seguro de que deseas guardar todos los cambios de esta página?",
             mensajeModal,
             function () {
                 ejecutarGuardadoJSON();
