@@ -447,13 +447,14 @@ class ordenDetalleControlador
             exit;
         }
 
-        // 1. Obtener API Keys desde .env o entorno
+        // 1. Obtener API Keys desde .env (cargado vía Dotenv en index.php) o entorno
         $apiKey1 = trim($_ENV['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY') ?? $_SERVER['GROQ_API_KEY'] ?? '');
         $apiKey2 = trim($_ENV['GROQ_API_KEY_2'] ?? getenv('GROQ_API_KEY_2') ?? $_SERVER['GROQ_API_KEY_2'] ?? '');
 
         if (empty($apiKey1) || empty($apiKey2)) {
-            $envPath = __DIR__ . '/../../.env';
-            if (file_exists($envPath)) {
+            // Fallback: leer .env de la RAÍZ del proyecto (app/controllers/orden -> ../../../.env)
+            $envPath = realpath(__DIR__ . '/../../../.env');
+            if ($envPath && file_exists($envPath)) {
                 $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
                 foreach ($lines as $line) {
                     if (strpos(trim($line), '#') === 0) continue;
@@ -479,8 +480,9 @@ class ordenDetalleControlador
 
         $prompt = "Reescribe el siguiente reporte técnico de mantenimiento para que tenga ortografía perfecta y un lenguaje profesional y conciso. NO inventes datos ni omitas medidas o códigos de error. Devuelve SOLO el texto corregido:\n\n" . $textoOriginal;
 
-        // Modelos confirmados ACTIVOS según tu endpoint
-        $modelosDisponibles = ['groq/compound-mini', 'allam-2-7b'];
+        // Modelos 100% GRATIS (plan Free Groq): gpt-oss-20b = más rápido (~1000 t/s) + 131K contexto.
+        // No usar llama-3.3-70b-versatile: pasó a Enterprise (requiere facturación).
+        $modelosDisponibles = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b'];
 
         $textoMejorado = null;
         $detallesErrores = [];
@@ -521,8 +523,17 @@ class ordenDetalleControlador
                     if (!empty(trim($textoMejorado))) {
                         break 2; // ¡Éxito! Salimos de ambos bucles
                     }
+                    $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Respuesta 200 sin contenido";
+                } elseif ($httpCode == 429) {
+                    // Límite gratis alcanzado en esta key/modelo: probar siguiente sin ensuciar el log
+                    $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> Límite gratis del día (429), se probó siguiente opción";
                 } else {
-                    $msgError = $errorCurl ? "cURL: $errorCurl" : "HTTP $httpCode: $response";
+                    $msgApi = $response;
+                    $dec = json_decode($response, true);
+                    if (isset($dec['error']['message'])) {
+                        $msgApi = $dec['error']['message'];
+                    }
+                    $msgError = $errorCurl ? "cURL: $errorCurl" : "HTTP $httpCode: $msgApi";
                     $detallesErrores[] = "Key " . ($indexKey + 1) . " ($modelo) -> " . $msgError;
                 }
             }
