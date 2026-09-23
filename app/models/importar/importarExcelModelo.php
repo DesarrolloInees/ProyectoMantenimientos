@@ -71,18 +71,16 @@ class importarExcelModels
                 if ($resCode) {
                     $idEncontrado = $resCode['id_punto'];
 
-                    // OPCIONAL: Si quieres que el nombre del Excel sobrescriba al de la BD, deja esto.
-                    // Si prefieres respetar el nombre original de la BD (con el punto), comenta el UPDATE.
+                    // PUNTO EXISTENTE: Solo actualizamos nombre y delegación
+                    // La dirección NO se toca, se mantiene como está en la BD
                     $sqlUpdate = "UPDATE punto 
                               SET nombre_punto = :nom, 
-                                  direccion = :dir, 
                                   id_delegacion = :del,
                                   estado = 1 
                               WHERE id_punto = :id";
                     $stmtUpdate = $this->conn->prepare($sqlUpdate);
                     $stmtUpdate->execute([
                         ':nom' => $nombrePunto,
-                        ':dir' => $direccion,
                         ':del' => $idDelegacionReal,
                         ':id'  => $idEncontrado
                     ]);

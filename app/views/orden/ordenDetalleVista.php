@@ -794,17 +794,19 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             return;
         }
 
-        // 1. Cambiamos el botón para mostrar que está cargando
+        // 🔒 DETECTAR SI ES UN COMENTARIO DE ESTADO INICIAL
+        const esEstadoInicial = /^\s*\[ESTADO\s+INICIAL\s*:/i.test(textoOriginal);
+
         const iconoOriginal = boton.innerHTML;
         boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         boton.disabled = true;
-        boton.classList.add('opacity-100', 'bg-indigo-600', 'text-white');
 
         try {
             // 2. Preparamos los datos para enviar al controlador
             const formData = new FormData();
             formData.append('accion', 'ajaxMejorarTextoIA');
             formData.append('texto', textoOriginal);
+            formData.append('es_estado_inicial', esEstadoInicial ? '1' : '0');
 
             // 3. Hacemos la petición AJAX
             const response = await fetch(window.DetalleConfig.BASE_URL + 'ordenDetalle', {
@@ -814,33 +816,35 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
 
             const data = await response.json();
 
-            if (data.status === 'ok') {
-                // 🔥 NUEVO: Doble validación en el frontend. ¡Solo reemplaza si hay texto!
-                if (data.texto_mejorado && data.texto_mejorado.trim() !== '') {
-                    textarea.value = data.texto_mejorado;
-
-                    // Efectito visual bacano para que el usuario note el cambio (un verde suave)
-                    textarea.style.backgroundColor = '#ecfdf5';
-                    textarea.style.borderColor = '#34d399';
-                    setTimeout(() => {
-                        textarea.style.backgroundColor = '';
-                        textarea.style.borderColor = '';
-                    }, 1500);
-                } else {
-                    alert("⚠️ La IA devolvió un texto en blanco. Tus datos originales están a salvo.");
+            if (data.status === 'ok' && data.texto_mejorado && data.texto_mejorado.trim() !== '') {
+                // 🔒 Para comentarios de estado inicial, verificar que la IA lo preservó
+                if (esEstadoInicial) {
+                    const textoMejorado = data.texto_mejorado.trim();
+                    if (!/^\s*\[ESTADO\s+INICIAL\s*:/i.test(textoMejorado)) {
+                        alert("⚠️ La IA quitó la sección de [ESTADO INICIAL]. Este tipo de comentarios no puede ser editado por la IA para preservar el diagnóstico original.\n\nTu texto original permanece intacto.");
+                        return;
+                    }
                 }
 
+                textarea.value = data.texto_mejorado;
+
+                // Efectito visual bacano para que el usuario note el cambio (un verde suave)
+                textarea.style.backgroundColor = '#ecfdf5';
+                textarea.style.borderColor = '#34d399';
+                setTimeout(() => {
+                    textarea.style.backgroundColor = '';
+                    textarea.style.borderColor = '';
+                }, 1500);
             } else {
-                alert("❌ Error procesando con IA: " + data.msg);
+                alert("⚠️ La IA devolvió un texto en blanco. Tus datos originales están a salvo.");
             }
+
         } catch (error) {
             console.error("Error conectando con la IA", error);
             alert("❌ Error de conexión con el servidor.");
         } finally {
-            // 5. Restauramos el botón
             boton.innerHTML = iconoOriginal;
             boton.disabled = false;
-            boton.classList.remove('opacity-100', 'bg-indigo-600', 'text-white');
         }
     }
 
