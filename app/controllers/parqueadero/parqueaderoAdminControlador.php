@@ -162,7 +162,7 @@ class ParqueaderoAdminControlador
             $valor = (float) $item['valor_factura'];
             $totalGeneral += $valor;
 
-            $sheet->getRowDimension($fila)->setRowHeight(60);
+            $sheet->getRowDimension($fila)->setRowHeight(75);
 
             $sheet->setCellValue('A' . $fila, $index + 1);
             $sheet->setCellValue('B' . $fila, date('d/m/Y', strtotime($item['fecha_servicio'])));
@@ -178,16 +178,25 @@ class ParqueaderoAdminControlador
             $sheet->getStyle('E' . $fila . ':F' . $fila)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
             // Insertar imagen física en Excel
-            $pos = strpos($item['ruta_foto'] ?? '', 'app/uploads/');
-            $rutaLimpia = ($pos !== false) ? substr($item['ruta_foto'], $pos) : ltrim($item['ruta_foto'] ?? '', '/');
-            $rutaFisicaFoto = realpath(__DIR__ . '/../../' . $rutaLimpia);
+            // $item['ruta_foto'] en BD viene como ruta relativa: app/uploads/parqueaderos/...
+            // __DIR__ = app/controllers/parqueadero -> hay que subir 3 niveles hasta la raíz del proyecto
+            $rutaFotoBD = trim(str_replace('\\', '/', $item['ruta_foto'] ?? ''));
+            $rutaFisicaFoto = false;
+            if ($rutaFotoBD !== '' && stripos($rutaFotoBD, 'http') !== 0) {
+                $pos = strpos($rutaFotoBD, 'app/uploads/');
+                $rutaLimpia = ($pos !== false) ? substr($rutaFotoBD, $pos) : ltrim($rutaFotoBD, '/');
+                $candidata = realpath(__DIR__ . '/../../../' . $rutaLimpia);
+                if ($candidata && is_file($candidata) && @getimagesize($candidata) !== false) {
+                    $rutaFisicaFoto = $candidata;
+                }
+            }
 
-            if ($rutaFisicaFoto && file_exists($rutaFisicaFoto) && !is_dir($rutaFisicaFoto)) {
+            if ($rutaFisicaFoto) {
                 $drawing = new Drawing();
                 $drawing->setName('Factura_' . $item['numero_factura']);
                 $drawing->setDescription('Comprobante');
                 $drawing->setPath($rutaFisicaFoto);
-                $drawing->setHeight(70);
+                $drawing->setHeight(60);
                 $drawing->setCoordinates('H' . $fila);
                 $drawing->setOffsetX(10);
                 $drawing->setOffsetY(5);
