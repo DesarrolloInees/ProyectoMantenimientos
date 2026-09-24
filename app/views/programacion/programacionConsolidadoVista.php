@@ -62,7 +62,7 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <p class="text-xs text-gray-500 font-semibold uppercase">Servicios</p>
-                <p class="text-2xl font-bold text-indigo-700"><?= count($consolidado) ?></p>
+                <p class="text-2xl font-bold text-indigo-700" id="contadorServicios"><?= count($consolidado) ?></p>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <p class="text-xs text-gray-500 font-semibold uppercase">Técnicos Activos</p>
@@ -86,8 +86,8 @@
     <!-- RESULTADOS Y EXPORTACIÓN -->
     <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div class="bg-gray-50 p-4 border-b flex justify-between items-center">
-            <h2 class="text-lg font-bold text-gray-800">
-                <i class="fas fa-list-alt mr-2 text-indigo-600"></i> Rutas Programadas (<?= count($consolidado) ?>)
+            <h2 class="text-lg font-bold text-gray-800" id="tituloConsolidado">
+                <i class="fas fa-list-alt mr-2 text-indigo-600"></i> Rutas Programadas (<span id="contadorConsolidado"><?= count($consolidado) ?></span>)
             </h2>
             <?php if (!empty($consolidado)): ?>
                 <button type="button" onclick="exportarExcelMaestro()"
@@ -109,18 +109,19 @@
                         <th class="px-4 py-3">Punto</th>
                         <th class="px-4 py-3">Device ID</th>
                         <th class="px-4 py-3">Estado Máquina</th>
+                        <th class="px-4 py-3 text-center">Acción</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="tbodyConsolidado">
                     <?php if (empty($consolidado)): ?>
                         <tr>
-                            <td colspan="8" class="px-4 py-8 text-center text-gray-500 font-bold">
+                            <td colspan="9" class="px-4 py-8 text-center text-gray-500 font-bold">
                                 No se encontraron rutas programadas en este rango de fechas.
                             </td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($consolidado as $row): ?>
-                            <tr
+                            <tr id="fila_orden_<?= (int) $row['id_orden'] ?>"
                                 class="border-b hover:bg-blue-50 transition <?= (int) ($row['activo_operativo'] ?? 1) === 0 ? 'bg-red-50' : '' ?>">
                                 <td class="px-4 py-2 font-semibold text-gray-800"><?= htmlspecialchars($row['fecha_visita']) ?>
                                 </td>
@@ -143,6 +144,14 @@
                                     <?php else: ?>
                                         <span class="text-xs text-gray-400">Operativa</span>
                                     <?php endif; ?>
+                                </td>
+                                <td class="px-4 py-2 text-center">
+                                    <button type="button"
+                                        onclick="eliminarOrdenConsolidado(<?= (int) $row['id_orden'] ?>, <?= htmlspecialchars(json_encode($row['nombre_punto'] ?? ''), ENT_QUOTES, 'UTF-8') ?>)"
+                                        class="text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded transition"
+                                        title="Eliminar esta orden de la programación">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

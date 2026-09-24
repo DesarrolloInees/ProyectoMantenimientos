@@ -42,4 +42,18 @@ class programacionConsolidadoControlador
         // 2. Proceder con la lógica habitual de consulta e impresión/generación del Excel...
         // $datosExcel = $this->modelo->obtenerConsolidadoRutas(...);
     }
+
+    /**
+     * AJAX: borra una orden programada (estado = 2) de ordenes_servicio
+     * antes de descargar el Excel maestro.
+     */
+    public function eliminarOrden()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $idOrden = $_POST['id_orden'] ?? '';
+        $resultado = $this->modelo->eliminarOrdenProgramada($idOrden);
+        echo json_encode($resultado);
+        exit;
+    }
 }

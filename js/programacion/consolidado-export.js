@@ -68,3 +68,77 @@ function exportarExcelMaestro() {
         alert("Hubo un error al generar el Excel.");
     }
 }
+
+/**
+ * Borra una orden programada de ordenes_servicio y la quita de la tabla
+ * y del dataset del Excel, para que no salga en la descarga posterior.
+ */
+function eliminarOrdenConsolidado(idOrden, nombrePunto) {
+    const id = parseInt(idOrden, 10);
+    if (!Number.isInteger(id) || id <= 0) return;
+
+    const etiqueta = nombrePunto ? `"${nombrePunto}"` : `orden #${id}`;
+    if (!confirm(`¿Eliminar ${etiqueta} de la programación?\n\nSe borrará de ordenes_servicio y no saldrá en el Excel.`)) {
+        return;
+    }
+
+    const fila = document.getElementById('fila_orden_' + id);
+    const boton = fila ? fila.querySelector('button') : null;
+    if (boton) {
+        boton.disabled = true;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    const body = new URLSearchParams();
+    body.append('id_orden', String(id));
+
+    const base = (typeof BASE_URL !== 'undefined' && BASE_URL) ? BASE_URL : '';
+
+    fetch(`${base}index.php?pagina=programacionConsolidado&accion=eliminarOrden`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+    })
+        .then(resp => resp.json())
+        .then(data => {
+            if (!data || !data.status) {
+                alert((data && data.msg) ? data.msg : 'No se pudo eliminar la orden.');
+                if (boton) {
+                    boton.disabled = false;
+                    boton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                }
+                return;
+            }
+
+            window.ProgConsolidadoData = (window.ProgConsolidadoData || []).filter(filaData => {
+                return String(filaData.id_orden) !== String(id);
+            });
+
+            if (fila) fila.remove();
+
+            const contador = document.getElementById('contadorConsolidado');
+            if (contador) contador.textContent = window.ProgConsolidadoData.length;
+
+            const tarjetaServicios = document.getElementById('contadorServicios');
+            if (tarjetaServicios) tarjetaServicios.textContent = window.ProgConsolidadoData.length;
+
+            const tbody = document.getElementById('tbodyConsolidado');
+            if (tbody && window.ProgConsolidadoData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="px-4 py-8 text-center text-gray-500 font-bold">
+                            No se encontraron rutas programadas en este rango de fechas.
+                        </td>
+                    </tr>`;
+                const btnExcel = document.querySelector('button[onclick="exportarExcelMaestro()"]');
+                if (btnExcel) btnExcel.remove();
+            }
+        })
+        .catch(() => {
+            alert('Error de conexión al eliminar la orden.');
+            if (boton) {
+                boton.disabled = false;
+                boton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            }
+        });
+}

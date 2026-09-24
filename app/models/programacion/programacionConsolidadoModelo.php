@@ -116,4 +116,35 @@ class programacionConsolidadoModelo
         $stmt = $this->conn->prepare($sql);
         return $stmt->execute([':fecha' => $nuevaFecha, ':id' => $idOrden]);
     }
+
+    /**
+     * Elimina una orden programada (estado = 2) de ordenes_servicio.
+     * No toca órdenes ya ejecutadas ni otras tablas.
+     */
+    public function eliminarOrdenProgramada($idOrden)
+    {
+        try {
+            $idOrden = (int) $idOrden;
+            if ($idOrden <= 0) {
+                return ['status' => false, 'msg' => 'Identificador de orden inválido.'];
+            }
+
+            $sql = "DELETE FROM ordenes_servicio
+                    WHERE id_ordenes_servicio = :id
+                      AND estado = 2";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id' => $idOrden]);
+
+            if ($stmt->rowCount() > 0) {
+                return ['status' => true, 'msg' => 'Orden eliminada de la programación.'];
+            }
+
+            return [
+                'status' => false,
+                'msg' => 'No se encontró una orden programada con ese identificador, o ya no está en estado programado.'
+            ];
+        } catch (PDOException $e) {
+            return ['status' => false, 'msg' => 'No se pudo eliminar la orden: ' . $e->getMessage()];
+        }
+    }
 }
