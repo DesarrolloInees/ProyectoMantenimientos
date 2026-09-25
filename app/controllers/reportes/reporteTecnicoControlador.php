@@ -3,6 +3,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/reportes/reporteTecnicoModelo.php';
+require_once __DIR__ . '/../../models/orden/ordenReporteModelo.php';
 require_once __DIR__ . '/../../helpers/resumenTiposServicio.php';
 
 class reporteTecnicoControlador
@@ -27,6 +28,7 @@ class reporteTecnicoControlador
     {
         $datosReporte = []; // Para mostrar en la Tabla (Filtrado)
         $datosExcel = [];   // Para enviar al JS (Todos los técnicos)
+        $datosServiciosGlobal = []; // Copia tal cual de ordenReporte (todos los técnicos del rango)
 
         $filtros = [
             'id_tecnico' => '',
@@ -60,6 +62,24 @@ class reporteTecnicoControlador
                     $filtros['fecha_fin']
                 );
 
+                // 3. COPIA TAL CUAL DEL REPORTE DE SERVICIOS (ordenReporte).
+                // Siempre con TODOS los técnicos del rango ('todos'), aunque en
+                // pantalla se haya filtrado por un técnico puntual.
+                try {
+                    $modeloServicios = new ordenReporteModelo($this->db);
+                    $datosServiciosGlobal = $modeloServicios->obtenerServiciosPorRango(
+                        $filtros['fecha_inicio'],
+                        $filtros['fecha_fin'],
+                        'todos'
+                    );
+                    if (!is_array($datosServiciosGlobal)) {
+                        $datosServiciosGlobal = [];
+                    }
+                } catch (Exception $e) {
+                    error_log("Error obteniendo copia ordenReporte: " . $e->getMessage());
+                    $datosServiciosGlobal = [];
+                }
+
                 // 🛡️ FILTRO DE SEGURIDAD PARA ROL 5
                 if ($rolUsuario === 5) {
                     if (!empty($datosReporte)) {
@@ -70,6 +90,12 @@ class reporteTecnicoControlador
                     if (!empty($datosExcel)) {
                         foreach ($datosExcel as &$e) {
                             $e['valor_servicio'] = 0;
+                        }
+                    }
+                    if (!empty($datosServiciosGlobal)) {
+                        foreach ($datosServiciosGlobal as &$g) {
+                            $g['valor_servicio'] = 0;
+                            $g['valor_viaticos'] = 0;
                         }
                     }
                 }

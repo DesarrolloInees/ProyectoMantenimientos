@@ -227,6 +227,8 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
 <script>
     // Recibimos los datos COMPLETOS de PHP (Si es rol 5, ya vienen con valor_servicio = 0)
     const datosServicios = <?= json_encode($datosExcel ?? []) ?>;
+    // Copia tal cual de ordenReporte (todos los técnicos del rango, filtro 'todos')
+    const datosServiciosGlobal = <?= json_encode($datosServiciosGlobal ?? []) ?>;
 
     $(document).ready(function () {
         $('.select2-search').select2({
@@ -335,6 +337,101 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
     }
 
     // =========================================================
+    function calcularDiferenciaHorasCopia(horaInicio, horaFin) {
+        if (!horaInicio || !horaFin) return "00:00";
+        let d1 = new Date(`2000-01-01T${horaInicio}`);
+        let d2 = new Date(`2000-01-01T${horaFin}`);
+        if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return "00:00";
+        let diffMs = d2 - d1;
+        if (diffMs < 0) return "Err";
+        let diffMins = Math.floor(diffMs / 60000);
+        let horas = Math.floor(diffMins / 60);
+        let mins = diffMins % 60;
+        return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    }
+
+    function aplicarFormatoServiciosCopia(ws) {
+        if (!ws['!ref']) return;
+        const fmtMoneda = '_-"$"* #,##0_-;-"$"* #,##0_-;-"$"* "-"??_-;-_-@_-';
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+            let cDev = XLSX.utils.encode_cell({ c: 0, r: R });
+            if (ws[cDev]) {
+                let limpio = String(ws[cDev].v || '').replace(/\D/g, '');
+                ws[cDev].t = 'n';
+                ws[cDev].v = limpio !== '' ? Number(limpio) : 0;
+                ws[cDev].z = '000000000000';
+            }
+            let cTar = XLSX.utils.encode_cell({ c: 7, r: R });
+            if (ws[cTar] && ws[cTar].f) { ws[cTar].z = fmtMoneda; continue; }
+            if (!ws[cTar]) ws[cTar] = { t: 'n', v: 0 };
+            ws[cTar].t = 'n';
+            ws[cTar].v = parseFloat(ws[cTar].v) || 0;
+            ws[cTar].z = fmtMoneda;
+        }
+    }
+
+    function agregarCopiaReporteServicios(workbook, datos) {
+        if (!datos || datos.length === 0) return;
+        let porDel = {};
+        let viaticoPendiente = null;
+        let prevTec = null, prevFecha = null, prevSalida = null;
+        const HEAD = ["Device_id", "Número de Remisión", "Cliente", "Nombre Punto", "Preventivo Básico", "Preventivo Profundo", "Correctivo", "Tarifa", "Observaciones", "Delegación", "Fecha", "Técnico", "Tipo de Máquina", "Tipo de Servicio", "Hora Entrada", "Hora Salida", "Duración", "Desplazamiento", "Repuestos", "Estado", "Calificación", "Modalidad"];
+        const ANCHOS = [{ wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 15 }, { wch: 50 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+        datos.forEach((d, index) => {
+            let del = d.delegacion || "SIN ASIGNAR";
+            if (!porDel[del]) porDel[del] = [];
+            let desp = "";
+            if (d.nombre_tecnico === prevTec && d.fecha_visita === prevFecha && prevSalida) {
+                desp = calcularDiferenciaHorasCopia(prevSalida, d.hora_entrada);
+            }
+            prevTec = d.nombre_tecnico; prevFecha = d.fecha_visita; prevSalida = d.hora_salida;
+            let txt = (d.txt_servicio || "").toLowerCase();
+            let pb = (txt.includes("basico") || txt.includes("básico")) ? "X" : "";
+            let pp = (txt.includes("profundo") || txt.includes("completo")) ? "X" : "";
+            let co = (txt.includes("correctivo") || txt.includes("reparacion")) ? "X" : "";
+            if (!pb && !pp && !co && txt.includes("preventivo")) pb = "X";
+            let dur = d.tiempo_servicio;
+            if (!dur || dur === '00:00' || dur === '00:00:00') dur = calcularDiferenciaHorasCopia(d.hora_entrada, d.hora_salida);
+            let vServ = parseFloat(d.valor_servicio) || 0;
+            let vViat = parseFloat(d.valor_viaticos) || 0;
+            porDel[del].push([d.device_id, d.numero_remision, d.nombre_cliente, d.nombre_punto, pb, pp, co, vServ, d.que_se_hizo, del, d.fecha_visita, d.nombre_tecnico, d.nombre_tipo_maquina, d.txt_servicio, d.hora_entrada, d.hora_salida, dur, desp, d.repuestos_texto, d.estado_maquina, d.nombre_calificacion, d.tipo_zona]);
+            if (vViat > 0) {
+                viaticoPendiente = ["", "", "", "", "", "", "", vViat, "TARIFA ADICIONAL POR DÍA", "", "", "", "", "", "", "", "", "", "", "", "", ""];
+            }
+            let sig = datos[index + 1];
+            let cerrar = false;
+            if (!sig) cerrar = true;
+            else {
+                let sigDel = sig.delegacion || "SIN ASIGNAR";
+                if (sig.fecha_visita !== d.fecha_visita || sig.nombre_tecnico !== d.nombre_tecnico || sigDel !== del) cerrar = true;
+            }
+            if (cerrar && viaticoPendiente) { porDel[del].push(viaticoPendiente); viaticoPendiente = null; }
+        });
+        for (let del in porDel) {
+            let matriz = [HEAD.slice()];
+            porDel[del].forEach(f => matriz.push(f));
+            let ws = XLSX.utils.aoa_to_sheet(matriz);
+            aplicarFormatoServiciosCopia(ws);
+            ws["!cols"] = ANCHOS.slice();
+            let nombreHoja = String(del).replace(/[:\\/?*\[\]]/g, "").substring(0, 30) || "Data";
+            XLSX.utils.book_append_sheet(workbook, ws, nombreHoja);
+        }
+        let mRes = [HEAD.slice()];
+        let filaActual = 2;
+        for (let del in porDel) {
+            porDel[del].forEach(f => { mRes.push(f); filaActual++; });
+        }
+        let filaTotal = ["", "", "", "", "", "", "TOTAL GENERAL:"];
+        filaTotal.push({ t: 'n', f: 'SUM(H2:H' + (filaActual - 1) + ')' });
+        for (let i = 8; i < 22; i++) filaTotal.push("");
+        mRes.push(filaTotal);
+        let wsRes = XLSX.utils.aoa_to_sheet(mRes);
+        aplicarFormatoServiciosCopia(wsRes);
+        wsRes["!cols"] = ANCHOS.slice();
+        XLSX.utils.book_append_sheet(workbook, wsRes, "RESUMEN TOTAL");
+    }
+
     // FUNCIÓN: EXCEL CON DESGLOSE POR TIPO DE MANTENIMIENTO Y FALLIDOS
     // =========================================================
     function exportarExcelTecnico() {
@@ -579,24 +676,19 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
                     tecnicosConServicios++;
                 }
 
-                // Las horas extras requieren lógica de turnos que no está en DB. Las dejamos en blanco para llenar o en 0.
-                let hed = "";
-                let hen = "";
-                let hedf = "";
-
-                // Agregamos la fila del técnico
+                // Agregamos la fila del técnico (TODO NUMÉRICO para permitir autosuma en Excel)
                 matrizLiquidacion.push([
                     nombreTecnico.toUpperCase(),
                     serviciosMes,
-                    pp_15 || "",
-                    mc_15 || "",
-                    f_pb || "",
-                    ks_otros || "",
-                    totalSuma || "",
-                    diasTrabajados + " DIAS",
-                    datos.totalHED > 0 ? datos.totalHED.toFixed(1) : "",
-                    datos.totalHEN > 0 ? datos.totalHEN.toFixed(1) : "",
-                    datos.totalHEDF > 0 ? datos.totalHEDF.toFixed(1) : ""
+                    Math.round(pp_15 * 10) / 10,
+                    Math.round(mc_15 * 10) / 10,
+                    f_pb,
+                    ks_otros,
+                    Math.round(totalSuma * 10) / 10,
+                    diasTrabajados,
+                    Math.round(datos.totalHED * 10) / 10,
+                    Math.round(datos.totalHEN * 10) / 10,
+                    Math.round(datos.totalHEDF * 10) / 10
                 ]);
             });
 
@@ -607,6 +699,23 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             matrizLiquidacion.push([`PROMEDIO DE SERVICIOS PARA ${nombreMes} ${metaRequerida}`]);
 
             let wsLiquidacion = XLSX.utils.aoa_to_sheet(matrizLiquidacion);
+
+            // Forzar tipo numérico en columnas B..K (autosuma en Excel)
+            if (wsLiquidacion['!ref']) {
+                const rgLiq = XLSX.utils.decode_range(wsLiquidacion['!ref']);
+                for (let R = rgLiq.s.r + 1; R <= rgLiq.e.r; ++R) {
+                    // Evitar la fila vacía y la de PROMEDIO (solo tienen 1 celda)
+                    let c0 = XLSX.utils.encode_cell({ c: 0, r: R });
+                    if (!wsLiquidacion[c0] || String(wsLiquidacion[c0].v || '').includes('PROMEDIO')) continue;
+                    for (let C = 1; C <= 10; C++) {
+                        let ref = XLSX.utils.encode_cell({ c: C, r: R });
+                        if (!wsLiquidacion[ref]) continue;
+                        if (wsLiquidacion[ref].f) continue;
+                        wsLiquidacion[ref].t = 'n';
+                        wsLiquidacion[ref].v = parseFloat(wsLiquidacion[ref].v) || 0;
+                    }
+                }
+            }
 
             wsLiquidacion['!cols'] = [
                 { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 12 },
@@ -621,6 +730,14 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             ];
 
             XLSX.utils.book_append_sheet(workbook, wsLiquidacion, "REPORTE DETALLADO DE SERVICIOS");
+
+            // =========================================================
+            // PASO 3.7: COPIA TAL CUAL DEL REPORTE DE SERVICIOS (ordenReporte)
+            // Hojas por delegación + RESUMEN TOTAL, con las mismas reglas:
+            // desplazamiento, clasificación X, viáticos, formatos y SUM().
+            // Se inserta DESPUÉS del detallado y ANTES de las hojas por técnico.
+            // =========================================================
+            agregarCopiaReporteServicios(workbook, datosServiciosGlobal);
 
             // ---------------------------------------------------------
             // PASO 4: CREAR HOJAS INDIVIDUALES POR TÉCNICO
