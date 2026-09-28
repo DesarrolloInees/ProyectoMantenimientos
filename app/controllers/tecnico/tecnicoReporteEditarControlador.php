@@ -52,6 +52,7 @@ class tecnicoReporteEditarControlador
         $remisiones = $this->modelo->obtenerRemisionesTecnico($idTecnicoActual > 0 ? $idTecnicoActual : $orden['id_tecnico']);
         $estados = $this->modeloMaestro->obtenerEstadosMaquina();
         $calificaciones = $this->modeloMaestro->obtenerCalificaciones();
+        $modalidades = $this->modelo->obtenerModalidades();
         $tiposManto = $this->modelo->obtenerTiposMantenimientoTecnico();
         $inventario = $this->modelo->obtenerTodosLosRepuestos();
 
@@ -91,6 +92,7 @@ class tecnicoReporteEditarControlador
             'actividades_realizadas'=> $actividadesFinal,
             'id_estado_maquina'     => $_POST['id_estado_maquina'] ?? null,
             'id_calificacion'       => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
+            'id_modalidad'          => !empty($_POST['id_modalidad']) ? (int)$_POST['id_modalidad'] : null,
             'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? null,
             'soporte_remoto'        => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
             // La vista ya no muestra el checkbox; se conserva el valor previo via hidden (1/0)

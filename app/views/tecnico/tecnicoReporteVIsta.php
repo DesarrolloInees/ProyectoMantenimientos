@@ -136,6 +136,21 @@
                 </select>
             </div>
 
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Modalidad Operativa</label>
+                <select name="id_modalidad" class="w-full border-gray-300 rounded-lg select2-movil" required>
+                    <option value="">- Seleccione Modalidad -</option>
+                    <?php if (!empty($modalidades)): ?>
+                        <?php foreach ($modalidades as $mod): ?>
+                            <option value="<?= htmlspecialchars($mod['id_modalidad']) ?>"
+                                <?= (isset($orden['id_modalidad']) && $orden['id_modalidad'] == $mod['id_modalidad']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($mod['nombre_modalidad']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+
             <!-- REEMPLAZAR EL BLOQUE DE HORAS POR ESTE: -->
             <!-- BLOQUE DE HORAS CON PRE-LLENADO Y ACCESO RÁPIDO -->
             <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">

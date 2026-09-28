@@ -141,6 +141,23 @@
             </div>
 
             <div class="mb-4">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Modalidad Operativa *</label>
+                <select name="id_modalidad" class="w-full border-gray-300 rounded-md shadow-sm select2-movil" required>
+                    <option value="">Seleccione...</option>
+                    <?php if (!empty($modalidades)): ?>
+                        <?php 
+                        $modActual = $orden['id_modalidad'] ?? 1;
+                        ?>
+                        <?php foreach ($modalidades as $mod): ?>
+                            <option value="<?= $mod['id_modalidad'] ?>" <?= ($modActual == $mod['id_modalidad']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($mod['nombre_modalidad']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+
+            <div class="mb-4">
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Actividades Realizadas *</label>
                 <textarea name="actividades_realizadas" rows="3" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500"><?= htmlspecialchars($reporteGuardado['actividades_realizadas'] ?? '') ?></textarea>
             </div>

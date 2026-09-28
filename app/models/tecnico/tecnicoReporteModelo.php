@@ -24,6 +24,14 @@ class tecnicoReporteModelo
             return 0;
         }
     }
+    public function obtenerModalidades()
+    {
+        $sql = "SELECT id_modalidad, nombre_modalidad FROM modalidad_operativa ORDER BY id_modalidad ASC";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 
     // Traer todos los detalles de la orden para mostrarlos al técnico
     public function obtenerDetalleOrden($idOrden, $idTecnico)
@@ -37,6 +45,7 @@ class tecnicoReporteModelo
                     os.hora_entrada,
                     os.hora_salida,
                     os.id_tipo_mantenimiento,
+                    COALESCE(os.id_modalidad, p.id_modalidad, 1) AS id_modalidad,
                     c.nombre_cliente,
                     p.nombre_punto,
                     p.direccion,
@@ -273,7 +282,7 @@ class tecnicoReporteModelo
     public function guardarReporteTecnico($datos)
     {
         try {
-            $sqlInfo = "SELECT os.fecha_visita, os.id_punto, p.id_modalidad, m.id_tipo_maquina
+            $sqlInfo = "SELECT os.fecha_visita, os.id_punto, os.id_modalidad AS orden_modalidad, p.id_modalidad AS punto_modalidad, m.id_tipo_maquina
                     FROM ordenes_servicio os
                     LEFT JOIN punto p ON os.id_punto = p.id_punto
                     LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
@@ -286,10 +295,10 @@ class tecnicoReporteModelo
             $esFueraDelegacion = 0;
             $diasViaticos = 0;
             $valorViaticos = 0;
+            $idModalidad = !empty($datos['id_modalidad']) ? (int)$datos['id_modalidad'] : (!empty($infoOrden['orden_modalidad']) ? (int)$infoOrden['orden_modalidad'] : (!empty($infoOrden['punto_modalidad']) ? (int)$infoOrden['punto_modalidad'] : 1));
 
             if ($infoOrden) {
                 $anio = date('Y', strtotime($infoOrden['fecha_visita']));
-                $idModalidad = $infoOrden['id_modalidad'] ?? 1;
                 $idTipoMaquina = $infoOrden['id_tipo_maquina'];
                 $idTipoMantenimiento = $datos['id_tipo_mantenimiento'];
 
@@ -314,7 +323,7 @@ class tecnicoReporteModelo
                 $delegacionesPrincipales = [1, 2, 3, 4, 5];
                 $idDelegacionPunto = $this->obtenerIdDelegacionPunto($infoOrden['id_punto']);
 
-                if ($idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
+                if ($idModalidad === 2 && $idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
                     $esFueraDelegacion = 1;
 
                     $yaCobroHoy = $this->tecnicoYaCobroViaticosHoy(
@@ -333,7 +342,8 @@ class tecnicoReporteModelo
 
             $sql = "UPDATE ordenes_servicio SET 
                     id_cliente = :id_cliente,              
-                    id_punto = :id_punto,                  
+                    id_punto = :id_punto,
+                    id_modalidad = :id_modalidad,
                     numero_remision = :remision,
                     id_tipo_mantenimiento = :id_tipo_manto,
                     valor_servicio = :valor_servicio,
@@ -358,6 +368,7 @@ class tecnicoReporteModelo
             return $stmt->execute([
                 ':id_cliente' => $datos['id_cliente'] ?? null,
                 ':id_punto' => $datos['id_punto'] ?? null,
+                ':id_modalidad' => $idModalidad,
                 ':remision' => $datos['numero_remision'],
                 ':id_tipo_manto' => $datos['id_tipo_mantenimiento'],
                 ':valor_servicio' => $valorServicio,
@@ -616,7 +627,70 @@ class tecnicoReporteModelo
 
     public function actualizarReporteTecnico($datos)
     {
+        $sqlInfo = "SELECT os.fecha_visita, os.id_punto, os.id_modalidad AS orden_modalidad, p.id_modalidad AS punto_modalidad, m.id_tipo_maquina
+                FROM ordenes_servicio os
+                LEFT JOIN punto p ON os.id_punto = p.id_punto
+                LEFT JOIN maquina m ON os.id_maquina = m.id_maquina
+                WHERE os.id_ordenes_servicio = :id_orden";
+        $stmtInfo = $this->conn->prepare($sqlInfo);
+        $stmtInfo->execute([':id_orden' => $datos['id_ordenes_servicio']]);
+        $infoOrden = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+
+        $valorServicio = 0;
+        $esFueraDelegacion = 0;
+        $diasViaticos = 0;
+        $valorViaticos = 0;
+        $idModalidad = !empty($datos['id_modalidad']) ? (int)$datos['id_modalidad'] : (!empty($infoOrden['orden_modalidad']) ? (int)$infoOrden['orden_modalidad'] : (!empty($infoOrden['punto_modalidad']) ? (int)$infoOrden['punto_modalidad'] : 1));
+
+        if ($infoOrden) {
+            $anio = date('Y', strtotime($infoOrden['fecha_visita']));
+            $idTipoMaquina = $infoOrden['id_tipo_maquina'];
+            $idTipoMantenimiento = $datos['id_tipo_mantenimiento'];
+
+            $sqlTarifa = "SELECT precio FROM tarifa 
+                        WHERE id_tipo_maquina = :tipo_maq
+                            AND id_tipo_mantenimiento = :tipo_manto
+                            AND id_modalidad = :modalidad
+                            AND año_vigencia = :anio
+                        LIMIT 1";
+            $stmtTarifa = $this->conn->prepare($sqlTarifa);
+            $stmtTarifa->execute([
+                ':tipo_maq' => $idTipoMaquina,
+                ':tipo_manto' => $idTipoMantenimiento,
+                ':modalidad' => $idModalidad,
+                ':anio' => $anio
+            ]);
+            $resTarifa = $stmtTarifa->fetch(PDO::FETCH_ASSOC);
+            if ($resTarifa && $resTarifa['precio'] !== false) {
+                $valorServicio = floatval($resTarifa['precio']);
+            }
+
+            $delegacionesPrincipales = [1, 2, 3, 4, 5];
+            $idDelegacionPunto = $this->obtenerIdDelegacionPunto($infoOrden['id_punto']);
+
+            if ($idModalidad === 2 && $idDelegacionPunto > 0 && !in_array($idDelegacionPunto, $delegacionesPrincipales)) {
+                $esFueraDelegacion = 1;
+
+                $yaCobroHoy = $this->tecnicoYaCobroViaticosHoy(
+                    $datos['id_tecnico'],
+                    $infoOrden['fecha_visita'],
+                    $datos['id_ordenes_servicio']
+                );
+
+                if (!$yaCobroHoy) {
+                    $diasViaticos = 1;
+                    $tarifaViatico = $this->obtenerValorParametro('Recargo_Servicios_Interurbanos');
+                    $valorViaticos = $diasViaticos * $tarifaViatico;
+                }
+            }
+        }
+
         $sql = "UPDATE ordenes_servicio SET 
+                id_modalidad = :id_modalidad,
+                valor_servicio = :valor_servicio,
+                es_fuera_delegacion = :es_fuera,
+                dias_viaticos = :dias_viaticos,
+                valor_viaticos = :valor_viaticos,
                 numero_remision = :numero_remision,
                 hora_entrada = :hora_entrada,
                 hora_salida = :hora_salida,
@@ -632,7 +706,27 @@ class tecnicoReporteModelo
                 WHERE id_ordenes_servicio = :id_ordenes_servicio AND id_tecnico = :id_tecnico";
 
         $stmt = $this->conn->prepare($sql);
-        return $stmt->execute($datos);
+        return $stmt->execute([
+            ':id_modalidad' => $idModalidad,
+            ':valor_servicio' => $valorServicio,
+            ':es_fuera' => $esFueraDelegacion,
+            ':dias_viaticos' => $diasViaticos,
+            ':valor_viaticos' => $valorViaticos,
+            ':numero_remision' => $datos['numero_remision'],
+            ':hora_entrada' => $datos['hora_entrada'],
+            ':hora_salida' => $datos['hora_salida'],
+            ':tiempo_servicio' => $datos['tiempo_servicio'],
+            ':actividades_realizadas' => $datos['actividades_realizadas'],
+            ':id_estado_maquina' => $datos['id_estado_maquina'],
+            ':id_calificacion' => $datos['id_calificacion'],
+            ':id_tipo_mantenimiento' => $datos['id_tipo_mantenimiento'],
+            ':soporte_remoto' => $datos['soporte_remoto'],
+            ':tiene_novedad' => $datos['tiene_novedad'],
+            ':detalle_novedad' => $datos['detalle_novedad'],
+            ':repuestos_tecnico' => $datos['repuestos_tecnico'],
+            ':id_ordenes_servicio' => $datos['id_ordenes_servicio'],
+            ':id_tecnico' => $datos['id_tecnico']
+        ]);
     }
 
     public function actualizarDatosComplementarios($datos)
@@ -668,7 +762,7 @@ class tecnicoReporteModelo
 
     public function obtenerDetalleOrdenParaEdicion($idOrden)
     {
-        $sql = "SELECT o.*, c.nombre_cliente, p.nombre_punto, p.direccion AS direccion_punto 
+        $sql = "SELECT o.*, COALESCE(o.id_modalidad, p.id_modalidad, 1) AS id_modalidad, c.nombre_cliente, p.nombre_punto, p.direccion AS direccion_punto 
                 FROM ordenes_servicio o
                 LEFT JOIN cliente c ON o.id_cliente = c.id_cliente
                 LEFT JOIN punto p ON o.id_punto = p.id_punto

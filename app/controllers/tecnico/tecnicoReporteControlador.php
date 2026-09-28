@@ -50,6 +50,7 @@ class tecnicoReporteControlador
         $remisiones = $this->modelo->obtenerRemisionesTecnico($idTecnicoActual);
         $estados = $this->modeloMaestro->obtenerEstadosMaquina();
         $calificaciones = $this->modeloMaestro->obtenerCalificaciones();
+        $modalidades = $this->modelo->obtenerModalidades();
         // --- AQUÍ ESTÁ EL CAMBIO: Usamos la nueva función del modelo técnico ---
         $tiposManto = $this->modelo->obtenerTiposMantenimientoTecnico();
         // --- NUEVO: Traemos el inventario físico del técnico ---
@@ -139,6 +140,7 @@ class tecnicoReporteControlador
             'actividades_realizadas' => $actividadesFinal,
             'id_estado_maquina' => $_POST['id_estado_maquina'] ?? null,
             'id_calificacion' => !empty($_POST['id_calificacion']) ? $_POST['id_calificacion'] : null,
+            'id_modalidad' => !empty($_POST['id_modalidad']) ? (int)$_POST['id_modalidad'] : null,
             'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? null,
             'soporte_remoto' => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
             'tiene_novedad' => isset($_POST['tiene_novedad']) ? 1 : 0,
