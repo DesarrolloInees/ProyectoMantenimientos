@@ -73,6 +73,39 @@ $horaActual = date('H:i');
                     </div>
                 </div>
 
+                <!-- Marcar Entrada (registro del turno) -->
+                <?php $tieneTurnoHoy = !empty($turnoHoy); ?>
+                <button type="button" onclick="Turno.abrirModal()" id="turnoCard"
+                    class="w-full text-left group flex items-center gap-4 bg-emerald-50/80 hover:bg-emerald-100/60 p-3.5 rounded-xl border-2 border-emerald-300 hover:border-emerald-500 transition-all hover:shadow-md">
+                    <div class="bg-emerald-100 p-3 rounded-lg group-hover:bg-emerald-600 transition shrink-0">
+                        <i class="fas fa-user-clock text-emerald-600 group-hover:text-white text-lg"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 id="turnoCardTitulo" class="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition">
+                            <?= $tieneTurnoHoy ? 'Entrada registrada' : 'Marcar entrada' ?>
+                        </h3>
+                        <p id="turnoCardDetalle" class="text-xs text-gray-500 truncate">
+                            <?php if ($tieneTurnoHoy): ?>
+                                Día <?= htmlspecialchars($turnoHoy['fecha_texto']) ?> ·
+                                <?= htmlspecialchars($turnoHoy['hora_entrada']) ?><?= !empty($turnoHoy['novedad']) ? ' · con novedad' : '' ?>
+                            <?php else: ?>
+                                Registra la hora en que entraste hoy
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                    <?php if ($tieneTurnoHoy): ?>
+                        <span id="turnoCardEstado"
+                            class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                            <i class="fas fa-check mr-1"></i><?= htmlspecialchars($turnoHoy['hora_entrada']) ?>
+                        </span>
+                    <?php else: ?>
+                        <span id="turnoCardEstado"
+                            class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-200 text-gray-600 border border-gray-300 whitespace-nowrap">
+                            Sin registrar
+                        </span>
+                    <?php endif; ?>
+                </button>
+
                 <!-- Programación Servicios -->
                 <a href="<?= BASE_URL ?>tecnicoProgramacion"
                     class="group flex items-center gap-4 bg-gray-50/80 hover:bg-indigo-50/50 p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 transition-all hover:shadow-md">

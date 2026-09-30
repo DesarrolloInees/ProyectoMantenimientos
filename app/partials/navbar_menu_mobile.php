@@ -13,6 +13,12 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <i class="fas fa-home w-6 text-center text-blue-400 mr-2"></i> Inicio
         </a>
 
+        <!-- Marcar Entrada (abre el modal global del técnico) -->
+        <button type="button" onclick="Turno.abrirModal()"
+            class="w-full flex items-center text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2.5 rounded-md text-sm font-bold border-b border-emerald-700 transition">
+            <i class="fas fa-user-clock w-6 text-center mr-2"></i> Marcar Entrada
+        </button>
+
         <!-- Programación Servicios (Acceso Directo Principal) -->
         <a href="<?= BASE_URL ?>tecnicoProgramacion"
             class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-2.5 rounded-md text-sm font-bold border-b border-gray-700/50 transition">
@@ -76,10 +82,6 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
         class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
         <i class="fas fa-search mr-3 w-5 text-center text-blue-300"></i> Servicios Pdf
     </a>
-    <a href="<?= BASE_URL ?>tecnicoProgramacion"
-        class="block text-white bg-blue-900/50 py-3 px-3 rounded hover:bg-blue-800 border-b border-gray-700 font-bold mt-2">
-        <i class="fa-regular fa-envelope mr-3 w-5 text-center text-blue-300"></i> Programación Servicios
-    </a>
 
 <?php elseif ($rol == 5): ?>
     <!-- MENÚ SUPERVISOR MOTORIZADO - VISTA MÓVIL (rol 5) -->
@@ -109,6 +111,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                 <a href="<?= BASE_URL ?>cronometroAdmin"
                     class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
                     <i class="fas fa-stopwatch w-5 text-center mr-2 text-gray-400"></i> Cronómetrar Servicios Técnicos
+                </a>
+                <a href="<?= BASE_URL ?>turnoReportes"
+                    class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
+                    <i class="fas fa-user-clock w-5 text-center mr-2 text-gray-400"></i> Reporte de Turnos
                 </a>
                 <a href="<?= BASE_URL ?>repuestoVer"
                     class="flex items-center text-gray-300 hover:text-white py-2 px-2 rounded text-sm transition">
@@ -265,6 +271,18 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                 class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
                 <i class="fa-solid fa-receipt mr-2"></i> Administrar Facturas Parqueadero
             </a>
+            <a href="<?= BASE_URL ?>horaExtraAdmin"
+                class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-clock mr-2"></i> Administrar Horas Extra
+            </a>
+            <a href="<?= BASE_URL ?>turnoReportes"
+                class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fas fa-user-clock mr-2 text-emerald-400"></i> Reporte de Turnos
+            </a>
+            <a href="<?= BASE_URL ?>cronometroAdmin"
+                class="block py-2 px-4 hover:text-white hover:bg-gray-700 rounded flex items-center">
+                <i class="fa-solid fa-stopwatch mr-2"></i> Cronómetrar Servicios Técnicos
+            </a>
         </div>
     </details>
 
@@ -418,6 +436,9 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <a href="<?= BASE_URL ?>importarExcel"
                 class="block px-4 py-2 text-sm text-green-600 font-bold hover:bg-gray-700 rounded">Importar Excel
                 Prosegur</a>
+            <a href="<?= BASE_URL ?>importarEstadoMaquina"
+                class="block px-4 py-2 text-sm text-red-600 font-bold hover:bg-gray-700 rounded">Importar Estado
+                Maquinas</a>
             <a href="<?= BASE_URL ?>importarMunicipios"
                 class="block px-4 py-2 text-sm text-green-600 font-bold hover:bg-gray-700 rounded">Importar Zonas
                 Geográficas</a>

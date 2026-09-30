@@ -182,6 +182,21 @@
         </footer>
     </div>
 
+    <?php if (isset($_SESSION['nivel_acceso']) && (int) $_SESSION['nivel_acceso'] === 3): ?>
+        <?php
+        // ================================================================
+        // Módulo "Marcar Entrada" (solo técnicos):
+        // el modal queda disponible en TODAS las pantallas del rol 3, así el
+        // técnico puede marcar desde el inicio o desde cualquier página.
+        // ================================================================
+        $rutaModalTurno = __DIR__ . '/../views/turno/partials/modalTurno.php';
+        if (file_exists($rutaModalTurno)) {
+            include $rutaModalTurno;
+        }
+        ?>
+        <script src="<?= BASE_URL ?>js/turno/turno.js?v=1"></script>
+    <?php endif; ?>
+
 </body>
 
 </html>

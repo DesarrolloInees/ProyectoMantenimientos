@@ -13,6 +13,12 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <i class="fas fa-home mr-1.5"></i> Inicio
         </a>
 
+        <!-- Marcar Entrada (abre el modal global del técnico) -->
+        <button type="button" onclick="Turno.abrirModal()"
+            class="text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-md text-sm font-bold transition flex items-center whitespace-nowrap shadow">
+            <i class="fas fa-user-clock mr-1.5"></i> Marcar Entrada
+        </button>
+
         <!-- Programación Servicios -->
         <a href="<?= BASE_URL ?>tecnicoProgramacion"
             class="text-gray-300 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition flex items-center whitespace-nowrap">
@@ -103,6 +109,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
                 <a href="<?= BASE_URL ?>cronometroAdmin"
                     class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
                     <i class="fas fa-stopwatch w-5"></i> Cronómetro Supervisar
+                </a>
+                <a href="<?= BASE_URL ?>turnoReportes"
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-blue-600 hover:text-white">
+                    <i class="fas fa-user-clock w-5"></i> Reporte de Turnos
                 </a>
                 
                 <a href="<?= BASE_URL ?>repuestoVer"
@@ -266,6 +276,10 @@ $rol = $_SESSION['nivel_acceso'] ?? 0;
             <a href="<?= BASE_URL ?>horaExtraAdmin"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
                 <i class="fa-solid fa-clock w-5 text-center mr-1"></i> Administrar Horas Extra
+            </a>
+            <a href="<?= BASE_URL ?>turnoReportes"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">
+                <i class="fas fa-user-clock w-5 text-center mr-1 text-emerald-600"></i> Reporte de Turnos
             </a>
             <a href="<?= BASE_URL ?>cronometroAdmin"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-l-4 border-transparent hover:border-blue-500">

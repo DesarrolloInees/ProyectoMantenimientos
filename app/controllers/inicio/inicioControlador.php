@@ -4,6 +4,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/inicio/inicioModelo.php';
 require_once __DIR__ . '/../../helpers/resumenTiposServicio.php';
+require_once __DIR__ . '/../../models/turno/turnoModelo.php';
 
 class inicioControlador
 {
@@ -24,6 +25,10 @@ class inicioControlador
 
     public function cargarVista()
     {
+        // Marcación de entrada del día (módulo "Marcar Entrada").
+        // La usa la tarjeta del inicio y el modal global del rol técnico.
+        $turnoHoy = null;
+
         // Solo estadísticas para admin (nivel 1 o 2)
         $estadisticas = [];
         if (isset($_SESSION['nivel_acceso']) && in_array($_SESSION['nivel_acceso'], [1, 2])) {
@@ -41,6 +46,18 @@ class inicioControlador
         if (isset($_SESSION['nivel_acceso']) && (int)$_SESSION['nivel_acceso'] === 3) {
             $idTecnicoSesion = $this->modelo->obtenerIdTecnicoPorUsuario($_SESSION['usuario_id'] ?? 0);
             if ($idTecnicoSesion > 0) {
+                // ¿Ya marcó su entrada hoy? (para pintar la tarjeta con el estado)
+                $turnoModelo = new turnoModelo($this->db);
+                $turnoDelDia = $turnoModelo->obtenerTurnoPorDia($idTecnicoSesion, date('Y-m-d'));
+                if ($turnoDelDia) {
+                    $turnoHoy = [
+                        'fecha'        => $turnoDelDia['fecha'],
+                        'fecha_texto'  => date('d/m/Y', strtotime($turnoDelDia['fecha'])),
+                        'hora_entrada' => substr($turnoDelDia['hora_entrada'], 0, 5),
+                        'novedad'      => (string) $turnoDelDia['novedad']
+                    ];
+                }
+
                 $filas = $this->modelo->resumenServiciosPorTipo(
                     $idTecnicoSesion,
                     $rangoTecnicoMes['inicio'],
