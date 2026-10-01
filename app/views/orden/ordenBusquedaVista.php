@@ -757,18 +757,38 @@
     // MAGIA IA Y GUARDADO (Misma lógica de Detalle)
     // ==========================================
     async function mejorarTextoIA(boton, idFila) {
-        // ... misma lógica intacta ...
         const textarea = document.getElementById(`obs_${idFila}`);
         const textoOriginal = textarea.value.trim();
 
         if (textoOriginal === '') {
-            alert("⚠️ No hay texto escrito para mejorar.");
+            toastIA('warn', 'No hay texto escrito para mejorar.');
             return;
         }
 
+        // ⚡ CACHE EN SESIÓN: si ya optimizamos este mismo texto, es instantáneo
+        const cacheKey = 'ia_' + textoOriginal.length + '_' + textoOriginal.slice(0, 120);
+        try {
+            const guardado = sessionStorage.getItem(cacheKey);
+            if (guardado) {
+                aplicarTextoIA(textarea, guardado);
+                return;
+            }
+        } catch (e) { /* sessionStorage puede estar bloqueado */ }
+
         const iconoOriginal = boton.innerHTML;
-        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         boton.disabled = true;
+
+        // Contador de segundos visible: el usuario sabe que está trabajando
+        let segundos = 0;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 0s';
+        const ticker = setInterval(() => {
+            segundos++;
+            boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + segundos + 's';
+        }, 1000);
+
+        // 🛡️ Cortar la petición a los 22s: nunca se queda colgada
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 22000);
 
         try {
             const formData = new FormData();
@@ -777,41 +797,80 @@
 
             const response = await fetch(window.DetalleConfig.BASE_URL + 'ordenDetalle', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal: controller.signal
             });
+
             const data = await response.json();
 
-            if (data.status === 'ok') {
-                const textoFinal = (data.texto_mejorado || '').trim();
-
-                if (textoFinal === '') {
-                    alert("⚠️ La IA devolvió un texto en blanco. Tus datos originales están a salvo.");
-                    return;
+            if (data.status === 'ok' && data.texto_mejorado && data.texto_mejorado.trim() !== '') {
+                const textoFinal = data.texto_mejorado.trim();
+                if (aplicarTextoIA(textarea, textoFinal)) {
+                    try { sessionStorage.setItem(cacheKey, textoFinal); } catch (e) {}
                 }
-
-                // 🔒 ANTIRRECORTE: misma regla que el servidor. Si la IA devolvió menos
-                // información de la que había, se descarta y se conserva el original.
-                const tolerancia = Math.max(0, Math.min(15, Math.floor(textoOriginal.length * 0.05)));
-                if (textoFinal.length < (textoOriginal.length - tolerancia)) {
-                    alert("⚠️ La IA intentó recortar el comentario, así que se descartó para no perder información.\n\nTu texto original quedó intacto. Intenta de nuevo.");
-                    return;
-                }
-
-                textarea.value = textoFinal;
-                textarea.style.backgroundColor = 'var(--c-green-lt)';
-                setTimeout(() => {
-                    textarea.style.backgroundColor = '';
-                }, 1500);
             } else {
-                alert("❌ Error procesando con IA: " + data.msg);
+                toastIA('error', data.msg || 'La IA no pudo procesar el texto. Tus datos originales están a salvo.');
             }
+
         } catch (error) {
-            console.error(error);
-            alert("❌ Error de conexión.");
+            if (error.name === 'AbortError') {
+                toastIA('error', 'La IA tardó demasiado y se canceló. Tu texto original quedó intacto.');
+            } else {
+                console.error(error);
+                toastIA('error', 'Error de conexión con el servidor. Tu texto original quedó intacto.');
+            }
         } finally {
+            clearInterval(ticker);
+            clearTimeout(timeout);
             boton.innerHTML = iconoOriginal;
             boton.disabled = false;
         }
+    }
+
+    /**
+     * Aplica el texto mejorado con la validación antirrecorte (piso del 80%).
+     */
+    function aplicarTextoIA(textarea, textoFinal) {
+        const minimo = Math.floor((textarea.value.trim().length) * 0.8);
+        if (textoFinal.length < minimo) {
+            toastIA('warn', 'La IA recortó demasiado el comentario, así que se descartó para no perder información. Tu texto original quedó intacto. Intenta de nuevo.');
+            return false;
+        }
+
+        textarea.value = textoFinal;
+        textarea.style.backgroundColor = 'var(--c-green-lt)';
+        setTimeout(() => {
+            textarea.style.backgroundColor = '';
+        }, 1500);
+
+        return true;
+    }
+
+    /**
+     * Notificación NO bloqueante (reemplaza los alert() que congelaban la pantalla).
+     */
+    function toastIA(tipo, mensaje) {
+        const colores = {
+            warn:  { bg: '#fffbeb', border: '#d97706', icon: 'fa-exclamation-triangle' },
+            error: { bg: '#fef2f2', border: '#dc2626', icon: 'fa-times-circle' },
+            ok:    { bg: '#f0fdf4', border: '#16a34a', icon: 'fa-check-circle' }
+        };
+        const c = colores[tipo] || colores.warn;
+
+        const toast = document.createElement('div');
+        toast.innerHTML = '<i class="fas ' + c.icon + '"></i> <span></span>';
+        toast.style.cssText = 'position:fixed;top:18px;right:18px;z-index:999999;max-width:420px;' +
+            'display:flex;gap:.6rem;align-items:flex-start;padding:.9rem 1.1rem;border-radius:10px;' +
+            'background:' + c.bg + ';border-left:4px solid ' + c.border + ';color:#1a2233;' +
+            'font:600 .8rem "DM Sans",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.15);';
+        toast.querySelector('span').textContent = mensaje;
+
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.transition = 'opacity .3s';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, tipo === 'ok' ? 2500 : 5000);
     }
 
     // ==========================================

@@ -790,62 +790,133 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
         const textoOriginal = textarea.value.trim();
 
         if (textoOriginal === '') {
-            alert("⚠️ No hay texto escrito para mejorar.");
+            toastIA('warn', 'No hay texto escrito para mejorar.');
             return;
         }
 
         // 🔒 DETECTAR SI ES UN COMENTARIO DE ESTADO INICIAL
         const esEstadoInicial = /^\s*\[ESTADO\s+INICIAL\s*:/i.test(textoOriginal);
 
+        // ⚡ CACHE EN SESIÓN: si ya optimizamos este mismo texto, es instantáneo
+        const cacheKey = 'ia_' + textoOriginal.length + '_' + textoOriginal.slice(0, 120);
+        try {
+            const guardado = sessionStorage.getItem(cacheKey);
+            if (guardado) {
+                aplicarTextoIA(textarea, guardado, esEstadoInicial);
+                return;
+            }
+        } catch (e) { /* sessionStorage puede estar bloqueado */ }
+
         const iconoOriginal = boton.innerHTML;
-        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         boton.disabled = true;
 
+        // Contador de segundos visible: el usuario sabe que está trabajando
+        let segundos = 0;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 0s';
+        const ticker = setInterval(() => {
+            segundos++;
+            boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + segundos + 's';
+        }, 1000);
+
+        // 🛡️ Cortar la petición a los 22s: nunca se queda colgada
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 22000);
+
         try {
-            // 2. Preparamos los datos para enviar al controlador
             const formData = new FormData();
             formData.append('accion', 'ajaxMejorarTextoIA');
             formData.append('texto', textoOriginal);
             formData.append('es_estado_inicial', esEstadoInicial ? '1' : '0');
 
-            // 3. Hacemos la petición AJAX
             const response = await fetch(window.DetalleConfig.BASE_URL + 'ordenDetalle', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal: controller.signal
             });
 
             const data = await response.json();
 
             if (data.status === 'ok' && data.texto_mejorado && data.texto_mejorado.trim() !== '') {
-                // 🔒 Para comentarios de estado inicial, verificar que la IA lo preservó
-                if (esEstadoInicial) {
-                    const textoMejorado = data.texto_mejorado.trim();
-                    if (!/^\s*\[ESTADO\s+INICIAL\s*:/i.test(textoMejorado)) {
-                        alert("⚠️ La IA quitó la sección de [ESTADO INICIAL]. Este tipo de comentarios no puede ser editado por la IA para preservar el diagnóstico original.\n\nTu texto original permanece intacto.");
-                        return;
-                    }
-                }
+                const textoFinal = data.texto_mejorado.trim();
+                aplicarTextoIA(textarea, textoFinal, esEstadoInicial);
 
-                textarea.value = data.texto_mejorado;
-
-                // Efectito visual bacano para que el usuario note el cambio (un verde suave)
-                textarea.style.backgroundColor = '#ecfdf5';
-                textarea.style.borderColor = '#34d399';
-                setTimeout(() => {
-                    textarea.style.backgroundColor = '';
-                    textarea.style.borderColor = '';
-                }, 1500);
+                // Guardar en cache para el próximo clic
+                try { sessionStorage.setItem(cacheKey, textoFinal); } catch (e) {}
             } else {
-                alert("⚠️ La IA devolvió un texto en blanco. Tus datos originales están a salvo.");
+                toastIA('error', data.msg || 'La IA no pudo procesar el texto. Tus datos originales están a salvo.');
             }
 
         } catch (error) {
-            console.error("Error conectando con la IA", error);
-            alert("❌ Error de conexión con el servidor.");
+            if (error.name === 'AbortError') {
+                toastIA('error', 'La IA tardó demasiado y se canceló. Tu texto original quedó intacto.');
+            } else {
+                console.error("Error conectando con la IA", error);
+                toastIA('error', 'Error de conexión con el servidor. Tu texto original quedó intacto.');
+            }
         } finally {
+            clearInterval(ticker);
+            clearTimeout(timeout);
             boton.innerHTML = iconoOriginal;
             boton.disabled = false;
         }
+    }
+
+    /**
+     * Aplica el texto mejorado con las validaciones de seguridad.
+     * Compartida entre la versión con caché y la respuesta de la API.
+     */
+    function aplicarTextoIA(textarea, textoFinal, esEstadoInicial) {
+        // 🔒 Los comentarios de estado inicial deben conservar su encabezado
+        if (esEstadoInicial && !/^\s*\[ESTADO\s+INICIAL\s*:/i.test(textoFinal)) {
+            toastIA('warn', 'La IA quitó la sección de [ESTADO INICIAL]. Este tipo de comentarios no se puede editar con IA para preservar el diagnóstico original. Tu texto original permanece intacto.');
+            return false;
+        }
+
+        // 🔒 ANTIRRECORTE alineado con el servidor (piso del 80%)
+        const minimo = Math.floor((textarea.value.trim().length) * 0.8);
+        if (textoFinal.length < minimo) {
+            toastIA('warn', 'La IA recortó demasiado el comentario, así que se descartó para no perder información. Tu texto original quedó intacto.');
+            return false;
+        }
+
+        textarea.value = textoFinal;
+
+        // Efectito visual para que el usuario note el cambio
+        textarea.style.backgroundColor = '#ecfdf5';
+        textarea.style.borderColor = '#34d399';
+        setTimeout(() => {
+            textarea.style.backgroundColor = '';
+            textarea.style.borderColor = '';
+        }, 1500);
+
+        return true;
+    }
+
+    /**
+     * Notificación NO bloqueante (reemplaza los alert() que congelaban la pantalla).
+     */
+    function toastIA(tipo, mensaje) {
+        const colores = {
+            warn:  { bg: '#fffbeb', border: '#f59e0b', icon: 'fa-exclamation-triangle' },
+            error: { bg: '#fef2f2', border: '#dc2626', icon: 'fa-times-circle' },
+            ok:    { bg: '#f0fdf4', border: '#16a34a', icon: 'fa-check-circle' }
+        };
+        const c = colores[tipo] || colores.warn;
+
+        const toast = document.createElement('div');
+        toast.innerHTML = '<i class="fas ' + c.icon + '"></i> <span></span>';
+        toast.style.cssText = 'position:fixed;top:18px;right:18px;z-index:999999;max-width:420px;' +
+            'display:flex;gap:.6rem;align-items:flex-start;padding:.9rem 1.1rem;border-radius:10px;' +
+            'background:' + c.bg + ';border-left:4px solid ' + c.border + ';color:#1a2233;' +
+            'font:600 .8rem "DM Sans",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.15);';
+        toast.querySelector('span').textContent = mensaje;
+
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.transition = 'opacity .3s';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, tipo === 'ok' ? 2500 : 5000);
     }
 
     // ==========================================
