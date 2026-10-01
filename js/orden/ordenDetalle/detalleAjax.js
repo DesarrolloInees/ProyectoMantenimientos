@@ -22,6 +22,15 @@ function cargarPuntos(idFila, idCliente, mantenerValorActual = false, callback =
     let selMaq = document.getElementById(`sel_maq_${idFila}`);
     let valorPrevio = selPunto.val();
 
+    // 🛡️ Guardamos el nombre del punto YA ASIGNADO en esta orden ANTES de
+    // repintar el select. Si ese punto estuviera desactivado, el backend lo
+    // reinyecta marcado "(desactivado)" para no perder el dato al guardar.
+    let nombrePrevio = '';
+    if (valorPrevio) {
+        const optPrevio = selPunto.find(`option[value="${valorPrevio}"]`).get(0);
+        if (optPrevio) nombrePrevio = optPrevio.getAttribute('data-full') || optPrevio.textContent.trim();
+    }
+
     if (!mantenerValorActual) {
         selPunto.html('<option>Cargando...</option>');
         if (selMaq) selMaq.innerHTML = '<option>Esperando punto...</option>';
@@ -30,13 +39,19 @@ function cargarPuntos(idFila, idCliente, mantenerValorActual = false, callback =
     const fd = new FormData();
     fd.append('accion', 'ajaxObtenerPuntos');
     fd.append('id_cliente', idCliente);
+    fd.append('id_punto_actual', valorPrevio || '');
+    fd.append('nombre_punto_actual', nombrePrevio || '');
 
     fetch(AJAX_URL, { method: 'POST', body: fd })
         .then(res => res.json())
         .then(data => {
             let options = '<option value="">- Seleccione -</option>';
             data.forEach(p => {
-                options += `<option value="${p.id_punto}" data-full="${p.nombre_punto}">${p.nombre_punto}</option>`;
+                // Los rescatados (desactivados) se pintan en rojo para que el
+                // técnico note que está viendo algo que ya no debería operar.
+                const clase = p.inactivo ? ' style="color:#dc2626;font-weight:700"' : '';
+                const marca = p.inactivo ? ' ⚠️' : '';
+                options += `<option value="${p.id_punto}" data-full="${p.nombre_punto}"${clase}>${p.nombre_punto}${marca}</option>`;
             });
             selPunto.html(options);
 
@@ -81,6 +96,15 @@ function verificarCargaPuntos(idFila) {
 function cargarMaquinas(idFila, idPunto) {
     let selMaq = document.getElementById(`sel_maq_${idFila}`);
     if (!selMaq) return;
+
+    // 🛡️ Nombre de la máquina YA ASIGNADA, capturado ANTES de limpiar el select
+    let maqPreviaId = selMaq.value;
+    let maqPreviaNombre = '';
+    if (maqPreviaId) {
+        const optPrevia = selMaq.querySelector(`option[value="${maqPreviaId}"]`);
+        if (optPrevia) maqPreviaNombre = optPrevia.textContent.trim();
+    }
+
     selMaq.innerHTML = '<option>Cargando...</option>';
 
     // Delegación en paralelo
@@ -98,16 +122,20 @@ function cargarMaquinas(idFila, idPunto) {
     const fd = new FormData();
     fd.append('accion', 'ajaxObtenerMaquinas');
     fd.append('id_punto', idPunto);
+    fd.append('id_maquina_actual', maqPreviaId || '');
+    fd.append('nombre_maquina_actual', maqPreviaNombre || '');
 
     fetch(AJAX_URL, { method: 'POST', body: fd })
         .then(res => res.json())
         .then(data => {
             selMaq.innerHTML = '<option value="">- Seleccione -</option>';
             data.forEach(m => {
+                // Máquina rescatada (desactivada) → se marca en rojo
+                const estilo = m.inactivo ? ' style="color:#dc2626;font-weight:700"' : '';
                 selMaq.innerHTML += `<option value="${m.id_maquina}"
                     data-tipo="${m.nombre_tipo_maquina}"
-                    data-idtipomaquina="${m.id_tipo_maquina}">
-                    ${m.device_id} (${m.nombre_tipo_maquina})
+                    data-idtipomaquina="${m.id_tipo_maquina || ''}"${estilo}>
+                    ${m.device_id} (${m.nombre_tipo_maquina})${m.inactivo ? ' ⚠️' : ''}
                 </option>`;
             });
 

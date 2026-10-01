@@ -129,9 +129,51 @@ class ordenDetalleControlador
         ob_clean();
         $id_cliente = $_POST['id_cliente'] ?? 0;
         $puntos = $this->modelo->obtenerPuntosPorCliente($id_cliente);
+
+        // 🛡️ Rescate: si la orden ya tenía asignado un punto que ahora está
+        // DESACTIVADO, el filtro estado=1 lo elimina de la lista y el select
+        // quedaría vacío → se perdería el dato al guardar. Por eso lo reinyectamos
+        // marcado como "(desactivado)" para que el técnico lo vea y se conserve.
+        $puntos = $this->reinyectarValorInactivo(
+            $puntos,
+            $_POST['id_punto_actual'] ?? '',
+            $_POST['nombre_punto_actual'] ?? '',
+            'id_punto',
+            'nombre_punto'
+        );
+
         header('Content-Type: application/json');
-        echo json_encode($puntos);
+        echo json_encode($puntos, JSON_UNESCAPED_UNICODE);
         exit;
+    }
+
+    /**
+     * Agrega al final de la lista el valor actual si no está presente (porque
+     * fue desactivado). Lo marca con "inactivo" => true para que el frontend
+     * lo distinga visualmente.
+     */
+    private function reinyectarValorInactivo($lista, $idActual, $nombreActual, $campoId, $campoNombre)
+    {
+        $idActual = trim((string) $idActual);
+        $nombreActual = trim((string) $nombreActual);
+
+        if ($idActual === '' || $nombreActual === '') {
+            return $lista;
+        }
+
+        foreach ($lista as $item) {
+            if ((string) $item[$campoId] === $idActual) {
+                return $lista; // Está activo: no hay nada que rescatar
+            }
+        }
+
+        $lista[] = [
+            $campoId      => $idActual,
+            $campoNombre  => $nombreActual . ' (desactivado)',
+            'inactivo'    => true
+        ];
+
+        return $lista;
     }
 
     public function ajaxObtenerMaquinas()
@@ -139,8 +181,18 @@ class ordenDetalleControlador
         ob_clean();
         $id_punto = $_POST['id_punto'] ?? 0;
         $maquinas = $this->modelo->obtenerMaquinasPorPunto($id_punto);
+
+        // 🛡️ Mismo rescate para máquinas: conserva la asignada aunque esté OFF
+        $maquinas = $this->reinyectarValorInactivo(
+            $maquinas,
+            $_POST['id_maquina_actual'] ?? '',
+            $_POST['nombre_maquina_actual'] ?? '',
+            'id_maquina',
+            'device_id'
+        );
+
         header('Content-Type: application/json');
-        echo json_encode($maquinas);
+        echo json_encode($maquinas, JSON_UNESCAPED_UNICODE);
         exit;
     }
 

@@ -20,7 +20,8 @@ class ordenMovilModelo
 
     public function obtenerPuntosPorCliente($idCliente)
     {
-        $sql = "SELECT id_punto, nombre_punto FROM punto WHERE id_cliente = ? ORDER BY nombre_punto ASC";
+        // 🔒 Solo puntos ACTIVOS: los desactivados no deben mostrarse
+        $sql = "SELECT id_punto, nombre_punto FROM punto WHERE id_cliente = ? AND estado = 1 ORDER BY nombre_punto ASC";
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([$idCliente]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

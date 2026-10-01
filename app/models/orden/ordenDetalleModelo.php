@@ -247,7 +247,7 @@ class ordenDetalleModelo
 
     public function obtenerPuntosPorCliente($id)
     {
-        $stmt = $this->conn->prepare("SELECT id_punto, nombre_punto FROM punto WHERE id_cliente = ? ORDER BY nombre_punto ASC");
+        $stmt = $this->conn->prepare("SELECT id_punto, nombre_punto FROM punto WHERE id_cliente = ? AND estado = 1 ORDER BY nombre_punto ASC");
         $stmt->execute([$id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -257,7 +257,7 @@ class ordenDetalleModelo
         $stmt = $this->conn->prepare("SELECT m.id_maquina, m.device_id, tm.nombre_tipo_maquina, tm.id_tipo_maquina 
                                         FROM maquina m 
                                         JOIN tipo_maquina tm ON m.id_tipo_maquina = tm.id_tipo_maquina 
-                                        WHERE m.id_punto = ? 
+                                        WHERE m.id_punto = ? AND m.estado = 1 
                                         ORDER BY m.device_id ASC");
         $stmt->execute([$id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
