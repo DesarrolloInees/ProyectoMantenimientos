@@ -82,10 +82,16 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
                 <p class="text-gray-500 text-sm">Consulta la productividad y servicios realizados por técnico.</p>
             </div>
             <?php if (!empty($datosReporte)): ?>
-                <button type="button" onclick="exportarExcelTecnico()"
-                    class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow flex items-center gap-2 transform hover:scale-105 transition">
-                    <i class="fas fa-file-excel"></i> Exportar Excel
-                </button>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button type="button" onclick="descargarPDFTecnico()"
+                        class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700 shadow flex items-center gap-2 transform hover:scale-105 transition">
+                        <i class="fas fa-file-pdf"></i> PDF del Día
+                    </button>
+                    <button type="button" onclick="exportarExcelTecnico()"
+                        class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow flex items-center gap-2 transform hover:scale-105 transition">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -432,6 +438,29 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
         XLSX.utils.book_append_sheet(workbook, wsRes, "RESUMEN TOTAL");
     }
 
+    // =========================================================
+    // PDF DIARIO: usa SOLO la fecha de "Desde"
+    // Se genera en el servidor con Chromium (Browsershot/Node)
+    // =========================================================
+    function descargarPDFTecnico() {
+        const inpFecha = document.getElementById('fecha_inicio');
+        const fecha = inpFecha ? inpFecha.value : '';
+        const tecnico = document.getElementById('select_tecnico') ?
+            document.getElementById('select_tecnico').value : '';
+
+        if (!fecha) {
+            alert('Selecciona la fecha del día a reportar.');
+            return;
+        }
+
+        const url = `index.php?pagina=reporteTecnico&accion=generarPDF` +
+            `&fecha_inicio=${encodeURIComponent(fecha)}` +
+            `&id_tecnico=${encodeURIComponent(tecnico || '')}`;
+
+        window.open(url, '_blank');
+    }
+
+    // =========================================================
     // FUNCIÓN: EXCEL CON DESGLOSE POR TIPO DE MANTENIMIENTO Y FALLIDOS
     // =========================================================
     function exportarExcelTecnico() {
