@@ -230,6 +230,15 @@ class reporteTecnicoControlador
             }
         }
 
+        // QUITAMOS LA HORA DE ALMUERZO (1 hora = 60 minutos) de cada técnico
+        foreach ($jornada as $tec => $j) {
+            if ($j['minutos'] > 60) {
+                $jornada[$tec]['minutos'] -= 60;
+            } elseif ($j['minutos'] > 0) {
+                $jornada[$tec]['minutos'] = 0;
+            }
+        }
+
         // Totales por columna y total general
         $totalesColumna = [];
         foreach ($tiposColumnas as $t) {
@@ -278,8 +287,9 @@ class reporteTecnicoControlador
             ];
         }
 
-        // Tabla de fallidos: delegación -> lista de ['cliente'=>, 'total'=>]
+        // Tabla de fallidos: delegacion -> lista de ['cliente'=>, 'punto'=>, 'total'=>]
         $fallidos = [];
+        $puntosPorCliente = [];
         $totalFallidos = 0;
         foreach ($datos as $item) {
             $tipoUp = mb_strtoupper((string)($item['tipo_mantenimiento'] ?? ''), 'UTF-8');
@@ -288,11 +298,18 @@ class reporteTecnicoControlador
             }
             $del = !empty($item['delegacion']) ? $item['delegacion'] : 'SIN DELEGACIÓN';
             $cli = !empty($item['nombre_cliente']) ? $item['nombre_cliente'] : 'Sin Cliente';
+            $punto = !empty($item['nombre_punto']) ? $item['nombre_punto'] : 'Sin Punto';
 
             if (!isset($fallidos[$del])) {
                 $fallidos[$del] = [];
             }
             $fallidos[$del][$cli] = ($fallidos[$del][$cli] ?? 0) + 1;
+            if (!isset($puntosPorCliente[$del][$cli])) {
+                $puntosPorCliente[$del][$cli] = [];
+            }
+            if (!in_array($punto, $puntosPorCliente[$del][$cli], true)) {
+                $puntosPorCliente[$del][$cli][] = $punto;
+            }
             $totalFallidos++;
         }
 
@@ -302,7 +319,12 @@ class reporteTecnicoControlador
             arsort($mapaClientes);
             $items = [];
             foreach ($mapaClientes as $cli => $cant) {
-                $items[] = ['cliente' => $cli, 'total' => $cant];
+                $puntos = $puntosPorCliente[$del][$cli] ?? [];
+                $items[] = [
+                    'cliente' => $cli,
+                    'punto' => $puntos ? implode(', ', $puntos) : 'Sin Punto',
+                    'total' => $cant
+                ];
             }
             $fallidosLista[$del] = $items;
         }

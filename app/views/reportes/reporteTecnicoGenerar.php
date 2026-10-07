@@ -358,6 +358,7 @@
 
                             <?php foreach ($items as $it):
                                 $itCli = (string)($it['cliente'] ?? 'Cliente');
+                                $itPunto = !empty($it['punto'] ?? '') ? $it['punto'] : '';
                                 $itTot = (int)($it['total'] ?? 0);
                                 ?>
                                 <tr class="no-corte">
@@ -365,6 +366,9 @@
                                     <td class="px-3 py-1">
                                         <div class="flex items-center gap-2">
                                             <span class="text-slate-700 font-semibold"><?= htmlspecialchars($itCli) ?></span>
+                                            <?php if ($itPunto !== ''): ?>
+                                                <span class="text-slate-500 text-[10px] font-normal">(<?= htmlspecialchars($itPunto) ?>)</span>
+                                            <?php endif; ?>
                                             <div
                                                 class="flex-1 h-1.5 bg-rose-50 rounded-full overflow-hidden border border-rose-100 max-w-[320px]">
                                                 <div class="h-full bg-rose-500 rounded-full"
@@ -372,7 +376,9 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-3 py-1 text-right font-black text-rose-600"><?= number_format($itTot) ?></td>
+                                    <td class="px-3 py-1 text-right font-black text-rose-600">
+                                        <?= ($itTot == 1) ? '-' : number_format($itTot) ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endforeach; ?>
