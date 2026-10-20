@@ -587,6 +587,166 @@ class tecnicoReporteModelo
         return true;
     }
 
+    // ==========================================
+    // NOVEDADES - FLUJO TECNICO
+    // ==========================================
+
+    /**
+     * Guarda novedades seleccionadas por el tecnico.
+     * Inserta en orden_servicio_novedad y actualiza ordenes_servicio.
+     *
+     * @param int   $idOrdenServicio
+     * @param array $novedades IDs de tipo_novedad
+     * @return bool
+     */
+    public function guardarNovedadesTecnico($idOrdenServicio, $novedades = [])
+    {
+        try {
+            $this->conn->beginTransaction();
+            // ELIMINAR las novedades previas (para que Guardar REEMPLACE, no duplique)
+            $sqlDel = "DELETE FROM orden_servicio_novedad WHERE id_orden_servicio = :id_ord";
+            $stmtDel = $this->conn->prepare($sqlDel);
+            $stmtDel->execute([':id_ord' => $idOrdenServicio]);
+            // INSERTAR la nueva seleccion (deduplicada: la PK compuesta no admite repetidos)
+            if (!empty($novedades) && is_array($novedades)) {
+                $novedades = array_values(array_unique(array_map('intval', $novedades)));
+                $novedades = array_filter($novedades, function ($v) { return $v > 0; });
+                // Se validan los IDs contra el catalogo ANTES de insertar: la tabla tiene
+                // FK hacia tipo_novedad y un ID inexistente abortaria toda la transaccion.
+                $novedades = $this->filtrarNovedadesValidas($novedades);
+            }
+            if (!empty($novedades) && is_array($novedades)) {
+                $sqlIns = "INSERT INTO orden_servicio_novedad (id_orden_servicio, id_tipo_novedad) VALUES (:id_ord, :id_nov)";
+                $stmtIns = $this->conn->prepare($sqlIns);
+                foreach ($novedades as $idNov) {
+                    $stmtIns->execute([':id_ord' => $idOrdenServicio, ':id_nov' => $idNov]);
+                }
+            }
+            // ACTUALIZAR el flag en ordenes_servicio (NO se toca detalle_novedad: es un campo historico independiente)
+            $tieneNov = empty($novedades) ? 0 : 1;
+            $sqlUpd = "UPDATE ordenes_servicio SET tiene_novedad = :tiene_nov WHERE id_ordenes_servicio = :id_ord";
+            $stmtUpd = $this->conn->prepare($sqlUpd);
+            $stmtUpd->execute([':tiene_nov' => $tieneNov, ':id_ord' => $idOrdenServicio]);
+            $this->conn->commit();
+            return true;
+        } catch (PDOException $e) {
+            $this->conn->rollBack();
+            error_log("Error guardarNovedadesTecnico: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Filtra una lista de IDs de novedad contra el catalogo vigente.
+     * Descarta los que no existen o estan inactivos.
+     *
+     * @param array $ids
+     * @return array IDs validos
+     */
+    public function filtrarNovedadesValidas($ids)
+    {
+        if (empty($ids) || !is_array($ids)) return [];
+
+        $validas = [];
+        foreach ($ids as $idNov) {
+            $idNov = (int)$idNov;
+            if ($idNov <= 0) continue;
+            $verif = $this->verificarNovedad($idNov);
+            if (!empty($verif['valido'])) $validas[] = $idNov;
+        }
+        return array_values(array_unique($validas));
+    }
+
+    /**
+     * Obtiene los IDs de novedad guardados para una orden.
+     *
+     * @param int $idOrdenServicio
+     * @return array IDs de tipo_novedad
+     */
+    public function obtenerNovedadesOrden($idOrdenServicio)
+    {
+        try {
+            $sql = "SELECT id_tipo_novedad FROM orden_servicio_novedad WHERE id_orden_servicio = :id ORDER BY id_tipo_novedad ASC";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id' => $idOrdenServicio]);
+            return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        } catch (PDOException $e) {
+            error_log("Error obtenerNovedadesOrden: " . $e->getMessage());
+            return [];
+        }
+    }
+    /**
+     * Resuelve el valor final de 'tiene_novedad' para una orden.
+     * Si ya existen novedades registradas en orden_servicio_novedad, manda ese valor
+     * (evita que el guardado final del reporte las pise con 0).
+     *
+     * @param int    $idOrdenServicio
+     * @param mixed  $valorPost       Valor enviado por el formulario (historico).
+     * @param bool   $gestionada      Si el tecnico administro la lista de novedades
+     *                                en esta sesion. En ese caso el flag refleja
+     *                                EXCLUSIVAMENTE las filas actuales (0 si se
+     *                                eliminaron todas).
+     * @return int 1 o 0
+     */
+    public function resolverTieneNovedad($idOrdenServicio, $valorPost = 0, $gestionada = false)
+    {
+        $existentes = $this->obtenerNovedadesOrden($idOrdenServicio);
+        if (!empty($existentes)) return 1;
+
+        // La lista fue administrada explicitamente por el tecnico y quedo vacia:
+        // no hay novedades, el flag debe quedar en 0.
+        if ($gestionada) return 0;
+
+        // Sin filas en orden_servicio_novedad: conservamos el flag historico de la orden
+        // (por ejemplo, una novedad registrada como detalle libre en el reporte).
+        $historico = $this->obtenerTieneNovedadOrden($idOrdenServicio);
+        if ((int)$historico === 1) return 1;
+
+        return (!empty($valorPost) && $valorPost !== '0') ? 1 : 0;
+    }
+
+    /**
+     * Lee el flag tiene_novedad actual de la orden.
+     *
+     * @param int $idOrdenServicio
+     * @return int 1 o 0
+     */
+    public function obtenerTieneNovedadOrden($idOrdenServicio)
+    {
+        try {
+            $sql = "SELECT tiene_novedad FROM ordenes_servicio WHERE id_ordenes_servicio = :id LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id' => $idOrdenServicio]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? (int)$row['tiene_novedad'] : 0;
+        } catch (PDOException $e) {
+            error_log("Error obtenerTieneNovedadOrden: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Verifica si un tipo de novedad existe en el catalogo.
+     *
+     * @param int $idNov
+     * @return array [valido, nombre]
+     */
+    public function verificarNovedad($idNov)
+    {
+        try {
+            $sql = "SELECT id_tipo_novedad, nombre_novedad, estado FROM tipo_novedad WHERE id_tipo_novedad = :id LIMIT 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([':id' => $idNov]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && (int)$row['estado'] === 1) {
+                return ['valido' => true, 'nombre' => $row['nombre_novedad']];
+            }
+            return ['valido' => false, 'nombre' => null];
+        } catch (PDOException $e) {
+            error_log("Error verificarNovedad: " . $e->getMessage());
+            return ['valido' => false, 'nombre' => null];
+        }
+    }
 
     // ==========================================
     // FUNCIONES PARA EL MÓDULO DE EDICIÓN
@@ -873,3 +1033,4 @@ class tecnicoReporteModelo
         }
     }
 }
+

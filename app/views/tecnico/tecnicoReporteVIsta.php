@@ -307,6 +307,25 @@
             </select>
         </div>
 
+        <!-- NOVEDAD DEL SERVICIO -->
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between border-b border-red-200 pb-2">
+                <h2 class="font-bold text-red-800 text-xs uppercase"><i class="fas fa-exclamation-triangle mr-1 text-lg"></i> Novedades del Servicio</h2>
+                <span id="indicador_novedad" class="bg-gray-200 text-gray-700 text-[10px] font-bold px-2 py-1 rounded-full">Sin novedades</span>
+            </div>
+
+            <!-- Campos ocultos sincronizados por JS con el modal de novedades -->
+            <input type="hidden" name="tiene_novedad" id="hdn_tiene_novedad" value="0">
+            <input type="hidden" name="novedades_seleccionadas" id="hdn_novedades_seleccionadas" value="">
+            <input type="hidden" name="novedades_gestionada" id="hdn_novedades_gestionada" value="0">
+            <input type="hidden" name="detalle_novedad" id="hdn_detalle_novedad" value="">
+
+            <button type="button" onclick="abrirModalNovedadTecnico(<?= htmlspecialchars($orden['id_ordenes_servicio']) ?>)"
+                class="w-full border-2 border-dashed border-red-300 text-red-600 font-bold py-3 rounded-lg hover:bg-red-100 transition flex items-center justify-center gap-2 bg-white">
+                <i class="fas fa-plus"></i> Reportar Novedad
+            </button>
+        </div>
+
         <hr class="border-gray-200 my-4">
 
         <div class="space-y-5">
@@ -540,6 +559,8 @@
     window.BASE_URL = '<?= BASE_URL ?>';
 </script>
 
+<?php include __DIR__ . '/partials/modalNovedadesTecnico.php'; ?>
+
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -548,3 +569,25 @@
 <script src="<?= BASE_URL ?>js/tecnico/tecnicoReporte.js?v=2"></script>
 <script src="<?= BASE_URL ?>js/tecnico/autoGuardado.js?v=2"></script>
 <script src="<?= BASE_URL ?>js/tecnico/validaciones.js?v=2"></script>
+<script src="<?= BASE_URL ?>js/tecnico/tecnicoNovedades.js?v=1"></script>
+
+<script>
+    // Precarga las novedades ya guardadas de la orden (por si el reporte se recarga)
+    (function () {
+        if (typeof consultarNovedadesTecnico !== 'function') return;
+        consultarNovedadesTecnico(<?= json_encode($orden['id_ordenes_servicio']) ?>).then(function (ids) {
+            if (typeof aplicarNovedadesServidor === 'function') {
+                aplicarNovedadesServidor(ids);
+            } else if (typeof novedadesTecnicoActuales !== 'undefined') {
+                novedadesTecnicoActuales = ids;
+            }
+            var indicador = document.getElementById('indicador_novedad');
+            if (indicador && ids.length > 0) {
+                indicador.classList.remove('bg-gray-200', 'text-gray-700');
+                indicador.classList.add('bg-green-100', 'text-green-800');
+                indicador.textContent = ids.length + ' novedad(es)';
+            }
+            if (typeof sincronizarHiddenNovedad === 'function') sincronizarHiddenNovedad();
+        });
+    })();
+</script>

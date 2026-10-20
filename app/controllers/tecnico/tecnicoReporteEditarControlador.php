@@ -19,6 +19,26 @@ class tecnicoReporteEditarControlador
         $this->modeloMaestro = new ordenCrearModels($this->db);
     }
 
+    /**
+     * Normaliza la lista CSV de novedades recibida desde el formulario.
+     * Descarta valores no numericos, menores o iguales a cero y duplicados.
+     *
+     * @param string|array $lista
+     * @return array<int>
+     */
+    private function normalizarIdsNovedad($lista)
+    {
+        $items = is_array($lista) ? $lista : explode(',', (string)$lista);
+        $ids = [];
+        foreach ($items as $item) {
+            $valor = trim((string)$item);
+            if ($valor === '' || !is_numeric($valor)) continue;
+            $id = (int)$valor;
+            if ($id > 0) $ids[$id] = $id;
+        }
+        return array_values($ids);
+    }
+
     public function index()
     {
         $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
@@ -36,6 +56,14 @@ class tecnicoReporteEditarControlador
 
         if (!$orden) {
             echo "<script>alert('La orden no existe en el sistema.'); window.history.back();</script>";
+            return;
+        }
+
+        // La orden debe pertenecer al tecnico que esta en sesion.
+        // Sin esta validacion un tecnico podria abrir (y luego guardar) el reporte
+        // de una orden ajena, incluyendo sus novedades.
+        if ($idTecnicoActual === 0 || (int)$orden['id_tecnico'] !== (int)$idTecnicoActual) {
+            echo "<script>alert('La orden no pertenece a tu asignación.'); window.history.back();</script>";
             return;
         }
 
@@ -75,11 +103,40 @@ class tecnicoReporteEditarControlador
         $idTecnicoActual = $this->modelo->obtenerIdTecnicoPorUsuario($idUsuarioLogueado);
         $idOrdenServicio = (int) ($_POST['id_ordenes_servicio'] ?? 0);
 
+        // Validar pertenencia de la orden ANTES de escribir nada.
+        // La orden ya esta finalizada (estado = 1) cuando se edita el reporte,
+        // por eso se consulta sin filtro de estado y se valida id_tecnico.
+        // Esto evita sobrescribir las novedades de ordenes ajenas.
+        if ($idOrdenServicio === 0 || $idUsuarioLogueado === 0 || $idTecnicoActual === 0) {
+            echo json_encode(['success' => false, 'msj' => 'Sesion expirada o ID de orden no valido.']);
+            exit;
+        }
+
+        $ordenRealBD = $this->modelo->obtenerDetalleOrdenParaEdicion($idOrdenServicio);
+        if (!$ordenRealBD || (int) $ordenRealBD['id_tecnico'] !== (int) $idTecnicoActual) {
+            echo json_encode(['success' => false, 'msj' => 'La orden no existe o no te pertenece.']);
+            exit;
+        }
+
         // Dual-write novedad estado inicial: columna dedicada (limpia) + prefijo en actividades (visible en reportes)
         $novedadIni = trim($_POST['novedad_estado_inicial'] ?? '');
         if (mb_strlen($novedadIni) > 500) $novedadIni = mb_substr($novedadIni, 0, 500);
         $baseAct = preg_replace('/^\[ESTADO INICIAL:.*?\]\s*/is', '', trim($_POST['actividades_realizadas'] ?? ''));
         $actividadesFinal = $novedadIni !== '' ? '[ESTADO INICIAL: ' . $novedadIni . '] ' . $baseAct : $baseAct;
+
+        // Persistir las novedades seleccionadas en el modal (orden_servicio_novedad).
+        // 'novedades_gestionada' indica que el tecnico administro la lista en esta
+        // sesion: si viene en '1' la lista se persiste tal cual (incluso vacia,
+        // lo que elimina todas las novedades guardadas de la orden).
+        // Si no viene gestionada, las novedades ya guardadas se conservan intactas.
+        // Se hace ANTES de calcular 'tiene_novedad' para que el flag refleje
+        // exactamente la lista final de novedades de la orden.
+        $novSel = trim((string)($_POST['novedades_seleccionadas'] ?? ''));
+        $gestionada = (isset($_POST['novedades_gestionada']) && $_POST['novedades_gestionada'] === '1');
+        if ($gestionada || $novSel !== '') {
+            $idsNov = $this->modelo->filtrarNovedadesValidas($this->normalizarIdsNovedad($novSel));
+            $this->modelo->guardarNovedadesTecnico($idOrdenServicio, $idsNov);
+        }
 
         // Armamos el array de datos principales (Idéntico a Crear, pero referenciando a Editar)
         $datos = [
@@ -96,7 +153,8 @@ class tecnicoReporteEditarControlador
             'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? null,
             'soporte_remoto'        => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
             // La vista ya no muestra el checkbox; se conserva el valor previo via hidden (1/0)
-            'tiene_novedad'         => (!empty($_POST['tiene_novedad']) && $_POST['tiene_novedad'] !== '0') ? 1 : 0,
+            // Si ya hay novedades registradas en orden_servicio_novedad, esas mandan.
+            'tiene_novedad'         => $this->modelo->resolverTieneNovedad($idOrdenServicio, $_POST['tiene_novedad'] ?? 0, $gestionada),
             'detalle_novedad'       => !empty($_POST['detalle_novedad']) ? $_POST['detalle_novedad'] : null,
             'repuestos_tecnico'     => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
         ];

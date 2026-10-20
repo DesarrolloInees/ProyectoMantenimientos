@@ -25,6 +25,11 @@ $(document).ready(function () {
             borrador['lista_repuestos'] = repuestosSeleccionados;
         }
 
+        // Guardar las novedades del modal (viven fuera del <form>)
+        if (typeof novedadesTecnicoActuales !== 'undefined') {
+            borrador['novedades'] = novedadesTecnicoActuales;
+        }
+
         // Guardar la firma digital
         if (typeof firmaVacia !== 'undefined' && !firmaVacia) {
             const canvas = document.getElementById('canvas_firma');
@@ -71,7 +76,7 @@ $(document).ready(function () {
 
                     // A. Restaurar textos y selects
                     $.each(borrador, function (key, value) {
-                        if (key !== 'lista_repuestos' && key !== 'firma_canvas') {
+                        if (key !== 'lista_repuestos' && key !== 'firma_canvas' && key !== 'novedades') {
                             let elemento = $('[name="' + key + '"]');
                             if (elemento.length > 0) {
                                 elemento.val(value);
@@ -81,6 +86,33 @@ $(document).ready(function () {
                             }
                         }
                     });
+
+                    // A2. Restaurar novedades (viven en el modal, fuera del formulario)
+                    if (borrador.novedades && borrador.novedades.length > 0) {
+                        let idsBorrador = borrador.novedades.map(function (v) { return String(v); });
+                        if (typeof fusionarNovedadesTecnico === 'function') {
+                            // Fusiona con lo que ya venia del servidor (no perder novedades ya guardadas)
+                            fusionarNovedadesTecnico(idsBorrador);
+                        } else if (typeof novedadesTecnicoActuales === 'undefined') {
+                            window.novedadesTecnicoActuales = idsBorrador;
+                        }
+                        // La lista fue administrada por el tecnico: el submit debe persistirla
+                        if (typeof marcarNovedadesGestionadas === 'function') {
+                            marcarNovedadesGestionadas();
+                        }
+                        if (typeof sincronizarHiddenNovedad === 'function') {
+                            sincronizarHiddenNovedad();
+                        }
+                        let indicador = document.getElementById('indicador_novedad');
+                        if (indicador) {
+                            let total = (typeof novedadesTecnicoActuales !== 'undefined' && novedadesTecnicoActuales)
+                                ? novedadesTecnicoActuales.length : idsBorrador.length;
+                            indicador.classList.remove('hidden');
+                            indicador.classList.add('bg-green-100', 'text-green-800');
+                            indicador.classList.remove('bg-gray-200', 'text-gray-700');
+                            indicador.textContent = total + ' novedad(es)';
+                        }
+                    }
 
                     // B. Restaurar repuestos
                     if (borrador.lista_repuestos && borrador.lista_repuestos.length > 0) {
@@ -148,6 +180,11 @@ $(document).ready(function () {
     // 4. INICIAR EL PROCESO AL CARGAR LA PÁGINA
     // ==========================================
     revisarBorradorPrevio();
+
+    // ==========================================
+    // 5. EXPONER EL GUARDADO MANUAL (para eventos como guardar novedades)
+    // ==========================================
+    window.forzarGuardadoBorrador = guardarBorrador;
 });
 
 // ==========================================

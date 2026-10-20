@@ -168,8 +168,10 @@
             </div>
 
             <!-- Novedad del servicio anterior: se conserva el dato pero ya no se muestra ni se edita aquí -->
-            <input type="hidden" name="tiene_novedad" value="<?= !empty($reporteGuardado['tiene_novedad']) ? '1' : '0' ?>">
-            <input type="hidden" name="detalle_novedad" value="<?= htmlspecialchars($reporteGuardado['detalle_novedad'] ?? '') ?>">
+            <input type="hidden" name="tiene_novedad" id="hdn_tiene_novedad" value="<?= !empty($reporteGuardado['tiene_novedad']) ? '1' : '0' ?>">
+            <input type="hidden" name="novedades_seleccionadas" id="hdn_novedades_seleccionadas" value="">
+            <input type="hidden" name="novedades_gestionada" id="hdn_novedades_gestionada" value="0">
+            <input type="hidden" name="detalle_novedad" id="hdn_detalle_novedad" value="<?= htmlspecialchars($reporteGuardado['detalle_novedad'] ?? '') ?>">
         </div>
 
         <!-- SECCIÓN 4: Repuestos -->
@@ -235,7 +237,46 @@
                            value="<?= htmlspecialchars($reporteGuardado['celular_encargado'] ?? '') ?>">
                 </div>
             </div>
+
+        <!-- NOVEDAD DEL SERVICIO -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+            <div class="flex items-center justify-between border-b border-red-200 pb-2">
+                <h3 class="font-bold text-red-800 text-xs uppercase"><i class="fas fa-exclamation-triangle mr-1 text-lg"></i> Novedades del Servicio</h3>
+                <span id="indicador_novedad" class="bg-gray-200 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Cargando...</span>
+            </div>
+            <button type="button" onclick="abrirModalNovedadTecnico(<?= htmlspecialchars($orden['id_ordenes_servicio']) ?>)"
+                class="w-full border-2 border-dashed border-red-300 text-red-600 font-bold py-2 px-4 rounded-md hover:bg-red-100 transition flex items-center justify-center gap-2 bg-white">
+                <i class="fas fa-edit"></i> Modificar Novedades
+            </button>
         </div>
+        </div>
+
+        <script>
+        // Precarga las novedades ya guardadas para mostrar el contador al entrar.
+        // Se ejecuta en 'load' porque js/tecnico/tecnicoNovedades.js se carga al final de la vista.
+        window.addEventListener('load', function () {
+            var idOrden = <?= json_encode($orden['id_ordenes_servicio']) ?>;
+            if (typeof consultarNovedadesTecnico !== 'function') return;
+            consultarNovedadesTecnico(idOrden).then(function (ids) {
+                if (typeof aplicarNovedadesServidor === 'function') {
+                    aplicarNovedadesServidor(ids);
+                } else if (typeof novedadesTecnicoActuales !== 'undefined') {
+                    novedadesTecnicoActuales = ids;
+                }
+                var indicador = document.getElementById('indicador_novedad');
+                if (indicador) {
+                    if (ids.length > 0) {
+                        indicador.classList.remove('bg-gray-200', 'text-gray-700');
+                        indicador.classList.add('bg-green-100', 'text-green-800');
+                        indicador.textContent = ids.length + ' novedad(es)';
+                    } else {
+                        indicador.textContent = 'Sin novedades';
+                    }
+                }
+                if (typeof sincronizarHiddenNovedad === 'function') sincronizarHiddenNovedad();
+            });
+        });
+        </script>
 
         <!-- SECCIÓN 6: Evidencias Fotográficas -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -348,3 +389,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="js/tecnico/tecnicoReporte.js"></script>
 <script src="js/tecnico/validacionesEditar.js"></script>
+
+<?php include __DIR__ . '/partials/modalNovedadesTecnico.php'; ?>
+<script src="<?= BASE_URL ?>js/tecnico/tecnicoNovedades.js?v=1"></script>

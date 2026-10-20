@@ -20,6 +20,26 @@ class tecnicoReporteControlador
         $this->modeloMaestro = new ordenCrearModels($this->db);
     }
 
+    /**
+     * Normaliza la lista CSV de novedades recibida desde el formulario.
+     * Descarta valores no numericos, menores o iguales a cero y duplicados.
+     *
+     * @param string|array $lista
+     * @return array<int>
+     */
+    private function normalizarIdsNovedad($lista)
+    {
+        $items = is_array($lista) ? $lista : explode(',', (string)$lista);
+        $ids = [];
+        foreach ($items as $item) {
+            $valor = trim((string)$item);
+            if ($valor === '' || !is_numeric($valor)) continue;
+            $id = (int)$valor;
+            if ($id > 0) $ids[$id] = $id;
+        }
+        return array_values($ids);
+    }
+
     public function index()
     {
         $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
@@ -128,6 +148,20 @@ class tecnicoReporteControlador
         $baseAct = preg_replace('/^\[ESTADO INICIAL:.*?\]\s*/is', '', trim($_POST['actividades_realizadas'] ?? ''));
         $actividadesFinal = $novedadIni !== '' ? '[ESTADO INICIAL: ' . $novedadIni . '] ' . $baseAct : $baseAct;
 
+        // Persistir las novedades seleccionadas en el modal (orden_servicio_novedad).
+        // 'novedades_gestionada' indica que el tecnico administro la lista en esta
+        // sesion: si viene en '1' la lista se persiste tal cual (incluso vacia,
+        // lo que elimina todas las novedades guardadas de la orden).
+        // Si no viene gestionada, las novedades ya guardadas se conservan intactas.
+        // Se hace ANTES de calcular 'tiene_novedad' para que el flag refleje
+        // exactamente la lista final de novedades de la orden.
+        $novSel = trim((string)($_POST['novedades_seleccionadas'] ?? ''));
+        $gestionada = (isset($_POST['novedades_gestionada']) && $_POST['novedades_gestionada'] === '1');
+        if ($gestionada || $novSel !== '') {
+            $idsNov = $this->modelo->filtrarNovedadesValidas($this->normalizarIdsNovedad($novSel));
+            $this->modelo->guardarNovedadesTecnico($idOrdenServicio, $idsNov);
+        }
+
         $datos = [
             'id_ordenes_servicio' => $idOrdenServicio,
             'id_tecnico' => $idTecnicoActual,
@@ -143,8 +177,9 @@ class tecnicoReporteControlador
             'id_modalidad' => !empty($_POST['id_modalidad']) ? (int)$_POST['id_modalidad'] : null,
             'id_tipo_mantenimiento' => $_POST['id_tipo_mantenimiento'] ?? null,
             'soporte_remoto' => !empty($_POST['soporte_remoto']) ? $_POST['soporte_remoto'] : null,
-            'tiene_novedad' => isset($_POST['tiene_novedad']) ? 1 : 0,
-            'id_tipo_novedad' => !empty($_POST['id_tipo_novedad']) ? $_POST['id_tipo_novedad'] : null,
+            // Flag de novedad. Si ya hay filas en orden_servicio_novedad mandan esas;
+            // la lista completa de novedades se persiste en esa tabla (ver guardarNovedadesTecnico).
+            'tiene_novedad' => $this->modelo->resolverTieneNovedad($idOrdenServicio, $_POST['tiene_novedad'] ?? 0, $gestionada),
             'detalle_novedad' => !empty($_POST['detalle_novedad']) ? $_POST['detalle_novedad'] : null,
             'repuestos_tecnico' => !empty($_POST['json_repuestos']) ? $_POST['json_repuestos'] : null
         ];
@@ -414,6 +449,143 @@ class tecnicoReporteControlador
         exit;
     }
 
+
+    // ==========================================
+    // NOVEDADES - FLUJO TECNICO
+    // ==========================================
+
+    /**
+     * Devuelve el catalogo de tipos de novedad (para el Select2).
+     */
+    public function ajaxObtenerCatalogoNovedades()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        try {
+            $sql = "SELECT id_tipo_novedad, nombre_novedad, estado FROM tipo_novedad WHERE estado = 1 ORDER BY nombre_novedad ASC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        } catch (PDOException $e) {
+            error_log("ajaxObtenerCatalogoNovedades: " . $e->getMessage());
+            echo json_encode([]);
+        }
+        exit;
+    }
+
+    /**
+     * Guarda las novedades seleccionadas por el tecnico.
+     */
+    public function ajaxGuardarNovedadTecnico()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+        $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
+        $novedades = isset($_POST['novedades']) ? $_POST['novedades'] : [];
+
+        if ($idUsuarioLogueado === 0 || $idOrden === 0) {
+            echo json_encode(['success' => false, 'msj' => 'Sesion expirada o ID de orden invalido.']);
+            exit;
+        }
+
+        if (!is_array($novedades)) {
+            $novedades = empty($novedades) ? [] : [$novedades];
+        }
+
+        // Validar pertenencia de la orden
+        $idTecnicoActual = $this->modelo->obtenerIdTecnicoPorUsuario($idUsuarioLogueado);
+        $ordenReal = $this->modelo->obtenerDetalleOrden($idOrden, $idTecnicoActual);
+        if (!$ordenReal) {
+            // La orden puede ya estar finalizada (estado != 2): validamos pertenencia por id_tecnico
+            $ordenEdicion = $this->modelo->obtenerDetalleOrdenParaEdicion($idOrden);
+            if (!$ordenEdicion || (int) $ordenEdicion['id_tecnico'] !== (int) $idTecnicoActual) {
+                echo json_encode(['success' => false, 'msj' => 'La orden no existe o no te pertenece.']);
+                exit;
+            }
+        }
+
+        // Filtrar IDs vacios (permite la accion eliminar con array vacio)
+        $novedades = array_filter(array_map(function($v) { return (int) $v; }, $novedades), function($v) { return $v > 0; });
+
+        // Validar cada novedad contra el catalogo
+        $validas = [];
+        foreach ($novedades as $idNov) {
+            $verif = $this->modelo->verificarNovedad((int) $idNov);
+            if ($verif && $verif['valido']) {
+                $validas[] = (int) $idNov;
+            }
+        }
+
+        if (empty($validas) && !empty($novedades)) {
+            echo json_encode(['success' => false, 'msj' => 'Ninguna novedad seleccionada es valida en el catalogo.']);
+            exit;
+        }
+
+        $res = $this->modelo->guardarNovedadesTecnico($idOrden, $validas);
+        echo json_encode([
+            'success' => $res,
+            'msj' => $res ? 'Novedad guardada correctamente.' : 'Error al guardar la novedad.'
+        ]);
+        exit;
+    }
+
+    /**
+     * Obtiene las novedades ya guardadas de una orden (para precargar el modal).
+     */
+    public function ajaxObtenerNovedadesTecnico()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idUsuarioLogueado = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+        $idOrden = isset($_POST['id_orden']) ? (int) $_POST['id_orden'] : 0;
+
+        if ($idUsuarioLogueado === 0 || $idOrden === 0) {
+            echo json_encode(['success' => false, 'ids' => [], 'msj' => 'Sesion expirada o ID de orden invalido.']);
+            exit;
+        }
+
+        $idTecnicoActual = $this->modelo->obtenerIdTecnicoPorUsuario($idUsuarioLogueado);
+        $ordenReal = $this->modelo->obtenerDetalleOrden($idOrden, $idTecnicoActual);
+        if (!$ordenReal) {
+            // La orden puede ya estar finalizada (estado != 2): validamos pertenencia por id_tecnico
+            $ordenReal = $this->modelo->obtenerDetalleOrdenParaEdicion($idOrden);
+            if (!$ordenReal || (int) $ordenReal['id_tecnico'] !== (int) $idTecnicoActual) {
+                echo json_encode(['success' => false, 'ids' => [], 'msj' => 'La orden no existe o no te pertenece.']);
+                exit;
+            }
+        }
+
+        $ids = $this->modelo->obtenerNovedadesOrden($idOrden);
+
+        echo json_encode([
+            'success' => true,
+            'ids' => $ids,
+            'msj' => empty($ids) ? 'Sin novedades registradas.' : count($ids) . ' novedad(es) registradas.'
+        ]);
+        exit;
+    }
+
+    /**
+     * Verifica si una novedad existe en el catalogo.
+     */
+    public function ajaxVerificarNovedad()
+    {
+        while (ob_get_level())
+            ob_end_clean();
+        header('Content-Type: application/json');
+
+        $idNov = isset($_POST['id_novedad']) ? (int) $_POST['id_novedad'] : 0;
+        $res = $this->modelo->verificarNovedad($idNov);
+        echo json_encode($res ?: ['valido' => false, 'nombre' => null]);
+        exit;
+    }
     private function optimizarImagen($rutaOrigen, $rutaDestino, $anchoMaximo = 800, $calidad = 70)
     {
         // 1. Aumentamos temporalmente la memoria de PHP. 
