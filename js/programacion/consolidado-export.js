@@ -77,7 +77,14 @@ function eliminarOrdenConsolidado(idOrden, nombrePunto) {
     const id = parseInt(idOrden, 10);
     if (!Number.isInteger(id) || id <= 0) return;
 
-    const etiqueta = nombrePunto ? `"${nombrePunto}"` : `orden #${id}`;
+    // Si la vista no envía el nombre, se resuelve desde el dataset del consolidado.
+    let nombreResuelto = nombrePunto;
+    if (!nombreResuelto) {
+        const filaDatos = (window.ProgConsolidadoData || []).find(f => String(f.id_orden) === String(id));
+        nombreResuelto = filaDatos ? (filaDatos.nombre_punto || '') : '';
+    }
+
+    const etiqueta = nombreResuelto ? `"${nombreResuelto}"` : `orden #${id}`;
     if (!confirm(`¿Eliminar ${etiqueta} de la programación?\n\nSe borrará de ordenes_servicio y no saldrá en el Excel.`)) {
         return;
     }

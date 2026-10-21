@@ -147,6 +147,12 @@
                                 </td>
                                 <td class="px-4 py-2 text-center">
                                     <button type="button"
+                                        onclick="abrirModalEditarOrden(<?= (int) $row['id_orden'] ?>)"
+                                        class="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded transition"
+                                        title="Editar esta orden de programación">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                    <button type="button"
                                         onclick="eliminarOrdenConsolidado(<?= (int) $row['id_orden'] ?>, <?= htmlspecialchars(json_encode($row['nombre_punto'] ?? ''), ENT_QUOTES, 'UTF-8') ?>)"
                                         class="text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded transition"
                                         title="Eliminar esta orden de la programación">
@@ -162,8 +168,143 @@
     </div>
 </div>
 
-<script>
-    window.ProgConsolidadoData = <?= json_encode($consolidado) ?>;
-</script>
+<!-- MODAL DE EDICIÓN DE ORDEN -->
+<div id="modalEditarOrden" class="fixed inset-0 z-50 hidden bg-black bg-opacity-60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden border border-gray-200">
+        <!-- Encabezado -->
+        <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center shadow-md">
+            <h3 class="font-bold text-lg flex items-center">
+                <i class="fas fa-pen mr-2 text-indigo-200"></i> Editar Servicio Programado
+            </h3>
+            <button type="button" onclick="cerrarModalEditarOrden()" class="text-white hover:text-red-300 transition text-2xl font-bold focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Contenido del formulario -->
+        <div class="p-6 overflow-y-auto flex-1 bg-gray-50">
+            <form id="formEditarOrden" class="space-y-4">
+                <input type="hidden" name="id_orden" id="edit_id_orden">
+                <input type="hidden" name="id_punto_original" id="edit_id_punto_original">
+
+                <!-- Fecha de Visita -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        <i class="fas fa-calendar mr-1 text-indigo-600"></i> Fecha de Visita *
+                    </label>
+                    <input type="date" name="fecha_visita" id="edit_fecha_visita"
+                        class="w-full border-gray-300 rounded-lg shadow-sm py-2 px-3" required>
+                </div>
+
+                <!-- Técnico -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        <i class="fas fa-user-tie mr-1 text-indigo-600"></i> Técnico *
+                    </label>
+                    <select name="id_tecnico" id="edit_id_tecnico"
+                        class="w-full border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-white" required>
+                        <option value="">-- Seleccionar técnico --</option>
+                    </select>
+                </div>
+
+                <!-- Cliente -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        <i class="fas fa-users mr-1 text-indigo-600"></i> Cliente *
+                    </label>
+                    <select name="id_cliente" id="edit_id_cliente"
+                        class="w-full border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-white" required
+                        onchange="cargarPuntosCliente()">
+                        <option value="">-- Seleccionar cliente --</option>
+                    </select>
+                </div>
+
+                <!-- Punto -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        <i class="fas fa-map-marker-alt mr-1 text-indigo-600"></i> Punto *
+                    </label>
+                    <select name="id_punto" id="edit_id_punto"
+                        class="w-full border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-white" required>
+                        <option value="">-- Primero seleccione un cliente --</option>
+                    </select>
+                </div>
+
+                <!-- Información del punto seleccionado -->
+                <div id="puntoInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-bold text-gray-800" id="edit_nombre_punto"></p>
+                            <p class="text-xs text-gray-600 flex items-center" id="edit_zona_punto">
+                                <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded mr-2">
+                                    <i class="fas fa-map-marker-alt mr-1"></i> Zona: <span id="edit_zona_valor"></span>
+                                </span>
+                            </p>
+                            <p class="text-xs text-gray-600 flex items-center" id="edit_direccion_punto">
+                                <span class="text-gray-600 text-[10px]">
+                                    <i class="fas fa-location-dot mr-1"></i> <span id="edit_direccion_valor"></span>
+                                </span>
+                            </p>
+                            <p class="text-xs text-gray-600 flex items-center" id="edit_device_punto">
+                                <span class="text-gray-600 text-[10px]">
+                                    <i class="fas fa-microchip mr-1"></i> Device: <span id="edit_device_valor"></span>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Máquina -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        <i class="fas fa-microchip mr-1 text-gray-600"></i> Máquina
+                    </label>
+                    <select name="id_maquina" id="edit_id_maquina"
+                        class="w-full border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-white">
+                        <option value="">-- Sin asignar --</option>
+                    </select>
+                </div>
+
+                <!-- Modalidad -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        <i class="fas fa-cogs mr-1 text-gray-600"></i> Modalidad
+                    </label>
+                    <select name="id_modalidad" id="edit_id_modalidad"
+                        class="w-full border-gray-300 rounded-lg shadow-sm py-2 px-3 bg-white">
+                        <option value="">-- Sin asignar --</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Pie del modal -->
+        <div class="bg-white px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+            <button type="button" onclick="cerrarModalEditarOrden()"
+                class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold text-sm transition">
+                Cancelar
+            </button>
+            <button type="button" onclick="guardarOrdenEditada()"
+                class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm shadow-md transition flex items-center">
+                <i class="fas fa-save mr-2"></i> Guardar Cambios
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Opciones de técnicos para el modal de edición -->
+    <script>
+        window.ProgConsolidadoData = <?= json_encode($consolidado, JSON_UNESCAPED_UNICODE) ?>;
+        window.tecnicosConsolidado = <?= json_encode($listaTecnicos, JSON_UNESCAPED_UNICODE) ?>;
+        window.modalidadesConsolidado = <?= json_encode($listaModalidades ?? [], JSON_UNESCAPED_UNICODE) ?>;
+        window.BASE_URL = <?= json_encode(BASE_URL) ?>;
+        window.ProgConfig = { baseUrl: window.BASE_URL, tecnicos: window.tecnicosConsolidado };
+    </script>
+    <!-- Select2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="<?= BASE_URL ?>js/programacion/core.js"></script>
 <script src="<?= BASE_URL ?>js/programacion/consolidado-export.js"></script>
+<script src="<?= BASE_URL ?>js/programacion/consolidado-editar.js"></script>
