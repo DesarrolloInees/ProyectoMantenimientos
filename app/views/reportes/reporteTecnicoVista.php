@@ -443,18 +443,26 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
     // Se genera en el servidor con Chromium (Browsershot/Node)
     // =========================================================
     function descargarPDFTecnico() {
-        const inpFecha = document.getElementById('fecha_inicio');
-        const fecha = inpFecha ? inpFecha.value : '';
+        const inpInicio = document.getElementById('fecha_inicio');
+        const inpFin = document.getElementById('fecha_fin');
+        const fechaInicio = inpInicio ? inpInicio.value : '';
+        const fechaFin = inpFin ? inpFin.value : '';
         const tecnico = document.getElementById('select_tecnico') ?
             document.getElementById('select_tecnico').value : '';
 
-        if (!fecha) {
-            alert('Selecciona la fecha del día a reportar.');
+        if (!fechaInicio || !fechaFin) {
+            alert('Selecciona ambas fechas (Desde y Hasta) para generar el PDF.');
+            return;
+        }
+
+        if (fechaFin < fechaInicio) {
+            alert('La fecha Hasta no puede ser anterior a la fecha Desde.');
             return;
         }
 
         const url = `index.php?pagina=reporteTecnico&accion=generarPDF` +
-            `&fecha_inicio=${encodeURIComponent(fecha)}` +
+            `&fecha_inicio=${encodeURIComponent(fechaInicio)}` +
+            `&fecha_fin=${encodeURIComponent(fechaFin)}` +
             `&id_tecnico=${encodeURIComponent(tecnico || '')}`;
 
         window.open(url, '_blank');

@@ -141,23 +141,25 @@ class reporteTecnicoControlador
     // ══════════════════════════════════════════════════════════════
     public function generarPDF()
     {
-        // ── REPORTE DIARIO: se usa UNA sola fecha (la de "Desde") ──
-        $fecha = $_GET['fecha_inicio'] ?? date('Y-m-d');
-        if (empty($_GET['fecha_inicio'])) {
-            $fecha = $_GET['fecha_fin'] ?? date('Y-m-d');
+        // ── REPORTE POR RANGO DE FECHAS ──
+        $fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-d');
+        $fechaFin    = $_GET['fecha_fin'] ?? date('Y-m-d');
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaInicio)) {
+            $fechaInicio = date('Y-m-d');
         }
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
-            $fecha = date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFin)) {
+            $fechaFin = date('Y-m-d');
         }
         $id_tecnico = $_GET['id_tecnico'] ?? '';
 
-        // Mismo dataset que usa el Excel, pero acotado a ese día
-        $datos = $this->modelo->generarReporteServicios($id_tecnico, $fecha, $fecha);
+        // Mismo dataset que usa el Excel, pero acotado al rango de fechas
+        $datos = $this->modelo->generarReporteServicios($id_tecnico, $fechaInicio, $fechaFin);
         $resumenTipos = ResumenTiposServicio::resumir($datos);
 
         // ── Meta del día según el tipo de día ──
         // Sábado: 3 servicios = verde.  Día hábil: 6 servicios = verde.
-        $diaNum = (int)date('N', strtotime($fecha)); // 1=Lunes ... 6=Sábado, 7=Domingo
+        $diaNum = (int)date('N', strtotime($fechaInicio)); // 1=Lunes ... 6=Sábado, 7=Domingo
         $esSabado = ($diaNum === 6);
         $esDomingo = ($diaNum === 7);
         $metaVerde = $esSabado ? 3 : 6;
@@ -343,11 +345,11 @@ class reporteTecnicoControlador
             $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($rutaLogo));
         }
 
-        // Etiquetas del día (ej. "Viernes, 10 de enero de 2026")
-        $rangoInicio = date('d/m/Y', strtotime($fecha));
-        $rangoFin = $rangoInicio;
-        $diaSemana = $this->nombreDiaSemana($fecha);
-        $esFestivo = in_array($fecha, $this->modelo->obtenerFestivos($fecha, $fecha));
+        // Etiquetas del rango (ej. "Viernes, 10 de enero de 2026")
+        $rangoInicio = date('d/m/Y', strtotime($fechaInicio));
+        $rangoFin = date('d/m/Y', strtotime($fechaFin));
+        $diaSemana = $this->nombreDiaSemana($fechaInicio);
+        $esFestivo = in_array($fechaInicio, $this->modelo->obtenerFestivos($fechaInicio, $fechaFin));
 
         // Total de horas trabajadas en el día (para el KPI)
         $totalHorasDia = 0;
@@ -363,7 +365,7 @@ class reporteTecnicoControlador
         include __DIR__ . '/../../views/reportes/reporteTecnicoGenerar.php';
         $html = ob_get_clean();
 
-        $this->enviarPdf($html, $rangoInicio . ' - ' . $diaSemana, $fecha);
+        $this->enviarPdf($html, $rangoInicio . ' al ' . $rangoFin . ' - ' . $diaSemana, $fechaInicio, $fechaFin);
     }
 
     private function nombreDiaSemana($fecha)
@@ -387,7 +389,7 @@ class reporteTecnicoControlador
 /**
      * Convierte el HTML en PDF usando Chromium (Node + Browsershot).
      */
-    private function enviarPdf($html, $etiquetaPeriodo, $fechaIso)
+    private function enviarPdf($html, $etiquetaPeriodo, $fechaIso, $fechaFin = null)
     {
         $footerHtml = '
         <div style="width: 100%; font-size: 9px; padding-left: 10px; padding-right: 10px; padding-bottom: 5px; font-family: sans-serif; color: #64748b; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
@@ -439,8 +441,8 @@ class reporteTecnicoControlador
 
             $pdfContent = $browsershot->pdf();
 
-            $nombreArchivo = "Reporte_Diario_Tecnicos_"
-                . date('d-m-Y', strtotime($fechaIso)) . ".pdf";
+            $nombreArchivo = "Reporte_Tecnico_"
+                . date('d-m-Y', strtotime($fechaIso)) . "_al_" . date('d-m-Y', strtotime($fechaFin ?? $fechaIso)) . ".pdf";
 
             header('Content-Type: application/pdf');
             header('Content-Disposition: inline; filename="' . $nombreArchivo . '"');

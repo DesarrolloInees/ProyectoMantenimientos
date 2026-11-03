@@ -33,6 +33,7 @@ function exportarExcelMaestro() {
                 "Cliente": fila.nombre_cliente || "",
                 "Nombre del Punto": fila.nombre_punto || "",
                 "Dirección": fila.direccion || "",
+                "COD_1": fila.codigo_1 || "",
                 "Municipio": fila.nombre_municipio || "",
                 "Zona": fila.zona || "",
                 "Delegación": fila.nombre_delegacion || "",
@@ -50,13 +51,13 @@ function exportarExcelMaestro() {
             const cellVisita = worksheet[XLSX.utils.encode_cell({ r: R, c: 0 })];  // Fecha Visita
             if (cellVisita && cellVisita.t === 'd') cellVisita.z = 'dd/mm/yyyy';
 
-            const cellUlt = worksheet[XLSX.utils.encode_cell({ r: R, c: 12 })];    // Fecha Última Visita
+            const cellUlt = worksheet[XLSX.utils.encode_cell({ r: R, c: 13 })];    // Fecha Última Visita
             if (cellUlt && cellUlt.t === 'd') cellUlt.z = 'dd/mm/yyyy';
         }
 
         worksheet['!cols'] = [
             { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 35 },
-            { wch: 30 }, { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
+            { wch: 30 }, { wch: 40 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 20 },
             { wch: 25 }, { wch: 18 }, { wch: 18 }
         ];
 
