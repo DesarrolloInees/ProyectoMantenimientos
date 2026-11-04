@@ -60,7 +60,12 @@ class ReporteTecnicoModelo
                 p.nombre_punto,
                 d.nombre_delegacion AS delegacion,
                 m.device_id,
-                tm.nombre_completo AS tipo_mantenimiento
+                tm.nombre_completo AS tipo_mantenimiento,
+                IFNULL(
+                    (SELECT GROUP_CONCAT(tn.nombre_novedad SEPARATOR ', ')
+                     FROM orden_servicio_novedad osn
+                     JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
+                     WHERE osn.id_orden_servicio = os.id_ordenes_servicio), '') AS novedades
                     FROM ordenes_servicio os
                     INNER JOIN tecnico t ON os.id_tecnico = t.id_tecnico
                     INNER JOIN cliente c ON os.id_cliente = c.id_cliente
@@ -100,7 +105,8 @@ class ReporteTecnicoModelo
                 'N/A' AS nombre_punto,
                 'N/A' AS delegacion,
                 'N/A' AS device_id,
-                er.nombre_estado AS tipo_mantenimiento
+                er.nombre_estado AS tipo_mantenimiento,
+                '' AS novedades
                 FROM control_remisiones cr
                 INNER JOIN tecnico t ON cr.id_tecnico = t.id_tecnico
                 INNER JOIN estados_remision er ON cr.id_estado = er.id_estado

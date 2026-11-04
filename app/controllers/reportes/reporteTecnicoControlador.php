@@ -155,19 +155,77 @@ class reporteTecnicoControlador
 
         // Mismo dataset que usa el Excel, pero acotado al rango de fechas
         $datos = $this->modelo->generarReporteServicios($id_tecnico, $fechaInicio, $fechaFin);
-        $resumenTipos = ResumenTiposServicio::resumir($datos);
+
+        // Agrupar datos por fecha (YYYY-MM-DD)
+        $datosPorDia = [];
+        foreach ($datos as $item) {
+            $fecha = !empty($item['fecha_visita']) ? substr($item['fecha_visita'], 0, 10) : date('Y-m-d');
+            if (!isset($datosPorDia[$fecha])) {
+                $datosPorDia[$fecha] = [];
+            }
+            $datosPorDia[$fecha][] = $item;
+        }
+
+        // Ordenar fechas ascendente
+        ksort($datosPorDia);
+
+        // Procesar cada día de forma independiente
+        $diasProcesados = [];
+        foreach ($datosPorDia as $fecha => $datosDia) {
+            $diasProcesados[] = $this->procesarDiaPDF($datosDia, $fecha);
+        }
+
+        // Logo en base64 (compartido para todos los días)
+        $rutaLogo = __DIR__ . '/../../logos/logoIneesSinFondo.png';
+        if (!file_exists($rutaLogo)) {
+            $rutaLogo = __DIR__ . '/../../logos/logoInees.jpg';
+        }
+        $logoBase64 = '';
+        if (file_exists($rutaLogo)) {
+            $type = strtolower(pathinfo($rutaLogo, PATHINFO_EXTENSION));
+            $type = ($type === 'jpg') ? 'jpeg' : $type;
+            $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($rutaLogo));
+        }
+
+        // Renderizar HTML pasando todos los días procesados
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        ob_start();
+        include __DIR__ . '/../../views/reportes/reporteTecnicoGenerar.php';
+        $html = ob_get_clean();
+
+        $this->enviarPdf($html, $fechaInicio . ' al ' . $fechaFin, $fechaInicio, $fechaFin);
+    }
+
+    /**
+     * Procesa los servicios de un solo día y devuelve todas las variables
+     * que necesita la vista para renderizar la "hoja" de ese día.
+     */
+    private function procesarDiaPDF($datosDia, $fecha)
+    {
+        $resumenTipos = ResumenTiposServicio::resumir($datosDia);
 
         // ── Meta del día según el tipo de día ──
-        // Sábado: 3 servicios = verde.  Día hábil: 6 servicios = verde.
-        $diaNum = (int)date('N', strtotime($fechaInicio)); // 1=Lunes ... 6=Sábado, 7=Domingo
+        $diaNum = (int)date('N', strtotime($fecha)); // 1=Lunes ... 6=Sábado, 7=Domingo
         $esSabado = ($diaNum === 6);
         $esDomingo = ($diaNum === 7);
+        $esFestivo = in_array($fecha, $this->modelo->obtenerFestivos($fecha, $fecha));
+        $esNoLaboral = ($esDomingo || $esFestivo);
+
+        // Día hábil: 6 | Sábado: 3 | Nueva Arquitectura (por técnico): 3 (2 en sábado)
         $metaVerde = $esSabado ? 3 : 6;
-        $metaAmarillo = $esSabado ? 2 : 4;
+        $metaAmarillo = (int)ceil($metaVerde * 2 / 3); // 6->4 | 3->2
+        $metaNuevaArquitectura = $esSabado ? 2 : 3;
+        $metaNuevaArquitecturaAmarillo = (int)ceil($metaNuevaArquitectura * 2 / 3); // 3->2 | 2->2
+
+        $hayNuevaArquitectura = false;
+        $nuevaArquitecturaPorTecnico = [];
+        $fallidosPorTecnico = [];
 
         // Columnas de tipo de mantenimiento detectadas (mismo criterio del Excel)
         $setTipos = [];
-        foreach ($datos as $item) {
+        foreach ($datosDia as $item) {
             $tipo = !empty($item['tipo_mantenimiento']) ? $item['tipo_mantenimiento'] : 'SIN ESPECIFICAR';
             $setTipos[$tipo] = true;
         }
@@ -177,7 +235,7 @@ class reporteTecnicoControlador
         // Matriz: técnico -> [tipo => cantidad], con jornada del día
         $resumen = [];
         $jornada = [];
-        foreach ($datos as $item) {
+        foreach ($datosDia as $item) {
             $tec = !empty($item['nombre_tecnico']) ? trim($item['nombre_tecnico']) : 'Sin Nombre';
             $tipo = !empty($item['tipo_mantenimiento']) ? $item['tipo_mantenimiento'] : 'SIN ESPECIFICAR';
 
@@ -186,11 +244,21 @@ class reporteTecnicoControlador
                     $resumen[$tec][$t] = 0;
                 }
                 $jornada[$tec] = ['entrada' => null, 'salida' => null, 'minutos' => 0];
+                $fallidosPorTecnico[$tec] = 0;
+                $nuevaArquitecturaPorTecnico[$tec] = false;
             }
             if (!isset($resumen[$tec][$tipo])) {
                 $resumen[$tec][$tipo] = 0;
             }
             $resumen[$tec][$tipo]++;
+
+            if ($this->esNuevaArquitectura($tipo)) {
+                $nuevaArquitecturaPorTecnico[$tec] = true;
+                $hayNuevaArquitectura = true;
+            }
+            if (ResumenTiposServicio::clasificar($tipo) === 'fallido') {
+                $fallidosPorTecnico[$tec]++;
+            }
 
             // Primera entrada / última salida del día (como el Excel)
             $he = isset($item['hora_entrada']) ? trim((string)$item['hora_entrada']) : '';
@@ -256,20 +324,43 @@ class reporteTecnicoControlador
 
         $tecnicosOrdenados = $this->ordenarTecnicos(array_keys($resumen));
 
-        // ── Rendimiento vs meta del día ──
-        // La barra representa el % de la meta cumplida (verde = 100% o más).
-        // Umbrales: sábado -> verde >=3, amarillo >=2, rojo <2
-        //           hábil -> verde >=6, amarillo >=4, rojo <4
+        // ── Rendimiento vs meta del día (por técnico) ──
+        // La barra muestra los servicios SIN fallidos (color sólido) y los
+        // fallidos (tono claro). El % se calcula sobre los servicios sin fallidos.
+        // Reglas de meta: hábil 6 | sábado 3 | Nueva Arquitectura 3 (2 en sábado).
+        // Domingos y festivos: sin meta.
         $rendimiento = [];
         foreach ($resumen as $tec => $fila) {
-            $servicios = array_sum($fila);
-            $porcentajeMeta = ($metaVerde > 0) ? ($servicios / $metaVerde) * 100 : 0;
+            $servicios = array_sum($fila); // incluye fallidos
+            $fallidosTec = $fallidosPorTecnico[$tec] ?? 0;
+            $sinFallidos = max(0, $servicios - $fallidosTec);
+            $esNA = !empty($nuevaArquitecturaPorTecnico[$tec]);
 
-            if ($servicios >= $metaVerde) {
+            if ($esNoLaboral) {
+                $metaTec = 0;
+                $metaAmarilloTec = 0;
+            } elseif ($esNA) {
+                $metaTec = $metaNuevaArquitectura;
+                $metaAmarilloTec = $metaNuevaArquitecturaAmarillo;
+            } else {
+                $metaTec = $metaVerde;
+                $metaAmarilloTec = $metaAmarillo;
+            }
+
+            $porcentajeMeta = ($metaTec > 0) ? ($sinFallidos / $metaTec) * 100 : 0;
+            $porcentajeFallidos = ($metaTec > 0) ? ($fallidosTec / $metaTec) * 100 : 0;
+            $anchoSolido = min($porcentajeMeta, 100);
+            $anchoFallidos = min(max(0, 100 - $anchoSolido), $porcentajeFallidos);
+
+            if ($metaTec <= 0) {
+                $colorSem = 'bg-slate-300';
+                $txtSem = 'text-slate-500';
+                $semaforo = 'Sin meta';
+            } elseif ($sinFallidos >= $metaTec) {
                 $colorSem = 'bg-emerald-500';
                 $txtSem = 'text-emerald-700';
                 $semaforo = 'Cumple meta';
-            } elseif ($servicios >= $metaAmarillo) {
+            } elseif ($sinFallidos >= $metaAmarilloTec) {
                 $colorSem = 'bg-amber-400';
                 $txtSem = 'text-amber-700';
                 $semaforo = 'Por debajo';
@@ -281,19 +372,27 @@ class reporteTecnicoControlador
 
             $rendimiento[$tec] = [
                 'servicios' => $servicios,
-                'porcentaje' => min($porcentajeMeta, 100),
+                'sin_fallidos' => $sinFallidos,
+                'fallidos' => $fallidosTec,
+                'meta' => $metaTec,
+                'meta_amarillo' => $metaAmarilloTec,
+                'es_na' => $esNA,
+                'porcentaje' => $anchoSolido,
                 'porcentaje_real' => $porcentajeMeta,
+                'porcentaje_fallidos' => $porcentajeFallidos,
+                'ancho_fallidos' => $anchoFallidos,
                 'color' => $colorSem,
                 'texto' => $txtSem,
                 'semaforo' => $semaforo
             ];
         }
 
-        // Tabla de fallidos: delegacion -> lista de ['cliente'=>, 'punto'=>, 'total'=>]
+        // Tabla de fallidos: delegacion -> lista de ['cliente'=>, 'punto'=>, 'total'=>, 'novedad'=>]
         $fallidos = [];
         $puntosPorCliente = [];
+        $novedadesPorCliente = [];
         $totalFallidos = 0;
-        foreach ($datos as $item) {
+        foreach ($datosDia as $item) {
             $tipoUp = mb_strtoupper((string)($item['tipo_mantenimiento'] ?? ''), 'UTF-8');
             if (strpos($tipoUp, 'FALLID') === false) {
                 continue;
@@ -312,6 +411,20 @@ class reporteTecnicoControlador
             if (!in_array($punto, $puntosPorCliente[$del][$cli], true)) {
                 $puntosPorCliente[$del][$cli][] = $punto;
             }
+
+            $novTxt = trim((string)($item['novedades'] ?? ''));
+            if ($novTxt !== '') {
+                if (!isset($novedadesPorCliente[$del][$cli])) {
+                    $novedadesPorCliente[$del][$cli] = [];
+                }
+                foreach (explode(',', $novTxt) as $nov) {
+                    $nov = trim($nov);
+                    if ($nov !== '') {
+                        $novedadesPorCliente[$del][$cli][$nov] = true;
+                    }
+                }
+            }
+
             $totalFallidos++;
         }
 
@@ -322,10 +435,12 @@ class reporteTecnicoControlador
             $items = [];
             foreach ($mapaClientes as $cli => $cant) {
                 $puntos = $puntosPorCliente[$del][$cli] ?? [];
+                $novedades = $novedadesPorCliente[$del][$cli] ?? [];
                 $items[] = [
                     'cliente' => $cli,
                     'punto' => $puntos ? implode(', ', $puntos) : 'Sin Punto',
-                    'total' => $cant
+                    'total' => $cant,
+                    'novedad' => $novedades ? implode(', ', array_keys($novedades)) : ''
                 ];
             }
             $fallidosLista[$del] = $items;
@@ -333,39 +448,51 @@ class reporteTecnicoControlador
         $fallidos = $fallidosLista;
         ksort($fallidos);
 
-        // Logo en base64
-        $rutaLogo = __DIR__ . '/../../logos/logoIneesSinFondo.png';
-        if (!file_exists($rutaLogo)) {
-            $rutaLogo = __DIR__ . '/../../logos/logoInees.jpg';
-        }
-        $logoBase64 = '';
-        if (file_exists($rutaLogo)) {
-            $type = strtolower(pathinfo($rutaLogo, PATHINFO_EXTENSION));
-            $type = ($type === 'jpg') ? 'jpeg' : $type;
-            $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($rutaLogo));
-        }
-
-        // Etiquetas del rango (ej. "Viernes, 10 de enero de 2026")
-        $rangoInicio = date('d/m/Y', strtotime($fechaInicio));
-        $rangoFin = date('d/m/Y', strtotime($fechaFin));
-        $diaSemana = $this->nombreDiaSemana($fechaInicio);
-        $esFestivo = in_array($fechaInicio, $this->modelo->obtenerFestivos($fechaInicio, $fechaFin));
-
         // Total de horas trabajadas en el día (para el KPI)
         $totalHorasDia = 0;
         foreach ($jornada as $j) {
             $totalHorasDia += $j['minutos'];
         }
 
-        // Renderizar HTML
-        if (ob_get_length()) {
-            ob_end_clean();
-        }
-        ob_start();
-        include __DIR__ . '/../../views/reportes/reporteTecnicoGenerar.php';
-        $html = ob_get_clean();
+        return [
+            'fecha' => $fecha,
+            'rangoInicio' => date('d/m/Y', strtotime($fecha)),
+            'diaSemana' => $this->nombreDiaSemana($fecha),
+            'esFestivo' => $esFestivo,
+            'esSabado' => $esSabado,
+            'esDomingo' => $esDomingo,
+            'esNoLaboral' => $esNoLaboral,
+            'metaVerde' => $metaVerde,
+            'metaAmarillo' => $metaAmarillo,
+            'metaNuevaArquitectura' => $metaNuevaArquitectura,
+            'hayNuevaArquitectura' => $hayNuevaArquitectura,
+            'resumenTipos' => $resumenTipos,
+            'resumen' => $resumen,
+            'jornada' => $jornada,
+            'rendimiento' => $rendimiento,
+            'tiposColumnas' => $tiposColumnas,
+            'tecnicosOrdenados' => $tecnicosOrdenados,
+            'totalesColumna' => $totalesColumna,
+            'totalGeneral' => $totalGeneral,
+            'totalHorasDia' => $totalHorasDia,
+            'fallidos' => $fallidos,
+            'totalFallidos' => $totalFallidos,
+        ];
+    }
 
-        $this->enviarPdf($html, $rangoInicio . ' al ' . $rangoFin . ' - ' . $diaSemana, $fechaInicio, $fechaFin);
+    /**
+     * Detecta si el tipo de mantenimiento corresponde a Nueva Arquitectura.
+     * Para ese tipo la meta diaria baja de 6 a 3 servicios.
+     */
+    private function esNuevaArquitectura($tipo)
+    {
+        $t = mb_strtoupper(trim((string)$tipo), 'UTF-8');
+        $t = strtr($t, [
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U',
+            'Ü' => 'U', 'Ñ' => 'N'
+        ]);
+        return strpos($t, 'NUEVA ARQUITECTURA') !== false
+            || strpos($t, 'NUEVAARQUITECTURA') !== false;
     }
 
     private function nombreDiaSemana($fecha)
