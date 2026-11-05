@@ -600,6 +600,182 @@ class ReporteEjecutivoModelo
     }
 
     /**
+     * Devuelve las novedades agrupadas por delegación y tipo.
+     * Si $soloFallidos = true, solo cuenta novedades de servicios fallidos.
+     * Si $soloFallidos = false, excluye las novedades de servicios fallidos.
+     */
+    public function getNovedadesPorDelegacion($fecha_inicio, $fecha_fin, $soloFallidos = false)
+    {
+        try {
+            $filtroFallido = $soloFallidos
+                ? "AND UPPER(tm.nombre_completo) LIKE '%FALLID%'"
+                : "AND UPPER(tm.nombre_completo) NOT LIKE '%FALLID%'";
+
+            $sql = "SELECT
+                        d.nombre_delegacion,
+                        tn.nombre_novedad,
+                        COUNT(DISTINCT os.id_ordenes_servicio) as total
+                    FROM ordenes_servicio os
+                    INNER JOIN punto p ON os.id_punto = p.id_punto
+                    INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                    INNER JOIN orden_servicio_novedad osn ON os.id_ordenes_servicio = osn.id_orden_servicio
+                    INNER JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
+                    INNER JOIN tipo_mantenimiento tm ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    $filtroFallido
+                    GROUP BY d.nombre_delegacion, tn.id_tipo_novedad, tn.nombre_novedad
+                    ORDER BY d.nombre_delegacion ASC, total DESC, tn.nombre_novedad ASC";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':inicio', $fecha_inicio);
+            $stmt->bindParam(':fin', $fecha_fin);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Devuelve, para el período, dos conjuntos de datos sobre novedades por cliente:
+     *  - 'totales':   servicios distintos con novedad por delegación + cliente.
+     *  - 'novedades': servicios distintos por delegación + cliente + tipo de novedad.
+     * Ambos se usan para armar el top de clientes y sus novedades principales.
+     */
+    public function getClientesConMasNovedades($fecha_inicio, $fecha_fin)
+    {
+        $resultado = ['totales' => [], 'novedades' => []];
+
+        try {
+            $sqlTotales = "SELECT
+                        IFNULL(d.nombre_delegacion, 'SIN DELEGACIÓN') AS nombre_delegacion,
+                        c.id_cliente,
+                        c.nombre_cliente,
+                        COUNT(DISTINCT os.id_ordenes_servicio) AS total
+                    FROM ordenes_servicio os
+                    INNER JOIN cliente c ON os.id_cliente = c.id_cliente
+                    INNER JOIN punto p ON os.id_punto = p.id_punto
+                    LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                    INNER JOIN orden_servicio_novedad osn ON os.id_ordenes_servicio = osn.id_orden_servicio
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    GROUP BY d.nombre_delegacion, c.id_cliente, c.nombre_cliente
+                    ORDER BY nombre_delegacion ASC, total DESC";
+
+            $stmtTotales = $this->conn->prepare($sqlTotales);
+            $stmtTotales->bindParam(':inicio', $fecha_inicio);
+            $stmtTotales->bindParam(':fin', $fecha_fin);
+            $stmtTotales->execute();
+            $resultado['totales'] = $stmtTotales->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $sqlNovedades = "SELECT
+                        IFNULL(d.nombre_delegacion, 'SIN DELEGACIÓN') AS nombre_delegacion,
+                        c.id_cliente,
+                        tn.nombre_novedad,
+                        COUNT(DISTINCT os.id_ordenes_servicio) AS total
+                    FROM ordenes_servicio os
+                    INNER JOIN cliente c ON os.id_cliente = c.id_cliente
+                    INNER JOIN punto p ON os.id_punto = p.id_punto
+                    LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                    INNER JOIN orden_servicio_novedad osn ON os.id_ordenes_servicio = osn.id_orden_servicio
+                    INNER JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    GROUP BY d.nombre_delegacion, c.id_cliente, tn.id_tipo_novedad, tn.nombre_novedad
+                    ORDER BY total DESC, tn.nombre_novedad ASC";
+
+            $stmtNovedades = $this->conn->prepare($sqlNovedades);
+            $stmtNovedades->bindParam(':inicio', $fecha_inicio);
+            $stmtNovedades->bindParam(':fin', $fecha_fin);
+            $stmtNovedades->execute();
+            $resultado['novedades'] = $stmtNovedades->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (PDOException $e) {
+            error_log("Error en getClientesConMasNovedades: " . $e->getMessage());
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Calcula la meta de servicios esperados según la regla operativa:
+     * día normal 6, sábado 3; con Nueva Arquitectura 3 y 2 respectivamente.
+     * Solo cuenta técnicos con servicios registrados ese día y excluye
+     * domingos y festivos.
+     */
+    public function getMetaServiciosEsperados($fecha_inicio, $fecha_fin)
+    {
+        $resultado = [
+            'esperados' => 0,
+            'dias_laborables' => 0,
+            'tecnicos_dias' => 0,
+            'esperados_normal' => 0,
+            'esperados_nueva_arquitectura' => 0,
+        ];
+
+        try {
+            $sql = "SELECT
+                        os.fecha_visita,
+                        os.id_tecnico,
+                        MAX(
+                            CASE
+                                WHEN os.id_tipo_mantenimiento = 6
+                                  OR UPPER(tm.nombre_completo) LIKE '%NUEVA ARQUITECTURA%'
+                                THEN 1 ELSE 0
+                            END
+                        ) as es_nueva_arquitectura
+                    FROM ordenes_servicio os
+                    LEFT JOIN tipo_mantenimiento tm
+                        ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    GROUP BY os.fecha_visita, os.id_tecnico";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':inicio', $fecha_inicio);
+            $stmt->bindParam(':fin', $fecha_fin);
+            $stmt->execute();
+            $registros = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $sqlFestivos = "SELECT fecha FROM dias_festivos WHERE fecha BETWEEN :inicio AND :fin";
+            $stmtFestivos = $this->conn->prepare($sqlFestivos);
+            $stmtFestivos->bindParam(':inicio', $fecha_inicio);
+            $stmtFestivos->bindParam(':fin', $fecha_fin);
+            $stmtFestivos->execute();
+            $festivos = array_fill_keys($stmtFestivos->fetchAll(PDO::FETCH_COLUMN), true);
+
+            $diasConMeta = [];
+
+            foreach ($registros as $registro) {
+                $fecha = date('Y-m-d', strtotime($registro['fecha_visita']));
+                $diaSemana = (int) date('N', strtotime($fecha));
+
+                if ($diaSemana === 7 || isset($festivos[$fecha])) {
+                    continue;
+                }
+
+                $esSabado = ($diaSemana === 6);
+                $esNuevaArquitectura = !empty($registro['es_nueva_arquitectura']);
+                $meta = 0;
+
+                if ($esNuevaArquitectura) {
+                    $meta = $esSabado ? 2 : 3;
+                    $resultado['esperados_nueva_arquitectura'] += $meta;
+                } else {
+                    $meta = $esSabado ? 3 : 6;
+                    $resultado['esperados_normal'] += $meta;
+                }
+
+                $resultado['esperados'] += $meta;
+                $resultado['tecnicos_dias']++;
+                $diasConMeta[$fecha] = true;
+            }
+
+            $resultado['dias_laborables'] = count($diasConMeta);
+        } catch (PDOException $e) {
+            // Mantiene los valores en cero.
+        }
+
+        return $resultado;
+    }
+
+    /**
  * Obtiene el desglose de ingresos por tipo de mantenimiento
  * Retorna un array con los valores de cada tipo + repuestos
  */

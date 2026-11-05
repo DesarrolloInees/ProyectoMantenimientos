@@ -220,6 +220,20 @@ class generarReporteControlador
         $datosCalificaciones = $this->modelo->getCalificacionesServicio($inicio, $fin);
         $datosNovedad = $this->modelo->getDistribucionNovedades($inicio, $fin);
 
+        // Novedades para el PDF: generales (sin fallidos) y de servicios fallidos.
+        $rawNovedades = $this->modelo->getNovedadesPorDelegacion($inicio, $fin, false);
+        $rawNovedadesFallidas = $this->modelo->getNovedadesPorDelegacion($inicio, $fin, true);
+        $novedadesPorDelegacion = $this->agruparTopNovedades($rawNovedades, 6);
+        $novedadesFallidasPorDelegacion = $this->agruparTopNovedades($rawNovedadesFallidas, 6);
+        $topNovedadesGlobales = $this->obtenerTopNovedadesGlobales($rawNovedades, 6);
+
+        // Clientes con más novedades por delegación (Top 3) y sus 3 novedades principales.
+        $rawClientesNovedades = $this->modelo->getClientesConMasNovedades($inicio, $fin);
+        $clientesNovedades = $this->agruparTopClientesNovedades($rawClientesNovedades, 3, 3);
+
+        $metaServicios = $this->modelo->getMetaServiciosEsperados($inicio, $fin);
+        $cumplimientoMeta = 0;
+
 
         // Matriz Mantenimiento (La que ya tenías)
         $todosTiposMant = $this->modelo->getAllTiposMantenimiento();
@@ -313,6 +327,11 @@ class generarReporteControlador
                 ];
             }
         }
+
+        $cumplimientoMeta = $metaServicios['esperados'] > 0
+            ? round(($totalGlobalServicios / $metaServicios['esperados']) * 100, 1)
+            : 0;
+
         // =========================================================
         // 5. CÁLCULOS FINANCIEROS - DESGLOSE POR TIPO
         // =========================================================
@@ -479,6 +498,115 @@ class generarReporteControlador
             echo "<h1>Error generando PDF</h1><p>" . $e->getMessage() . "</p>";
             die();
         }
+    }
+
+    private function agruparTopNovedades($filas, $limite = 6)
+    {
+        $agrupado = [];
+
+        foreach ($filas as $fila) {
+            $delegacion = $fila['nombre_delegacion'] ?? 'SIN DELEGACIÓN';
+            if (!isset($agrupado[$delegacion])) {
+                $agrupado[$delegacion] = [];
+            }
+
+            $agrupado[$delegacion][] = [
+                'nombre' => $fila['nombre_novedad'] ?? 'Sin novedad',
+                'total' => (int) ($fila['total'] ?? 0),
+            ];
+        }
+
+        foreach ($agrupado as &$items) {
+            usort($items, function ($a, $b) {
+                if ($a['total'] === $b['total']) {
+                    return strcmp($a['nombre'], $b['nombre']);
+                }
+                return ($a['total'] < $b['total']) ? 1 : -1;
+            });
+            $items = array_slice($items, 0, $limite);
+        }
+        unset($items);
+
+        ksort($agrupado);
+
+        return $agrupado;
+    }
+
+    private function obtenerTopNovedadesGlobales($filas, $limite = 6)
+    {
+        $totales = [];
+
+        foreach ($filas as $fila) {
+            $nombre = $fila['nombre_novedad'] ?? 'Sin novedad';
+            $totales[$nombre] = ($totales[$nombre] ?? 0) + (int) ($fila['total'] ?? 0);
+        }
+
+        arsort($totales);
+
+        return array_slice(array_keys($totales), 0, $limite);
+    }
+
+    /**
+     * Agrupa las novedades por delegación y cliente, deja el Top N de clientes
+     * por delegación y, para cada cliente, su Top N de novedades principales.
+     */
+    private function agruparTopClientesNovedades($datos, $limiteClientes = 3, $limiteNovedades = 3)
+    {
+        $totales = $datos['totales'] ?? [];
+        $novedades = $datos['novedades'] ?? [];
+
+        $chipsPorCliente = [];
+        foreach ($novedades as $nov) {
+            $clave = $this->claveClienteDelegacion(
+                $nov['nombre_delegacion'] ?? 'SIN DELEGACIÓN',
+                $nov['id_cliente'] ?? ''
+            );
+            $chipsPorCliente[$clave][] = [
+                'nombre' => $nov['nombre_novedad'] ?? 'Sin novedad',
+                'total' => (int) ($nov['total'] ?? 0),
+            ];
+        }
+
+        $agrupado = [];
+        foreach ($totales as $fila) {
+            $delegacion = $fila['nombre_delegacion'] ?: 'SIN DELEGACIÓN';
+            $cliente = $fila['nombre_cliente'] ?: 'Sin Cliente';
+            $clave = $this->claveClienteDelegacion($delegacion, $fila['id_cliente'] ?? '');
+
+            $items = $chipsPorCliente[$clave] ?? [];
+            usort($items, function ($a, $b) {
+                if ($a['total'] === $b['total']) {
+                    return strcmp($a['nombre'], $b['nombre']);
+                }
+                return ($a['total'] < $b['total']) ? 1 : -1;
+            });
+
+            $agrupado[$delegacion][] = [
+                'cliente' => $cliente,
+                'total' => (int) ($fila['total'] ?? 0),
+                'novedades' => array_slice($items, 0, $limiteNovedades),
+            ];
+        }
+
+        foreach ($agrupado as &$clientes) {
+            usort($clientes, function ($a, $b) {
+                if ($a['total'] === $b['total']) {
+                    return strcmp($a['cliente'], $b['cliente']);
+                }
+                return ($a['total'] < $b['total']) ? 1 : -1;
+            });
+            $clientes = array_slice($clientes, 0, $limiteClientes);
+        }
+        unset($clientes);
+
+        ksort($agrupado);
+
+        return $agrupado;
+    }
+
+    private function claveClienteDelegacion($delegacion, $idCliente)
+    {
+        return ($delegacion ?: 'SIN DELEGACIÓN') . '||' . ($idCliente ?: '');
     }
 
     private function traducirDia($diaIngles)

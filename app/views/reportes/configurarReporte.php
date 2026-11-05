@@ -384,6 +384,33 @@
                     </div>
 
                     <div class="reporte-card selected" onclick="reporteToggleSection(this)">
+                        <input type="checkbox" name="secciones[]" value="novedades" checked>
+                        <div class="reporte-card-header">
+                            <div class="reporte-checkbox-custom"></div>
+                            <div class="reporte-card-title">🏷️ Principales Novedades</div>
+                        </div>
+                        <div class="reporte-card-desc">Top 6 de novedades por delegación en servicios no fallidos</div>
+                    </div>
+
+                    <div class="reporte-card selected" onclick="reporteToggleSection(this)">
+                        <input type="checkbox" name="secciones[]" value="novedades_fallidas" checked>
+                        <div class="reporte-card-header">
+                            <div class="reporte-checkbox-custom"></div>
+                            <div class="reporte-card-title">⚠️ Novedades Fallidas</div>
+                        </div>
+                        <div class="reporte-card-desc">Top 6 de novedades por delegación en servicios fallidos</div>
+                    </div>
+
+                    <div class="reporte-card selected" onclick="reporteToggleSection(this)">
+                        <input type="checkbox" name="secciones[]" value="clientes_novedades" checked>
+                        <div class="reporte-card-header">
+                            <div class="reporte-checkbox-custom"></div>
+                            <div class="reporte-card-title">👥 Clientes con Más Novedades</div>
+                        </div>
+                        <div class="reporte-card-desc">Top 3 de clientes por delegación y sus novedades principales</div>
+                    </div>
+
+                    <div class="reporte-card selected" onclick="reporteToggleSection(this)">
                         <input type="checkbox" name="secciones[]" value="tecnicos" checked>
                         <div class="reporte-card-header">
                             <div class="reporte-checkbox-custom"></div>

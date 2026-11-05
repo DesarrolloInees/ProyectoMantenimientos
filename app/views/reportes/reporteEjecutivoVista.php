@@ -50,7 +50,14 @@
                 <p class="text-3xl font-extrabold text-blue-600 mt-1"><?= number_format($totalServicios) ?></p>
             </div>
 
-            
+            <div class="bg-white p-4 rounded-xl shadow border-l-4 border-emerald-500 flex flex-col items-center justify-center">
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Servicios Esperados (Meta)</p>
+                <p class="text-3xl font-extrabold text-emerald-600 mt-1"><?= number_format($metaServicios['esperados'] ?? 0) ?></p>
+                <p class="text-[10px] text-gray-500 mt-1">
+                    Realizados: <span class="font-bold text-gray-700"><?= number_format($totalServicios) ?></span>
+                    · Cumplimiento: <span class="font-bold <?= ($cumplimientoMeta >= 100) ? 'text-emerald-600' : (($cumplimientoMeta >= 80) ? 'text-amber-600' : 'text-rose-600') ?>"><?= number_format($cumplimientoMeta, 1) ?>%</span>
+                </p>
+            </div>
 
             <div class="bg-white p-4 rounded-xl shadow border-l-4 border-red-500 flex flex-col items-center justify-center">
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-wider"> Servicios Con Novedad</p>
@@ -110,6 +117,121 @@
                 </div>
             </div>
 
+            <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100 lg:col-span-2">
+                <div class="flex justify-between items-start mb-4 border-b pb-2 gap-3">
+                    <div>
+                        <h3 class="text-gray-700 font-bold"><i class="fas fa-tags text-indigo-500 mr-1"></i> Principales Novedades por Delegación</h3>
+                        <p class="text-[11px] text-gray-400">Top 3 de novedades en servicios no fallidos</p>
+                    </div>
+                    <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Sin fallidos</span>
+                </div>
+                <div class="relative h-96 w-full">
+                    <canvas id="chartNovedadesDelegacion"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-md border border-amber-100 lg:col-span-2">
+                <div class="flex justify-between items-start mb-4 border-b border-amber-100 pb-2 gap-3">
+                    <div>
+                        <h3 class="text-amber-700 font-bold"><i class="fas fa-users text-amber-500 mr-1"></i> Clientes con Más Novedades por Delegación</h3>
+                        <p class="text-[11px] text-gray-400">Top 3 de clientes por delegación y sus 3 novedades más frecuentes</p>
+                    </div>
+                    <span class="text-[10px] bg-amber-50 text-amber-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Top 3</span>
+                </div>
+
+                <?php if (empty($clientesNovedades)): ?>
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-8 text-center">
+                        <p class="text-sm font-bold text-emerald-700">No hay novedades registradas por cliente en el período.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="relative h-[520px] w-full mb-6">
+                        <canvas id="chartClientesNovedades"></canvas>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-amber-50 text-amber-700 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2 text-xs font-bold uppercase tracking-wider w-36">Delegación</th>
+                                    <th class="px-3 py-2 text-xs font-bold uppercase tracking-wider">Cliente</th>
+                                    <th class="px-3 py-2 text-xs font-bold uppercase tracking-wider text-center w-24">Servicios</th>
+                                    <th class="px-3 py-2 text-xs font-bold uppercase tracking-wider">Top 3 novedades</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <?php foreach ($clientesNovedades as $delegacion => $clientes): ?>
+                                    <?php foreach ($clientes as $indice => $cliente): ?>
+                                        <tr class="hover:bg-amber-50/40">
+                                            <?php if ($indice === 0): ?>
+                                                <td class="px-3 py-2 align-top font-bold text-gray-700" rowspan="<?= count($clientes) ?>"><?= htmlspecialchars($delegacion) ?></td>
+                                            <?php endif; ?>
+                                            <td class="px-3 py-2 align-top font-semibold text-gray-800"><?= htmlspecialchars($cliente['cliente']) ?></td>
+                                            <td class="px-3 py-2 align-top text-center">
+                                                <span class="inline-flex items-center justify-center rounded-full bg-amber-600 px-2.5 py-0.5 text-xs font-bold text-white"><?= (int) $cliente['total'] ?></span>
+                                            </td>
+                                            <td class="px-3 py-2 align-top">
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    <?php foreach ($cliente['novedades'] as $nov): ?>
+                                                        <span class="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
+                                                            <span><?= htmlspecialchars($nov['nombre']) ?></span>
+                                                            <span class="rounded-full bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white"><?= (int) $nov['total'] ?></span>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-md border border-rose-100 lg:col-span-2">
+                <div class="flex justify-between items-start mb-4 border-b border-rose-100 pb-2 gap-3">
+                    <div>
+                        <h3 class="text-rose-700 font-bold"><i class="fas fa-exclamation-circle mr-1"></i> Novedades en Servicios Fallidos</h3>
+                        <p class="text-[11px] text-gray-400">Top 6 de novedades por delegación en servicios fallidos</p>
+                    </div>
+                    <span class="text-[10px] bg-rose-50 text-rose-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Solo fallidos</span>
+                </div>
+
+                <?php if (empty($datosNovedadesFallidasPorDelegacion)): ?>
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-8 text-center">
+                        <p class="text-sm font-bold text-emerald-700">No hay novedades registradas en servicios fallidos para el período.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-rose-50 text-rose-700 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2 text-xs font-bold uppercase tracking-wider w-40">Delegación</th>
+                                    <th class="px-3 py-2 text-xs font-bold uppercase tracking-wider">Principales novedades</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <?php foreach ($datosNovedadesFallidasPorDelegacion as $delegacion => $items): ?>
+                                    <tr class="hover:bg-rose-50/40">
+                                        <td class="px-3 py-2 align-top font-bold text-gray-700"><?= htmlspecialchars($delegacion) ?></td>
+                                        <td class="px-3 py-2">
+                                            <div class="flex flex-wrap gap-1.5">
+                                                <?php foreach ($items as $item): ?>
+                                                    <span class="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-1 text-[11px] text-rose-700">
+                                                        <span><?= htmlspecialchars($item['nombre']) ?></span>
+                                                        <span class="rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white"><?= (int) $item['total'] ?></span>
+                                                    </span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+
         </div>
     <?php endif; ?>
 
@@ -128,6 +250,9 @@
     const dataDelegacion = <?= json_encode($datosDelegacion ?? []) ?>;
     const dataTecnico = <?= json_encode($datosHoras ?? []) ?>;
     const dataRepuestos = <?= json_encode($datosRepuestos ?? []) ?>;
+    const dataNovedadesDelegacion = <?= json_encode($datosNovedadesPorDelegacion ?? []) ?>;
+    const topNovedadesGlobales = <?= json_encode($topNovedadesGlobales ?? []) ?>;
+    const dataClientesNovedades = <?= json_encode($clientesNovedades ?? []) ?>;
 
     // Configuración Global
     Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
@@ -285,5 +410,144 @@
             },
             options: { maintainAspectRatio: false, responsive: true }
         });
+    }
+
+    // G. PRINCIPALES NOVEDADES POR DELEGACIÓN (Solo no fallidos)
+    if (document.getElementById('chartNovedadesDelegacion')) {
+        const entradasDelegacion = Object.keys(dataNovedadesDelegacion).map(del => {
+            const items = dataNovedadesDelegacion[del] || [];
+            return {
+                del: del,
+                total: items.reduce((suma, item) => suma + (Number(item.total) || 0), 0)
+            };
+        }).sort((a, b) => b.total - a.total).slice(0, 12);
+
+        const labelsNovedades = entradasDelegacion.map(e => e.del);
+        const coloresNovedades = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#94a3b8'];
+
+        const datasetsNovedades = topNovedadesGlobales.map((nombre, indice) => ({
+            label: nombre,
+            data: entradasDelegacion.map(e => {
+                const encontrada = (dataNovedadesDelegacion[e.del] || []).find(item => item.nombre === nombre);
+                return encontrada ? Number(encontrada.total) : 0;
+            }),
+            backgroundColor: coloresNovedades[indice % coloresNovedades.length],
+            borderRadius: 2,
+            stack: 'novedades'
+        }));
+
+        const otrasNovedades = entradasDelegacion.map(e => {
+            const items = dataNovedadesDelegacion[e.del] || [];
+            return items
+                .filter(item => !topNovedadesGlobales.includes(item.nombre))
+                .reduce((suma, item) => suma + (Number(item.total) || 0), 0);
+        });
+
+        if (otrasNovedades.some(valor => valor > 0)) {
+            datasetsNovedades.push({
+                label: 'Otras',
+                data: otrasNovedades,
+                backgroundColor: '#cbd5e1',
+                borderRadius: 2,
+                stack: 'novedades'
+            });
+        }
+
+        if (labelsNovedades.length > 0 && datasetsNovedades.length > 0) {
+            new Chart(document.getElementById('chartNovedadesDelegacion'), {
+                type: 'bar',
+                data: {
+                    labels: labelsNovedades,
+                    datasets: datasetsNovedades
+                },
+                options: {
+                    indexAxis: 'y',
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true, beginAtZero: true, grid: { display: true } },
+                        y: { stacked: true, grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    }
+                }
+            });
+        } else {
+            const ctx = document.getElementById('chartNovedadesDelegacion').getContext('2d');
+            ctx.font = "14px Arial";
+            ctx.fillStyle = "#9ca3af";
+            ctx.textAlign = "center";
+            ctx.fillText("Sin novedades registradas en el período", ctx.canvas.width / 2, ctx.canvas.height / 2);
+        }
+    }
+
+    // H. CLIENTES CON MÁS NOVEDADES POR DELEGACIÓN (Top 3)
+    if (document.getElementById('chartClientesNovedades')) {
+        const delegacionesClientes = Object.keys(dataClientesNovedades);
+        const paletaDelegaciones = ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#0ea5e9', '#f97316', '#14b8a6', '#e11d48', '#64748b'];
+
+        const etiquetasClientes = [];
+        const valoresClientes = [];
+        const coloresClientes = [];
+        const detalleNovedades = [];
+
+        delegacionesClientes.forEach((del, indiceDel) => {
+            const color = paletaDelegaciones[indiceDel % paletaDelegaciones.length];
+            (dataClientesNovedades[del] || []).forEach(cli => {
+                etiquetasClientes.push(`${cli.cliente} · ${del}`);
+                valoresClientes.push(Number(cli.total) || 0);
+                coloresClientes.push(color);
+                detalleNovedades.push((cli.novedades || []).map(n => `${n.nombre} (${n.total})`));
+            });
+        });
+
+        if (etiquetasClientes.length > 0) {
+            new Chart(document.getElementById('chartClientesNovedades'), {
+                type: 'bar',
+                data: {
+                    labels: etiquetasClientes,
+                    datasets: [{
+                        label: 'Servicios con novedad',
+                        data: valoresClientes,
+                        backgroundColor: coloresClientes,
+                        borderRadius: 4,
+                        maxBarThickness: 22
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        x: { beginAtZero: true, ticks: { precision: 0 }, grid: { display: true } },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                autoSkip: false,
+                                font: { size: 10 },
+                                callback: function (value) {
+                                    const texto = this.getLabelForValue(value);
+                                    return texto.length > 40 ? texto.slice(0, 38) + '…' : texto;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `Servicios con novedad: ${ctx.raw}`,
+                                afterLabel: (ctx) => {
+                                    const items = detalleNovedades[ctx.dataIndex] || [];
+                                    if (items.length === 0) return '';
+                                    return ['Top novedades:', ...items.map(item => `• ${item}`)];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     }
 </script>

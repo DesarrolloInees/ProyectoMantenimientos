@@ -8,6 +8,10 @@ $todasLasSecciones = [
     'estados',
     'puntos_atendidos',
     'puntos_fallidos',
+    'puntos_mas_fallidos',
+    'novedades',
+    'novedades_fallidas',
+    'clientes_novedades',
     'repuestos',
     'calificaciones',
     'tecnicos',
@@ -194,6 +198,29 @@ $esModoUnico = ($seccionesActivasCount === 1);
             </div>
 
             <div class="w-full px-8 mb-4 flex-1 flex items-end">
+                <div class="grid grid-cols-3 gap-4 w-full">
+                    <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-emerald-700 tracking-wide">Servicios Esperados (Meta)</div>
+                        <div class="text-3xl font-black text-emerald-700 mt-1"><?= number_format($metaServicios['esperados'] ?? 0) ?></div>
+                        <div class="text-[9px] text-emerald-600/80 mt-1">
+                            <?= number_format($metaServicios['dias_laborables'] ?? 0) ?> días laborables
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-blue-700 tracking-wide">Servicios Realizados</div>
+                        <div class="text-3xl font-black text-blue-700 mt-1"><?= number_format($totalGlobalServicios) ?></div>
+                        <div class="text-[9px] text-blue-600/80 mt-1">Total de servicios registrados en el período</div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                        <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wide">Cumplimiento de Meta</div>
+                        <div class="text-3xl font-black mt-1 <?= ($cumplimientoMeta >= 100) ? 'text-emerald-600' : (($cumplimientoMeta >= 80) ? 'text-amber-600' : 'text-rose-600') ?>">
+                            <?= number_format($cumplimientoMeta, 1) ?>%
+                        </div>
+                        <div class="text-[9px] text-slate-400 mt-1">Realizados / Esperados del período</div>
+                    </div>
+                </div>
             </div>
 
             <div class="w-full px-8 mb-4 flex-1 flex items-end">
@@ -1307,6 +1334,228 @@ $esModoUnico = ($seccionesActivasCount === 1);
                     <?php endif; ?>
 
                     <!-- Espacio inferior para balancear el pie de página -->
+                    <div class="shrink-0 mt-4"></div>
+
+                </div>
+            </div>
+        <?php endif; ?>
+
+
+
+
+
+        <?php if ($this->seccionActiva('novedades')): ?>
+            <div class="card-wrapper">
+                <div class="card bg-indigo-50/30 border border-indigo-100 p-5 flex flex-col justify-between">
+
+                    <div class="flex justify-between items-center mb-4 border-b border-indigo-200/60 pb-2.5 shrink-0">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-white border border-indigo-200 flex items-center justify-center text-indigo-600 text-lg shadow-sm">
+                                🏷️
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-indigo-900 leading-tight">Principales Novedades por Delegación</h3>
+                                <p class="text-xs text-indigo-600 font-medium">Top 6 de novedades en <strong>servicios no fallidos</strong></p>
+                            </div>
+                        </div>
+                        <div class="date-badge text-xl font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
+                    </div>
+
+                    <?php if (empty($novedadesPorDelegacion)): ?>
+                        <div class="text-center py-8 text-sm text-slate-500 font-bold italic bg-white rounded-xl border border-indigo-100 shadow-sm">
+                            No se registraron novedades en servicios no fallidos durante el período.
+                        </div>
+                    <?php else: ?>
+                        <div class="grid grid-cols-3 gap-4 flex-1">
+                            <?php foreach ($novedadesPorDelegacion as $nomDelegacion => $items):
+                                $totalZona = array_sum(array_column($items, 'total'));
+                                $maxZona = !empty($items) ? max(array_column($items, 'total')) : 1;
+                                ?>
+                                <div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-indigo-100 p-3.5 h-fit">
+                                    <div class="flex justify-between items-center mb-2.5 border-b border-slate-100 pb-1.5">
+                                        <h4 class="font-extrabold text-slate-800 text-xs uppercase truncate max-w-[70%]"
+                                            title="<?= htmlspecialchars($nomDelegacion, ENT_QUOTES) ?>">
+                                            <?= $nomDelegacion ?>
+                                        </h4>
+                                        <span class="bg-indigo-100 text-indigo-700 text-[9.5px] px-2 py-0.5 rounded-full font-black">
+                                            Tot: <?= $totalZona ?>
+                                        </span>
+                                    </div>
+
+                                    <ul class="space-y-2.5">
+                                        <?php foreach ($items as $item):
+                                            $ancho = $maxZona > 0 ? min(($item['total'] / $maxZona) * 100, 100) : 0;
+                                            ?>
+                                            <li class="flex flex-col">
+                                                <div class="flex justify-between items-start text-[11px] mb-1">
+                                                    <span class="text-slate-700 font-bold flex-1 pr-2 break-all leading-tight"
+                                                        title="<?= htmlspecialchars($item['nombre'], ENT_QUOTES) ?>">
+                                                        <?= $item['nombre'] ?>
+                                                    </span>
+                                                    <span class="font-extrabold text-indigo-600 text-[11px] shrink-0">
+                                                        <?= (int) $item['total'] ?>
+                                                    </span>
+                                                </div>
+                                                <div class="w-full h-1.5 bg-indigo-50 rounded-full overflow-hidden border border-indigo-100 shadow-inner">
+                                                    <div class="h-full bg-indigo-500 rounded-full" style="width: <?= $ancho ?>%"></div>
+                                                </div>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="shrink-0 mt-4"></div>
+
+                </div>
+            </div>
+        <?php endif; ?>
+
+
+        <?php if ($this->seccionActiva('novedades_fallidas')): ?>
+            <div class="card-wrapper">
+                <div class="card bg-rose-50/40 border border-rose-200 p-5 flex flex-col justify-between">
+
+                    <div class="flex justify-between items-center mb-4 border-b border-rose-200/60 pb-2.5 shrink-0">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-white border border-rose-200 flex items-center justify-center text-rose-600 text-lg shadow-sm">
+                                ⚠️
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-rose-900 leading-tight">Novedades de Servicios Fallidos</h3>
+                                <p class="text-xs text-rose-600 font-medium">Top 6 de novedades por delegación en <strong>servicios fallidos</strong></p>
+                            </div>
+                        </div>
+                        <div class="date-badge text-xl font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
+                    </div>
+
+                    <?php if (empty($novedadesFallidasPorDelegacion)): ?>
+                        <div class="text-center py-8 text-sm text-slate-500 font-bold italic bg-white rounded-xl border border-rose-100 shadow-sm">
+                            No se registraron novedades en servicios fallidos durante el período.
+                        </div>
+                    <?php else: ?>
+                        <div class="overflow-hidden rounded-lg border border-rose-200 bg-white flex-1">
+                            <table class="w-full text-[10px] text-left">
+                                <thead class="bg-rose-700 text-white">
+                                    <tr>
+                                        <th class="px-3 py-2 uppercase tracking-wider text-[9px] w-48">Delegación</th>
+                                        <th class="px-3 py-2 uppercase tracking-wider text-[9px]">Principales novedades (Top 6)</th>
+                                        <th class="px-3 py-2 uppercase tracking-wider text-[9px] text-right w-24">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-rose-100">
+                                    <?php foreach ($novedadesFallidasPorDelegacion as $nomDelegacion => $items):
+                                        $totalZona = array_sum(array_column($items, 'total'));
+                                        ?>
+                                        <tr class="break-inside-avoid hover:bg-rose-50/60">
+                                            <td class="px-3 py-2 align-top font-black text-rose-800 uppercase">
+                                                <?= $nomDelegacion ?>
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    <?php foreach ($items as $item): ?>
+                                                        <span class="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[9px] font-medium text-rose-700">
+                                                            <span><?= $item['nombre'] ?></span>
+                                                            <span class="rounded-full bg-rose-600 px-1.5 py-0.5 text-[8px] font-black text-white"><?= (int) $item['total'] ?></span>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </td>
+                                            <td class="px-3 py-2 text-right align-top font-black text-rose-700"><?= $totalZona ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="shrink-0 mt-4"></div>
+
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($this->seccionActiva('clientes_novedades')): ?>
+            <div class="card-wrapper">
+                <div class="card bg-amber-50/40 border border-amber-200 p-5 flex flex-col justify-between">
+
+                    <div class="flex justify-between items-center mb-4 border-b border-amber-200/60 pb-2.5 shrink-0">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-full bg-white border border-amber-200 flex items-center justify-center text-amber-600 text-lg shadow-sm">
+                                👥
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-amber-900 leading-tight">Clientes con Más Novedades por Delegación</h3>
+                                <p class="text-xs text-amber-700 font-medium">Top 3 de clientes por delegación y sus <strong>3 novedades más frecuentes</strong></p>
+                            </div>
+                        </div>
+                        <div class="date-badge text-xl font-bold text-slate-700">
+                            <?= date('d/m/Y', strtotime($inicio)) ?> - <?= date('d/m/Y', strtotime($fin)) ?>
+                        </div>
+                    </div>
+
+                    <?php if (empty($clientesNovedades)): ?>
+                        <div class="text-center py-8 text-sm text-slate-500 font-bold italic bg-white rounded-xl border border-amber-100 shadow-sm">
+                            No se registraron novedades por cliente durante el período.
+                        </div>
+                    <?php else: ?>
+                        <div class="grid grid-cols-3 gap-4 flex-1">
+                            <?php foreach ($clientesNovedades as $nomDelegacion => $clientes):
+                                $totalZona = array_sum(array_column($clientes, 'total'));
+                                $maxZona = !empty($clientes) ? max(array_column($clientes, 'total')) : 1;
+                                ?>
+                                <div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-amber-100 p-3.5 h-fit">
+                                    <div class="flex justify-between items-center mb-2.5 border-b border-slate-100 pb-1.5">
+                                        <h4 class="font-extrabold text-slate-800 text-xs uppercase truncate max-w-[70%]"
+                                            title="<?= htmlspecialchars($nomDelegacion, ENT_QUOTES) ?>">
+                                            <?= $nomDelegacion ?>
+                                        </h4>
+                                        <span class="bg-amber-100 text-amber-700 text-[9.5px] px-2 py-0.5 rounded-full font-black">
+                                            Top: <?= $totalZona ?>
+                                        </span>
+                                    </div>
+
+                                    <ul class="space-y-3">
+                                        <?php foreach ($clientes as $cli):
+                                            $ancho = $maxZona > 0 ? min(($cli['total'] / $maxZona) * 100, 100) : 0;
+                                            ?>
+                                            <li class="flex flex-col">
+                                                <div class="flex justify-between items-start text-[10.5px] mb-1">
+                                                    <span class="text-slate-700 font-bold flex-1 pr-2 break-words leading-tight"
+                                                        title="<?= htmlspecialchars($cli['cliente'], ENT_QUOTES) ?>">
+                                                        <?= $cli['cliente'] ?>
+                                                    </span>
+                                                    <span class="font-extrabold text-amber-600 text-[11px] shrink-0">
+                                                        <?= (int) $cli['total'] ?>
+                                                    </span>
+                                                </div>
+                                                <div class="w-full h-1.5 bg-amber-50 rounded-full overflow-hidden border border-amber-100 shadow-inner">
+                                                    <div class="h-full bg-amber-500 rounded-full" style="width: <?= $ancho ?>%"></div>
+                                                </div>
+                                                <?php if (!empty($cli['novedades'])): ?>
+                                                    <div class="flex flex-wrap gap-1 mt-1.5">
+                                                        <?php foreach ($cli['novedades'] as $nov): ?>
+                                                            <span class="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[8px] font-medium text-amber-800">
+                                                                <span><?= $nov['nombre'] ?></span>
+                                                                <span class="rounded-full bg-amber-600 px-1 py-0.5 text-[7.5px] font-black text-white"><?= (int) $nov['total'] ?></span>
+                                                            </span>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="shrink-0 mt-4"></div>
 
                 </div>
