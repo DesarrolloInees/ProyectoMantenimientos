@@ -11,45 +11,187 @@ class serviciosPdfModelo
         $this->conn = $db;
     }
 
-    public function listarServiciosParaPdf($idRol = null, $mesesRestriccion = 0)
+    private function obtenerSelectServicios()
     {
-        $condicionWhere = " WHERE o.estado = 1 ";
-        $params = [];
-
-        if ($idRol == 4 && $mesesRestriccion > 0) {
-            // Ocultar registros cuya fecha_visita sea mayor a la fecha de hace X meses
-            $condicionWhere .= " AND o.fecha_visita <= DATE_SUB(CURDATE(), INTERVAL ? MONTH) ";
-            $params[] = $mesesRestriccion;
-        }
-
-        $sql = "SELECT 
+        return "SELECT
                     o.id_ordenes_servicio,
                     o.numero_remision,
                     o.fecha_visita,
+                    o.id_tecnico,
                     t.nombre_tecnico,
-                    COALESCE(c_directo.nombre_cliente, c_maq.nombre_cliente, 'SIN CLIENTE') as nombre_cliente,
-                    COALESCE(p_directo.nombre_punto, p_maq.nombre_punto, 'SIN PUNTO') as nombre_punto
+                    COALESCE(c_directo.id_cliente, c_maq.id_cliente) AS id_cliente,
+                    COALESCE(c_directo.nombre_cliente, c_maq.nombre_cliente, 'SIN CLIENTE') AS nombre_cliente,
+                    COALESCE(p_directo.id_punto, p_maq.id_punto) AS id_punto,
+                    COALESCE(p_directo.nombre_punto, p_maq.nombre_punto, 'SIN PUNTO') AS nombre_punto,
+                    COALESCE(d_directo.id_delegacion, d_maq.id_delegacion) AS id_delegacion,
+                    COALESCE(d_directo.nombre_delegacion, d_maq.nombre_delegacion, 'SIN ASIGNAR') AS nombre_delegacion,
+                    o.id_tipo_mantenimiento,
+                    tman.nombre_completo AS tipo_servicio
                 FROM ordenes_servicio o
                 LEFT JOIN tecnico t ON o.id_tecnico = t.id_tecnico
+                LEFT JOIN tipo_mantenimiento tman ON o.id_tipo_mantenimiento = tman.id_tipo_mantenimiento
                 
                 LEFT JOIN cliente c_directo ON o.id_cliente = c_directo.id_cliente
                 LEFT JOIN punto p_directo ON o.id_punto = p_directo.id_punto
+                LEFT JOIN delegacion d_directo ON p_directo.id_delegacion = d_directo.id_delegacion
                 
                 LEFT JOIN maquina m ON o.id_maquina = m.id_maquina
                 LEFT JOIN punto p_maq ON m.id_punto = p_maq.id_punto
                 LEFT JOIN cliente c_maq ON p_maq.id_cliente = c_maq.id_cliente
-                
-                $condicionWhere
-                
+                LEFT JOIN delegacion d_maq ON p_maq.id_delegacion = d_maq.id_delegacion";
+    }
+
+    private function construirCondicionesServicios($idRol, $mesesRestriccion, $filtros, &$params)
+    {
+        $condiciones = ["o.estado = 1"];
+
+        if ($idRol == 4 && $mesesRestriccion > 0) {
+            $condiciones[] = "o.fecha_visita <= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+            $params[] = (int) $mesesRestriccion;
+        }
+
+        $fechaInicio = trim((string) ($filtros['fecha_inicio'] ?? ''));
+        $fechaFin = trim((string) ($filtros['fecha_fin'] ?? ''));
+
+        if ($fechaInicio !== '' && $fechaFin !== '') {
+            $condiciones[] = "o.fecha_visita BETWEEN ? AND ?";
+            $params[] = $fechaInicio;
+            $params[] = $fechaFin;
+        } elseif ($fechaInicio !== '') {
+            $condiciones[] = "o.fecha_visita >= ?";
+            $params[] = $fechaInicio;
+        } elseif ($fechaFin !== '') {
+            $condiciones[] = "o.fecha_visita <= ?";
+            $params[] = $fechaFin;
+        }
+
+        if (!empty($filtros['id_cliente'])) {
+            $condiciones[] = "COALESCE(c_directo.id_cliente, c_maq.id_cliente) = ?";
+            $params[] = (int) $filtros['id_cliente'];
+        }
+
+        if (!empty($filtros['id_punto'])) {
+            $condiciones[] = "COALESCE(p_directo.id_punto, p_maq.id_punto) = ?";
+            $params[] = (int) $filtros['id_punto'];
+        }
+
+        if (!empty($filtros['id_tecnico'])) {
+            $condiciones[] = "o.id_tecnico = ?";
+            $params[] = (int) $filtros['id_tecnico'];
+        }
+
+        if (!empty($filtros['id_delegacion'])) {
+            $condiciones[] = "COALESCE(d_directo.id_delegacion, d_maq.id_delegacion) = ?";
+            $params[] = (int) $filtros['id_delegacion'];
+        }
+
+        if (!empty($filtros['id_tipo_mantenimiento'])) {
+            $condiciones[] = "o.id_tipo_mantenimiento = ?";
+            $params[] = (int) $filtros['id_tipo_mantenimiento'];
+        }
+
+        return implode(' AND ', $condiciones);
+    }
+
+    public function listarServiciosParaPdf($idRol = null, $mesesRestriccion = 0, $filtros = [], $limite = 1000)
+    {
+        $params = [];
+        $condicionWhere = $this->construirCondicionesServicios($idRol, $mesesRestriccion, $filtros, $params);
+        $limite = max(1, (int) $limite);
+
+        $sql = $this->obtenerSelectServicios() . "
+                WHERE $condicionWhere
                 ORDER BY o.fecha_visita DESC, o.id_ordenes_servicio DESC
-                LIMIT 1000";
+                LIMIT $limite";
 
         try {
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute($params); // Pasamos los parámetros de la consulta preparada
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Error SQL en serviciosPdfModelo: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function obtenerServiciosPorIds($ids, $idRol = null, $mesesRestriccion = 0)
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids), fn($id) => $id > 0)));
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $params = [];
+        $condicionWhere = $this->construirCondicionesServicios($idRol, $mesesRestriccion, [], $params);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $condicionWhere .= " AND o.id_ordenes_servicio IN ($placeholders)";
+        $params = array_merge($params, $ids);
+
+        $sql = $this->obtenerSelectServicios() . "
+                WHERE $condicionWhere
+                ORDER BY o.fecha_visita DESC, o.id_ordenes_servicio DESC";
+
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error SQL en obtenerServiciosPorIds: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function obtenerOpcionesFiltro()
+    {
+        $opciones = [
+            'clientes' => [],
+            'tecnicos' => [],
+            'delegaciones' => [],
+            'tipos' => []
+        ];
+
+        try {
+            $opciones['clientes'] = $this->conn->query(
+                "SELECT id_cliente, nombre_cliente FROM cliente WHERE estado = 1 ORDER BY nombre_cliente ASC"
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+            $opciones['tecnicos'] = $this->conn->query(
+                "SELECT id_tecnico, nombre_tecnico FROM tecnico WHERE estado = 1 ORDER BY nombre_tecnico ASC"
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+            $opciones['delegaciones'] = $this->conn->query(
+                "SELECT id_delegacion, nombre_delegacion FROM delegacion WHERE estado = 1 ORDER BY nombre_delegacion ASC"
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+            $opciones['tipos'] = $this->conn->query(
+                "SELECT id_tipo_mantenimiento, nombre_completo FROM tipo_mantenimiento WHERE estado = 1 ORDER BY nombre_completo ASC"
+            )->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo opciones de filtro: " . $e->getMessage());
+        }
+
+        return $opciones;
+    }
+
+    public function obtenerPuntos($idCliente = null)
+    {
+        $sql = "SELECT id_punto, id_cliente, nombre_punto FROM punto WHERE estado = 1";
+        $params = [];
+
+        if (!empty($idCliente)) {
+            $sql .= " AND id_cliente = ?";
+            $params[] = (int) $idCliente;
+        }
+
+        $sql .= " ORDER BY nombre_punto ASC LIMIT 5000";
+
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error obteniendo puntos: " . $e->getMessage());
             return [];
         }
     }
