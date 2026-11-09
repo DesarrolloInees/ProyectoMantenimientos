@@ -454,6 +454,15 @@ class reporteTecnicoControlador
             $totalHorasDia += $j['minutos'];
         }
 
+        // ── Desplazamientos entre servicios (por técnico, mismo día) ──
+        // Tiempo que tardó el técnico en ir de la salida de un servicio a la
+        // entrada del siguiente (hora_entrada actual - hora_salida anterior).
+        $desplazamientos = $this->calcularDesplazamientos($datosDia);
+        $totalDesplazamientoDia = 0;
+        foreach ($desplazamientos as $dsp) {
+            $totalDesplazamientoDia += (int)$dsp['total_min'];
+        }
+
         return [
             'fecha' => $fecha,
             'rangoInicio' => date('d/m/Y', strtotime($fecha)),
@@ -475,9 +484,133 @@ class reporteTecnicoControlador
             'totalesColumna' => $totalesColumna,
             'totalGeneral' => $totalGeneral,
             'totalHorasDia' => $totalHorasDia,
+            'desplazamientos' => $desplazamientos,
+            'totalDesplazamientoDia' => $totalDesplazamientoDia,
             'fallidos' => $fallidos,
             'totalFallidos' => $totalFallidos,
         ];
+    }
+
+    /**
+     * Calcula el tiempo de desplazamiento entre servicios consecutivos de cada
+     * técnico durante el día (hora_entrada actual - hora_salida anterior).
+     *
+     * Retorna: [tecnico => [
+     *     'total_min' => int,
+     *     'total_txt' => 'Hh Mm',
+     *     'tramos'    => ['12m', '1h 5m', ...]
+     * ]]
+     */
+    private function calcularDesplazamientos($datosDia)
+    {
+        $porTecnico = [];
+        foreach ($datosDia as $item) {
+            $tec = !empty($item['nombre_tecnico']) ? trim($item['nombre_tecnico']) : 'Sin Nombre';
+
+            $he = isset($item['hora_entrada']) ? trim((string)$item['hora_entrada']) : '';
+            $hs = isset($item['hora_salida']) ? trim((string)$item['hora_salida']) : '';
+            $he = ($he !== '' && $he !== 'null' && strlen($he) >= 5) ? substr($he, 0, 5) : null;
+            $hs = ($hs !== '' && $hs !== 'null' && strlen($hs) >= 5) ? substr($hs, 0, 5) : null;
+
+            $porTecnico[$tec][] = ['entrada' => $he, 'salida' => $hs];
+        }
+
+        $resultado = [];
+        foreach ($porTecnico as $tec => $servicios) {
+            // Orden cronológico por hora de entrada (los sin hora van al final).
+            usort($servicios, function ($a, $b) {
+                return strcmp($a['entrada'] ?? '99:99', $b['entrada'] ?? '99:99');
+            });
+
+            $tramos = []; // ['min' => int, 'inicio' => min, 'fin' => min]
+            $prevSalida = null;
+
+            foreach ($servicios as $s) {
+                if ($prevSalida !== null && $s['entrada'] !== null) {
+                    $mS = ((int)substr($prevSalida, 0, 2) * 60) + (int)substr($prevSalida, 3, 2);
+                    $mE = ((int)substr($s['entrada'], 0, 2) * 60) + (int)substr($s['entrada'], 3, 2);
+                    $dif = $mE - $mS;
+                    if ($dif > 0) {
+                        $tramos[] = ['min' => $dif, 'inicio' => $mS, 'fin' => $mE];
+                    }
+                }
+                $prevSalida = $s['salida'];
+            }
+
+            // Descontar el almuerzo (1 hora) igual que en la duración de jornada.
+            $this->descontarAlmuerzo($tramos);
+
+            $total = 0;
+            $tramosTxt = [];
+            foreach ($tramos as $t) {
+                if ($t['min'] <= 0) {
+                    continue;
+                }
+                $total += $t['min'];
+                $tramosTxt[] = $this->formatearMinutos($t['min']);
+            }
+
+            $resultado[$tec] = [
+                'total_min' => $total,
+                'total_txt' => $this->formatearMinutos($total),
+                'tramos' => $tramosTxt,
+            ];
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Descuenta 1 hora de almuerzo del tramo que cruza la franja 12:00–14:00.
+     * Si ningún tramo la cruza, descuenta del tramo más largo (> 60 min).
+     * Así el desplazamiento no queda inflado por el almuerzo (Opción A).
+     */
+    private function descontarAlmuerzo(&$tramos)
+    {
+        $inicioAlmuerzo = 12 * 60; // 12:00
+        $finAlmuerzo = 14 * 60;    // 14:00
+
+        $objetivo = null;
+        $mejorSolape = 0;
+        foreach ($tramos as $i => $t) {
+            $solape = min($t['fin'], $finAlmuerzo) - max($t['inicio'], $inicioAlmuerzo);
+            if ($solape > $mejorSolape) {
+                $mejorSolape = $solape;
+                $objetivo = $i;
+            }
+        }
+
+        // Si ningún tramo cruza el mediodía, usar el tramo más largo (> 60 min).
+        if ($objetivo === null) {
+            $mejorMin = 60;
+            foreach ($tramos as $i => $t) {
+                if ($t['min'] > $mejorMin) {
+                    $mejorMin = $t['min'];
+                    $objetivo = $i;
+                }
+            }
+        }
+
+        if ($objetivo !== null) {
+            $tramos[$objetivo]['min'] = max(0, $tramos[$objetivo]['min'] - 60);
+        }
+    }
+
+    /**
+     * Formatea una cantidad de minutos como texto corto: 45m / 1h / 1h 5m.
+     */
+    private function formatearMinutos($min)
+    {
+        $min = (int)$min;
+        if ($min <= 0) {
+            return '--';
+        }
+        $h = intdiv($min, 60);
+        $m = $min % 60;
+        if ($h > 0 && $m > 0) {
+            return $h . 'h ' . $m . 'm';
+        }
+        return ($h > 0) ? ($h . 'h') : ($m . 'm');
     }
 
     /**

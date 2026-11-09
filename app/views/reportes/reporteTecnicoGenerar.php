@@ -102,17 +102,13 @@
                                     </span>
                                 <?php endif; ?>
                             </p>
-                            <div class="mt-2 flex items-center gap-2 flex-wrap">
-                                <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wide">
-                                    Meta del día:
-                                    <?= $sinMetaDia ? 'N/A' : number_format($metaTotalDia) . ' servicios' ?>
-                                </span>
-                                <?php if (!$sinMetaDia): ?>
+                            <?php if (!$sinMetaDia): ?>
+                                <div class="mt-2 flex items-center gap-2 flex-wrap">
                                     <span class="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[9px] font-bold uppercase tracking-wide">
                                         <?= $dia['metaVerde'] ?> por técnico · Nueva Arq. <?= $dia['metaNuevaArquitectura'] ?>
                                     </span>
-                                <?php endif; ?>
-                            </div>
+                                </div>
+                            <?php endif; ?>
                     </div>
                 </div>
 
@@ -138,15 +134,56 @@
             $metaTxt = $dia['metaVerde'] . ' / ' . $dia['metaNuevaArquitectura'] . ' Nueva Arq.';
         }
 
+        $totalServiciosDia = (int)($dia['resumenTipos']['total'] ?? 0);
+        $serviciosSinFallidosDia = 0;
+        foreach ($dia['rendimiento'] as $r) {
+            $serviciosSinFallidosDia += (int)($r['sin_fallidos'] ?? 0);
+        }
+        $pctCumplimiento = ($metaTotalDia > 0) ? (int)round(($serviciosSinFallidosDia / $metaTotalDia) * 100) : 0;
+        if ($metaTotalDia <= 0) {
+            $pctColor = 'text-slate-400';
+        } elseif ($pctCumplimiento >= 100) {
+            $pctColor = 'text-emerald-700';
+        } elseif ($pctCumplimiento >= 66) {
+            $pctColor = 'text-amber-700';
+        } else {
+            $pctColor = 'text-rose-700';
+        }
+
         $kpis = [
-            ['Servicios del día', number_format($dia['resumenTipos']['total'] ?? 0), 'slate-800', 'slate-100', 'slate-400'],
             ['Meta por técnico', $metaTxt, 'emerald-700', 'emerald-50', 'emerald-200'],
             ['Técnicos en ruta', number_format(count($dia['tecnicosOrdenados'])), 'blue-700', 'blue-50', 'blue-200'],
             ['Horas laboradas', $horasTxt, 'violet-700', 'violet-50', 'violet-200'],
             ['Servicios fallidos', number_format($dia['resumenTipos']['fallido'] ?? 0), 'rose-700', 'rose-50', 'rose-200'],
         ];
-        foreach ($kpis as $k):
-            ?>
+        ?>
+
+        <!-- Servicios del día + Meta del día + % de cumplimiento -->
+        <div class="border rounded-xl p-3.5 border-slate-200 bg-slate-50">
+            <div class="text-[8.5px] uppercase font-black tracking-wide text-slate-400 leading-none mb-1.5">
+                Servicios del día
+            </div>
+            <div class="flex items-end justify-between gap-2">
+                <div class="text-2xl font-black text-slate-800 leading-none">
+                    <?= number_format($totalServiciosDia) ?>
+                </div>
+                <div class="text-right leading-none">
+                    <?php if ($metaTotalDia > 0): ?>
+                        <div class="text-[13px] font-black text-emerald-700 leading-none">
+                            Meta <?= number_format($metaTotalDia) ?>
+                        </div>
+                        <div class="text-[16px] font-black <?= $pctColor ?> leading-none mt-1"
+                            title="Cumplimiento calculado con servicios sin fallidos">
+                            <?= $pctCumplimiento ?>% cumpl.
+                        </div>
+                    <?php else: ?>
+                        <div class="text-[10px] font-black text-slate-400 leading-none">Meta N/A</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <?php foreach ($kpis as $k): ?>
             <div class="border rounded-xl p-3.5 border-<?= $k[4] ?> bg-<?= $k[3] ?>">
                 <div class="text-[8.5px] uppercase font-black tracking-wide text-<?= $k[4] ?> leading-none mb-1.5">
                     <?= $k[0] ?>
@@ -207,7 +244,7 @@
                     <span class="w-2 h-2 rounded-full bg-rose-500"></span> Bajo meta
                 </span>
                 <span class="flex items-center gap-1">
-                    <span class="w-2 h-2 rounded-full bg-rose-300"></span> Fallidos (incluidos en total)
+                    <span class="w-2 h-2 rounded-full bg-rose-300"></span> Fallidos (marcados en la barra)
                 </span>
             </div>
         </div>
@@ -217,10 +254,16 @@
                 <thead class="bg-slate-800 text-white">
                     <tr>
                         <th class="px-3 py-2.5 text-left uppercase tracking-wider text-[9px] w-52">Nombre del Técnico</th>
-                        <th class="px-3 py-2.5 uppercase tracking-wider text-[9px] w-56">
+                        <th class="px-3 py-2.5 uppercase tracking-wider text-[9px] w-24">
                             Servicios
                             <div class="text-[7px] font-medium opacity-70 normal-case tracking-normal">
-                                con fallidos / sin fallidos
+                                total
+                            </div>
+                        </th>
+                        <th class="px-2 py-2.5 uppercase tracking-wider text-[8px] font-bold border-l border-white/15 w-16">
+                            Fallidos
+                            <div class="text-[7px] font-medium opacity-70 normal-case tracking-normal">
+                                del total
                             </div>
                         </th>
                         <th class="px-2 py-2.5 uppercase tracking-wider text-[8px] font-bold border-l border-white/15 w-20">
@@ -229,10 +272,6 @@
                                 esperada
                             </div>
                         </th>
-                        <?php foreach ($dia['tiposColumnas'] as $tipo): ?>
-                            <th class="px-2 py-2.5 uppercase tracking-wider text-[8px] font-bold border-l border-white/15"
-                                style="min-width: 78px;"><?= htmlspecialchars($tipo) ?></th>
-                        <?php endforeach; ?>
                         <th class="px-2 py-2.5 uppercase tracking-wider text-[8px] font-bold border-l border-white/15 w-16">
                             Entrada
                         </th>
@@ -242,6 +281,16 @@
                         <th class="px-2 py-2.5 uppercase tracking-wider text-[8px] font-bold border-l border-white/15 w-16">
                             Duración
                         </th>
+                        <th class="px-2 py-2.5 uppercase tracking-wider text-[8px] font-bold border-l border-white/15 w-28">
+                            Desplazamiento
+                            <div class="text-[7px] font-medium opacity-70 normal-case tracking-normal">
+                                entre servicios
+                            </div>
+                        </th>
+                        <?php foreach ($dia['tiposColumnas'] as $tipo): ?>
+                            <th class="px-2 py-2.5 uppercase tracking-wider text-[8px] font-bold border-l border-white/15"
+                                style="min-width: 78px;"><?= htmlspecialchars($tipo) ?></th>
+                        <?php endforeach; ?>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -275,32 +324,38 @@
                                 <span class="font-black text-slate-800 uppercase"><?= htmlspecialchars($tec) ?></span>
                             </td>
 
+                            <?php $hayFallidosTec = ((int)($rend['fallidos'] ?? 0)) > 0; ?>
                             <td class="px-3 py-1.5">
                                 <div class="flex flex-col items-center gap-1">
-                                    <div class="flex items-baseline justify-center gap-1 leading-none">
-                                        <span class="text-[12px] font-black text-slate-900"><?= number_format($rend['servicios']) ?></span>
-                                        <span class="text-[8px] font-bold text-slate-400 uppercase">con fallidos.</span>
-                                        <span class="text-[9px] text-slate-300">/</span>
-                                        <span class="text-[11px] font-black text-emerald-700"><?= number_format($rend['sin_fallidos']) ?></span>
-                                        <span class="text-[8px] font-bold text-slate-400 uppercase">sin fallidos.</span>
+                                    <div class="text-[15px] font-black text-slate-900 leading-none">
+                                        <?= number_format($rend['servicios']) ?>
                                     </div>
-                                    <div class="flex w-32 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                                    <div class="flex w-28 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                                         <div class="h-full <?= $rend['color'] ?>"
                                             style="width: <?= $rend['porcentaje'] ?>%"></div>
-                                        <?php if ($rend['fallidos'] > 0): ?>
+                                        <?php if ($hayFallidosTec): ?>
                                             <div class="h-full bg-rose-300"
                                                 style="width: <?= $rend['ancho_fallidos'] ?>%"></div>
                                         <?php endif; ?>
                                     </div>
                                     <div class="text-[8px] font-black <?= $rend['texto'] ?> leading-none">
                                         <?php if ($rend['meta'] > 0): ?>
-                                            Meta <?= $rend['meta'] ?><?= $rend['es_na'] ? ' (Nueva Arq.)' : '' ?>
-                                            · <?= round($rend['porcentaje_real']) ?>%
+                                            <?= round($rend['porcentaje_real']) ?>%
                                         <?php else: ?>
                                             Sin meta
                                         <?php endif; ?>
                                     </div>
                                 </div>
+                            </td>
+
+                            <td class="px-2 py-1.5 border-l border-slate-100">
+                                <?php if ($hayFallidosTec): ?>
+                                    <span class="inline-block min-w-[24px] px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 font-black">
+                                        <?= number_format($rend['fallidos']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-slate-300 font-bold">-</span>
+                                <?php endif; ?>
                             </td>
 
                             <td class="px-2 py-1.5 border-l border-slate-100">
@@ -311,6 +366,30 @@
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-slate-300 font-bold">--</span>
+                                <?php endif; ?>
+                            </td>
+
+                            <td class="px-2 py-1.5 border-l border-slate-100 font-bold text-slate-600">
+                                <?= $jor['entrada'] !== null ? htmlspecialchars($jor['entrada']) : '--' ?>
+                            </td>
+                            <td class="px-2 py-1.5 border-l border-slate-100 font-bold text-slate-600">
+                                <?= $jor['salida'] !== null ? htmlspecialchars($jor['salida']) : '--' ?>
+                            </td>
+                            <td class="px-2 py-1.5 border-l border-slate-100 font-black text-slate-800">
+                                <?= $durTxt ?>
+                            </td>
+
+                            <?php
+                            $dsp = $dia['desplazamientos'][$tec] ?? ['total_min' => 0, 'total_txt' => '--', 'tramos' => []];
+                            ?>
+                            <td class="px-2 py-1.5 border-l border-slate-100">
+                                <div class="font-black text-slate-800 leading-none">
+                                    <?= htmlspecialchars($dsp['total_txt'] ?? '--') ?>
+                                </div>
+                                <?php if (!empty($dsp['tramos'])): ?>
+                                    <div class="text-[7.5px] font-semibold text-slate-400 leading-tight mt-0.5">
+                                        <?= htmlspecialchars(implode(' · ', $dsp['tramos'])) ?>
+                                    </div>
                                 <?php endif; ?>
                             </td>
 
@@ -327,36 +406,40 @@
                                     <?php endif; ?>
                                 </td>
                             <?php endforeach; ?>
-                            <td class="px-2 py-1.5 border-l border-slate-100 font-bold text-slate-600">
-                                <?= $jor['entrada'] !== null ? htmlspecialchars($jor['entrada']) : '--' ?>
-                            </td>
-                            <td class="px-2 py-1.5 border-l border-slate-100 font-bold text-slate-600">
-                                <?= $jor['salida'] !== null ? htmlspecialchars($jor['salida']) : '--' ?>
-                            </td>
-                            <td class="px-2 py-1.5 border-l border-slate-100 font-black text-slate-800">
-                                <?= $durTxt ?>
-                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
 
                 <tfoot>
+                    <?php
+                    $totalDesp = (int)($dia['totalDesplazamientoDia'] ?? 0);
+                    $totalDespTxt = '--';
+                    if ($totalDesp > 0) {
+                        $totalDespTxt = floor($totalDesp / 60) . 'h ' . str_pad((string)($totalDesp % 60), 2, '0', STR_PAD_LEFT) . 'm';
+                    }
+                    ?>
                     <tr class="bg-blue-600 text-white">
                         <td class="px-3 py-2.5 text-left font-black uppercase tracking-wider text-[10px]">TOTALES</td>
                         <td class="px-3 py-2.5 text-center font-black text-sm"><?= number_format($dia['totalGeneral']) ?></td>
+                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20 text-rose-100">
+                            <?= number_format($dia['totalFallidos'] ?? 0) ?>
+                        </td>
                         <td class="px-2 py-2.5 text-center font-black text-sm border-l border-white/20">
                             <?= $sinMetaDia ? '--' : number_format($metaTotalDia) ?>
+                        </td>
+                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20 text-white/70">--</td>
+                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20 text-white/70">--</td>
+                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20">
+                            <?= floor($dia['totalHorasDia'] / 60) . 'h ' . str_pad((string)($dia['totalHorasDia'] % 60), 2, '0', STR_PAD_LEFT) ?>
+                        </td>
+                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20">
+                            <?= $totalDespTxt ?>
                         </td>
                         <?php foreach ($dia['tiposColumnas'] as $tipo): ?>
                             <td class="px-1 py-2.5 text-center font-black border-l border-white/20">
                                 <?= number_format($dia['totalesColumna'][$tipo] ?? 0) ?>
                             </td>
                         <?php endforeach; ?>
-                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20 text-white/70">--</td>
-                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20 text-white/70">--</td>
-                        <td class="px-2 py-2.5 text-center font-black border-l border-white/20">
-                            <?= floor($dia['totalHorasDia'] / 60) . 'h ' . str_pad((string)($dia['totalHorasDia'] % 60), 2, '0', STR_PAD_LEFT) ?>
-                        </td>
                     </tr>
                 </tfoot>
             </table>
@@ -368,6 +451,7 @@
             <?= (int)$dia['metaNuevaArquitectura'] ?> (<?= $dia['esSabado'] ? 'sábado' : 'día hábil' ?>).
             La barra muestra los servicios sin fallidos (color sólido) y los fallidos (tono claro) sobre esa meta.
             Domingos y festivos no tienen meta. El porcentaje se calcula solo con servicios sin fallidos.
+            Desplazamiento = tiempo entre la salida de un servicio y la entrada al siguiente del mismo técnico, descontando 1 hora de almuerzo (franja 12:00–14:00).
         </p>
     </div>
 
