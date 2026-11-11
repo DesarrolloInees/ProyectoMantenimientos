@@ -209,7 +209,12 @@ $esModoUnico = ($seccionesActivasCount === 1);
 
                     <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm">
                         <div class="text-[10px] uppercase font-bold text-blue-700 tracking-wide">Servicios Realizados</div>
-                        <div class="text-3xl font-black text-blue-700 mt-1"><?= number_format($totalGlobalServicios) ?></div>
+                        <div class="flex items-baseline gap-2 mt-1">
+                            <div class="text-3xl font-black text-blue-700"><?= number_format($totalGlobalServicios) ?></div>
+                            <span class="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                <?= number_format($totalServiciosFallidos ?? 0) ?> fallidos
+                            </span>
+                        </div>
                         <div class="text-[9px] text-blue-600/80 mt-1">Total de servicios registrados en el período</div>
                     </div>
 
@@ -230,7 +235,12 @@ $esModoUnico = ($seccionesActivasCount === 1);
                         class="bg-white border border-slate-200 p-4 rounded-xl text-left flex flex-col shadow-sm min-h-[12rem]">
                         <div class="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
                             <div class="text-xs uppercase font-bold text-slate-400">Total Servicios</div>
-                            <div class="text-3xl font-black text-blue-600"><?= number_format($totalGlobalServicios) ?></div>
+                            <div class="flex items-baseline gap-2">
+                                <div class="text-3xl font-black text-blue-600"><?= number_format($totalGlobalServicios) ?></div>
+                                <span class="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                    <?= number_format($totalServiciosFallidos ?? 0) ?> fallidos
+                                </span>
+                            </div>
                         </div>
                         <div class="space-y-1.5 text-[10px] flex-1">
                             <?php foreach ($kpisDelegacion as $k): ?>

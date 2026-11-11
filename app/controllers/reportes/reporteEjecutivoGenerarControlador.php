@@ -328,6 +328,8 @@ class generarReporteControlador
             }
         }
 
+        $totalServiciosFallidos = $this->modelo->getTotalServiciosFallidos($inicio, $fin);
+
         $cumplimientoMeta = $metaServicios['esperados'] > 0
             ? round(($totalGlobalServicios / $metaServicios['esperados']) * 100, 1)
             : 0;

@@ -389,6 +389,32 @@ class ReporteEjecutivoModelo
         }
     }
 
+    /**
+     * Cuenta el total de servicios fallidos (tipo de mantenimiento "Fallido")
+     * dentro del rango de fechas seleccionado.
+     */
+    public function getTotalServiciosFallidos($fecha_inicio, $fecha_fin)
+    {
+        try {
+            $sql = "SELECT COUNT(DISTINCT os.id_ordenes_servicio) as total
+                    FROM ordenes_servicio os
+                    INNER JOIN tipo_mantenimiento tm
+                        ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    AND UPPER(tm.nombre_completo) LIKE '%FALLID%'";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':inicio', $fecha_inicio);
+            $stmt->bindParam(':fin', $fecha_fin);
+            $stmt->execute();
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return (int) ($resultado['total'] ?? 0);
+        } catch (PDOException $e) {
+            return 0;
+        }
+    }
+
     public function getCalificacionesServicio($fecha_inicio, $fecha_fin)
     {
         try {
@@ -825,37 +851,255 @@ public function getDesgloseIngresosPorTipo($fecha_inicio, $fecha_fin)
     }
 }
 
-/**
- * Obtiene el total de ingresos SOLO por repuestos (sin duplicar servicios)
- */
-public function getTotalIngresosRepuestos($fecha_inicio, $fecha_fin)
-{
-    try {
-        if (empty($fecha_inicio) || empty($fecha_fin)) {
+    /**
+     * Obtiene el total de ingresos SOLO por repuestos (sin duplicar servicios)
+     */
+    public function getTotalIngresosRepuestos($fecha_inicio, $fecha_fin)
+    {
+        try {
+            if (empty($fecha_inicio) || empty($fecha_fin)) {
+                return 0;
+            }
+
+            $sql = "SELECT COALESCE(SUM(osr.cantidad * osr.valor_unitario), 0) as total
+                    FROM orden_servicio_repuesto osr
+                    INNER JOIN ordenes_servicio os
+                        ON osr.id_orden_servicio = os.id_ordenes_servicio
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    AND os.estado = 1";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':inicio', $fecha_inicio);
+            $stmt->bindParam(':fin', $fecha_fin);
+            $stmt->execute();
+
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (float) $result['total'];
+
+        } catch (PDOException $e) {
+            error_log("Error en getTotalIngresosRepuestos: " . $e->getMessage());
             return 0;
         }
-
-        $sql = "SELECT COALESCE(SUM(osr.cantidad * osr.valor_unitario), 0) as total
-                FROM orden_servicio_repuesto osr
-                INNER JOIN ordenes_servicio os 
-                    ON osr.id_orden_servicio = os.id_ordenes_servicio
-                WHERE os.fecha_visita BETWEEN :inicio AND :fin
-                AND os.estado = 1";
-
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bindParam(':inicio', $fecha_inicio);
-        $stmt->bindParam(':fin', $fecha_fin);
-        $stmt->execute();
-        
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return (float) $result['total'];
-        
-    } catch (PDOException $e) {
-        error_log("Error en getTotalIngresosRepuestos: " . $e->getMessage());
-        return 0;
     }
-}
 
+    // ==========================================
+    // SECCIÓN 4: DETALLE PARA HOVER / EXCEL
+    // ==========================================
 
+    /**
+     * Puntos más visitados para la vista web. Agrupa por punto (no por tipo de
+     * máquina) para no duplicar el total de visitas.
+     */
+    public function getPuntosMasVisitadosWeb($fecha_inicio, $fecha_fin, $minVisitas = 2, $limite = 20, $filtros = [])
+    {
+        try {
+            $params = [
+                ':inicio' => $fecha_inicio,
+                ':fin'    => $fecha_fin,
+            ];
+
+            $filtroSql = '';
+
+            if (!empty($filtros['id_punto'])) {
+                $filtroSql .= " AND p.id_punto = :id_punto";
+                $params[':id_punto'] = (int) $filtros['id_punto'];
+            }
+
+            if (!empty($filtros['delegacion'])) {
+                $filtroSql .= " AND d.nombre_delegacion = :delegacion";
+                $params[':delegacion'] = $filtros['delegacion'];
+            }
+
+            $limiteSql = '';
+            if ($limite !== null && (int) $limite > 0) {
+                $limiteSql = " LIMIT :limite";
+            }
+
+            $sql = "SELECT
+                        p.id_punto,
+                        p.nombre_punto,
+                        d.nombre_delegacion,
+                        (
+                            SELECT GROUP_CONCAT(DISTINCT tm2.nombre_tipo_maquina SEPARATOR ', ')
+                            FROM maquina m2
+                            INNER JOIN tipo_maquina tm2 ON m2.id_tipo_maquina = tm2.id_tipo_maquina
+                            WHERE m2.id_punto = p.id_punto AND m2.estado = 1
+                        ) AS tipos,
+                        COUNT(DISTINCT os.id_ordenes_servicio) AS total_visitas
+                    FROM ordenes_servicio os
+                    INNER JOIN punto p ON os.id_punto = p.id_punto
+                    INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    $filtroSql
+                    GROUP BY p.id_punto, p.nombre_punto, d.nombre_delegacion
+                    HAVING total_visitas >= :min_visitas
+                    ORDER BY total_visitas DESC
+                    $limiteSql";
+
+            $stmt = $this->conn->prepare($sql);
+
+            foreach ($params as $clave => $valor) {
+                $stmt->bindValue($clave, $valor);
+            }
+
+            $stmt->bindValue(':min_visitas', (int) $minVisitas, PDO::PARAM_INT);
+
+            if ($limiteSql !== '') {
+                $stmt->bindValue(':limite', (int) $limite, PDO::PARAM_INT);
+            }
+
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error en getPuntosMasVisitadosWeb: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Detalle de servicios (una fila por orden) usado para el hover de puntos
+     * y para la hoja de detalle del Excel.
+     */
+    public function getDetalleServiciosPorPunto($fecha_inicio, $fecha_fin, $filtros = [])
+    {
+        try {
+            $params = [
+                ':inicio' => $fecha_inicio,
+                ':fin'    => $fecha_fin,
+            ];
+
+            $filtroSql = '';
+
+            if (!empty($filtros['id_punto'])) {
+                $filtroSql .= " AND p.id_punto = :id_punto";
+                $params[':id_punto'] = (int) $filtros['id_punto'];
+            }
+
+            if (!empty($filtros['delegacion'])) {
+                $filtroSql .= " AND d.nombre_delegacion = :delegacion";
+                $params[':delegacion'] = $filtros['delegacion'];
+            }
+
+            $sql = "SELECT
+                        os.id_ordenes_servicio,
+                        os.fecha_visita,
+                        p.id_punto,
+                        p.nombre_punto,
+                        d.nombre_delegacion,
+                        COALESCE(c.nombre_cliente, 'Sin Cliente') AS nombre_cliente,
+                        COALESCE(t.nombre_tecnico, 'SIN TÉCNICO') AS nombre_tecnico,
+                        COALESCE(tm.nombre_completo, 'SIN TIPO') AS tipo_servicio,
+                        GROUP_CONCAT(DISTINCT tn.nombre_novedad SEPARATOR ', ') AS novedades
+                    FROM ordenes_servicio os
+                    INNER JOIN punto p ON os.id_punto = p.id_punto
+                    INNER JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                    LEFT JOIN cliente c ON os.id_cliente = c.id_cliente
+                    LEFT JOIN tecnico t ON os.id_tecnico = t.id_tecnico
+                    LEFT JOIN tipo_mantenimiento tm ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                    LEFT JOIN orden_servicio_novedad osn ON os.id_ordenes_servicio = osn.id_orden_servicio
+                    LEFT JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    $filtroSql
+                    GROUP BY os.id_ordenes_servicio, os.fecha_visita, p.id_punto, p.nombre_punto,
+                             d.nombre_delegacion, c.nombre_cliente, t.nombre_tecnico, tm.nombre_completo
+                    ORDER BY os.fecha_visita DESC, os.id_ordenes_servicio DESC";
+
+            $stmt = $this->conn->prepare($sql);
+
+            foreach ($params as $clave => $valor) {
+                $stmt->bindValue($clave, $valor);
+            }
+
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error en getDetalleServiciosPorPunto: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Detalle de servicios con novedad (una fila por servicio + novedad).
+     *
+     * @param bool|null $soloFallidos true = solo fallidos, false = sin fallidos, null = todos.
+     */
+    public function getDetalleNovedades($fecha_inicio, $fecha_fin, $soloFallidos = null, $filtros = [])
+    {
+        try {
+            $params = [
+                ':inicio' => $fecha_inicio,
+                ':fin'    => $fecha_fin,
+            ];
+
+            $filtroSql = '';
+
+            if ($soloFallidos === true) {
+                $filtroSql .= " AND UPPER(tm.nombre_completo) LIKE '%FALLID%'";
+            } elseif ($soloFallidos === false) {
+                $filtroSql .= " AND UPPER(tm.nombre_completo) NOT LIKE '%FALLID%'";
+            }
+
+            if (!empty($filtros['id_cliente'])) {
+                $filtroSql .= " AND c.id_cliente = :id_cliente";
+                $params[':id_cliente'] = (int) $filtros['id_cliente'];
+            }
+
+            if (!empty($filtros['id_punto'])) {
+                $filtroSql .= " AND p.id_punto = :id_punto";
+                $params[':id_punto'] = (int) $filtros['id_punto'];
+            }
+
+            if (!empty($filtros['delegacion'])) {
+                $filtroSql .= " AND IFNULL(d.nombre_delegacion, 'SIN DELEGACIÓN') = :delegacion";
+                $params[':delegacion'] = $filtros['delegacion'];
+            }
+
+            if (!empty($filtros['id_tipo_novedad'])) {
+                $filtroSql .= " AND tn.id_tipo_novedad = :id_tipo_novedad";
+                $params[':id_tipo_novedad'] = (int) $filtros['id_tipo_novedad'];
+            }
+
+            if (!empty($filtros['novedad'])) {
+                $filtroSql .= " AND tn.nombre_novedad = :novedad";
+                $params[':novedad'] = $filtros['novedad'];
+            }
+
+            $sql = "SELECT
+                        os.id_ordenes_servicio,
+                        os.fecha_visita,
+                        IFNULL(d.nombre_delegacion, 'SIN DELEGACIÓN') AS nombre_delegacion,
+                        c.id_cliente,
+                        COALESCE(c.nombre_cliente, 'Sin Cliente') AS nombre_cliente,
+                        p.id_punto,
+                        p.nombre_punto,
+                        COALESCE(t.nombre_tecnico, 'SIN TÉCNICO') AS nombre_tecnico,
+                        COALESCE(tm.nombre_completo, 'SIN TIPO') AS tipo_servicio,
+                        tn.id_tipo_novedad,
+                        tn.nombre_novedad
+                    FROM ordenes_servicio os
+                    INNER JOIN punto p ON os.id_punto = p.id_punto
+                    LEFT JOIN delegacion d ON p.id_delegacion = d.id_delegacion
+                    LEFT JOIN cliente c ON os.id_cliente = c.id_cliente
+                    INNER JOIN orden_servicio_novedad osn ON os.id_ordenes_servicio = osn.id_orden_servicio
+                    INNER JOIN tipo_novedad tn ON osn.id_tipo_novedad = tn.id_tipo_novedad
+                    INNER JOIN tipo_mantenimiento tm ON os.id_tipo_mantenimiento = tm.id_tipo_mantenimiento
+                    LEFT JOIN tecnico t ON os.id_tecnico = t.id_tecnico
+                    WHERE os.fecha_visita BETWEEN :inicio AND :fin
+                    $filtroSql
+                    ORDER BY os.fecha_visita DESC, c.nombre_cliente ASC";
+
+            $stmt = $this->conn->prepare($sql);
+
+            foreach ($params as $clave => $valor) {
+                $stmt->bindValue($clave, $valor);
+            }
+
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error en getDetalleNovedades: " . $e->getMessage());
+            return [];
+        }
+    }
 
 }

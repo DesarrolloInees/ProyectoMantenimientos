@@ -89,6 +89,25 @@
                 </div>
             </div>
 
+            <div class="bg-white p-5 rounded-xl shadow-md border border-sky-100 lg:col-span-2">
+                <div class="flex justify-between items-start mb-4 border-b border-sky-100 pb-2 gap-3">
+                    <div>
+                        <h3 class="text-sky-700 font-bold"><i class="fas fa-location-dot mr-1"></i> Puntos Más Visitados</h3>
+                        <p class="text-[11px] text-gray-400">Top de puntos por frecuencia de visitas en el período</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] bg-sky-50 text-sky-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Top 20</span>
+                        <a href="<?= BASE_URL ?>reporteEjecutivo?accion=descargarExcel&tipo=puntos&fecha_inicio=<?= urlencode($filtros['fecha_inicio']) ?>&fecha_fin=<?= urlencode($filtros['fecha_fin']) ?>"
+                           class="bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-green-700 shadow flex items-center gap-1.5 text-[11px]">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                    </div>
+                </div>
+                <div class="relative h-80 w-full">
+                    <canvas id="chartPuntosVisitados"></canvas>
+                </div>
+            </div>
+
             <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100">
                 <h3 class="text-gray-700 font-bold mb-4 border-b pb-2">Distribución por Tipo de Servicio</h3>
                 <div class="relative h-64 w-full flex justify-center">
@@ -123,7 +142,13 @@
                         <h3 class="text-gray-700 font-bold"><i class="fas fa-tags text-indigo-500 mr-1"></i> Principales Novedades por Delegación</h3>
                         <p class="text-[11px] text-gray-400">Top 3 de novedades en servicios no fallidos</p>
                     </div>
-                    <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Sin fallidos</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Sin fallidos</span>
+                        <a href="<?= BASE_URL ?>reporteEjecutivo?accion=descargarExcel&tipo=novedades&fecha_inicio=<?= urlencode($filtros['fecha_inicio']) ?>&fecha_fin=<?= urlencode($filtros['fecha_fin']) ?>"
+                           class="bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-green-700 shadow flex items-center gap-1.5 text-[11px]">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                    </div>
                 </div>
                 <div class="relative h-96 w-full">
                     <canvas id="chartNovedadesDelegacion"></canvas>
@@ -136,7 +161,13 @@
                         <h3 class="text-amber-700 font-bold"><i class="fas fa-users text-amber-500 mr-1"></i> Clientes con Más Novedades por Delegación</h3>
                         <p class="text-[11px] text-gray-400">Top 3 de clientes por delegación y sus 3 novedades más frecuentes</p>
                     </div>
-                    <span class="text-[10px] bg-amber-50 text-amber-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Top 3</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] bg-amber-50 text-amber-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Top 3</span>
+                        <a href="<?= BASE_URL ?>reporteEjecutivo?accion=descargarExcel&tipo=clientes&fecha_inicio=<?= urlencode($filtros['fecha_inicio']) ?>&fecha_fin=<?= urlencode($filtros['fecha_fin']) ?>"
+                           class="bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-green-700 shadow flex items-center gap-1.5 text-[11px]">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                    </div>
                 </div>
 
                 <?php if (empty($clientesNovedades)): ?>
@@ -161,7 +192,14 @@
                             <tbody class="divide-y divide-gray-100">
                                 <?php foreach ($clientesNovedades as $delegacion => $clientes): ?>
                                     <?php foreach ($clientes as $indice => $cliente): ?>
-                                        <tr class="hover:bg-amber-50/40">
+                                        <tr class="hover:bg-amber-50/40 cursor-pointer"
+                                            data-delegacion="<?= htmlspecialchars($delegacion, ENT_QUOTES) ?>"
+                                            data-id-cliente="<?= (int) ($cliente['id_cliente'] ?? 0) ?>"
+                                            data-cliente="<?= htmlspecialchars($cliente['cliente'], ENT_QUOTES) ?>"
+                                            data-novedad=""
+                                            onmouseenter="mostrarPopoverCliente(event, this)"
+                                            onmouseleave="ocultarPopover()"
+                                            onclick="abrirDetalleCliente(event, this)">
                                             <?php if ($indice === 0): ?>
                                                 <td class="px-3 py-2 align-top font-bold text-gray-700" rowspan="<?= count($clientes) ?>"><?= htmlspecialchars($delegacion) ?></td>
                                             <?php endif; ?>
@@ -172,7 +210,14 @@
                                             <td class="px-3 py-2 align-top">
                                                 <div class="flex flex-wrap gap-1.5">
                                                     <?php foreach ($cliente['novedades'] as $nov): ?>
-                                                        <span class="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
+                                                        <span class="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-800 cursor-pointer hover:bg-amber-100"
+                                                            data-delegacion="<?= htmlspecialchars($delegacion, ENT_QUOTES) ?>"
+                                                            data-id-cliente="<?= (int) ($cliente['id_cliente'] ?? 0) ?>"
+                                                            data-cliente="<?= htmlspecialchars($cliente['cliente'], ENT_QUOTES) ?>"
+                                                            data-novedad="<?= htmlspecialchars($nov['nombre'], ENT_QUOTES) ?>"
+                                                            onmouseenter="mostrarPopoverCliente(event, this)"
+                                                            onmouseleave="ocultarPopover()"
+                                                            onclick="abrirDetalleCliente(event, this)">
                                                             <span><?= htmlspecialchars($nov['nombre']) ?></span>
                                                             <span class="rounded-full bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white"><?= (int) $nov['total'] ?></span>
                                                         </span>
@@ -194,7 +239,13 @@
                         <h3 class="text-rose-700 font-bold"><i class="fas fa-exclamation-circle mr-1"></i> Novedades en Servicios Fallidos</h3>
                         <p class="text-[11px] text-gray-400">Top 6 de novedades por delegación en servicios fallidos</p>
                     </div>
-                    <span class="text-[10px] bg-rose-50 text-rose-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Solo fallidos</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] bg-rose-50 text-rose-600 px-2 py-1 rounded-full font-bold whitespace-nowrap">Solo fallidos</span>
+                        <a href="<?= BASE_URL ?>reporteEjecutivo?accion=descargarExcel&tipo=novedades_fallidas&fecha_inicio=<?= urlencode($filtros['fecha_inicio']) ?>&fecha_fin=<?= urlencode($filtros['fecha_fin']) ?>"
+                           class="bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-green-700 shadow flex items-center gap-1.5 text-[11px]">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                    </div>
                 </div>
 
                 <?php if (empty($datosNovedadesFallidasPorDelegacion)): ?>
@@ -217,7 +268,12 @@
                                         <td class="px-3 py-2">
                                             <div class="flex flex-wrap gap-1.5">
                                                 <?php foreach ($items as $item): ?>
-                                                    <span class="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-1 text-[11px] text-rose-700">
+                                                    <span class="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-1 text-[11px] text-rose-700 cursor-pointer hover:bg-rose-100"
+                                                        data-delegacion="<?= htmlspecialchars($delegacion, ENT_QUOTES) ?>"
+                                                        data-novedad="<?= htmlspecialchars($item['nombre'], ENT_QUOTES) ?>"
+                                                        onmouseenter="mostrarPopoverNovedadFallida(event, this)"
+                                                        onmouseleave="ocultarPopover()"
+                                                        onclick="abrirDetalleNovedadFallida(event, this)">
                                                         <span><?= htmlspecialchars($item['nombre']) ?></span>
                                                         <span class="rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white"><?= (int) $item['total'] ?></span>
                                                     </span>
@@ -237,8 +293,33 @@
 
 </div>
 
+<div id="popoverDetalle" class="fixed z-[99998] hidden w-80 max-w-sm rounded-xl border border-gray-200 bg-white p-3 shadow-2xl"></div>
+
+<div id="modalDetalle" class="fixed inset-0 z-[99999] hidden items-center justify-center bg-black/50 p-4">
+    <div class="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+        <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+            <div>
+                <h3 id="modalDetalleTitulo" class="text-lg font-bold text-gray-800"></h3>
+                <p id="modalDetalleSubtitulo" class="text-xs text-gray-500"></p>
+            </div>
+            <button type="button" onclick="cerrarModalDetalle()" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="modalDetalleContenido" class="flex-1 overflow-auto p-5"></div>
+        <div class="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p id="modalDetalleNota" class="text-[11px] text-gray-500"></p>
+            <a id="modalDetalleExcel" href="#" class="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white shadow hover:bg-green-700">
+                <i class="fas fa-file-excel"></i> Descargar Excel de este detalle
+            </a>
+        </div>
+    </div>
+</div>
+
 <script>
     // DATOS DESDE PHP
+    window.BASE_URL = '<?= BASE_URL ?>';
+
     const dataDias = <?= json_encode($datosDia ?? []) ?>;
     const dataTipo = <?= json_encode($datosTipo ?? []) ?>;
     
@@ -254,9 +335,157 @@
     const topNovedadesGlobales = <?= json_encode($topNovedadesGlobales ?? []) ?>;
     const dataClientesNovedades = <?= json_encode($clientesNovedades ?? []) ?>;
 
+    const filtroInicio = <?= json_encode($filtros['fecha_inicio'] ?? '') ?>;
+    const filtroFin = <?= json_encode($filtros['fecha_fin'] ?? '') ?>;
+    const datosPuntosVisitados = <?= json_encode($puntosVisitados ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    const detallePuntos = <?= json_encode($detallePuntosHover ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    const detalleNovedades = <?= json_encode($detalleNovedadesHover ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    const detalleNovedadesFallidas = <?= json_encode($detalleNovedadesFallidasHover ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    const detalleClientes = <?= json_encode($detalleClientesHover ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+    const detalleClienteNovedad = <?= json_encode($detalleClienteNovedadHover ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+
     // Configuración Global
     Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
     Chart.defaults.color = '#64748b';
+
+    // ==========================================
+    // HELPERS DE DETALLE / EXCEL
+    // ==========================================
+    function escaparHtml(valor) {
+        return String(valor ?? '').replace(/[&<>"']/g, (caracter) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        })[caracter]);
+    }
+
+    function construirUrlExcel(tipo, parametros = {}) {
+        const query = new URLSearchParams({
+            accion: 'descargarExcel',
+            tipo: tipo,
+            fecha_inicio: filtroInicio,
+            fecha_fin: filtroFin
+        });
+
+        Object.entries(parametros).forEach(([clave, valor]) => {
+            if (valor !== undefined && valor !== null && String(valor) !== '') {
+                query.set(clave, valor);
+            }
+        });
+
+        return (window.BASE_URL || '') + 'reporteEjecutivo?' + query.toString();
+    }
+
+    function tablaDetalleHtml(filas) {
+        if (!filas || !filas.length) {
+            return '<p class="text-sm text-gray-500 py-6 text-center">No hay detalle de servicios para este elemento.</p>';
+        }
+
+        const cuerpo = filas.map((f) => `
+            <tr class="border-b border-gray-100">
+                <td class="px-3 py-2 whitespace-nowrap text-gray-700">${escaparHtml(f.fecha)}</td>
+                <td class="px-3 py-2 text-gray-800 font-semibold">${escaparHtml(f.cliente)}</td>
+                <td class="px-3 py-2 text-gray-600">${escaparHtml(f.punto)}</td>
+                <td class="px-3 py-2 text-gray-600">${escaparHtml(f.tecnico)}</td>
+                <td class="px-3 py-2 text-gray-600">${escaparHtml(f.tipo)}</td>
+                <td class="px-3 py-2 text-rose-700">${escaparHtml(f.novedades)}</td>
+            </tr>
+        `).join('');
+
+        return `
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-gray-100 text-gray-600 uppercase tracking-wider">
+                        <tr>
+                            <th class="px-3 py-2">Fecha</th>
+                            <th class="px-3 py-2">Cliente</th>
+                            <th class="px-3 py-2">Punto</th>
+                            <th class="px-3 py-2">Técnico</th>
+                            <th class="px-3 py-2">Tipo servicio</th>
+                            <th class="px-3 py-2">Novedades</th>
+                        </tr>
+                    </thead>
+                    <tbody>${cuerpo}</tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function listaPopoverHtml(filas) {
+        if (!filas || !filas.length) {
+            return '<p class="text-xs text-gray-500">Sin detalle disponible.</p>';
+        }
+
+        return filas.slice(0, 6).map((f) => `
+            <div class="py-1.5 border-b border-gray-100 last:border-0">
+                <div class="text-[11px] font-bold text-gray-700">${escaparHtml(f.fecha)} · ${escaparHtml(f.cliente)}</div>
+                <div class="text-[11px] text-gray-500">${escaparHtml(f.punto)} · ${escaparHtml(f.tecnico)} · ${escaparHtml(f.tipo)}</div>
+                ${f.novedades ? `<div class="text-[11px] text-rose-600">Novedad: ${escaparHtml(f.novedades)}</div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function abrirModalDetalle(titulo, subtitulo, filas, nota, urlExcel) {
+        document.getElementById('modalDetalleTitulo').textContent = titulo;
+        document.getElementById('modalDetalleSubtitulo').textContent = subtitulo || '';
+        document.getElementById('modalDetalleContenido').innerHTML = tablaDetalleHtml(filas);
+        document.getElementById('modalDetalleNota').textContent = nota || '';
+
+        const botonExcel = document.getElementById('modalDetalleExcel');
+        if (urlExcel) {
+            botonExcel.href = urlExcel;
+            botonExcel.classList.remove('hidden');
+        } else {
+            botonExcel.classList.add('hidden');
+        }
+
+        const modal = document.getElementById('modalDetalle');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function cerrarModalDetalle() {
+        const modal = document.getElementById('modalDetalle');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function mostrarPopover(evento, titulo, filas) {
+        const popover = document.getElementById('popoverDetalle');
+        popover.innerHTML = `
+            <div class="font-bold text-xs text-gray-800 mb-1">${escaparHtml(titulo)}</div>
+            ${listaPopoverHtml(filas)}
+            <div class="mt-2 text-[10px] text-gray-400">Clic para ver el detalle completo y descargar Excel</div>
+        `;
+        popover.classList.remove('hidden');
+
+        const margen = 14;
+        const rect = popover.getBoundingClientRect();
+        let x = evento.clientX + margen;
+        let y = evento.clientY + margen;
+
+        if (x + rect.width > window.innerWidth - margen) {
+            x = evento.clientX - rect.width - margen;
+        }
+        if (y + rect.height > window.innerHeight - margen) {
+            y = evento.clientY - rect.height - margen;
+        }
+
+        popover.style.left = Math.max(margen, x) + 'px';
+        popover.style.top = Math.max(margen, y) + 'px';
+    }
+
+    function ocultarPopover() {
+        document.getElementById('popoverDetalle').classList.add('hidden');
+    }
+
+    document.getElementById('modalDetalle').addEventListener('click', function (evento) {
+        if (evento.target === this) {
+            cerrarModalDetalle();
+        }
+    });
 
     // A. DIAS (Línea)
     if (document.getElementById('chartDias')) {
@@ -313,6 +542,87 @@
             ctx.fillStyle = "#9ca3af";
             ctx.textAlign = "center";
             ctx.fillText("¡Excelente! No hay puntos críticos (> 2 fallos)", ctx.canvas.width/2, ctx.canvas.height/2);
+        }
+    }
+
+    // B2. PUNTOS MÁS VISITADOS (Nuevo - con detalle al pasar el mouse)
+    if (document.getElementById('chartPuntosVisitados')) {
+        if (datosPuntosVisitados.length > 0) {
+            const idsPuntosVisitados = datosPuntosVisitados.map(p => String(p.id_punto));
+
+            new Chart(document.getElementById('chartPuntosVisitados'), {
+                type: 'bar',
+                data: {
+                    labels: datosPuntosVisitados.map(p => `${p.nombre_punto} · ${p.nombre_delegacion}`),
+                    datasets: [{
+                        label: 'Visitas',
+                        data: datosPuntosVisitados.map(p => Number(p.total_visitas) || 0),
+                        backgroundColor: '#0ea5e9',
+                        borderRadius: 4,
+                        maxBarThickness: 22
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        x: { beginAtZero: true, ticks: { precision: 0 }, grid: { display: true } },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                autoSkip: false,
+                                font: { size: 10 },
+                                callback: function (value) {
+                                    const texto = this.getLabelForValue(value);
+                                    return texto.length > 42 ? texto.slice(0, 40) + '…' : texto;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `Visitas: ${ctx.raw}`,
+                                afterLabel: (ctx) => {
+                                    const filas = detallePuntos[idsPuntosVisitados[ctx.dataIndex]] || [];
+                                    if (!filas.length) {
+                                        return '';
+                                    }
+                                    return [
+                                        'Servicios:',
+                                        ...filas.slice(0, 6).map(f => `• ${f.fecha} · ${f.cliente} · ${f.tecnico} · ${f.tipo}`)
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    onClick: (evento, elementos) => {
+                        if (!elementos.length) {
+                            return;
+                        }
+                        const punto = datosPuntosVisitados[elementos[0].index];
+                        if (!punto) {
+                            return;
+                        }
+                        const filas = detallePuntos[String(punto.id_punto)] || [];
+                        abrirModalDetalle(
+                            'Puntos Más Visitados',
+                            `${punto.nombre_punto} · ${punto.nombre_delegacion} (${punto.total_visitas} visitas)`,
+                            filas,
+                            filas.length >= 6 ? 'Mostrando 6 servicios. Descarga el Excel para ver todos.' : '',
+                            construirUrlExcel('puntos', { id_punto: punto.id_punto, delegacion: punto.nombre_delegacion })
+                        );
+                    }
+                }
+            });
+        } else {
+            const ctx = document.getElementById('chartPuntosVisitados').getContext('2d');
+            ctx.font = "14px Arial";
+            ctx.fillStyle = "#9ca3af";
+            ctx.textAlign = "center";
+            ctx.fillText("Sin puntos visitados en el período", ctx.canvas.width / 2, ctx.canvas.height / 2);
         }
     }
 
@@ -469,7 +779,46 @@
                         y: { stacked: true, grid: { display: false } }
                     },
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: (ctx) => {
+                                    const delegacion = labelsNovedades[ctx.dataIndex] || '';
+                                    const novedad = ctx.dataset.label || '';
+                                    if (novedad === 'Otras') {
+                                        return ['Varias novedades agrupadas. Descarga el Excel para ver el detalle.'];
+                                    }
+                                    const filas = detalleNovedades[delegacion + '||' + novedad] || [];
+                                    if (!filas.length) {
+                                        return '';
+                                    }
+                                    return [
+                                        'Servicios:',
+                                        ...filas.slice(0, 6).map(f => `• ${f.fecha} · ${f.cliente} · ${f.tecnico} · ${f.tipo}`)
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    onClick: (evento, elementos) => {
+                        if (!elementos.length) {
+                            return;
+                        }
+                        const el = elementos[0];
+                        const delegacion = labelsNovedades[el.index] || '';
+                        const dataset = datasetsNovedades[el.datasetIndex];
+                        const novedad = dataset ? dataset.label : '';
+                        if (!novedad || novedad === 'Otras') {
+                            return;
+                        }
+                        const filas = detalleNovedades[delegacion + '||' + novedad] || [];
+                        abrirModalDetalle(
+                            'Principales Novedades por Delegación',
+                            `${delegacion} · ${novedad} (${dataset.data[el.index] || 0} servicios)`,
+                            filas,
+                            filas.length >= 6 ? 'Mostrando 6 servicios. Descarga el Excel para ver todos.' : '',
+                            construirUrlExcel('novedades', { delegacion, novedad })
+                        );
                     }
                 }
             });
@@ -490,7 +839,8 @@
         const etiquetasClientes = [];
         const valoresClientes = [];
         const coloresClientes = [];
-        const detalleNovedades = [];
+        const detalleNovedadesCliente = [];
+        const clientesOrdenados = [];
 
         delegacionesClientes.forEach((del, indiceDel) => {
             const color = paletaDelegaciones[indiceDel % paletaDelegaciones.length];
@@ -498,7 +848,8 @@
                 etiquetasClientes.push(`${cli.cliente} · ${del}`);
                 valoresClientes.push(Number(cli.total) || 0);
                 coloresClientes.push(color);
-                detalleNovedades.push((cli.novedades || []).map(n => `${n.nombre} (${n.total})`));
+                detalleNovedadesCliente.push((cli.novedades || []).map(n => `${n.nombre} (${n.total})`));
+                clientesOrdenados.push({ del: del, cli: cli });
             });
         });
 
@@ -539,15 +890,116 @@
                             callbacks: {
                                 label: (ctx) => `Servicios con novedad: ${ctx.raw}`,
                                 afterLabel: (ctx) => {
-                                    const items = detalleNovedades[ctx.dataIndex] || [];
-                                    if (items.length === 0) return '';
-                                    return ['Top novedades:', ...items.map(item => `• ${item}`)];
+                                    const item = clientesOrdenados[ctx.dataIndex];
+                                    if (!item) return '';
+
+                                    const lineas = [];
+                                    const novedades = detalleNovedadesCliente[ctx.dataIndex] || [];
+                                    if (novedades.length) {
+                                        lineas.push('Novedades: ' + novedades.join(' · '));
+                                    }
+
+                                    const filas = detalleClientes[`${item.del}||${item.cli.id_cliente}`] || [];
+                                    if (filas.length) {
+                                        lineas.push('Servicios:');
+                                        filas.slice(0, 6).forEach(f => {
+                                            lineas.push(`• ${f.fecha} · ${f.punto} · ${f.tecnico} · ${f.tipo}`);
+                                        });
+                                    }
+
+                                    return lineas;
                                 }
                             }
                         }
+                    },
+                    onClick: (evento, elementos) => {
+                        if (!elementos.length) return;
+                        const item = clientesOrdenados[elementos[0].index];
+                        if (!item) return;
+
+                        const filas = detalleClientes[`${item.del}||${item.cli.id_cliente}`] || [];
+                        abrirModalDetalle(
+                            'Clientes con Más Novedades por Delegación',
+                            `${item.cli.cliente} · ${item.del} (${item.cli.total} servicios con novedad)`,
+                            filas,
+                            filas.length >= 6 ? 'Mostrando 6 servicios. Descarga el Excel para ver todos.' : '',
+                            construirUrlExcel('clientes', { delegacion: item.del, id_cliente: item.cli.id_cliente })
+                        );
                     }
                 }
             });
         }
+    }
+
+    // ==========================================
+    // ACCIONES DE TABLA / CHIPS
+    // ==========================================
+    function abrirDetalleCliente(evento, elemento) {
+        if (evento && evento.stopPropagation) evento.stopPropagation();
+        ocultarPopover();
+
+        const del = elemento.dataset.delegacion || '';
+        const idCliente = elemento.dataset.idCliente || '';
+        const cliente = elemento.dataset.cliente || '';
+        const novedad = elemento.dataset.novedad || '';
+
+        let filas = detalleClientes[del + '||' + idCliente] || [];
+        if (novedad) {
+            filas = detalleClienteNovedad[del + '||' + idCliente + '||' + novedad] || [];
+        }
+
+        const parametros = { delegacion: del, id_cliente: idCliente };
+        if (novedad) parametros.novedad = novedad;
+
+        abrirModalDetalle(
+            'Cliente con Novedades',
+            `${cliente} · ${del}${novedad ? ' · ' + novedad : ''}`,
+            filas,
+            filas.length >= 6 ? 'Mostrando 6 servicios. Descarga el Excel para ver todos.' : '',
+            construirUrlExcel('clientes', parametros)
+        );
+    }
+
+    function mostrarPopoverCliente(evento, elemento) {
+        if (evento && evento.stopPropagation) evento.stopPropagation();
+
+        const del = elemento.dataset.delegacion || '';
+        const idCliente = elemento.dataset.idCliente || '';
+        const novedad = elemento.dataset.novedad || '';
+
+        let filas = detalleClientes[del + '||' + idCliente] || [];
+        if (novedad) {
+            filas = detalleClienteNovedad[del + '||' + idCliente + '||' + novedad] || [];
+        }
+
+        const titulo = (elemento.dataset.cliente || 'Cliente') + (novedad ? ' · ' + novedad : '');
+        mostrarPopover(evento, titulo, filas);
+    }
+
+    function abrirDetalleNovedadFallida(evento, elemento) {
+        if (evento && evento.stopPropagation) evento.stopPropagation();
+        ocultarPopover();
+
+        const del = elemento.dataset.delegacion || '';
+        const novedad = elemento.dataset.novedad || '';
+        const filas = detalleNovedadesFallidas[del + '||' + novedad] || [];
+
+        abrirModalDetalle(
+            'Novedades en Servicios Fallidos',
+            `${del} · ${novedad}`,
+            filas,
+            filas.length >= 6 ? 'Mostrando 6 servicios. Descarga el Excel para ver todos.' : '',
+            construirUrlExcel('novedades_fallidas', { delegacion: del, novedad: novedad })
+        );
+    }
+
+    function mostrarPopoverNovedadFallida(evento, elemento) {
+        if (evento && evento.stopPropagation) evento.stopPropagation();
+
+        const del = elemento.dataset.delegacion || '';
+        const novedad = elemento.dataset.novedad || '';
+        const filas = detalleNovedadesFallidas[del + '||' + novedad] || [];
+
+        mostrarPopover(evento, `${del} · ${novedad}`, filas);
     }
 </script>
