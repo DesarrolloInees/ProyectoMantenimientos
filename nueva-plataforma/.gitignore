@@ -1,0 +1,4 @@
+# Fotos y firmas guardadas en desarrollo
+/almacenamiento/
+# Mapa de Colombia procesado para OSRM (se genera con osrm/preparar.ps1)
+/osrm/datos/

@@ -1,0 +1,13 @@
+# Servidor de rutas OSRM con el mapa de Colombia (OpenStreetMap).
+# Antes de levantarlo hay que preparar el mapa una vez con preparar.ps1 (ver README.md).
+#   docker compose up -d
+# La plataforma lo usa con OSRM_URL=http://localhost:5000 y OSRM_MAX_TABLA=200.
+services:
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    command: osrm-routed --algorithm mld --max-table-size 200 /data/colombia-latest.osrm
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./datos:/data
+    restart: unless-stopped

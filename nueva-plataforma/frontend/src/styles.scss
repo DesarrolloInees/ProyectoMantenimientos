@@ -1,0 +1,634 @@
+@use '@angular/material' as mat;
+@use './theme-colors' as marca;
+
+// =====================================================================================================================
+// Línea gráfica de inees.com.co (kit de marca «INEES Secure Ai Systems», 3-11-2026):
+// azul noche #072942, azul de la nube #0B5591, verde de la nube #2D7F3E, verde de Automatización #4BA844,
+// grafito #182A36; azul claro #368ABA solo para detalles. Tipografía Archivo (títulos ensanchados al 108 %).
+// Firma: las franjas inclinadas del corte de la nube (ver .franjas).
+// Las paletas de Material salen de _theme-colors.scss (ng generate @angular/material:theme-color).
+// =====================================================================================================================
+
+html {
+  height: 100%;
+  color-scheme: light;
+  @include mat.theme(
+    (
+      color: (
+        primary: marca.$primary-palette,
+        tertiary: marca.$tertiary-palette,
+        theme-type: light,
+      ),
+      typography: (
+        plain-family: 'Archivo, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        brand-family: 'Archivo, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        bold-weight: 600,
+        medium-weight: 500,
+        regular-weight: 400,
+      ),
+      density: 0,
+    )
+  );
+  // Valores exactos del kit sobre los tonos generados
+  @include mat.theme-overrides(
+    (
+      primary: #0b5591,
+      on-primary: #ffffff,
+      primary-container: #e8f0f7,
+      on-primary-container: #072942,
+      tertiary: #2d7f3e,
+      on-tertiary: #ffffff,
+      tertiary-container: #e9f4eb,
+      on-tertiary-container: #1c4f27,
+      surface: #ffffff,
+      on-surface: #0f1f2c,
+      on-surface-variant: #435260,
+      surface-container-lowest: #ffffff,
+      surface-container-low: #f7f9fb,
+      surface-container: #ffffff,
+      surface-container-high: #ffffff,
+      surface-container-highest: #e8edf2,
+      outline: #c7d0d9,
+      outline-variant: #e0e6ec,
+      error: #c2362b,
+    )
+  );
+
+  @include mat.button-overrides(
+    (
+      filled-container-color: #2d7f3e,
+      filled-label-text-color: #ffffff,
+      filled-container-shape: 10px,
+      filled-container-height: 42px,
+      filled-label-text-weight: 600,
+      filled-horizontal-padding: 20px,
+      outlined-container-shape: 10px,
+      outlined-container-height: 42px,
+      outlined-outline-color: #0b5591,
+      outlined-outline-width: 1.5px,
+      outlined-label-text-color: #0b5591,
+      outlined-label-text-weight: 600,
+      text-container-shape: 10px,
+      text-label-text-color: #0b5591,
+      text-label-text-weight: 600,
+      protected-container-shape: 10px,
+      tonal-container-shape: 10px,
+    )
+  );
+  @include mat.icon-button-overrides((state-layer-size: 42px));
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 8px,
+      outlined-outline-color: #c7d0d9,
+      outlined-hover-outline-color: #435260,
+      outlined-focus-outline-color: #0b5591,
+      outlined-label-text-color: #5c6976,
+      outlined-focus-label-text-color: #0b5591,
+    )
+  );
+  @include mat.checkbox-overrides(
+    (
+      selected-icon-color: #2d7f3e,
+      selected-focus-icon-color: #2d7f3e,
+      selected-hover-icon-color: #236431,
+      selected-pressed-icon-color: #236431,
+      selected-checkmark-color: #ffffff,
+    )
+  );
+  @include mat.tabs-overrides(
+    (
+      active-indicator-color: #2d7f3e,
+      active-focus-indicator-color: #2d7f3e,
+      active-hover-indicator-color: #2d7f3e,
+      active-label-text-color: #072942,
+      active-focus-label-text-color: #072942,
+      active-hover-label-text-color: #072942,
+      inactive-label-text-color: #5c6976,
+    )
+  );
+  @include mat.menu-overrides((container-shape: 10px, container-color: #ffffff));
+  @include mat.dialog-overrides((container-shape: 14px));
+  @include mat.snack-bar-overrides(
+    (
+      container-color: #072942,
+      supporting-text-color: #ffffff,
+      button-color: #4ba844,
+      container-shape: 10px,
+    )
+  );
+  @include mat.tooltip-overrides((container-color: #072942, supporting-text-color: #ffffff, container-shape: 6px));
+  @include mat.progress-bar-overrides((active-indicator-color: #2d7f3e, track-color: #e0e6ec));
+}
+
+:root {
+  // ---- kit de marca
+  --marca-noche: #072942;
+  --marca-noche-o: #041b2c;
+  --marca-noche-2: #0c3554;
+  --marca-azul: #0b5591;
+  --marca-azul-o: #08426f;
+  --marca-azul-c: #368aba;
+  --marca-azul-t: #e8f0f7;
+  --marca-verde: #2d7f3e;
+  --marca-verde-o: #236431;
+  --marca-verde-c: #4ba844;
+  --marca-verde-t: #e9f4eb;
+  --marca-grafito: #182a36;
+
+  // ---- tinta, líneas y fondos
+  --tinta: #0f1f2c;
+  --tinta-2: #435260;
+  --mut: #5c6976;
+  --linea: #e0e6ec;
+  --linea-2: #c7d0d9;
+  --fondo: #f2f5f8;
+  --fondo-2: #f7f9fb;
+  --sombra-1: 0 1px 2px rgb(7 41 66 / 0.05), 0 8px 24px -16px rgb(7 41 66 / 0.18);
+  --sombra-2: 0 2px 6px rgb(7 41 66 / 0.1), 0 20px 44px -20px rgb(7 41 66 / 0.35);
+  --curva: cubic-bezier(0.23, 1, 0.32, 1);
+
+  // ---- estados (mismo significado de siempre, tonos de la marca; rojo y ámbar solo para alertas)
+  --ok: #2d7f3e;
+  --ok-fondo: #e9f4eb;
+  --aviso: #8a5a00;
+  --aviso-solido: #e8a317;
+  --aviso-fondo: #fcf1d9;
+  --error: #c2362b;
+  --error-fondo: #fbe9e7;
+  --info: #0b5591;
+  --info-fondo: #e8f0f7;
+
+  // ---- nombres anteriores (los usan los componentes): apuntan a la marca
+  --inees-oscuro: var(--marca-noche);
+  --inees-ambar: var(--aviso-solido);
+  --inees-rojo: var(--error);
+  --inees-verde: var(--marca-verde);
+  --inees-morado: var(--marca-azul-c);
+  --inees-azul: var(--marca-azul);
+  --inees-gris: var(--mut);
+  --inees-fondo: var(--fondo);
+}
+
+// ------------------------------------------------------------------ base
+body {
+  background-color: var(--fondo);
+  color: var(--tinta);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  accent-color: var(--marca-verde);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 600;
+  font-stretch: 108%;
+  letter-spacing: -0.012em;
+  color: var(--marca-noche);
+  text-wrap: balance;
+}
+
+h3 {
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+a {
+  color: var(--marca-azul);
+  text-underline-offset: 3px;
+}
+
+input,
+textarea {
+  caret-color: var(--marca-azul);
+}
+
+::selection {
+  background: var(--marca-noche);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--marca-azul-c);
+  outline-offset: 2px;
+}
+
+html {
+  scrollbar-color: #a9b6c3 var(--fondo);
+}
+
+// ------------------------------------------------------------------ página
+.pagina {
+  padding: 24px 32px 48px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+@media (max-width: 760px) {
+  .pagina {
+    padding: 16px 16px 40px;
+  }
+}
+
+.encabezado {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+
+  h1 {
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.018em;
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .encabezado h1 {
+    font-size: 21px;
+  }
+}
+
+.tarjeta {
+  background: #fff;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: var(--sombra-1);
+
+  > h3:first-child {
+    margin-bottom: 10px;
+  }
+}
+
+.vacio {
+  color: var(--mut);
+  padding: 28px 24px;
+  text-align: center;
+}
+
+.muted {
+  color: var(--mut);
+}
+
+// ------------------------------------------------------------------ firma: franjas inclinadas del corte de la nube
+// Una fila de segmentos inclinados a 58° (el ángulo del corte del logo). Cada segmento es un paso o una porción.
+.franjas {
+  display: flex;
+  gap: 4px;
+  padding: 0 4px;
+
+  > i {
+    flex: 1;
+    height: 8px;
+    background: var(--linea);
+    transform: skewX(-32deg);
+    transition: background-color 0.25s var(--curva);
+
+    &.hecho {
+      background: var(--marca-verde);
+    }
+    &.actual {
+      background: var(--marca-azul);
+    }
+    &.alerta {
+      background: var(--aviso-solido);
+    }
+    &.fallo {
+      background: var(--error);
+    }
+  }
+}
+
+// Avance continuo con el borde de avance cortado en diagonal (barra de ruta, meta)
+.avance {
+  position: relative;
+  height: 8px;
+  background: var(--linea);
+  overflow: hidden;
+  border-radius: 2px;
+
+  > span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--marca-verde);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+    transition: width 0.3s var(--curva);
+  }
+  &.alerta > span {
+    background: var(--aviso-solido);
+  }
+  &.fallo > span {
+    background: var(--error);
+  }
+}
+
+// ------------------------------------------------------------------ prioridades de la bolsa
+// 1 solicitud de Prosegur (azul de la marca), 2 arrastrado (alerta: ámbar), 3 VIP (verde), 4 vencido normal (gris)
+.prio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  &.p1 {
+    background: var(--marca-azul);
+  }
+  &.p2 {
+    background: var(--aviso-solido);
+    color: var(--tinta);
+  }
+  &.p3 {
+    background: var(--marca-verde);
+  }
+  &.p4 {
+    background: var(--mut);
+  }
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 20px;
+  background: var(--fondo);
+  color: var(--tinta-2);
+  &.ok {
+    background: var(--ok-fondo);
+    color: var(--ok);
+  }
+  &.error {
+    background: var(--error-fondo);
+    color: var(--error);
+  }
+  &.aviso {
+    background: var(--aviso-fondo);
+    color: var(--aviso);
+  }
+  &.info {
+    background: var(--info-fondo);
+    color: var(--info);
+  }
+}
+
+.leaflet-container {
+  font: inherit;
+}
+
+// Marcadores numerados del mapa de rutas
+.marcador {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgb(4 27 44 / 0.4);
+
+  &.pin .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+
+// ------------------------------------------------------------------ pantallas de oficina (tablas, filtros y formularios)
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  mat-form-field {
+    width: 190px;
+  }
+  .ancho {
+    width: 280px;
+  }
+  app-selector {
+    width: 240px;
+  }
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  th,
+  td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--linea);
+    vertical-align: top;
+  }
+  th {
+    font-size: 12px;
+    color: var(--tinta-2);
+    font-weight: 600;
+    background: var(--fondo-2);
+    border-bottom-color: var(--linea-2);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  tbody tr {
+    transition: background-color 0.15s ease;
+  }
+  tbody tr:hover {
+    background: var(--marca-azul-t);
+  }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  &.compacta th,
+  &.compacta td {
+    padding: 5px 8px;
+  }
+  tr.seleccionada {
+    background: var(--marca-verde-t);
+  }
+  tr.inactivo td {
+    color: var(--mut);
+    text-decoration: line-through;
+  }
+}
+
+.contenedor-tabla {
+  background: #fff;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  box-shadow: var(--sombra-1);
+  overflow: auto;
+  max-height: calc(100vh - 230px);
+}
+
+.rejilla {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  mat-form-field,
+  app-selector {
+    width: 100%;
+  }
+  .doble {
+    grid-column: span 2;
+  }
+  .completo {
+    grid-column: 1 / -1;
+  }
+}
+
+.kpis {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  margin-bottom: 16px;
+}
+
+.paneles {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  margin-bottom: 16px;
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.botones-fila {
+  display: flex;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.paginador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--tinta-2);
+}
+
+.etiqueta-campo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mut);
+}
+
+.pesos {
+  font-variant-numeric: tabular-nums;
+}
+
+.foto-mini {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--linea);
+  cursor: pointer;
+}
+
+.fotos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.snack-error {
+  --mat-snack-bar-container-color: var(--error);
+  --mat-snack-bar-supporting-text-color: #fff;
+  --mat-snack-bar-button-color: #fff;
+}
+
+// Botón principal grande del celular (objetivo de 48 px, legible al sol)
+.boton-campo {
+  --mat-button-filled-container-height: 52px;
+  --mat-button-outlined-container-height: 52px;
+  --mat-button-filled-label-text-size: 16px;
+  --mat-button-outlined-label-text-size: 16px;
+}
+
+.solo-impresion {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .no-imprimir,
+  app-shell .riel,
+  app-shell .barra-movil,
+  .filtros,
+  .acciones {
+    display: none !important;
+  }
+  .solo-impresion {
+    display: block;
+  }
+  body {
+    background: #fff;
+  }
+  .pagina {
+    padding: 0;
+    max-width: none;
+  }
+  .tarjeta,
+  .kpi {
+    box-shadow: none !important;
+    border: 1px solid #ddd;
+    break-inside: avoid;
+  }
+  .contenedor-tabla {
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+  }
+  .paneles {
+    grid-template-columns: 1fr 1fr;
+  }
+  section {
+    break-inside: avoid;
+  }
+}
