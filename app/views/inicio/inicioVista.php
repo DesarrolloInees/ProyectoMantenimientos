@@ -34,7 +34,7 @@ $horaActual = date('H:i');
                 <p class="text-center text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">¿Qué necesitas
                     hacer hoy?</p>
 
-                <?php $resumenTecnicoMes = isset($resumenTecnicoMes) ? $resumenTecnicoMes : ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'otros' => 0, 'total' => 0]; ?>
+                <?php $resumenTecnicoMes = isset($resumenTecnicoMes) ? $resumenTecnicoMes : ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'nueva_arquitectura' => 0, 'otros' => 0, 'total' => 0]; ?>
                 <!-- Mis servicios este mes -->
                 <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4">
                     <div class="flex items-center justify-between mb-1">
@@ -61,6 +61,10 @@ $horaActual = date('H:i');
                         <div class="bg-white rounded-lg border border-red-100 py-2">
                             <p class="text-[10px] font-bold text-red-600 uppercase leading-tight">Fallido</p>
                             <p class="text-lg font-extrabold text-gray-800"><?= (int)($resumenTecnicoMes['fallido'] ?? 0) ?></p>
+                        </div>
+                        <div class="bg-white rounded-lg border border-teal-100 py-2">
+                            <p class="text-[10px] font-bold text-teal-600 uppercase leading-tight">Nueva<br>Arquitectura</p>
+                            <p class="text-lg font-extrabold text-gray-800"><?= (int)($resumenTecnicoMes['nueva_arquitectura'] ?? 0) ?></p>
                         </div>
                         <div class="bg-white rounded-lg border border-gray-200 py-2">
                             <p class="text-[10px] font-bold text-gray-500 uppercase leading-tight" title="Garantía, Kisan, instalaciones y otros estados">Otros</p>

@@ -129,7 +129,7 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
     </div>
 
     <?php if (!empty($datosReporte)): ?>
-        <?php $resumenTipos = isset($resumenTipos) ? $resumenTipos : ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'otros' => 0, 'total' => count($datosReporte)]; ?>
+        <?php $resumenTipos = isset($resumenTipos) ? $resumenTipos : ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'nueva_arquitectura' => 0, 'otros' => 0, 'total' => count($datosReporte)]; ?>
         <div class="grid grid-cols-1 md:grid-cols-<?= ($rolActual === 5) ? '2' : '3' ?> gap-4 mb-6">
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <p class="text-sm text-blue-600 font-bold uppercase">Total Servicios</p>
@@ -154,7 +154,7 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
             <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
                 <i class="fas fa-wrench text-indigo-500 mr-1"></i> Servicios por tipo de mantenimiento
             </p>
-            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
                 <div class="bg-sky-50 p-3 rounded-lg border border-sky-100 text-center">
                     <p class="text-[11px] text-sky-600 font-bold uppercase">Preventivo Básico</p>
                     <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['basico'] ?? 0) ?></p>
@@ -170,6 +170,10 @@ $rolActual = isset($_SESSION['nivel_acceso']) ? (int) $_SESSION['nivel_acceso'] 
                 <div class="bg-red-50 p-3 rounded-lg border border-red-100 text-center">
                     <p class="text-[11px] text-red-600 font-bold uppercase">Fallido</p>
                     <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['fallido'] ?? 0) ?></p>
+                </div>
+                <div class="bg-teal-50 p-3 rounded-lg border border-teal-100 text-center">
+                    <p class="text-[11px] text-teal-600 font-bold uppercase">Nueva Arquitectura</p>
+                    <p class="text-xl font-extrabold text-gray-800"><?= (int)($resumenTipos['nueva_arquitectura'] ?? 0) ?></p>
                 </div>
                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-center">
                     <p class="text-[11px] text-gray-500 font-bold uppercase" title="Garantía, Kisan, instalaciones y otros estados">Otros</p>

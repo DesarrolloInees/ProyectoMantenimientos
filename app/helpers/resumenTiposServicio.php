@@ -3,7 +3,8 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 /**
  * Helper compartido: clasifica los servicios por tipo de mantenimiento
- * (Preventivo Básico / Preventivo Profundo / Correctivo / Fallido / Otros + Total).
+ * (Preventivo Básico / Preventivo Profundo / Correctivo / Fallido /
+ *  Nueva Arquitectura / Otros + Total).
  *
  * Se usa en:
  *  - reporteTecnico (respeta filtros de técnico + fechas del formulario)
@@ -11,7 +12,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
  *
  * La clasificación es por NOMBRE (normalizado: mayúsculas, sin tildes)
  * para no depender de los IDs numéricos de tipo_mantenimiento.
- * Orden de evaluación: fallido > profundo > correctivo > básico.
+ * Orden de evaluación: fallido > nueva_arquitectura > profundo > correctivo > básico.
  */
 class ResumenTiposServicio
 {
@@ -37,32 +38,36 @@ class ResumenTiposServicio
         if (strpos($t, 'FALLID') !== false) {
             return 'fallido';
         }
-        // 2. Preventivo profundo (ej: "Preventivo Profundo / Completo")
+        // 2. Nueva Arquitectura (categoría propia; antes caía en básico u otros)
+        if (strpos($t, 'NUEVA ARQUITECTURA') !== false || strpos($t, 'NUEVAARQUITECTURA') !== false) {
+            return 'nueva_arquitectura';
+        }
+        // 3. Preventivo profundo (ej: "Preventivo Profundo / Completo")
         if (strpos($t, 'PROFUNDO') !== false || strpos($t, 'COMPLETO') !== false) {
             return 'profundo';
         }
-        // 3. Correctivo (ej: "Mantenimiento Correctivo", "Reparación")
+        // 4. Correctivo (ej: "Mantenimiento Correctivo", "Reparación")
         if (strpos($t, 'CORRECTIVO') !== false || strpos($t, 'REPARACION') !== false) {
             return 'correctivo';
         }
-        // 4. Preventivo básico (ej: "Preventivo Básico"; un "Preventivo" a secas
+        // 5. Preventivo básico (ej: "Preventivo Básico"; un "Preventivo" a secas
         //    se asume básico para no perderlo)
         if (strpos($t, 'PREVENTIVO') !== false || strpos($t, 'BASICO') !== false) {
             return 'basico';
         }
-        // 5. Resto (Garantía, Kisan, instalaciones, desinstalaciones, etc.)
+        // 6. Resto (Garantía, Kisan, instalaciones, desinstalaciones, etc.)
         return 'otros';
     }
 
     /**
      * Resume un listado de filas que tengan la clave 'tipo_mantenimiento'.
      * Retorna: ['basico'=>n, 'profundo'=>n, 'correctivo'=>n,
-     *           'fallido'=>n, 'otros'=>n, 'total'=>n]
-     * Invariante: basico+profundo+correctivo+fallido+otros === total
+     *           'fallido'=>n, 'nueva_arquitectura'=>n, 'otros'=>n, 'total'=>n]
+     * Invariante: basico+profundo+correctivo+fallido+nueva_arquitectura+otros === total
      */
     public static function resumir($filas)
     {
-        $r = ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'otros' => 0, 'total' => 0];
+        $r = ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'nueva_arquitectura' => 0, 'otros' => 0, 'total' => 0];
         if (!is_array($filas)) {
             return $r;
         }
@@ -79,6 +84,6 @@ class ResumenTiposServicio
 
     public static function vacio()
     {
-        return ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'otros' => 0, 'total' => 0];
+        return ['basico' => 0, 'profundo' => 0, 'correctivo' => 0, 'fallido' => 0, 'nueva_arquitectura' => 0, 'otros' => 0, 'total' => 0];
     }
 }

@@ -209,6 +209,7 @@
             ['Preventivo Profundo', $dia['resumenTipos']['profundo'] ?? 0, '#6366f1'],
             ['Correctivo', $dia['resumenTipos']['correctivo'] ?? 0, '#f59e0b'],
             ['Fallido', $dia['resumenTipos']['fallido'] ?? 0, '#f43f5e'],
+            ['Nueva Arquitectura', $dia['resumenTipos']['nueva_arquitectura'] ?? 0, '#14b8a6'],
             ['Otros', $dia['resumenTipos']['otros'] ?? 0, '#94a3b8'],
         ];
         foreach ($barras as $b):
