@@ -1,3 +1,9 @@
+<?php
+if (!defined('ENTRADA_PRINCIPAL'))
+    die("Acceso denegado.");
+
+require_once __DIR__ . '/../../helpers/formatoHorasExtra.php';
+?>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -127,7 +133,7 @@
             <td class="text-center"><?= date('H:i', strtotime($r['hora_inicio'])) ?></td>
             <td class="text-center"><?= date('H:i', strtotime($r['hora_fin'])) ?></td>
             <td class="text-center"><?= htmlspecialchars($r['nombre_punto']) ?></td>
-            <td class="text-center font-bold"><?= number_format($r['total_horas'], 2) ?></td>
+            <td class="text-center font-bold"><?= FormatoHorasExtra::decimalASexagesimal($r['total_horas']) ?></td>
             <td colspan="3">
                 <b>Cliente:</b> <?= htmlspecialchars($r['nombre_cliente']) ?> -
                 <b>Detalle:</b> <?= htmlspecialchars($r['justificacion_tecnico']) ?>
@@ -173,7 +179,7 @@
     </tr>
     <tr>
         <td colspan="2" class="font-bold bg-gray">TOTAL ORDINARIAS:</td>
-        <td class="text-right font-bold"><?= number_format($totalGeneralHoras, 2) ?></td>
+        <td class="text-right font-bold"><?= FormatoHorasExtra::decimalASexagesimal($totalGeneralHoras) ?></td>
     </tr>
     <tr>
         <td colspan="2" class="font-bold bg-gray">TOTAL CON RECARGO NOCT:</td>

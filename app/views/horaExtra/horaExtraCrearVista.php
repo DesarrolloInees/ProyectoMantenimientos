@@ -88,7 +88,7 @@
                 </div>
                 <div class="col-span-2 pt-2 border-t border-gray-200 flex justify-between items-center">
                     <span class="text-xs font-bold text-gray-500 uppercase">Total Calculado:</span>
-                    <strong id="display_total_horas" class="text-blue-600 bg-blue-100 px-3 py-1 rounded-full text-sm">0h 0m</strong>
+                    <strong id="display_total_horas" class="text-blue-600 bg-blue-100 px-3 py-1 rounded-full text-sm">0.00 hrs</strong>
                 </div>
             </div>
 
@@ -233,9 +233,9 @@
                 let diff = m2 - m1;
                 let h = Math.floor(diff / 60);
                 let m = diff % 60;
-                $('#display_total_horas').text(`${h}h ${m}m`);
+                $('#display_total_horas').text(`${h}.${String(m).padStart(2, '0')} hrs`);
             } else {
-                $('#display_total_horas').text('0h 0m');
+                $('#display_total_horas').text('0.00 hrs');
             }
         });
 

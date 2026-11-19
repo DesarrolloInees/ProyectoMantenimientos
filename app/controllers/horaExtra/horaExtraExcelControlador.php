@@ -3,6 +3,7 @@ if (!defined('ENTRADA_PRINCIPAL')) die("Acceso denegado.");
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/horaExtra/horaExtraReporteModelo.php';
+require_once __DIR__ . '/../../helpers/formatoHorasExtra.php';
 
 // Requiere: composer require phpoffice/phpspreadsheet
 require_once __DIR__ . '/../../../vendor/autoload.php';
@@ -210,7 +211,7 @@ class horaExtraExcelControlador
                 $sheet->setCellValue("C{$fila}", date('H:i', strtotime($r['hora_inicio'])));
                 $sheet->setCellValue("D{$fila}", date('H:i', strtotime($r['hora_fin'])));
                 $sheet->setCellValue("E{$fila}", $r['nombre_punto']);
-                $sheet->setCellValue("F{$fila}", number_format((float) $r['total_horas'], 2));
+                $sheet->setCellValue("F{$fila}", FormatoHorasExtra::decimalASexagesimal($r['total_horas']));
                 $sheet->setCellValue("G{$fila}", "Cliente: {$r['nombre_cliente']} - Detalle: {$r['justificacion_tecnico']}");
                 $sheet->getStyle("G{$fila}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
 
@@ -267,7 +268,7 @@ class horaExtraExcelControlador
 
         $sheet->mergeCells("G{$filaTotales2}:H{$filaTotales2}");
         $sheet->setCellValue("G{$filaTotales2}", 'TOTAL ORDINARIAS:');
-        $sheet->setCellValue("I{$filaTotales2}", number_format($totalGeneralHoras, 2));
+        $sheet->setCellValue("I{$filaTotales2}", FormatoHorasExtra::decimalASexagesimal($totalGeneralHoras));
 
         $sheet->mergeCells("G{$filaTotales3}:H{$filaTotales3}");
         $sheet->setCellValue("G{$filaTotales3}", 'TOTAL CON RECARGO NOCT:');

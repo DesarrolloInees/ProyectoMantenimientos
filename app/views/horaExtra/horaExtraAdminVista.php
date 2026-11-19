@@ -150,7 +150,7 @@
         </div>
         <div>
             <p class="text-emerald-100 text-xs font-semibold uppercase">Horas Aprobadas</p>
-            <h3 class="text-2xl font-bold"><?= number_format($totalHorasAprobadas, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <h3 class="text-2xl font-bold"><?= FormatoHorasExtra::decimalASexagesimal($totalHorasAprobadas) ?> <span class="text-sm font-normal">hrs</span></h3>
             <p class="text-[11px] text-emerald-200 mt-0.5"><?= $cantAprobadas ?> registros listos para nómina</p>
         </div>
     </div>
@@ -162,7 +162,7 @@
         </div>
         <div>
             <p class="text-amber-100 text-xs font-semibold uppercase">Por Revisar</p>
-            <h3 class="text-2xl font-bold"><?= number_format($totalHorasPendientes, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <h3 class="text-2xl font-bold"><?= FormatoHorasExtra::decimalASexagesimal($totalHorasPendientes) ?> <span class="text-sm font-normal">hrs</span></h3>
             <p class="text-[11px] text-amber-200 mt-0.5"><?= $cantPendientes ?> solicitudes pendientes</p>
         </div>
     </div>
@@ -174,7 +174,7 @@
         </div>
         <div>
             <p class="text-rose-100 text-xs font-semibold uppercase">Horas Rechazadas</p>
-            <h3 class="text-2xl font-bold"><?= number_format($totalHorasRechazadas, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <h3 class="text-2xl font-bold"><?= FormatoHorasExtra::decimalASexagesimal($totalHorasRechazadas) ?> <span class="text-sm font-normal">hrs</span></h3>
             <p class="text-[11px] text-rose-200 mt-0.5"><?= $cantRechazadas ?> registros denegados</p>
         </div>
     </div>
@@ -186,7 +186,7 @@
         </div>
         <div>
             <p class="text-blue-100 text-xs font-semibold uppercase">Total Solicitado</p>
-            <h3 class="text-2xl font-bold"><?= number_format($totalHorasAprobadas + $totalHorasPendientes + $totalHorasRechazadas, 2) ?> <span class="text-sm font-normal">hrs</span></h3>
+            <h3 class="text-2xl font-bold"><?= FormatoHorasExtra::decimalASexagesimal($totalHorasAprobadas + $totalHorasPendientes + $totalHorasRechazadas) ?> <span class="text-sm font-normal">hrs</span></h3>
             <p class="text-[11px] text-blue-200 mt-0.5">Volumen total reportado</p>
         </div>
     </div>
@@ -242,7 +242,7 @@
                                 </span>
                             </td>
                             <td class="text-center font-bold text-gray-800">
-                                <?= number_format($r['total_horas'], 2) ?> hrs
+                                <?= FormatoHorasExtra::decimalASexagesimal($r['total_horas']) ?> hrs
                             </td>
                             <td class="text-center">
                                 <span
@@ -362,6 +362,14 @@
         window.BASE_URL = '<?= BASE_URL ?>';
     }
 
+    // Convierte horas en decimal (2.75 = 2 h 45 min) a formato sexagesimal "2.45"
+    function horasDecimalATexto(valor) {
+        const minutosTotales = Math.round(parseFloat(valor || 0) * 60);
+        const horas = Math.floor(minutosTotales / 60);
+        const minutos = minutosTotales % 60;
+        return horas + '.' + String(minutos).padStart(2, '0');
+    }
+
     $(document).ready(function () {
         $('.select2-admin').select2({
             width: '100%',
@@ -388,7 +396,7 @@
         const puntoText = data.nombre_punto ? data.nombre_punto : 'Sin punto';
         $('#modalPuntoCliente').text(puntoText + ' (' + clienteText + ')');
 
-        $('#modalHorarioTotal').text(data.hora_inicio + ' - ' + data.hora_fin + ' (' + data.total_horas + ' hrs)');
+        $('#modalHorarioTotal').text(data.hora_inicio + ' - ' + data.hora_fin + ' (' + horasDecimalATexto(data.total_horas) + ' hrs)');
         $('#modalJustificacion').text('"' + data.justificacion_tecnico + '"');
 
         $('#modal_id_estado').val(data.id_estado_aprobacion);

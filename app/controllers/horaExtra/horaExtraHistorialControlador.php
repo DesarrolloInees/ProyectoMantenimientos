@@ -4,6 +4,7 @@ if (!defined('ENTRADA_PRINCIPAL'))
 
 require_once __DIR__ . '/../../config/conexion.php';
 require_once __DIR__ . '/../../models/horaExtra/horaExtraHistorialModelo.php';
+require_once __DIR__ . '/../../helpers/formatoHorasExtra.php';
 
 class horaExtraHistorialControlador
 {

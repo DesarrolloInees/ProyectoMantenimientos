@@ -318,7 +318,7 @@
                         <td>
                             <span class="horario"><?= date('H:i', strtotime($r['hora_inicio'])) ?> – <?= date('H:i', strtotime($r['hora_fin'])) ?></span>
                         </td>
-                        <td style="text-align: center;"><span class="horas"><?= number_format($r['total_horas'], 2) ?></span></td>
+                        <td style="text-align: center;"><span class="horas"><?= FormatoHorasExtra::decimalASexagesimal($r['total_horas']) ?></span></td>
                         <td>
                             <span class="justificacion"><?= htmlspecialchars($r['justificacion_tecnico']) ?></span>
                             <?php if (!empty($r['fotos_base64'])): ?>
@@ -341,7 +341,7 @@
         <!-- TOTAL -->
         <div class="total-box">
             <span class="label">📊 Total Horas Registradas en el período</span>
-            <span class="value"><?= number_format($sumHoras, 2) ?> <small>hrs</small></span>
+            <span class="value"><?= FormatoHorasExtra::decimalASexagesimal($sumHoras) ?> <small>hrs</small></span>
         </div>
     </div>
 </body>

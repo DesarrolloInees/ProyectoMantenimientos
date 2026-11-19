@@ -89,7 +89,7 @@
                         <div class="bg-blue-50 p-2 rounded border border-blue-100 text-right">
                             <span class="block text-blue-500 uppercase font-bold text-[9px]">Total Horas</span>
                             <span class="text-blue-700 font-bold text-sm">
-                                <?= number_format($he['total_horas'], 2) ?> hrs
+                                <?= FormatoHorasExtra::decimalASexagesimal($he['total_horas']) ?> hrs
                             </span>
                         </div>
                     </div>
@@ -392,8 +392,10 @@
                 d2.setDate(d2.getDate() + 1); // Maneja cruce de medianoche
             }
 
-            let diff = (d2 - d1) / 1000 / 60 / 60;
-            $('#edit_total_horas_text').text(diff.toFixed(2) + ' hrs');
+            const minutosTotales = Math.round((d2 - d1) / 60000);
+            const horas = Math.floor(minutosTotales / 60);
+            const minutos = minutosTotales % 60;
+            $('#edit_total_horas_text').text(horas + '.' + String(minutos).padStart(2, '0') + ' hrs');
         }
     }
 
