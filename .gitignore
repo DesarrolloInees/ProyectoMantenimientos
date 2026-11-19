@@ -1,7 +1,6 @@
-/vendor/
-.env
-.clineignore
-/node_modules/
-test_groq.php
-/app/uploads/
-/app/imagenes/
+# Rama V2 (Spring Boot + Angular): solo se versiona la carpeta nueva-plataforma.
+# La plataforma PHP de la raiz sigue versionada en la rama main y permanece en disco
+# (el backend nuevo usa sus carpetas uploads/, app/uploads/ e imagenes/ via LEGACY_ROOT).
+/*
+!/.gitignore
+!/nueva-plataforma/

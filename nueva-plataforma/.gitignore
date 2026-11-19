@@ -4,5 +4,11 @@ config-local.bat
 # Compilados del backend
 backend/target/
 
+# Angular compilado (lo genera "npx ng build" o iniciar-local.bat)
+backend/src/main/resources/static/
+
+# Carpeta de archivos creada por ejecuciones locales
+almacenamiento/
+
 # Logs locales
 *.log

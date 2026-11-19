@@ -13,7 +13,7 @@ Con todo instalado, arrancar la plataforma es un doble clic en `nueva-plataforma
 | MariaDB o MySQL | MariaDB 10.6+ / MySQL 8 | Base de datos `inees_mantenimientos` | XAMPP (`C:\xampp`) o MariaDB portable en `%USERPROFILE%\inees-local` |
 | Google Chrome | Cualquiera reciente | Generar los PDF (servicios, reportes) | Normalmente ya está instalado |
 
-Node.js solo es obligatorio para compilar el frontend. Si `backend/src/main/resources/static/index.html` ya existe (frontend compilado), el modo normal no lo necesita.
+Node.js es obligatorio para compilar el frontend. El frontend compilado (`backend/src/main/resources/static/`) no se guarda en el repositorio, así que en un clon nuevo la primera ejecución lo compila; después, el modo normal ya no necesita Node.
 
 ### Dónde busca cada cosa el script
 
