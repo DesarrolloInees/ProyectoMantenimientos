@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="es">
+<!-- Port de app/views/reportes/reporteEjecutivoGenerar.php. Chrome ejecuta el script antes de imprimir. -->
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Ejecutivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; zoom: 0.8; }
+        @page {
+            size: A4 landscape; margin: 10mm 10mm 15mm 10mm;
+            @bottom-left { content: "DOCUMENTO CONFIDENCIAL"; font-family: sans-serif; font-size: 9px; font-weight: bold; letter-spacing: 2px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+            @bottom-center { content: "PIE_PERIODO"; font-family: sans-serif; font-size: 9px; font-weight: bold; color: #64748b; border-top: 1px solid #e2e8f0; }
+            @bottom-right { content: "Página " counter(page); font-family: sans-serif; font-size: 9px; font-weight: bold; color: #475569; border-top: 1px solid #e2e8f0; }
+        }
+        .page-break { page-break-after: always; break-after: page; }
+        .card-wrapper { page-break-after: always; break-after: page; display: block; width: 100%; min-height: 130mm; box-sizing: border-box; margin-bottom: 2rem; }
+        .card-wrapper:last-child { page-break-after: auto !important; break-after: auto !important; margin-bottom: 0; }
+        .card { background-color: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #f3f4f6; width: 100%; min-height: 130mm; box-sizing: border-box; padding: 32px; zoom: 1.3; }
+        .modo-unico-activo .card-wrapper { page-break-after: auto !important; break-after: auto !important; }
+        .modo-unico-activo .card { zoom: 1.6; }
+        .portada-container { min-height: 190mm; height: 190mm; background-color: #ffffff; color: #1e293b; position: relative; border-top: 12px solid #3b82f6; border-bottom: 12px solid #334155; display: flex; justify-content: center; }
+        .bg-pattern { display: none; }
+        .date-badge { font-size: 9px; color: #94a3b8; background-color: #f8fafc; border: 1px solid #f1f5f9; padding: 2px 8px; border-radius: 6px; font-family: 'Courier New', Courier, monospace; white-space: nowrap; }
+        .seccion-reporte { page-break-before: always; break-before: page; }
+        .seccion-reporte:first-child, .portada-container + .seccion-reporte { page-break-before: avoid; break-before: auto; }
+    </style>
+</head>
+<body class="p-8 text-slate-800">
+<div id="raiz"></div>
+<script>
+const D = /*DATOS*/null;
+
+// ---------------------------------------------------------------- helpers (equivalentes PHP)
+const e = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+const num = (v) => Number(v) || 0;
+function phpRound(v, d = 0) { const p = Math.pow(10, d); const x = num(v) * p; return (x < 0 ? -Math.round(-x) : Math.round(x)) / p; }
+function nf(v, dec = 0, sd = '.', st = ',') {
+    const r = phpRound(v, dec);
+    const neg = r < 0;
+    const [ent, fr] = Math.abs(r).toFixed(dec).split('.');
+    const g = ent.replace(/\B(?=(\d{3})+(?!\d))/g, st);
+    return (neg ? '-' : '') + g + (dec > 0 ? sd + fr : '');
+}
+const nfCO = (v) => nf(v, 0, ',', '.');
+function dmy(f) { const s = String(f || '').substring(0, 10).split('-'); return s.length === 3 ? `${s[2]}/${s[1]}/${s[0]}` : ''; }
+const activa = (s) => (D.secciones || []).includes(s);
+const sum = (arr, k) => arr.reduce((a, x) => a + num(x[k]), 0);
+const rango = `${dmy(D.inicio)} - ${dmy(D.fin)}`;
+const rangoRaya = `${dmy(D.inicio)} — ${dmy(D.fin)}`;
+
+let h = '';
+
+// ---------------------------------------------------------------- PORTADA
+if (activa('portada')) {
+    const cm = num(D.cumplimientoMeta);
+    const kd = D.kpisDelegacion || [];
+    h += `
+    <div class="portada-container w-full rounded-none flex flex-col items-center justify-between py-12 relative mb-8 card-wrapper" style="min-height: 190mm; height: auto;">
+        <div class="z-10 text-center flex-shrink-0 mb-8">
+            <div class="mb-6 flex justify-center"><img src="${D.logo}" class="h-20 object-contain  opacity-80" alt="Logo Empresa"></div>
+            <h1 class="text-6xl font-black text-green-600 mb-2 tracking-tight leading-none">REPORTE<br><span class="text-blue-600">EJECUTIVO</span></h1>
+            <div class="w-24 h-2 bg-blue-600 mx-auto my-6 rounded-full"></div>
+            <div class="mt-2 inline-block bg-slate-50 border border-slate-200 px-8 py-3 rounded-full">
+                <span class="text-lg font-mono font-bold text-slate-600">📅 ${dmy(D.inicio)} — ${dmy(D.fin)}</span>
+            </div>
+        </div>
+        <div class="w-full px-8 mb-4 flex-1 flex items-end">
+            <div class="grid grid-cols-3 gap-4 w-full">
+                <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl shadow-sm">
+                    <div class="text-[10px] uppercase font-bold text-emerald-700 tracking-wide">Servicios Esperados (Meta)</div>
+                    <div class="text-3xl font-black text-emerald-700 mt-1">${nf(D.metaServicios.esperados)}</div>
+                    <div class="text-[9px] text-emerald-600/80 mt-1">${nf(D.metaServicios.dias_laborables)} días laborables</div>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm">
+                    <div class="text-[10px] uppercase font-bold text-blue-700 tracking-wide">Servicios Realizados</div>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <div class="text-3xl font-black text-blue-700">${nf(D.totalGlobalServicios)}</div>
+                        <span class="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full whitespace-nowrap">${nf(D.totalServiciosFallidos)} fallidos</span>
+                    </div>
+                    <div class="text-[9px] text-blue-600/80 mt-1">Total de servicios registrados en el período</div>
+                </div>
+                <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                    <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wide">Cumplimiento de Meta</div>
+                    <div class="text-3xl font-black mt-1 ${cm >= 100 ? 'text-emerald-600' : cm >= 80 ? 'text-amber-600' : 'text-rose-600'}">${nf(cm, 1)}%</div>
+                    <div class="text-[9px] text-slate-400 mt-1">Realizados / Esperados del período</div>
+                </div>
+            </div>
+        </div>
+        <div class="w-full px-8 mb-4 flex-1 flex items-end">
+            <div class="grid grid-cols-4 gap-4 w-full items-stretch">
+                <div class="bg-white border border-slate-200 p-4 rounded-xl text-left flex flex-col shadow-sm min-h-[12rem]">
+                    <div class="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
+                        <div class="text-xs uppercase font-bold text-slate-400">Total Servicios</div>
+                        <div class="flex items-baseline gap-2">
+                            <div class="text-3xl font-black text-blue-600">${nf(D.totalGlobalServicios)}</div>
+                            <span class="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full whitespace-nowrap">${nf(D.totalServiciosFallidos)} fallidos</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 text-[10px] flex-1">
+                        ${kd.map((k) => `<div class="flex items-center justify-between border-b border-slate-50 last:border-0 py-1">
+                            <span class="truncate w-16 text-slate-600 font-medium">${e(k.delegacion)}</span>
+                            <div class="flex items-center gap-2"><span class="font-bold text-slate-800">${k.total}</span><span class="text-[9px] text-slate-400 w-8 text-right">${k.porcentaje}%</span></div>
+                        </div>`).join('')}
+                    </div>
+                </div>
+                <div class="bg-white border border-slate-200 p-4 rounded-xl text-left flex flex-col shadow-sm min-h-[12rem]">
+                    <div class="text-xs uppercase font-bold text-slate-400 mb-2 border-b border-slate-100 pb-2">Promedio / Téc. <span class="normal-case opacity-50">(Diario)</span></div>
+                    <div class="space-y-1.5 text-[10px] flex-1">
+                        ${kd.map((k) => `<div class="flex justify-between items-center py-1 border-b border-slate-50 last:border-0">
+                            <span class="text-slate-600">${e(k.delegacion)}</span>
+                            <div class="flex items-center gap-2">
+                                <div class="w-10 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500" style="width: ${(num(k.promedio_diario) / 8) * 100}%"></div></div>
+                                <span class="font-bold text-emerald-600 w-6 text-right">${k.promedio_diario}</span>
+                            </div>
+                        </div>`).join('')}
+                    </div>
+                </div>
+                <div class="bg-white border border-slate-200 p-4 rounded-xl text-left flex flex-col shadow-sm min-h-[12rem]">
+                    <div class="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
+                        <div class="text-xs uppercase font-bold text-slate-400">Novedades</div>
+                        <div class="text-3xl font-black text-red-500">${nf(D.datosNovedad?.con_novedad)}</div>
+                    </div>
+                    <div class="space-y-1.5 text-[10px] flex-1">
+                        ${kd.map((k) => `<div class="flex justify-between items-center py-1 border-b border-slate-50 last:border-0">
+                            <span class="text-slate-600">${e(k.delegacion)}</span>
+                            <span class="font-bold ${num(k.novedades) > 0 ? 'text-red-500' : 'text-slate-300'}">${k.novedades}</span>
+                        </div>`).join('')}
+                    </div>
+                </div>
+                <div class="bg-white border border-slate-200 p-4 rounded-xl text-left flex flex-col shadow-sm min-h-[12rem]">
+                    <div class="text-xs uppercase font-bold text-slate-400 mb-3 border-b border-slate-100 pb-2">Delegaciones</div>
+                    <div class="flex flex-wrap gap-2 content-start">
+                        ${kd.map((k) => `<span class="bg-slate-50 border border-slate-200 text-slate-600 px-2 py-1 rounded text-[9px] font-medium">${e(k.delegacion)}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+h += '<div class="flex flex-col w-full">';
+
+const encabezado = (icono, claseIcono, titulo, sub, claseTitulo = 'text-sm font-bold text-slate-800 leading-tight', claseSub = 'text-[9px] text-slate-400', claseFecha = 'text-[10px] font-bold text-slate-700 px-2.5 py-1.5', claseCont = 'flex justify-between items-center mb-4 border-b border-gray-100 pb-2.5 shrink-0') => `
+    <div class="${claseCont}">
+        <div class="flex items-center gap-2.5">
+            <div class="${claseIcono}">${icono}</div>
+            <div><h3 class="${claseTitulo}">${titulo}</h3><p class="${claseSub}">${sub}</p></div>
+        </div>
+        <div class="date-badge ${claseFecha}">${rango}</div>
+    </div>`;
+
+// ---------------------------------------------------------------- DELEGACIONES
+if (activa('delegaciones')) {
+    const kd = D.kpisDelegacion || [];
+    const maxValor = kd.length ? Math.max(...kd.map((k) => num(k.total))) : 1;
+    h += `
+    <div class="card-wrapper mt-4"><div class="card p-3">
+        <div class="flex justify-between items-start mb-2">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-lg">📊</div>
+                <div><h3 class="text-sm font-bold text-slate-800 leading-tight">Participación por Delegación</h3><p class="text-[9px] text-slate-400">Volumen, % Global y Fuerza Técnica</p></div>
+            </div>
+            <div class="date-badge text-lg font-bold text-slate-700">${rango}</div>
+        </div>
+        <div class="relative h-96 w-full pl-8 pr-2 pt-6 pb-12 border-l border-b border-slate-200 mx-auto">
+            <div class="absolute inset-0 pl-8 pointer-events-none flex flex-col justify-between opacity-10">
+                ${'<div class="w-full border-t border-slate-400 border-dashed h-0"></div>'.repeat(3)}<div class="w-full h-0"></div>
+            </div>
+            <div class="absolute left-0 top-0 h-full flex flex-col justify-between text-[8px] text-slate-300 font-bold pr-2 pb-12 pt-6"><span>MAX</span><span>0</span></div>
+            <div class="flex items-end justify-around h-full w-full gap-2 relative z-10">
+                ${kd.map((k) => {
+                    const alto = (num(k.total) / (maxValor || 1)) * 100;
+                    const dest = num(k.porcentaje) > 20;
+                    return `<div class="flex flex-col items-center justify-end h-full flex-1 group max-w-[35px]">
+                        <div class="mb-1 text-[9px] ${dest ? 'text-indigo-700 font-bold' : 'text-slate-500'}">${k.total}</div>
+                        <div class="${dest ? 'bg-indigo-600' : 'bg-indigo-400'} w-full rounded-t-sm shadow-sm transition-all duration-700" style="height: ${alto}%;"></div>
+                        <div class="absolute -bottom-10 flex flex-col items-center w-full">
+                            <div class="text-[7px] font-bold text-slate-600 uppercase truncate w-full text-center">${e(String(k.delegacion ?? '').substring(0, 8))}</div>
+                            <div class="text-[8px] font-bold text-indigo-600 bg-indigo-50 px-1 rounded-sm mt-0.5 border border-indigo-100">${k.porcentaje}%</div>
+                            <div class="flex items-center gap-0.5 mt-0.5 text-[7px] text-slate-400" title="Técnicos Activos"><span>👷</span> ${k.num_tecnicos ?? 0}</div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+        <div class="mt-4 flex justify-between items-center text-[8px] text-slate-400 bg-slate-50/50 p-1.5 rounded-lg border border-slate-100">
+            <div class="flex gap-3">
+                <div class="flex items-center gap-1"><span class="w-2 h-2 bg-indigo-600 rounded-xs"></span> &gt; 20% Part.</div>
+                <div class="flex items-center gap-1">👷 Técnicos Activos</div>
+            </div>
+            <div class="flex flex-col"><span class="text-sm uppercase tracking-wide text-slate-500 font-semibold">Total Global</span><strong class="text-xl text-slate-800 tracking-tight">${nf(D.totalGlobalServicios)}</strong></div>
+        </div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- TENDENCIAS
+if (activa('tendencias')) {
+    const sem = D.semanasGroup || [];
+    let maxVal = 1;
+    sem.forEach((s) => s.dias.forEach((d) => (maxVal = Math.max(maxVal, num(d.total)))));
+    h += `
+    <div class="card-wrapper w-full h-fit" style="break-after: page !important; page-break-after: always !important;">
+        <div class="card p-5 flex flex-col justify-between">
+            <div class="flex justify-between items-start mb-4 border-b border-gray-100 pb-3 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xl">📅</div>
+                    <div><h3 class="text-lg font-bold text-slate-800 leading-tight">Evolución Diaria de Servicios</h3><p class="text-[10px] text-slate-400">Detalle por semanas operativas del período</p></div>
+                </div>
+                <div class="date-badge text-xs font-bold text-slate-700 px-3 py-1.5">${rango}</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-xs flex-1">
+                ${sem.map((s) => `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col justify-between h-fit break-inside-avoid">
+                    <h4 class="font-bold text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1 text-[10px] tracking-wider shrink-0">${e(s.nombre)}</h4>
+                    <div class="space-y-1.5 flex-1 flex flex-col justify-center">
+                        ${s.dias.map((d) => `<div class="flex items-center gap-2">
+                            <div class="w-9 font-bold text-slate-600 leading-none text-[10px]">${d.dia_nombre}<div class="text-[8px] font-normal text-slate-400 mt-0.5">${String(d.fecha).substring(8, 10)}</div></div>
+                            <div class="flex-1 h-2.5 bg-white rounded-full overflow-hidden border border-slate-200 shadow-inner"><div class="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full" style="width: ${(num(d.total) / maxVal) * 100}%"></div></div>
+                            <div class="w-5 text-right font-black text-slate-700 text-[10px]">${d.total}</div>
+                            <div class="flex items-center gap-0.5 text-[9px] text-slate-500 bg-slate-200/50 px-1 py-0.5 rounded" title="Técnicos trabajando"><span>👷</span><span class="font-bold">${d.num_tecnicos ?? 0}</span></div>
+                        </div>`).join('')}
+                    </div>
+                </div>`).join('')}
+            </div>
+            <div class="mt-4 flex justify-end items-center text-[10px] text-slate-500 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100 shrink-0">
+                <div class="flex items-center gap-1 font-medium"><span>👷</span> = Cantidad de técnicos activos operando ese día</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ---------------------------------------------------------------- MANTENIMIENTO
+if (activa('mantenimiento')) {
+    const tipos = (D.todosTiposMant || []).map((t) => t.nombre_completo);
+    const mm = D.matrizMant || {};
+    const totCol = {};
+    tipos.forEach((t) => (totCol[t] = 0));
+    let gran = 0;
+    const filas = (D.delegacionesListaMant || []).map((del) => {
+        let rowTotal = 0;
+        tipos.forEach((t) => (rowTotal += num(mm[del]?.[t])));
+        const celdas = tipos.map((t) => {
+            const val = num(mm[del]?.[t]);
+            totCol[t] += val;
+            const pct = rowTotal > 0 ? phpRound((val / rowTotal) * 100, 1) : 0;
+            if (val == 0) return `<td class="px-1 py-0.5 align-middle text-slate-200">-</td>`;
+            const bg = pct > 50 ? 'bg-purple-100 text-purple-900' : 'bg-purple-50 text-purple-700';
+            return `<td class="px-1 py-0.5 align-middle font-black ${bg}"><div class='text-[9px] leading-tight'>${val}</div><div class='text-[7px] font-normal opacity-70 leading-none'>${pct}%</div></td>`;
+        }).join('');
+        gran += rowTotal;
+        return `<tr class="hover:bg-slate-50">
+            <td class="px-2.5 py-0.5 text-left font-bold text-slate-700 bg-slate-50/50 text-[9px] border-r border-slate-100"><div class="truncate hover:text-clip hover:whitespace-normal transition-all duration-200" title="${e(del)}">${e(del)}</div></td>
+            ${celdas}
+            <td class="px-2.5 py-0.5 font-bold bg-slate-100 text-slate-800 text-[9px]">${rowTotal}</td>
+        </tr>`;
+    }).join('');
+    h += `
+    <div class="card-wrapper w-full" style="page-break-before: always !important; break-before: page !important; margin-top: 0 !important; align-self: flex-start !important;">
+        <div class="card py-3 px-4 flex flex-col justify-between">
+            <div class="flex justify-between items-start mb-2 border-b border-gray-100 pb-2 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 text-base">🔧</div>
+                    <div><h3 class="text-sm font-bold text-slate-800 leading-tight">Servicios por Tipo de Mantenimiento</h3><p class="text-[9px] text-slate-400 leading-none">Distribución de cantidades y porcentajes por delegación</p></div>
+                </div>
+                <div class="date-badge text-[9px] font-bold text-slate-700 px-2 py-1">${rango}</div>
+            </div>
+            <div class="overflow-hidden rounded-md border border-slate-200">
+                <table class="w-full text-[9px] text-center border-collapse">
+                    <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider shrink-0">
+                        <tr>
+                            <th class="px-2 py-1 text-left bg-slate-100 border-b border-slate-200 text-[9px] w-36">Delegación</th>
+                            ${tipos.map((t) => `<th class="px-1 py-1 border-b border-slate-200 align-bottom"><div class="text-[8px] leading-tight break-words w-14 mx-auto text-slate-500">${e(t)}</div></th>`).join('')}
+                            <th class="px-2 py-1 border-b border-slate-200 bg-slate-50 font-bold text-slate-700 text-[9px]">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">${filas}</tbody>
+                    <tfoot class="bg-slate-100 font-bold text-slate-800 border-t border-slate-200 shrink-0">
+                        <tr class="text-[9px]">
+                            <td class="px-2.5 py-1 text-left font-bold">TOTAL</td>
+                            ${tipos.map((t) => `<td class="px-1 py-1"><div class="text-slate-800 text-[9px]">${totCol[t]}</div><div class="text-[7px] text-purple-600 font-normal leading-none">${gran > 0 ? phpRound((totCol[t] / gran) * 100, 1) : 0}%</div></td>`).join('')}
+                            <td class="px-2.5 py-1 bg-slate-200 text-purple-900 font-black text-xs">${gran}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ---------------------------------------------------------------- MÁQUINAS
+const tiposMaq = (D.tiposMaquinaCols || []).map((t) => t.nombre_tipo_maquina);
+if (activa('maquinas')) {
+    const mq = D.matrizMaquina || {};
+    const totCol = {};
+    tiposMaq.forEach((t) => (totCol[t] = 0));
+    let gran = 0;
+    const filas = (D.delegacionesListaMaquina || []).map((del) => {
+        let rowT = 0;
+        const celdas = tiposMaq.map((t) => {
+            const val = num(mq[del]?.[t]);
+            rowT += val;
+            totCol[t] += val;
+            const cls = val == 0 ? 'text-slate-200 font-normal' : 'text-teal-800 font-black bg-teal-50';
+            return `<td class="px-1 py-1.5 align-middle border-r border-slate-100/50 last:border-r-0 text-xs ${cls}">${val == 0 ? '-' : val}</td>`;
+        }).join('');
+        gran += rowT;
+        return `<tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="px-3 py-1.5 text-left font-bold text-slate-700 bg-slate-50/50 text-xs border-r border-slate-100"><div class="truncate max-w-[150px]" title="${e(del)}">${e(del)}</div></td>
+            ${celdas}
+            <td class="px-3 py-1.5 font-extrabold bg-slate-100/50 text-slate-800 text-xs">${rowT}</td>
+        </tr>`;
+    }).join('');
+    h += `
+    <div class="card-wrapper"><div class="card p-6 flex flex-col justify-between">
+        <div class="flex justify-between items-start mb-4 border-b border-gray-100 pb-3 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-xl">🏧</div>
+                <div><h3 class="text-lg font-bold text-slate-800 leading-tight">Servicios por Tipo de Máquina</h3><p class="text-xs text-slate-400">Distribución de Delegaciones Atendidas</p></div>
+            </div>
+            <div class="date-badge text-xs font-bold text-slate-700 px-3 py-1.5">${rango}</div>
+        </div>
+        <div class="overflow-hidden rounded-xl border border-slate-200 flex-1">
+            <table class="w-full text-xs text-center border-collapse h-full">
+                <thead class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider shrink-0">
+                    <tr>
+                        <th class="px-3 py-2 text-left bg-slate-100 border-b border-slate-200 w-40 text-[10px]">Delegación</th>
+                        ${tiposMaq.map((t) => `<th class="px-1 py-2 border-b border-slate-200 align-bottom" title="${e(t)}"><div class="break-words text-[9px] w-16 mx-auto leading-tight font-extrabold text-slate-600">${e(t)}</div></th>`).join('')}
+                        <th class="px-3 py-2 border-b border-slate-200 bg-slate-100 font-bold text-slate-700 text-[10px] w-16">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">${filas}</tbody>
+                <tfoot class="bg-slate-100 font-black text-slate-800 border-t-2 border-slate-200 shrink-0">
+                    <tr class="text-xs">
+                        <td class="px-3 py-2 text-left font-black tracking-wider border-r border-slate-200/50 text-[10px]">TOTALES</td>
+                        ${tiposMaq.map((t) => `<td class="px-1 py-2 border-r border-slate-200/30 last:border-r-0 font-black text-slate-900 text-xs">${totCol[t]}</td>`).join('')}
+                        <td class="px-3 py-2 bg-teal-800 text-white font-black text-sm">${gran}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- ESTADOS
+if (activa('estados')) {
+    const est = D.datosEstadosFinales || [];
+    const totalEstados = sum(est, 'total');
+    h += `
+    <div class="card-wrapper"><div class="card p-6 flex flex-col justify-between">
+        <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-3 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl">✅</div>
+                <div><h3 class="text-xl font-bold text-slate-800 leading-tight">Estado Final de la Máquina</h3><p class="text-xs text-slate-400">Resultado operativo tras la intervención técnica</p></div>
+            </div>
+            <div class="date-badge text-xs font-bold text-slate-700 px-3 py-1.5">${rango}</div>
+        </div>
+        <div class="space-y-5 flex-1 flex flex-col justify-center max-w-4xl mx-auto w-full">
+            ${est.map((x) => {
+                const pct = totalEstados > 0 ? phpRound((num(x.total) / totalEstados) * 100, 1) : 0;
+                const n = String(x.nombre_estado ?? '').toLowerCase();
+                let barra, texto;
+                if (n.includes('operativ') || n.includes('funcional') || n.includes('buen')) { barra = 'bg-gradient-to-r from-emerald-400 to-emerald-500'; texto = 'text-emerald-700 bg-emerald-50 border border-emerald-100'; }
+                else if (n.includes('limit') || n.includes('parcial') || n.includes('observacion')) { barra = 'bg-gradient-to-r from-amber-400 to-amber-500'; texto = 'text-amber-700 bg-amber-50 border border-amber-100'; }
+                else { barra = 'bg-gradient-to-r from-red-400 to-red-500'; texto = 'text-red-700 bg-red-50 border border-red-100'; }
+                return `<div class="bg-slate-50/50 p-3.5 rounded-xl border border-slate-100">
+                    <div class="flex justify-between items-center text-xs mb-2">
+                        <span class="font-extrabold text-slate-700 text-sm tracking-tight">${e(x.nombre_estado)}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-400 font-bold bg-white px-2 py-0.5 rounded border border-slate-200">${x.total} serv.</span>
+                            <span class="font-black px-2 py-0.5 rounded text-xs ${texto}">${pct}%</span>
+                        </div>
+                    </div>
+                    <div class="h-3.5 w-full bg-white rounded-full overflow-hidden border border-slate-200 shadow-inner"><div class="h-full ${barra} rounded-full transition-all duration-500" style="width: ${pct}%"></div></div>
+                </div>`;
+            }).join('')}
+        </div>
+        <div class="shrink-0 mt-4"></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- PUNTOS ATENDIDOS
+if (activa('puntos_atendidos')) {
+    const mp = D.matrizPuntosTipo || {};
+    const totCol = {};
+    let gran = 0;
+    tiposMaq.forEach((t) => (totCol[t] = 0));
+    (D.delegacionesListaMaquina || []).forEach((del) => tiposMaq.forEach((t) => { const v = num(mp[del]?.[t]); totCol[t] += v; gran += v; }));
+    const filas = (D.delegacionesListaMaquina || []).map((del) => {
+        let rowTotal = 0;
+        const celdas = tiposMaq.map((t) => {
+            const val = num(mp[del]?.[t]);
+            rowTotal += val;
+            const bg = val > 0 ? 'bg-green-50 text-green-800 font-black' : 'text-slate-200 font-normal';
+            return `<td class="px-0.5 py-1 ${bg} border-r border-slate-100/50 last:border-r-0 text-[9.5px]">${val > 0 ? val : '-'}</td>`;
+        }).join('');
+        return `<tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-2.5 py-1 text-left font-bold text-slate-700 bg-slate-50/50 text-[9.5px] border-r border-slate-100"><div class="truncate max-w-[140px]" title="${e(del)}">${e(del)}</div></td>
+            ${celdas}
+            <td class="px-2.5 py-1 font-extrabold bg-slate-100 text-slate-800 text-[9.5px]">${rowTotal}</td>
+        </tr>`;
+    }).join('');
+    h += `
+    <div class="card-wrapper"><div class="card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-200 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 text-sm">📍</div>
+                <div><h3 class="text-sm font-bold text-slate-800 leading-tight">Puntos Atendidos</h3><p class="text-[10px] text-slate-400 leading-none">Detalle de cobertura geográfica por tipo de máquina</p></div>
+            </div>
+            <div class="date-badge text-[10px] font-bold text-slate-700">${rango}</div>
+        </div>
+        <div class="flex items-center gap-2.5 mb-2.5 shrink-0">
+            <div class="flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[10px] shadow-sm"><span class="mr-1">🛠️</span><span class="font-extrabold text-slate-800 mr-1">${nf(D.totalGlobalServicios)}</span><span class="text-[8.5px] text-slate-500">Servicios Atendidos</span></div>
+            <div class="flex items-center px-2.5 py-1 bg-white border border-rose-200 rounded-lg text-[10px] shadow-sm"><span class="mr-1">📍</span><span class="font-extrabold text-slate-800 mr-1">${nf(gran)}</span><span class="text-[8.5px] text-rose-500 font-bold">Puntos Atendidos</span></div>
+        </div>
+        <div class="overflow-hidden rounded-lg border border-slate-200">
+            <table class="w-full text-[9.5px] text-center border-collapse">
+                <thead class="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider shrink-0">
+                    <tr>
+                        <th class="px-2.5 py-2 text-left bg-slate-100 border-b border-slate-200 w-40 text-[9.5px]">Delegación</th>
+                        ${tiposMaq.map((t) => `<th class="px-1 py-2 border-b border-slate-200 align-bottom"><div class="whitespace-normal break-words text-[8.5px] leading-tight w-14 mx-auto text-slate-500 font-extrabold">${e(t)}</div></th>`).join('')}
+                        <th class="px-2.5 py-2 border-b border-slate-200 bg-slate-50 font-bold text-slate-700 text-[9.5px] w-16">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">${filas}</tbody>
+                <tfoot class="bg-slate-100 font-black text-slate-800 border-t-2 border-slate-200 shrink-0">
+                    <tr class="text-[9.5px]">
+                        <td class="px-2.5 py-2 text-left font-black tracking-wider border-r border-slate-200/50 text-[9.5px]">TOTALES</td>
+                        ${tiposMaq.map((t) => `<td class="px-0.5 py-2 border-r border-slate-200/30 last:border-r-0 font-black text-slate-900 text-[9.5px]">${totCol[t]}</td>`).join('')}
+                        <td class="px-2.5 py-2 bg-rose-900 text-white font-black text-xs w-16">${gran}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="mt-2 pt-1 border-t border-slate-100 flex justify-between items-center shrink-0"><p class="text-[8px] text-slate-400 font-medium">(-) = Sin actividad registrada en el período</p></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- PUNTOS MÁS VISITADOS
+if (activa('puntos_fallidos')) {
+    const pva = D.puntosVisitadosAgrupados || [];
+    h += `
+    <div class="card-wrapper"><div class="card p-5 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-base border border-blue-100">📍</div>
+                <div><h3 class="text-sm font-bold text-slate-800 leading-tight">Puntos Más Frecuentes</h3><p class="text-[10px] text-slate-400 leading-tight">Global por delegación (Top 5 puntos con mayor recurrencia)</p></div>
+            </div>
+            <div class="date-badge text-[10px] font-bold text-slate-700 px-2.5 py-1.5">${rango}</div>
+        </div>
+        <div class="grid grid-cols-3 gap-4 flex-1">
+            ${pva.map((g) => {
+                const pts = g.puntos;
+                const maxLocal = num(pts[0]?.total) || 1;
+                return `<div class="bg-slate-50/60 rounded-xl border border-slate-200 p-3 flex flex-col justify-between h-fit">
+                    <div class="flex justify-between items-center mb-2 pb-1 border-b border-slate-200/60">
+                        <h4 class="font-bold text-slate-800 text-[10px] uppercase truncate max-w-[70%]" title="${e(g.delegacion)}">${e(g.delegacion)}</h4>
+                        <span class="text-[8px] font-black text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-full">${pts.length} pts</span>
+                    </div>
+                    <div class="space-y-2">
+                        ${pts.slice(0, 5).map((p) => `<div class="flex flex-col">
+                            <div class="flex justify-between items-start text-[9.5px] mb-1">
+                                <div class="flex-1 min-w-0 pr-2">
+                                    <div class="font-bold text-slate-700 leading-snug truncate" title="${e(p.punto)}">${e(p.punto)}</div>
+                                    <div class="text-[7.5px] font-medium text-slate-400 uppercase leading-none mt-0.5">${e(p.tipo)}</div>
+                                </div>
+                                <div class="font-extrabold text-blue-600 text-[10px] shrink-0">${p.total}</div>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-200/70 rounded-full overflow-hidden shadow-inner"><div class="h-full bg-blue-500 rounded-full" style="width: ${(num(p.total) / maxLocal) * 100}%"></div></div>
+                        </div>`).join('')}
+                        ${pts.length > 5 ? `<div class="text-center text-[8px] font-bold text-slate-400 pt-1.5 border-t border-slate-100">+${pts.length - 5} puntos más</div>` : ''}
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+        <div class="shrink-0 mt-4"></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- REPUESTOS
+if (activa('repuestos')) {
+    let totalRep = 0, inees = 0, prosegur = 0;
+    (D.datosOrigenRepuestos || []).forEach((o) => {
+        const c = num(o.total);
+        totalRep += c;
+        if (String(o.origen ?? '').toUpperCase().includes('INEES')) inees += c; else prosegur += c;
+    });
+    const pctInees = totalRep > 0 ? phpRound((inees / totalRep) * 100) : 0;
+    h += `
+    <div class="card-wrapper"><div class="card p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-start mb-3 border-b border-gray-100 pb-2 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-base">⚙️</div>
+                <div><h3 class="text-sm font-bold text-slate-800 leading-tight">Repuestos Usados en Servicios</h3><p class="text-[9px] text-slate-400 leading-none">Distribución de consumos y origen de repuestos del período</p></div>
+            </div>
+            <div class="date-badge text-[9px] font-bold text-slate-700 px-2 py-1">${rango}</div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 flex-1">
+            <div class="break-inside-avoid bg-orange-50/20 rounded-xl border border-orange-100 p-2.5 flex flex-col justify-between h-fit min-h-[140px]">
+                <div class="border-b border-orange-100/50 pb-1 mb-2 shrink-0"><h4 class="font-extrabold text-orange-700 text-[8.5px] uppercase tracking-wider">Origen de Repuestos</h4></div>
+                <div class="flex items-center justify-around gap-2.5 flex-1">
+                    <div class="relative w-14 h-14 rounded-full shadow-inner border-2 border-white shrink-0" style="background: conic-gradient(#f97316 ${pctInees}%, #3b82f6 0);">
+                        <div class="absolute inset-0 m-auto w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-[7px] font-bold text-slate-500 shadow-sm text-center leading-none">Total<br>${totalRep}</div>
+                    </div>
+                    <div class="text-[8.5px] space-y-1 flex-1">
+                        <div class="flex justify-between items-center border-b border-orange-100/30 pb-0.5">
+                            <div class="flex items-center gap-1 font-semibold text-slate-600"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span> INEES</div>
+                            <div class="text-right leading-none"><span class="font-bold text-slate-700">${pctInees}%</span><span class="text-[7.5px] text-slate-400 block">(${inees})</span></div>
+                        </div>
+                        <div class="flex justify-between items-center pt-0.5">
+                            <div class="flex items-center gap-1 font-semibold text-slate-600"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> PROSEGUR</div>
+                            <div class="text-right leading-none"><span class="font-bold text-slate-700">${100 - pctInees}%</span><span class="text-[7.5px] text-slate-400 block">(${prosegur})</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            ${(D.repuestosPorDelegacion || []).map((r) => `<div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-slate-200 p-2.5 h-fit">
+                <div class="flex justify-between items-center mb-1.5 border-b border-slate-100 pb-1">
+                    <h4 class="font-bold text-slate-700 text-[8.5px] uppercase truncate max-w-[65%]" title="${e(r.delegacion)}">${e(r.delegacion)}</h4>
+                    <span class="bg-orange-100 text-orange-700 text-[7.5px] px-1.5 py-0.5 rounded-full font-black leading-none">Total: ${r.total_gral}</span>
+                </div>
+                <ul class="space-y-[2px]">
+                    ${r.items.slice(0, 5).map((it) => `<li class="flex justify-between items-start text-[8px] gap-2 py-0.5 border-b border-slate-50/50 last:border-0">
+                        <span class="text-slate-600 text-left leading-tight flex-1 break-words whitespace-normal pr-1">${e(it.nombre)}</span>
+                        <span class="font-bold text-slate-800 bg-slate-100 px-1 py-0 rounded shrink-0 text-[7.5px] leading-none">${it.cantidad}</span>
+                    </li>`).join('')}
+                </ul>
+            </div>`).join('')}
+        </div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- CALIFICACIONES
+if (activa('calificaciones')) {
+    h += `
+    <div class="card-wrapper mt-4">
+        <div class="flex justify-between items-center mb-4 px-2">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-lg border border-amber-200">⭐</div>
+                <div><h3 class="text-lg font-bold text-slate-800">Calidad de Atención</h3><p class="text-xs text-slate-500">Satisfacción del cliente por Delegación</p></div>
+            </div>
+            <div class="date-badge text-xl font-bold text-slate-700">${rango}</div>
+        </div>
+        <div class="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+            ${(D.calificacionesAgrupadas || []).map((c) => `<div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-4">
+                <div class="flex justify-between items-center mb-2 pb-1 border-b border-slate-100">
+                    <h4 class="font-extrabold text-slate-700 text-xs uppercase tracking-wide">${e(c.delegacion)}</h4>
+                    <span class="bg-amber-50 text-amber-700 text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-amber-100">Total: ${c.total_zona}</span>
+                </div>
+                <div class="space-y-2">
+                    ${c.items.map((it) => {
+                        const pct = num(c.total_zona) > 0 ? phpRound((num(it.total) / num(c.total_zona)) * 100, 1) : 0;
+                        let barra = 'bg-amber-400', texto = 'text-amber-700';
+                        const n = String(it.nombre ?? '').toLowerCase();
+                        if (n.includes('mal') || n.includes('pésim')) { barra = 'bg-red-400'; texto = 'text-red-700'; }
+                        else if (n.includes('excelente')) { barra = 'bg-emerald-400'; texto = 'text-emerald-700'; }
+                        return `<div>
+                            <div class="flex justify-between text-[11px] mb-0.5">
+                                <span class="font-bold text-slate-600">${e(it.nombre)}</span>
+                                <div class="flex gap-2"><span class="text-slate-400 font-medium text-[9.5px]">(${it.total})</span><span class="font-extrabold ${texto} text-[11px]">${pct}%</span></div>
+                            </div>
+                            <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"><div class="h-full ${barra}" style="width: ${pct}%"></div></div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`).join('')}
+        </div>
+    </div>`;
+}
+
+// ---------------------------------------------------------------- PUNTOS FALLIDOS
+if (activa('puntos_mas_fallidos')) {
+    const pf = D.puntosFallidosPorDelegacion || [];
+    h += `
+    <div class="card-wrapper"><div class="card bg-rose-50/40 border border-rose-200 p-5 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-4 border-b border-rose-200/60 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-white border border-rose-200 flex items-center justify-center text-rose-600 text-lg shadow-sm">⚠️</div>
+                <div><h3 class="text-lg font-bold text-rose-900 leading-tight">Puntos Fallidos</h3><p class="text-xs text-rose-600 font-medium">Puntos con <strong>&gt;= 2 Visitas Fallidas</strong></p></div>
+            </div>
+            <div class="date-badge text-xl font-bold text-slate-700">${rango}</div>
+        </div>
+        <div class="grid grid-cols-3 gap-4 flex-1">
+            ${pf.map((d) => `<div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-rose-100 p-3.5 h-fit">
+                <div class="flex justify-between items-center mb-2.5 border-b border-slate-100 pb-1.5">
+                    <h4 class="font-extrabold text-slate-800 text-xs uppercase truncate max-w-[70%]" title="${e(d.delegacion)}">${e(d.delegacion)}</h4>
+                    <span class="bg-rose-100 text-rose-700 text-[9.5px] px-2 py-0.5 rounded-full font-black">Tot: ${d.total_zona}</span>
+                </div>
+                <ul class="space-y-2.5">
+                    ${d.items.slice(0, 5).map((it) => `<li class="flex flex-col">
+                        <div class="flex justify-between items-start text-[11px] mb-1">
+                            <span class="text-slate-700 font-bold flex-1 pr-2 break-all leading-tight" title="${e(it.nombre)}">${e(it.nombre)}</span>
+                            <span class="font-extrabold text-rose-600 text-[11px] shrink-0">${it.cantidad}</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-rose-50 rounded-full overflow-hidden border border-rose-100 shadow-inner"><div class="h-full bg-rose-500 rounded-full" style="width: ${Math.min((num(it.cantidad) / 5) * 100, 100)}%"></div></div>
+                    </li>`).join('')}
+                </ul>
+            </div>`).join('')}
+        </div>
+        ${pf.length === 0 ? `<div class="text-center py-8 text-sm text-slate-500 font-bold italic bg-white rounded-xl border border-rose-100 shadow-sm">Excellent Gestión: Ningún punto supera los 2 servicios fallidos en este periodo. 🎉</div>` : ''}
+        <div class="shrink-0 mt-4"></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- NOVEDADES
+if (activa('novedades')) {
+    const nd = D.novedadesPorDelegacion || {};
+    const dels = Object.keys(nd);
+    h += `
+    <div class="card-wrapper"><div class="card bg-indigo-50/30 border border-indigo-100 p-5 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-4 border-b border-indigo-200/60 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-white border border-indigo-200 flex items-center justify-center text-indigo-600 text-lg shadow-sm">🏷️</div>
+                <div><h3 class="text-lg font-bold text-indigo-900 leading-tight">Principales Novedades por Delegación</h3><p class="text-xs text-indigo-600 font-medium">Top 6 de novedades en <strong>servicios no fallidos</strong></p></div>
+            </div>
+            <div class="date-badge text-xl font-bold text-slate-700">${rango}</div>
+        </div>
+        ${dels.length === 0 ? `<div class="text-center py-8 text-sm text-slate-500 font-bold italic bg-white rounded-xl border border-indigo-100 shadow-sm">No se registraron novedades en servicios no fallidos durante el período.</div>` : `
+        <div class="grid grid-cols-3 gap-4 flex-1">
+            ${dels.map((del) => {
+                const items = nd[del] || [];
+                const totalZona = sum(items, 'total');
+                const maxZona = items.length ? Math.max(...items.map((i) => num(i.total))) : 1;
+                return `<div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-indigo-100 p-3.5 h-fit">
+                    <div class="flex justify-between items-center mb-2.5 border-b border-slate-100 pb-1.5">
+                        <h4 class="font-extrabold text-slate-800 text-xs uppercase truncate max-w-[70%]" title="${e(del)}">${e(del)}</h4>
+                        <span class="bg-indigo-100 text-indigo-700 text-[9.5px] px-2 py-0.5 rounded-full font-black">Tot: ${totalZona}</span>
+                    </div>
+                    <ul class="space-y-2.5">
+                        ${items.map((it) => `<li class="flex flex-col">
+                            <div class="flex justify-between items-start text-[11px] mb-1">
+                                <span class="text-slate-700 font-bold flex-1 pr-2 break-all leading-tight" title="${e(it.nombre)}">${e(it.nombre)}</span>
+                                <span class="font-extrabold text-indigo-600 text-[11px] shrink-0">${num(it.total)}</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-indigo-50 rounded-full overflow-hidden border border-indigo-100 shadow-inner"><div class="h-full bg-indigo-500 rounded-full" style="width: ${maxZona > 0 ? Math.min((num(it.total) / maxZona) * 100, 100) : 0}%"></div></div>
+                        </li>`).join('')}
+                    </ul>
+                </div>`;
+            }).join('')}
+        </div>`}
+        <div class="shrink-0 mt-4"></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- NOVEDADES FALLIDAS
+if (activa('novedades_fallidas')) {
+    const nf_ = D.novedadesFallidasPorDelegacion || {};
+    const dels = Object.keys(nf_);
+    h += `
+    <div class="card-wrapper"><div class="card bg-rose-50/40 border border-rose-200 p-5 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-4 border-b border-rose-200/60 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-white border border-rose-200 flex items-center justify-center text-rose-600 text-lg shadow-sm">⚠️</div>
+                <div><h3 class="text-lg font-bold text-rose-900 leading-tight">Novedades de Servicios Fallidos</h3><p class="text-xs text-rose-600 font-medium">Top 6 de novedades por delegación en <strong>servicios fallidos</strong></p></div>
+            </div>
+            <div class="date-badge text-xl font-bold text-slate-700">${rango}</div>
+        </div>
+        ${dels.length === 0 ? `<div class="text-center py-8 text-sm text-slate-500 font-bold italic bg-white rounded-xl border border-rose-100 shadow-sm">No se registraron novedades en servicios fallidos durante el período.</div>` : `
+        <div class="overflow-hidden rounded-lg border border-rose-200 bg-white flex-1">
+            <table class="w-full text-[10px] text-left">
+                <thead class="bg-rose-700 text-white"><tr>
+                    <th class="px-3 py-2 uppercase tracking-wider text-[9px] w-48">Delegación</th>
+                    <th class="px-3 py-2 uppercase tracking-wider text-[9px]">Principales novedades (Top 6)</th>
+                    <th class="px-3 py-2 uppercase tracking-wider text-[9px] text-right w-24">Total</th>
+                </tr></thead>
+                <tbody class="divide-y divide-rose-100">
+                    ${dels.map((del) => {
+                        const items = nf_[del] || [];
+                        return `<tr class="break-inside-avoid hover:bg-rose-50/60">
+                            <td class="px-3 py-2 align-top font-black text-rose-800 uppercase">${e(del)}</td>
+                            <td class="px-3 py-2"><div class="flex flex-wrap gap-1.5">
+                                ${items.map((it) => `<span class="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[9px] font-medium text-rose-700"><span>${e(it.nombre)}</span><span class="rounded-full bg-rose-600 px-1.5 py-0.5 text-[8px] font-black text-white">${num(it.total)}</span></span>`).join('')}
+                            </div></td>
+                            <td class="px-3 py-2 text-right align-top font-black text-rose-700">${sum(items, 'total')}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`}
+        <div class="shrink-0 mt-4"></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- CLIENTES CON NOVEDADES
+if (activa('clientes_novedades')) {
+    const cn = D.clientesNovedades || {};
+    const dels = Object.keys(cn);
+    h += `
+    <div class="card-wrapper"><div class="card bg-amber-50/40 border border-amber-200 p-5 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-4 border-b border-amber-200/60 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-white border border-amber-200 flex items-center justify-center text-amber-600 text-lg shadow-sm">👥</div>
+                <div><h3 class="text-lg font-bold text-amber-900 leading-tight">Clientes con Más Novedades por Delegación</h3><p class="text-xs text-amber-700 font-medium">Top 3 de clientes por delegación y sus <strong>3 novedades más frecuentes</strong></p></div>
+            </div>
+            <div class="date-badge text-xl font-bold text-slate-700">${rango}</div>
+        </div>
+        ${dels.length === 0 ? `<div class="text-center py-8 text-sm text-slate-500 font-bold italic bg-white rounded-xl border border-amber-100 shadow-sm">No se registraron novedades por cliente durante el período.</div>` : `
+        <div class="grid grid-cols-3 gap-4 flex-1">
+            ${dels.map((del) => {
+                const clientes = cn[del] || [];
+                const totalZona = sum(clientes, 'total');
+                const maxZona = clientes.length ? Math.max(...clientes.map((c) => num(c.total))) : 1;
+                return `<div class="break-inside-avoid bg-white rounded-xl shadow-sm border border-amber-100 p-3.5 h-fit">
+                    <div class="flex justify-between items-center mb-2.5 border-b border-slate-100 pb-1.5">
+                        <h4 class="font-extrabold text-slate-800 text-xs uppercase truncate max-w-[70%]" title="${e(del)}">${e(del)}</h4>
+                        <span class="bg-amber-100 text-amber-700 text-[9.5px] px-2 py-0.5 rounded-full font-black">Top: ${totalZona}</span>
+                    </div>
+                    <ul class="space-y-3">
+                        ${clientes.map((cli) => `<li class="flex flex-col">
+                            <div class="flex justify-between items-start text-[10.5px] mb-1">
+                                <span class="text-slate-700 font-bold flex-1 pr-2 break-words leading-tight" title="${e(cli.cliente)}">${e(cli.cliente)}</span>
+                                <span class="font-extrabold text-amber-600 text-[11px] shrink-0">${num(cli.total)}</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-amber-50 rounded-full overflow-hidden border border-amber-100 shadow-inner"><div class="h-full bg-amber-500 rounded-full" style="width: ${maxZona > 0 ? Math.min((num(cli.total) / maxZona) * 100, 100) : 0}%"></div></div>
+                            ${(cli.novedades || []).length ? `<div class="flex flex-wrap gap-1 mt-1.5">${cli.novedades.map((n) => `<span class="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-1.5 py-0.5 text-[8px] font-medium text-amber-800"><span>${e(n.nombre)}</span><span class="rounded-full bg-amber-600 px-1 py-0.5 text-[7.5px] font-black text-white">${num(n.total)}</span></span>`).join('')}</div>` : ''}
+                        </li>`).join('')}
+                    </ul>
+                </div>`;
+            }).join('')}
+        </div>`}
+        <div class="shrink-0 mt-4"></div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- TÉCNICOS
+if (activa('tecnicos')) {
+    const tipos = (D.todosTiposMant || []).map((t) => t.nombre_completo);
+    const tecs = [...(D.topTecnicos || [])];
+    const media = (t) => (num(t.dias_trabajados_lv) > 0 ? num(t.servicios_lv) / num(t.dias_trabajados_lv) : 0);
+    tecs.sort((a, b) => {
+        const ma = media(a), mb = media(b);
+        if (Math.abs(ma - mb) < 0.01) return num(b.total_general) - num(a.total_general);
+        return ma < mb ? 1 : -1;
+    });
+    h += `
+    <div class="card-wrapper"><div class="card pt-4 pb-4 px-5 flex flex-col justify-between">
+        <div class="flex justify-between items-start mb-3 border-b border-gray-100 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-lg border border-emerald-100">👷</div>
+                <div><h3 class="text-sm font-bold text-slate-800 leading-tight">Promedio Servicio por Técnico</h3><p class="text-[10px] text-slate-400">Desglose de servicios por tipo y promedios diarios de productividad</p></div>
+            </div>
+            <div class="date-badge text-[10px] font-bold text-slate-700 px-2.5 py-1.5">${rango}</div>
+        </div>
+        <div class="overflow-hidden rounded-lg border border-slate-200 flex-1">
+            <table class="w-full text-[10px] text-center border-collapse">
+                <thead><tr class="text-slate-500 text-[8.5px] uppercase tracking-wider text-left border-b border-slate-200 align-bottom bg-slate-50 font-bold shrink-0">
+                    <th class="py-2 font-black pl-3 w-48 bg-slate-100">Técnico</th>
+                    ${tipos.map((t) => `<th class="py-2 text-center font-black text-emerald-700 bg-emerald-50 border-r border-white align-bottom"><div class="w-16 mx-auto whitespace-normal break-words leading-tight text-[8px] flex items-end justify-center">${e(t)}</div></th>`).join('')}
+                    <th class="py-2 text-center font-black w-14 border-l border-slate-200 align-bottom text-slate-700"><div class="w-12 mx-auto whitespace-normal leading-tight">Media<br>L-V</div></th>
+                    <th class="py-2 text-center font-black w-14 align-bottom text-slate-700"><div class="w-12 mx-auto whitespace-normal leading-tight">Media<br>Sáb</div></th>
+                    <th class="py-2 text-center font-black w-12 text-slate-700 bg-slate-100 align-bottom">Total</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-100">
+                    ${tecs.map((t) => {
+                        const mLV = num(t.dias_trabajados_lv) > 0 ? phpRound(num(t.servicios_lv) / num(t.dias_trabajados_lv), 1) : 0;
+                        const mSab = num(t.dias_trabajados_sab) > 0 ? phpRound(num(t.servicios_sab) / num(t.dias_trabajados_sab), 1) : 0;
+                        const cLV = mLV > 6 ? 'bg-emerald-500' : mLV >= 5 ? 'bg-yellow-400' : mLV >= 4 ? 'bg-orange-400' : 'bg-red-500';
+                        const cSab = mSab > 3 ? 'bg-emerald-500' : mSab >= 2.5 ? 'bg-yellow-400' : mSab >= 2 ? 'bg-orange-400' : 'bg-red-500';
+                        return `<tr class="hover:bg-slate-50 transition-colors">
+                            <td class="py-1 pl-3 text-left text-slate-800 font-extrabold whitespace-nowrap text-[10px] border-r border-slate-100 bg-slate-50/50">${e(t.nombre_tecnico)}</td>
+                            ${tipos.map((tp) => {
+                                const c = num(t.desglose?.[tp]);
+                                return `<td class="py-1 text-center ${c > 0 ? 'text-slate-800 font-black bg-emerald-50/20' : 'text-slate-200 font-normal'} border-r border-slate-100/50 last:border-r-0 text-[9.5px]">${c > 0 ? c : '-'}</td>`;
+                            }).join('')}
+                            <td class="py-1 px-1.5 border-l border-slate-100"><div class="flex items-center justify-center gap-1.5"><span class="font-bold text-slate-700 text-[10px]">${mLV}</span><div class="w-2 h-2 rounded-full shrink-0 ${cLV}"></div></div></td>
+                            <td class="py-1 px-1.5"><div class="flex items-center justify-center gap-1.5"><span class="font-bold text-slate-700 text-[10px]">${mSab}</span><div class="w-2 h-2 rounded-full shrink-0 ${cSab}"></div></div></td>
+                            <td class="py-1 px-1.5 text-center font-black text-slate-900 bg-slate-50/50 text-[10px]">${t.total_general}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    </div></div>`;
+}
+
+// ---------------------------------------------------------------- COSTOS / BALANCE (cálculos compartidos)
+const listaMoto = [], listaAdmin = [];
+let totMoto = 0, totAdmin = 0, totGral = 0;
+(D.listaCostos || []).forEach((c) => {
+    if (String(c.rol ?? '').includes('Técnico')) { listaMoto.push(c); totMoto += num(c.subtotal); }
+    else { listaAdmin.push(c); totAdmin += num(c.subtotal); }
+});
+(D.listaGastosGenerales || []).forEach((g) => (totGral += num(g.valor)));
+const granTotal = totMoto + totAdmin + totGral;
+const base = granTotal > 0 ? granTotal : 1;
+const pctMotorizados = phpRound((totMoto / base) * 100, 1), pctAdmin = phpRound((totAdmin / base) * 100, 1), pctGastos = phpRound((totGral / base) * 100, 1);
+const I = D.ingresos || {};
+const vPrev = num(I.preventivo), vProf = num(I.profundo), vCorr = num(I.correctivo), vFall = num(I.fallido), vGar = num(I.garantia), vRep = num(D.ingresoRepuestos);
+const totIng = vPrev + vProf + vCorr + vFall + vGar + vRep;
+const totEgr = totMoto + totAdmin + totGral;
+const utilidad = totIng - totEgr;
+const margen = totIng > 0 ? phpRound((utilidad / totIng) * 100, 1) : 0;
+const pI = (v) => (totIng > 0 ? (v / totIng) * 100 : 0);
+const pE = (v) => (totEgr > 0 ? (v / totEgr) * 100 : 0);
+const money = (v) => (num(v) > 0 ? '$' + nf(v) : '-');
+
+if (activa('costos')) {
+    h += `
+    <div class="card-wrapper"><div class="card p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2 shrink-0">
+            <h2 class="text-xl font-black text-gray-800 uppercase tracking-tight">Reporte de Costos Operativos</h2>
+            <div class="text-xs font-bold text-gray-400">${rangoRaya}</div>
+        </div>
+        <div class="grid grid-cols-4 gap-4 mb-4 items-stretch shrink-0">
+            ${[['emerald', 'Gastos Motorizados', totMoto, '🏍️', pctMotorizados], ['blue', 'Nómina Administrativa', totAdmin, '👥', pctAdmin], ['orange', 'Gastos Administrativos', totGral, '🧾', pctGastos]].map(([c, t, v, ic, p]) => `
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-${c}-100 flex flex-col justify-between">
+                <div class="flex justify-between items-start mb-2">
+                    <div><p class="text-[9px] text-${c}-600 font-bold uppercase mb-0.5">${t}</p><h3 class="text-sm font-black text-gray-800">$${nfCO(v)}</h3></div>
+                    <span class="text-lg">${ic}</span>
+                </div>
+                <div class="w-full bg-${c}-100 h-1 rounded-full"><div style="width:${p}%" class="h-full bg-${c}-500 rounded-full"></div></div>
+            </div>`).join('')}
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                <div class="w-full h-5 bg-gray-100 rounded-md overflow-hidden flex shadow-inner border border-gray-200">
+                    <div style="width: ${pctMotorizados}%" class="h-full bg-emerald-500 flex items-center justify-center text-[8px] font-bold text-white">${pctMotorizados > 12 ? pctMotorizados + '%' : ''}</div>
+                    <div style="width: ${pctAdmin}%" class="h-full bg-blue-500 flex items-center justify-center text-[8px] font-bold text-white">${pctAdmin > 12 ? pctAdmin + '%' : ''}</div>
+                    <div style="width: ${pctGastos}%" class="h-full bg-orange-500 flex items-center justify-center text-[8px] font-bold text-white">${pctGastos > 12 ? pctGastos + '%' : ''}</div>
+                </div>
+                <div class="flex justify-between items-center mt-2 px-0.5">
+                    <div class="flex gap-2">
+                        <div class="flex items-center gap-1 text-[7px] text-gray-500"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Motorizados</div>
+                        <div class="flex items-center gap-1 text-[7px] text-gray-500"><div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Nómina Administrativa</div>
+                        <div class="flex items-center gap-1 text-[7px] text-gray-500"><div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div> Gastos Administrativos</div>
+                    </div>
+                    <div class="text-[8px] font-bold text-slate-800">100%</div>
+                </div>
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-4 flex-1 overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-emerald-100 overflow-hidden flex flex-col">
+                <div class="bg-emerald-50 px-3 py-2 border-b border-emerald-100 flex items-center gap-1.5 shrink-0"><span class="text-emerald-600 text-sm">🏍️</span><h3 class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">1. Gastos Motorizados</h3></div>
+                <div class="p-2 flex-1 overflow-y-auto">
+                    <table class="w-full text-[9px]">
+                        <thead><tr class="text-gray-400 uppercase border-b border-emerald-50 text-[8px]">
+                            <th class="text-left py-1 pl-1">Técnico</th><th class="text-right py-1">Rod.</th><th class="text-right py-0.5">Sal.</th><th class="text-right py-1">Gas.</th><th class="text-right py-0.5">Ext.</th><th class="text-right py-0.5">Bon.</th><th class="text-right py-0.5">Rod.</th><th class="text-right py-0.5">Gas.</th><th class="text-right py-0.5">Com.</th><th class="text-right py-1 pr-1 font-bold text-emerald-700">Total</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-gray-50">
+                            ${listaMoto.length ? listaMoto.map((m) => `<tr>
+                                <td class="py-0.5 pl-0.5 font-medium text-gray-700 truncate max-w-[50px]">${e(m.beneficiario)}</td>
+                                <td class="py-0.5 text-right text-gray-500">${money(m.salario)}</td>
+                                <td class="py-0.5 text-right text-gray-500">${money(m.horas_extra)}</td>
+                                <td class="py-0.5 text-right text-gray-500">${money(m.bono_meta)}</td>
+                                <td class="py-0.5 text-right text-gray-500">${money(m.auxilio_rodamiento)}</td>
+                                <td class="py-0.5 text-right text-gray-500">${money(m.gasolina)}</td>
+                                <td class="py-0.5 text-right text-gray-500">${money(m.auxilio_comunicacion)}</td>
+                                <td class="py-0.5 pr-0.5 text-right font-bold text-emerald-600">$${nf(m.subtotal)}</td>
+                            </tr>`).join('') + `<tr class="bg-emerald-50 border-t border-emerald-100"><td colspan="7" class="text-right py-1 font-bold text-emerald-700 text-[7px]">SUBTOTAL:</td><td class="text-right py-1 pr-0.5 font-black text-emerald-800 text-[7px]">$${nf(totMoto)}</td></tr>`
+                            : `<tr><td colspan="4" class="text-center py-4 text-gray-300">Sin registros</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-emerald-50 border-t border-emerald-100 px-3 py-1.5 flex justify-between items-center shrink-0"><span class="font-bold text-emerald-700 text-[9px]">SUBTOTAL:</span><span class="font-black text-emerald-800 text-[10px]">$${nf(totMoto)}</span></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden flex flex-col">
+                <div class="bg-blue-50 px-3 py-2 border-b border-blue-100 flex items-center gap-1.5 shrink-0"><span class="text-blue-600 text-sm">👥</span><h3 class="text-[10px] font-bold text-blue-800 uppercase tracking-wider">2. Nómina Admin</h3></div>
+                <div class="p-2 flex-1 overflow-y-auto">
+                    <table class="w-full text-[9px]">
+                        <thead><tr class="text-gray-400 uppercase border-b border-blue-50">
+                            <th class="text-left py-0.5 pl-0.5">Colaborador</th><th class="text-left py-0.5">Cargo</th><th class="text-right py-0.5">Salario</th><th class="text-right py-0.5">H. Extra</th><th class="text-right py-0.5">Bono</th><th class="text-right py-0.5 pr-0.5">Total</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-gray-50">
+                            ${listaAdmin.length ? listaAdmin.map((a) => `<tr>
+                                <td class="py-0.5 pl-0.5 font-medium text-gray-700 truncate max-w-[60px]">${e(a.beneficiario)}</td>
+                                <td class="py-0.5 text-gray-400 uppercase truncate max-w-[50px]">${e(a.rol)}</td>
+                                <td class="py-0.5 text-right text-gray-500">$${nf(a.salario)}</td>
+                                <td class="py-0.5 text-right text-gray-500">$${nf(a.horas_extra)}</td>
+                                <td class="py-0.5 text-right text-gray-500">$${nf(a.bono_meta)}</td>
+                                <td class="py-0.5 pr-0.5 text-right font-bold text-blue-600">$${nf(a.subtotal)}</td>
+                            </tr>`).join('') + `<tr class="bg-blue-50 border-t border-blue-100"><td colspan="5" class="text-right py-1 font-bold text-blue-700 text-[7px]">SUBTOTAL:</td><td class="text-right py-1 pr-0.5 font-black text-blue-800 text-[7px]">$${nf(totAdmin)}</td></tr>`
+                            : `<tr><td colspan="3" class="text-center py-4 text-gray-300">Sin registros</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-blue-50 border-t border-blue-100 px-3 py-1.5 flex justify-between items-center shrink-0"><span class="font-bold text-blue-700 text-[9px]">SUBTOTAL:</span><span class="font-black text-blue-800 text-[10px]">$${nf(totAdmin)}</span></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden flex flex-col">
+                <div class="bg-orange-50 px-3 py-2 border-b border-orange-100 flex items-center gap-1.5 shrink-0"><span class="text-orange-600 text-sm">🧾</span><h3 class="text-[10px] font-bold text-orange-800 uppercase tracking-wider">3. Gastos Administrativos</h3></div>
+                <div class="p-2 flex-1 overflow-y-auto">
+                    <table class="w-full text-[9px]">
+                        <thead><tr class="text-gray-400 uppercase border-b border-orange-50 text-[8px]"><th class="text-left py-1 pl-1">Concepto</th><th class="text-left py-1 pl-1">Categoría</th><th class="text-right py-1 pr-1">Valor</th></tr></thead>
+                        <tbody class="divide-y divide-gray-50">
+                            ${(D.listaGastosGenerales || []).length ? D.listaGastosGenerales.map((g) => `<tr>
+                                <td class="py-0.5 pl-0.5 font-medium text-gray-700 truncate max-w-[80px]">${e(g.concepto)}</td>
+                                <td class="py-0.5"><span class="bg-gray-100 text-gray-500 px-0.5 rounded">${e(g.categoria)}</span></td>
+                                <td class="py-0.5 pr-0.5 text-right font-bold text-orange-600">$${nf(g.valor)}</td>
+                            </tr>`).join('') + `<tr class="bg-orange-50 border-t border-orange-100"><td colspan="2" class="text-right py-1 font-bold text-orange-700 text-[7px]">SUBTOTAL:</td><td class="text-right py-1 pr-0.5 font-black text-orange-800 text-[7px]">$${nf(totGral)}</td></tr>`
+                            : `<tr><td colspan="2" class="text-center py-4 text-gray-300">Sin registros</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-orange-50 border-t border-orange-100 px-3 py-1.5 flex justify-between items-center shrink-0"><span class="font-bold text-orange-700 text-[9px]">SUBTOTAL:</span><span class="font-black text-orange-800 text-[10px]">$${nf(totGral)}</span></div>
+            </div>
+        </div>
+        <div class="bg-slate-800 rounded-xl shadow border border-slate-700 py-2.5 px-4 text-white flex justify-between items-center mt-4 shrink-0">
+            <div class="text-left"><p class="text-[8px] font-bold text-slate-300 uppercase tracking-widest leading-none">Total Egresos Operativos</p><p class="text-[8px] text-slate-400 leading-none mt-1">(Motorizados + Nómina Administrativa + Gastos Administrativos)</p></div>
+            <h2 class="text-base font-black text-white leading-none">$${nfCO(granTotal)}</h2>
+        </div>
+    </div></div>`;
+}
+
+if (activa('balance')) {
+    const tarjeta = (c, titulo, v, pct, cant) => `
+        <div class="bg-${c}-50 border border-${c}-100 rounded p-1 flex flex-col justify-between text-center">
+            <div>
+                <div class="text-[6px] uppercase font-bold text-${c}-600 mb-0.5">${titulo}</div>
+                <div class="text-[9px] font-black text-slate-700 leading-tight">$${nfCO(v)}</div>
+                <div class="w-full bg-${c}-200 h-0.5 mt-0.5 rounded-full overflow-hidden"><div style="width: ${pct}%" class="h-full bg-${c}-500"></div></div>
+            </div>
+            <div class="flex justify-between items-center w-full mt-1 px-0.5">
+                <span class="text-[6px] font-bold text-${c}-700 bg-${c}-100 px-0.5 rounded">${cant === null ? '-' : cant + ' Serv.'}</span>
+                <span class="text-[6px] font-bold text-${c}-500">${phpRound(pct, 1)}%</span>
+            </div>
+        </div>`;
+    const costo = (c, titulo, v, pct) => `
+        <div class="bg-white border border-${c}-100 shadow-sm rounded p-1.5 flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-8 h-8 bg-${c}-50 rounded-bl-full -mr-2 -mt-2 z-0"></div>
+            <div class="relative z-10"><div class="text-[6px] uppercase font-bold text-${c}-600 mb-0.5">${titulo}</div><div class="text-xs font-black text-slate-700">$${nfCO(v)}</div></div>
+            <div class="flex items-center gap-1 mt-1 relative z-10">
+                <div class="flex-1 bg-gray-100 h-1 rounded-full overflow-hidden"><div style="width: ${pct}%" class="h-full bg-${c}-500"></div></div>
+                <div class="text-[7px] font-bold text-${c}-600">${phpRound(pct, 1)}%</div>
+            </div>
+        </div>`;
+    h += `
+    <div class="card-wrapper"><div class="card p-4 flex flex-col justify-between">
+        <div class="bg-slate-800 px-3 py-2 flex justify-between items-center text-white rounded-t-xl">
+            <div class="flex items-center gap-2">
+                <div class="bg-slate-700 p-1 rounded-md text-base">💰</div>
+                <div><h3 class="font-bold text-sm uppercase tracking-wide text-emerald-400">Estado de Resultados</h3><p class="text-[8px] text-slate-400">Vista detallada por Columnas</p></div>
+            </div>
+            <div class="text-right">
+                <div class="text-[7px] uppercase tracking-widest text-slate-400">VALOR TOTAL DESPUES DE LA RESTA DE LOS COSTOS</div>
+                <div class="text-xl font-black ${utilidad >= 0 ? 'text-emerald-400' : 'text-rose-400'}">$ ${nfCO(utilidad)}</div>
+            </div>
+        </div>
+        <div class="p-3">
+            <div class="flex flex-col gap-3 mt-2">
+                <div class="w-full">
+                    <div class="flex justify-between items-end mb-1 border-b border-emerald-100 pb-0.5">
+                        <h4 class="font-bold text-emerald-700 uppercase text-[8px] flex items-center gap-1"><span class="text-xs">💰</span> Desglose de Ingresos</h4>
+                        <span class="font-black text-emerald-800 text-xs">$ ${nf(totIng)}</span>
+                    </div>
+                    <div class="grid grid-cols-6 gap-1">
+                        ${tarjeta('emerald', 'Preventivo', vPrev, pI(vPrev), num(I.cant_prev))}
+                        ${tarjeta('teal', 'Profundo', vProf, pI(vProf), num(I.cant_prof))}
+                        ${tarjeta('blue', 'Correctivo', vCorr, pI(vCorr), num(I.cant_corr))}
+                        ${tarjeta('orange', 'Fallido', vFall, pI(vFall), num(I.cant_fall))}
+                        ${tarjeta('rose', 'Garantía', vGar, pI(vGar), num(I.cant_garan))}
+                        ${tarjeta('violet', 'Repuestos', vRep, pI(vRep), null)}
+                    </div>
+                </div>
+                <div class="w-full">
+                    <div class="flex justify-between items-end mb-1 border-b border-rose-100 pb-0.5">
+                        <h4 class="font-bold text-rose-700 uppercase text-[8px] flex items-center gap-1"><span class="text-xs">📉</span> Desglose de Costos</h4>
+                        <span class="font-black text-rose-800 text-xs">$ ${nf(totEgr)}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1">
+                        ${costo('emerald', 'Personal Motorizado', totMoto, pE(totMoto))}
+                        ${costo('blue', 'Nómina Administrativa', totAdmin, pE(totAdmin))}
+                        ${costo('orange', 'Gastos Administrativos', totGral, pE(totGral))}
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-3 py-1 border-t border-slate-200 flex justify-between items-center rounded-b-xl">
+                <p class="text-[7px] text-slate-400 italic">* La utilidad neta se calcula antes de impuestos.</p>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-[8px] font-bold text-slate-500 uppercase">Rentabilidad:</span>
+                    <span class="text-[9px] font-black px-1.5 py-0.5 rounded border ${margen >= 0 ? 'bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-rose-100 text-rose-600 border-rose-200'}">${margen}%</span>
+                </div>
+            </div>
+        </div>
+    </div></div>`;
+}
+
+h += '</div>';
+document.getElementById('raiz').innerHTML = h;
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+# =====================================================================
+#  INEES Mantenimientos v5.0 - Spring Boot
+#  Misma base de datos que la versión PHP (app/config/conexion.php)
+#  Todos los valores sensibles se pueden sobreescribir con variables
+#  de entorno (DB_HOST, DB_USER, SMTP_PASS, GROQ_API_KEY, ...).
+# =====================================================================
+server:
+  port: ${PORT:8080}
+  servlet:
+    session:
+      timeout: ${SESSION_TIMEOUT:8h}
+      cookie:
+        name: PHPSESSID_INEES
+        http-only: true
+  tomcat:
+    max-swallow-size: -1
+    max-http-form-post-size: 200MB
+
+spring:
+  application:
+    name: inees-mantenimientos
+  datasource:
+    url: jdbc:mariadb://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:inees_mantenimientos}?characterEncoding=UTF-8&tinyInt1isBit=false&yearIsDateType=false
+    username: ${DB_USER:root}
+    password: ${DB_PASS:}
+    driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      maximum-pool-size: 15
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 200MB
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:465}
+    username: ${SMTP_USER:ineesmensajesautomaticos@gmail.com}
+    password: ${SMTP_PASS:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: ${SMTP_SSL:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 15000
+      mail.smtp.timeout: 20000
+    default-encoding: UTF-8
+
+inees:
+  # Carpeta raíz de la instalación PHP (donde viven uploads/, app/uploads/,
+  # imagenes/firmas, app/logos). Se reutilizan las MISMAS rutas que guarda la BD.
+  legacy-root: ${LEGACY_ROOT:../..}
+  mail-from-name: Sistema I-Nexis
+  groq-api-key: ${GROQ_API_KEY:}
+  groq-api-key-2: ${GROQ_API_KEY_2:}
+  chrome-path: ${CHROME_PATH:C:\Program Files\Google\Chrome\Application\chrome.exe}
+  telegram-bot-token: ${TELEGRAM_BOT_TOKEN:}
+  telegram-chat-id: ${TELEGRAM_CHAT_ID:}
+  google-maps-key: ${GOOGLE_MAPS_KEY:}
+  # Tareas programadas (reemplazan cron_alertas.php y cron_alertas_telegram.php del Programador de tareas)
+  cron-alertas-habilitado: ${CRON_ALERTAS:false}
+  cron-alertas-expresion: ${CRON_ALERTAS_EXPR:0 0 7 * * *}
+  cron-telegram-habilitado: ${CRON_TELEGRAM:false}
+  cron-telegram-expresion: ${CRON_TELEGRAM_EXPR:0 */5 * * * *}
+
+logging:
+  level:
+    root: INFO
+    co.inees: INFO

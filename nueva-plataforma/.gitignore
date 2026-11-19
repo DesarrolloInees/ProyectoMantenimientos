@@ -1,0 +1,8 @@
+# Configuracion local con contrasenas (ver config-local.ejemplo.bat)
+config-local.bat
+
+# Compilados del backend
+backend/target/
+
+# Logs locales
+*.log

@@ -1,0 +1,317 @@
+<div style="background: var(--c-bg); min-height: 100vh; padding: 0 0 5rem; font-family: 'DM Sans', sans-serif">
+  @if (modo === 'fecha') {
+    <div class="det-header">
+      <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap">
+        <h2><span style="font-size: 1.3rem">🛠️</span> Edición de Servicios</h2>
+        <span class="fecha-badge">{{ fecha }}</span>
+      </div>
+      <div class="det-actions">
+        <button type="button" (click)="exportarExcelLimpio()" [disabled]="exportando" class="btn btn-green">
+          @if (exportando) { <i class="fas fa-spinner fa-spin"></i> Generando... } @else { <i class="fas fa-file-excel"></i> Excel }
+        </button>
+        <button type="button" (click)="exportarExcelNovedades()" [disabled]="exportandoNov" class="btn btn-red">
+          @if (exportandoNov) { <i class="fas fa-spinner fa-spin"></i> Generando... } @else { <i class="fas fa-file-contract"></i> Novedades }
+        </button>
+        <a routerLink="/ordenVer" class="btn btn-gray"><i class="fas fa-arrow-left"></i> Volver</a>
+      </div>
+    </div>
+  } @else {
+    <div class="det-header">
+      <h2><span style="font-size: 1.3rem; color: var(--c-brand)">🔍</span> Búsqueda Avanzada de Servicios</h2>
+    </div>
+  }
+
+  <div style="padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem">
+    @if (modo === 'busqueda') {
+      <div class="search-card">
+        <div class="search-grid">
+          <div class="search-group">
+            <label>Remisión</label>
+            <input type="text" class="search-input" placeholder="# Remisión" [(ngModel)]="busq.remision" (keydown.enter)="realizarBusqueda()" />
+          </div>
+          <div class="search-group">
+            <label>Cliente</label>
+            <app-select-buscar [(ngModel)]="busq.id_cliente" (cambio)="cambioClienteBusqueda()" [opciones]="clientes" valor="id_cliente" texto="nombre_cliente" placeholder="Todos los clientes" claseBoton="h-[34px] text-sm" />
+          </div>
+          <div class="search-group">
+            <label>Punto (Auto)</label>
+            <app-select-buscar [(ngModel)]="busq.id_punto" [opciones]="puntosBusqueda" valor="id_punto" texto="nombre_punto" [placeholder]="placeholderPuntoBusq" claseBoton="h-[34px] text-sm" />
+          </div>
+          <div class="search-group">
+            <label>Delegación</label>
+            <app-select-buscar [(ngModel)]="busq.id_delegacion" [opciones]="delegaciones" valor="id_delegacion" texto="nombre_delegacion" placeholder="Todas" claseBoton="h-[34px] text-sm" />
+          </div>
+          <div class="search-group">
+            <label>Desde</label>
+            <input type="date" class="search-input" [(ngModel)]="busq.fecha_inicio" (keydown.enter)="realizarBusqueda()" />
+          </div>
+          <div class="search-group">
+            <label>Hasta</label>
+            <input type="date" class="search-input" [(ngModel)]="busq.fecha_fin" (keydown.enter)="realizarBusqueda()" />
+          </div>
+          <div class="search-group" style="flex-direction: row; gap: 0.5rem">
+            <button type="button" (click)="realizarBusqueda()" class="btn-search" style="flex: 1"><i class="fas fa-search"></i> Buscar</button>
+            <button type="button" (click)="exportarExcelLimpio()" class="btn-excel" title="Descargar Reporte General">
+              <i class="fas" [class]="exportando ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="pag-bar">
+        <div class="info highlight">Resultados encontrados: <b>{{ totalBusqueda }}</b></div>
+        <div class="info">Filtrado actual: <b>{{ infoBusqueda }}</b></div>
+      </div>
+    } @else {
+      <ng-container *ngTemplateOutlet="paginador" />
+    }
+
+    <div class="tabla-wrapper">
+      <table id="tablaEdicion">
+        <thead>
+          <tr>
+            <th class="col-cliente">Cliente</th>
+            <th class="col-punto">Punto</th>
+            <th style="width: 90px">Fecha</th>
+            <th class="col-tecnico">Técnico</th>
+            <th class="col-servicio">Servicio</th>
+            <th style="width: 90px">Zona</th>
+            <th style="width: 130px">Máquina</th>
+            <th class="col-servicio" style="width: 220px">¿Qué se hizo?</th>
+            <th class="col-nov" title="Novedad" style="width: 36px">⚠️</th>
+            <th class="col-valor" style="width: 100px">Valor</th>
+            <th style="width: 90px">Repuestos</th>
+            <th style="width: 90px">Remisión</th>
+            <th style="width: 80px">Entrada</th>
+            <th style="width: 80px">Salida</th>
+            <th class="col-desp" style="width: 72px; background: #92400e; color: #fde68a">⏱ Despl.</th>
+            <th style="width: 100px">Estado/Calif.</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (modo === 'busqueda' && buscando) {
+            <tr><td colspan="16" style="padding: 4rem; text-align: center; color: var(--c-brand)"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem"></i><br /><b>Buscando servicios...</b></td></tr>
+          } @else if (modo === 'busqueda' && errorBusqueda) {
+            <tr><td colspan="16" style="padding: 2rem; text-align: center; color: var(--c-red); font-weight: bold">❌ Error de conexión con el servidor.</td></tr>
+          } @else if (modo === 'busqueda' && !haBuscado) {
+            <tr>
+              <td colspan="16" style="padding: 4rem; text-align: center; color: var(--c-muted)">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem">
+                  <i class="fas fa-search" style="font-size: 2.5rem; opacity: 0.2"></i>
+                  <p style="font-size: 0.9rem; margin: 0">Usa los filtros superiores y presiona <b>Buscar</b> o <b>Enter</b> para cargar órdenes.</p>
+                </div>
+              </td>
+            </tr>
+          } @else {
+            @for (f of filasVisibles; track f.id) {
+              <tr class="hover:bg-blue-50 transition fila-servicio" [class.error-tarifa-faltante]="f.sinTarifa">
+                <!-- 1. CLIENTE -->
+                <td class="p-1" style="min-width: 130px">
+                  <app-select-buscar [compacto]="true" [(ngModel)]="f.id_cliente" (cambio)="cambioCliente(f)" [opciones]="clientes" valor="id_cliente" [texto]="textoCliente" placeholder="Cliente" [permitirVacio]="false" [limpiable]="false" />
+                </td>
+                <!-- 2. PUNTO -->
+                <td class="p-1" style="min-width: 130px">
+                  <app-select-buscar [compacto]="true" [(ngModel)]="f.id_punto" (abrir)="abrirPuntos(f)" (cambio)="cargarMaquinas(f, f.id_punto)" [opciones]="f.puntos" valor="id_punto" [texto]="textoPunto" [claseOpcion]="claseInactivo" placeholder="Punto" [permitirVacio]="false" [limpiable]="false" />
+                  <div class="text-[9px] text-gray-400 mt-0.5">{{ f.delegacion }}</div>
+                </td>
+                <!-- 3. FECHA -->
+                <td class="p-1"><input type="date" [(ngModel)]="f.fecha_individual" (change)="cambioFecha(f)" class="w-full border rounded text-[10px] p-1" /></td>
+                <!-- 4. TÉCNICO -->
+                <td class="p-1 bg-tecnico" style="min-width: 140px">
+                  <app-select-buscar [compacto]="true" [(ngModel)]="f.id_tecnico" (cambio)="cambioTecnico(f)" [opciones]="tecnicos" valor="id_tecnico" texto="nombre_tecnico" placeholder="Técnico" [permitirVacio]="false" [limpiable]="false" claseBoton="text-indigo-700 font-bold" />
+                </td>
+                <!-- 5. SERVICIO -->
+                <td class="p-1 bg-servicio" style="min-width: 140px">
+                  <app-select-buscar [compacto]="true" [(ngModel)]="f.id_manto" (cambio)="actualizarTarifa(f)" [opciones]="mantos" valor="id_tipo_mantenimiento" texto="nombre_completo" placeholder="Servicio" [permitirVacio]="false" [limpiable]="false" claseBoton="text-blue-900 font-bold" />
+                </td>
+                <!-- 6. ZONA / MODALIDAD -->
+                <td class="p-1 bg-servicio" style="min-width: 90px">
+                  <app-select-buscar [compacto]="true" [(ngModel)]="f.id_modalidad" (cambio)="actualizarTarifa(f)" [opciones]="modalidades" valor="id_modalidad" texto="nombre_modalidad" placeholder="Zona" [permitirVacio]="false" [limpiable]="false"
+                    [claseBoton]="f.modalidadAuto ? 'bg-yellow-100 border-yellow-500 text-yellow-800 font-bold' : 'text-gray-700 font-bold'" />
+                </td>
+                <!-- 7. MÁQUINA -->
+                <td class="p-1 bg-servicio" style="min-width: 130px">
+                  <app-select-buscar [compacto]="true" [(ngModel)]="f.id_maquina" (cambio)="cambioMaquina(f)" [opciones]="f.maquinas" valor="id_maquina" [texto]="textoMaquina" [claseOpcion]="claseInactivo" placeholder="Máquina" [permitirVacio]="false" [limpiable]="false" claseBoton="font-mono text-blue-600" />
+                  <div class="text-[9px] text-gray-400 mt-0.5">{{ f.tipoMaquinaNombre }}</div>
+                </td>
+                <!-- 8. OBSERVACIONES -->
+                <td class="p-1 bg-obs relative group">
+                  <textarea #ta rows="3" [(ngModel)]="f.obs" (dblclick)="toggleObs(f, ta)" class="w-full border rounded text-xs p-1 shadow-inner focus:bg-white transition-all duration-300 pr-7"
+                    [style.overflow-y]="'hidden'" [style.background-color]="f.obsFlash ? '#ecfdf5' : ''" [style.border-color]="f.obsFlash ? '#34d399' : ''" title="Doble clic para expandir/contraer"></textarea>
+                  <button type="button" (click)="mejorarTextoIA(f)" [disabled]="f.iaSegundos !== null"
+                    class="absolute top-2 right-2 bg-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] transition-colors shadow-sm opacity-40 group-hover:opacity-100" title="Mejorar redacción con IA">
+                    @if (f.iaSegundos !== null) { <i class="fas fa-spinner fa-spin"></i> {{ f.iaSegundos }}s } @else { <i class="fas fa-magic"></i> }
+                  </button>
+                </td>
+                <!-- 9. NOVEDAD -->
+                <td class="border p-1 text-center align-middle relative">
+                  <button type="button" (click)="abrirModalNovedad(f)" class="text-lg transition-colors duration-200"
+                    [class]="f.tiene_novedad ? 'text-red-600' + (f.novPulse || modo === 'fecha' ? ' animate-pulse' : '') : 'text-gray-300 hover:text-yellow-500'" [title]="tooltipNovedad(f)">
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </button>
+                </td>
+                <!-- 10. VALOR -->
+                <td class="p-1 bg-valor">
+                  <input type="text" [(ngModel)]="f.valor" [placeholder]="f.sinTarifa ? '🚫 SIN TARIFA' : 'Valor'" class="w-full border rounded text-right font-bold text-green-700 text-sm p-1"
+                    [class.tarifa-error]="f.sinTarifa" [style.opacity]="f.cargandoValor ? '0.5' : '1'" [style.background-color]="f.valorFlash ? '#bbf7d0' : ''" />
+                  @if (f.valor_viaticos > 0) {
+                    <div class="text-[9px] text-orange-600 font-bold mt-0.5 flex items-center gap-1" title="Recargo por desplazamiento interurbano"><i class="fas fa-road"></i><span>+{{ miles(f.valor_viaticos) }}</span></div>
+                  }
+                </td>
+                <!-- 11. REPUESTOS -->
+                <td class="p-1 bg-gray-50 text-center align-middle relative">
+                  <div class="relative w-full">
+                    <button type="button" (click)="abrirModalRepuestos(f)" class="border hover:bg-blue-50 text-[10px] px-2 py-1 rounded w-full shadow-sm transition flex items-center justify-center gap-1"
+                      [class]="totalRepuestos(f) > 0 ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-white border-gray-300 text-gray-400'">
+                      <i class="fas fa-tools text-blue-500"></i>
+                      <span>{{ totalRepuestos(f) > 0 ? totalRepuestos(f) + ' Items' : 'Sin Rep.' }}</span>
+                    </button>
+                    @if (f.sugeridos.length) {
+                      <div class="absolute -top-2 -right-2 bg-orange-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-white animate-pulse" title="El técnico reportó repuestos desde la app"><i class="fas fa-bell"></i></div>
+                    }
+                  </div>
+                </td>
+                <!-- 12. REMISIÓN -->
+                <td class="p-1" style="min-width: 90px">
+                  <select [(ngModel)]="f.remision" class="w-full border rounded p-1 text-[10px] font-mono text-gray-700" title="Remisión asignada al técnico">
+                    @for (r of f.remisiones; track $index) { <option [value]="r.v">{{ r.t }}</option> }
+                  </select>
+                  @if (!f.remisionOriginal) { <div class="text-[8px] text-red-400 mt-0.5">Sin asignar</div> }
+                </td>
+                <!-- 13/14. HORAS -->
+                <td class="p-1"><input type="text" [value]="f.entrada" (input)="inputHora(f, 'entrada', $event)" (blur)="blurHora(f, 'entrada', $event)" placeholder="00:00" maxlength="5" class="input-hora-militar w-full border rounded text-xs p-1 text-center font-mono focus:bg-blue-50 transition" /></td>
+                <td class="p-1"><input type="text" [value]="f.salida" (input)="inputHora(f, 'salida', $event)" (blur)="blurHora(f, 'salida', $event)" placeholder="00:00" maxlength="5" class="input-hora-militar w-full border rounded text-xs p-1 text-center font-mono focus:bg-blue-50 transition" /></td>
+                <!-- 15. DESPLAZAMIENTO -->
+                <td class="p-1 bg-desp text-center align-middle"><span class="text-[10px] font-bold block" [class]="f.desp.clase" [title]="f.desp.title">{{ f.desp.texto }}</span></td>
+                <!-- 16. ESTADO / CALIFICACIÓN -->
+                <td class="p-1">
+                  <select [(ngModel)]="f.id_estado" class="w-full text-[9px] border mb-1 rounded p-0.5">
+                    @for (e of estados; track e.id_estado) { <option [ngValue]="e.id_estado">{{ e.nombre_estado }}</option> }
+                  </select>
+                  <select [(ngModel)]="f.id_calif" class="w-full text-[9px] border rounded p-0.5">
+                    @for (c of califs; track c.id_calificacion) { <option [ngValue]="c.id_calificacion">{{ c.nombre_calificacion }}</option> }
+                  </select>
+                </td>
+              </tr>
+            } @empty {
+              @if (modo === 'busqueda') {
+                <tr><td colspan="16" class="p-4 text-center text-red-500 font-bold">No se encontraron servicios con esos filtros.</td></tr>
+              } @else if (cargado) {
+                <tr>
+                  <td colspan="16" style="padding: 3rem; text-align: center; color: var(--c-muted)">
+                    <i class="fas fa-inbox" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem"></i>
+                    No hay servicios para esta fecha.
+                  </td>
+                </tr>
+              }
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <button type="button" class="btn-save-float" (click)="procesarGuardado()" [style.pointer-events]="guardando ? 'none' : 'auto'" [style.opacity]="guardando ? '0.7' : '1'">
+      @if (guardando) { <i class="fas fa-spinner fa-spin"></i> GUARDANDO... } @else { <i class="fas fa-save"></i> GUARDAR CAMBIOS }
+    </button>
+
+    @if (modo === 'fecha') { <ng-container *ngTemplateOutlet="paginador" /> }
+  </div>
+</div>
+
+<ng-template #paginador>
+  <div class="pag-bar">
+    <div class="info">Mostrando <b>{{ infoPagina }}</b></div>
+    <div class="pag-controls">
+      <button type="button" (click)="cambiarPagina(-1)" class="pag-btn"><i class="fas fa-chevron-left"></i></button>
+      <span class="pag-label">{{ paginaActual }} / {{ totalPaginas }}</span>
+      <button type="button" (click)="cambiarPagina(1)" class="pag-btn"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div class="info">Total: <b>{{ filas.length }}</b></div>
+  </div>
+</ng-template>
+
+<!-- MODAL REPUESTOS (partials/modalRepuestos.php) -->
+@if (modalRep; as m) {
+  <div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6 transform scale-100 transition-transform flex flex-col max-h-[90vh]">
+      <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between shrink-0">
+        <span>🛠️ Gestión de Repuestos</span>
+        <button type="button" (click)="cerrarModalRep()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+      </h3>
+      <div class="overflow-y-auto pr-2 space-y-4 flex-grow">
+        @if (m.fila.sugeridos.length) {
+          <div class="mb-4 bg-orange-50 border border-orange-200 rounded-md p-3">
+            <div class="flex items-center gap-2 text-orange-700 font-bold text-sm mb-2 border-b border-orange-200 pb-1"><i class="fas fa-mobile-alt"></i> Reportado por el técnico desde la app:</div>
+            <ul class="space-y-1 text-xs">
+              @for (rep of m.fila.sugeridos; track $index) {
+                <li class="flex justify-between items-center bg-white p-2 rounded border border-orange-100 shadow-sm">
+                  <span class="text-gray-700 font-medium truncate pr-2"><i class="fas fa-caret-right text-orange-400 mr-1"></i> {{ rep.nombre }}</span>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="font-bold text-gray-800">x{{ rep.cantidad }}</span>
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border" [class]="rep.origen === 'INEES' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-orange-100 text-orange-800 border-orange-200'">{{ rep.origen }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+        <div class="flex gap-2 items-center">
+          <div class="flex-1 min-w-0">
+            <app-select-buscar [(ngModel)]="m.idSel" [opciones]="m.opciones" valor="id" texto="texto" [placeholder]="m.cargando ? 'Cargando catálogo...' : '- Buscar Repuesto -'" [disabled]="m.cargando" />
+          </div>
+          <div class="w-20 flex-shrink-0"><input type="number" [(ngModel)]="m.cantidad" min="1" class="w-full border rounded p-2 text-sm text-center font-bold bg-gray-50 h-[38px]" placeholder="Cant." /></div>
+          <div class="w-32 flex-shrink-0">
+            <select [(ngModel)]="m.origen" class="w-full border rounded p-2 text-xs bg-gray-100 font-bold text-gray-700 h-[38px]">
+              <option value="INEES">INEES</option>
+              <option value="PROSEGUR">PROSEGUR</option>
+            </select>
+          </div>
+          <button type="button" (click)="agregarRepuestoALista()" [disabled]="m.procesando" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 shadow transition h-[38px] flex-shrink-0">
+            <i class="fas" [class]="m.procesando ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
+          </button>
+        </div>
+        <ul class="border rounded p-2 min-h-[120px] bg-gray-50 text-sm">
+          @for (item of m.temporales; track $index; let i = $index) {
+            <li class="flex justify-between items-center bg-gray-50 p-2 mb-2 border rounded shadow-sm hover:bg-gray-100 transition">
+              <div class="flex items-center gap-2 overflow-hidden w-full">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded border border-opacity-20 flex-shrink-0" style="min-width: 60px; text-align: center" [class]="item.origen === 'INEES' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'">{{ item.origen }}</span>
+                <span class="text-xs text-gray-700 font-medium truncate flex-grow">{{ item.nombre }}</span>
+                <span class="bg-gray-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold flex-shrink-0">x{{ item.cantidad || 1 }}</span>
+              </div>
+              <button type="button" (click)="borrarRepuestoTemporal(i)" class="text-red-400 hover:text-red-600 px-2 ml-2 transition transform hover:scale-110"><i class="fas fa-trash-alt"></i></button>
+            </li>
+          } @empty {
+            <li class="text-gray-400 text-center italic mt-10">No hay repuestos seleccionados.</li>
+          }
+        </ul>
+      </div>
+      <div class="mt-4 text-right border-t pt-4 shrink-0">
+        <button type="button" (click)="guardarCambiosModal()" [disabled]="m.procesando" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 shadow-lg transform hover:scale-105 transition" [class.opacity-50]="m.procesando">
+          <i class="fas fa-check mr-2"></i> Confirmar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- MODAL NOVEDADES (partials/modalNovedades.php) -->
+@if (modalNov; as n) {
+  <div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-1/3 p-6 transform transition-all scale-100">
+      <div class="flex justify-between items-center mb-4 border-b pb-2">
+        <h3 class="text-xl font-bold text-red-600"><i class="fas fa-exclamation-triangle mr-2"></i> Reportar Novedad</h3>
+        <button (click)="modalNov = null" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 font-bold mb-2">Tipo de Novedad (Puedes seleccionar varias):</label>
+        <app-select-buscar [multiple]="true" [(ngModel)]="n.seleccion" [opciones]="novedadesCat" valor="id_tipo_novedad" texto="nombre_novedad" placeholder="Buscar y seleccionar novedades..." />
+      </div>
+      <div class="flex justify-between mt-6">
+        <button type="button" (click)="eliminarNovedad()" class="text-red-500 hover:text-red-700 font-bold text-sm underline">Quitar Novedades</button>
+        <div class="space-x-2">
+          <button type="button" (click)="modalNov = null" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">Cancelar</button>
+          <button type="button" (click)="guardarNovedad()" [disabled]="n.guardando" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow">{{ n.guardando ? 'Guardando...' : 'Guardar' }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

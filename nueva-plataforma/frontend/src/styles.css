@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Estilos globales heredados de plantillaVista.php ===== */
+.group:hover .group-hover\:block {
+  display: block;
+}
+
+.dropdown-menu {
+  transform-origin: top;
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+
+.z-super-top {
+  z-index: 99999 !important;
+}
+
+details > summary {
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* ===== Tabla tipo DataTables (componente app-tabla) ===== */
+.dt-wrapper .dt-top,
+.dt-wrapper .dt-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.dt-wrapper input.dt-search,
+.dt-wrapper select.dt-length {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.dt-wrapper th.dt-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.dt-wrapper .dt-pag button {
+  min-width: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #e5e7eb;
+  margin-left: -1px;
+  background: #fff;
+  font-size: 0.8rem;
+}
+
+.dt-wrapper .dt-pag button.activo {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.dt-wrapper .dt-pag button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Select con búsqueda (reemplazo de Select2) ===== */
+.sb-panel {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* Spinner genérico */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+
+.animate-shake {
+  animation: shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Leaflet dentro de contenedores con z-index */
+.leaflet-container {
+  z-index: 0;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

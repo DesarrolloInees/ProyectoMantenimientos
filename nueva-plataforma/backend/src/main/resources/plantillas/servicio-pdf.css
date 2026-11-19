@@ -1,0 +1,714 @@
+        :root {
+            --verde: #16a34a;
+            --verde-oscuro: #14532d;
+            --verde-light: #dcfce7;
+            --verde-mid: #bbf7d0;
+            --azul: #1d4ed8;
+            --azul-oscuro: #1e3a8a;
+            --azul-light: #dbeafe;
+            --azul-mid: #bfdbfe;
+            --gris-bg: #f8fafc;
+            --gris-borde: #e2e8f0;
+            --gris-texto: #475569;
+            --negro: #0f172a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Sora', sans-serif;
+            background: white;
+            color: var(--negro);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* ─── PÁGINA ─── */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 10mm 12mm;
+            background: white;
+        }
+
+        /* ─── HEADER ─── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+
+        .header-marca {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .header-marca img {
+            height: 90px;
+            width: auto;
+            margin-bottom: 6px;
+        }
+
+        .header-marca .subtitulo {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--verde);
+        }
+
+        .header-remision {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .header-remision .num {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--negro);
+            line-height: 1;
+        }
+
+        .header-remision .num span {
+            color: var(--azul);
+        }
+
+        .header-remision .fecha {
+            font-size: 11px;
+            color: var(--gris-texto);
+            margin-top: 4px;
+        }
+
+        /* Línea divisora tricolor */
+        .divider {
+            height: 4px;
+            background: linear-gradient(to right, var(--verde) 40%, var(--azul) 60%, var(--azul-oscuro) 100%);
+            border-radius: 2px;
+            margin-bottom: 20px;
+        }
+
+        /* ─── BADGE TIPO SERVICIO ─── */
+        .badge-tipo {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--azul), var(--azul-oscuro));
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 99px;
+        }
+
+        /* ─── SECCIÓN TÍTULOS ─── */
+        .section-title {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gris-borde);
+        }
+
+        /* ─── GRID PRINCIPAL (cliente + ejecución) ─── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background: var(--gris-bg);
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            padding: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--verde);
+            border-radius: 10px 0 0 10px;
+        }
+
+        .card.azul::before {
+            background: var(--azul);
+        }
+
+        .card-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--verde);
+            margin-bottom: 8px;
+        }
+
+        .card.azul .card-label {
+            color: var(--azul);
+        }
+
+        .card-nombre {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--negro);
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .card-sub {
+            font-size: 11px;
+            color: var(--gris-texto);
+            margin-bottom: 2px;
+        }
+
+        .card-sub strong {
+            color: var(--negro);
+            font-weight: 600;
+        }
+
+        .card-divider {
+            border: none;
+            border-top: 1px solid var(--gris-borde);
+            margin: 10px 0;
+        }
+
+        .card-mini-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 3px;
+        }
+
+        /* ─── TÉCNICO DESTACADO ─── */
+        .tecnico-nombre {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--azul);
+        }
+
+        .horas-row {
+            display: flex;
+            gap: 16px;
+            margin-top: 6px;
+        }
+
+        .hora-box {
+            flex: 1;
+            background: white;
+            border: 1px solid var(--azul-mid);
+            border-radius: 6px;
+            padding: 6px 10px;
+            text-align: center;
+        }
+
+        .hora-box .h-label {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--azul);
+        }
+
+        .hora-box .h-valor {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--negro);
+        }
+
+        /* Calificación pill */
+        .calificacion-pill {
+            display: inline-block;
+            background: var(--verde-light);
+            color: var(--verde-oscuro);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 99px;
+            border: 1px solid var(--verde-mid);
+        }
+
+        /* ─── TABLA EQUIPOS ─── */
+        .equipos-grid {
+            background: var(--gris-bg);
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .equipos-header {
+            background: linear-gradient(to right, var(--verde-oscuro), var(--azul-oscuro));
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .equipos-header h3 {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        .equipos-body {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+        }
+
+        .equipo-cell {
+            padding: 10px 14px;
+            border-right: 1px solid var(--gris-borde);
+            border-bottom: 1px solid var(--gris-borde);
+        }
+
+        .equipo-cell:last-child,
+        .equipo-cell:nth-child(4) {
+            border-right: none;
+        }
+
+        .equipo-cell .ec-label {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 3px;
+        }
+
+        .equipo-cell .ec-valor {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--negro);
+        }
+
+        /* ─── DIAGNÓSTICO ─── */
+        .diagnostico-box {
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .diag-header {
+            background: linear-gradient(to right, var(--verde-oscuro), var(--azul-oscuro));
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .diag-header h3 {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        .estado-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+        }
+
+        .estado-cell {
+            padding: 12px 16px;
+            border-right: 1px solid var(--gris-borde);
+        }
+
+        .estado-cell:last-child {
+            border-right: none;
+        }
+
+        .estado-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 4px;
+        }
+
+        .estado-valor {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--negro);
+        }
+
+        .estado-valor.verde {
+            color: var(--verde);
+        }
+
+        .actividades-box {
+            padding: 14px 16px;
+            background: white;
+            border-top: 1px solid var(--gris-borde);
+        }
+
+        .actividades-box .act-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gris-texto);
+            margin-bottom: 6px;
+        }
+
+        .actividades-box p {
+            color: #334155;
+            white-space: pre-line;
+            line-height: 1.7;
+        }
+
+        /* ─── PENDIENTES ─── */
+        .pendientes-box {
+            padding: 12px 16px;
+            background: #fffbeb;
+            border-top: 3px solid #f59e0b;
+        }
+
+        .pendientes-box .pend-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #92400e;
+            margin-bottom: 4px;
+        }
+
+        .pendientes-box p {
+            color: #78350f;
+            white-space: pre-line;
+        }
+
+        /* ─── NOVEDADES ─── */
+        .novedades-box {
+            padding: 12px 16px;
+            background: #fff1f2;
+            border-top: 3px solid #e11d48;
+        }
+
+        .novedades-box .nov-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #9f1239;
+            margin-bottom: 6px;
+        }
+
+        .novedades-box ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .novedades-box ul li {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #be123c;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 3px 0;
+        }
+
+        .novedades-box ul li::before {
+            content: '▸';
+            color: #e11d48;
+        }
+
+        .novedades-box .nov-detalle {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: white;
+            border-left: 3px solid #e11d48;
+            border-radius: 0 4px 4px 0;
+            font-size: 11px;
+            color: #9f1239;
+        }
+
+        /* ─── REPUESTOS ─── */
+        .repuestos-box {
+            border: 1px solid var(--gris-borde);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .repuestos-header {
+            background: linear-gradient(to right, #475569, #1e293b);
+            padding: 8px 14px;
+        }
+
+        .repuestos-header h3 {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+            margin: 0;
+        }
+
+        .repuestos-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .repuestos-table th {
+            background: var(--gris-bg);
+            color: var(--gris-texto);
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--gris-borde);
+        }
+
+        .repuestos-table td {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--gris-borde);
+            color: var(--negro);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .repuestos-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge-origen {
+            font-size: 8px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.5px;
+        }
+
+        .origen-inees {
+            background: var(--verde);
+        }
+
+        .origen-prosegur {
+            background: #f59e0b;
+        }
+
+        /* ─── EVIDENCIA FOTOGRÁFICA ─── */
+        .evidencia-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            margin-top: 8px;
+        }
+
+        .evidencia-header h2 {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--negro);
+            letter-spacing: -0.3px;
+        }
+
+        .evidencia-header .ev-line {
+            flex: 1;
+            height: 2px;
+            background: linear-gradient(to right, var(--verde), var(--azul));
+            border-radius: 2px;
+        }
+
+        .foto-grupo {
+            margin-bottom: 18px;
+            page-break-inside: avoid;
+        }
+
+        .foto-grupo-title {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: white;
+            background: linear-gradient(to right, var(--verde), var(--azul));
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+            /* Evita que el título quede en una página y las fotos en la otra */
+        }
+
+        .foto-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .foto-item {
+            border: 1px solid var(--gris-borde);
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            page-break-inside: avoid;
+            /* Evita que una foto individual se parta por la mitad */
+        }
+
+        .foto-item img {
+            width: 100%;
+            height: 160px;
+            /* Mantenemos la altura fija para que la cuadrícula se vea ordenada */
+            object-fit: contain;
+            /* <-- CAMBIO AQUÍ. Muestra la imagen entera */
+            display: block;
+        }
+
+        .foto-error {
+            font-size: 8px;
+            color: #e11d48;
+            word-break: break-all;
+            padding: 4px 6px;
+        }
+
+        /* ─── SIN EVIDENCIA ─── */
+        .sin-evidencia {
+            text-align: center;
+            padding: 24px;
+            background: var(--gris-bg);
+            border: 2px dashed var(--gris-borde);
+            border-radius: 10px;
+            margin-top: 16px;
+        }
+
+        .sin-evidencia p {
+            color: var(--gris-texto);
+            font-size: 12px;
+        }
+
+        /* ─── FOOTER / FIRMAS ─── */
+        .firmas {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            page-break-inside: avoid;
+        }
+
+        .firma-box {
+            text-align: center;
+        }
+
+        .firma-linea {
+            border-top: 1.5px solid var(--negro);
+            margin-bottom: 6px;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .firma-nombre {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--negro);
+        }
+
+        .firma-rol {
+            font-size: 10px;
+            color: var(--gris-texto);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .footer-strip {
+            margin-top: 20px;
+            padding: 8px 14px;
+            background: linear-gradient(to right, var(--verde-oscuro), var(--azul-oscuro));
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-strip span {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 0.5px;
+        }
+
+        .footer-strip .remision-footer {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* ─── IMAGEN DE FIRMA ─── */
+        .img-firma {
+            max-height: 65px;
+            max-width: 180px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Contenedor fijo para que las líneas queden alineadas haya o no firma */
+        .firma-espacio {
+            height: 70px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+
+        /* ─── PRINT ─── */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+
+            .no-break {
+                page-break-inside: avoid;
+            }
+        }

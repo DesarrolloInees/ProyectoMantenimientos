@@ -1,0 +1,9 @@
+{
+  "/api": { "target": "http://localhost:8080", "secure": false, "changeOrigin": false },
+  "/uploads": { "target": "http://localhost:8080", "secure": false },
+  "/app/uploads": { "target": "http://localhost:8080", "secure": false },
+  "/app/logos": { "target": "http://localhost:8080", "secure": false },
+  "/app/imagenes": { "target": "http://localhost:8080", "secure": false },
+  "/app/temp": { "target": "http://localhost:8080", "secure": false },
+  "/imagenes": { "target": "http://localhost:8080", "secure": false }
+}
